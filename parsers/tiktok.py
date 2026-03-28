@@ -46,23 +46,27 @@ def _dig(data: dict, *keys, default=None):
 
 def _extract_profile(data: dict) -> dict:
     """Extract profile information from Profile And Settings."""
-    profile_section = _dig(data, "Profile And Settings", "ProfileMap", default={})
+    profile_section = _dig(data, "Profile And Settings", "Profile Info", "ProfileMap", default={})
+    if not profile_section:
+        profile_section = _dig(data, "Profile And Settings", "ProfileMap", default={})
     return {
         "username": profile_section.get("userName", ""),
-        "display_name": profile_section.get("nickName", ""),
+        "display_name": profile_section.get("displayName", profile_section.get("nickName", "")),
         "birth_date": profile_section.get("birthDate", ""),
         "account_region": profile_section.get("accountRegion", ""),
         "bio": _safe_text(profile_section.get("bioDescription", "")),
         "follower_count": profile_section.get("followerCount", 0),
         "following_count": profile_section.get("followingCount", 0),
-        "inferred_gender": profile_section.get("gender", ""),
+        "inferred_gender": profile_section.get("inferredGender", profile_section.get("gender", "")),
     }
 
 
 def _extract_settings_interests(data: dict) -> list[str]:
     """Extract declared interests from Settings, split on pipe delimiter."""
-    settings = _dig(data, "Profile And Settings", "SettingsMap", default={})
-    interests_str = settings.get("InterestsLanguage", "") or settings.get("Interests", "")
+    settings = _dig(data, "Profile And Settings", "Settings", "SettingsMap", default={})
+    if not settings:
+        settings = _dig(data, "Profile And Settings", "SettingsMap", default={})
+    interests_str = settings.get("Interests", "") or settings.get("InterestsLanguage", "")
     if not interests_str:
         return []
     return [i.strip() for i in interests_str.split("|") if i.strip()]
@@ -70,7 +74,9 @@ def _extract_settings_interests(data: dict) -> list[str]:
 
 def _extract_ad_interests(data: dict) -> list[str]:
     """Extract ad interests from Ad Interests section."""
-    ad_section = _dig(data, "Ad Interests", "AdInterestCategories", default=[])
+    ad_section = _dig(data, "Your Activity", "Ad Interests", "AdInterestCategories", default=None)
+    if ad_section is None:
+        ad_section = _dig(data, "Ad Interests", "AdInterestCategories", default=[])
     if isinstance(ad_section, str):
         items = [i.strip() for i in ad_section.split(",") if i.strip()]
         return items
@@ -81,7 +87,9 @@ def _extract_ad_interests(data: dict) -> list[str]:
 
 def _extract_browsing_history(data: dict) -> list[dict]:
     """Extract and sort video browsing history."""
-    video_list = _dig(data, "Your Activity", "Video Browsing History", "VideoList", default=[])
+    video_list = _dig(data, "Your Activity", "Watch History", "VideoList", default=[])
+    if not video_list:
+        video_list = _dig(data, "Your Activity", "Video Browsing History", "VideoList", default=[])
     if not video_list:
         video_list = _dig(data, "Activity", "Video Browsing History", "VideoList", default=[])
     history = []
@@ -187,11 +195,11 @@ def _compute_behavioral_analysis(browsing_history: list[dict]) -> dict:
 
 def _extract_likes(data: dict) -> list[dict]:
     """Extract liked videos."""
-    like_list = _dig(data, "Your Activity", "Like List", "ItemFavoriteList", default=[])
+    like_list = _dig(data, "Likes and Favorites", "Like List", "ItemFavoriteList", default=[])
+    if not like_list:
+        like_list = _dig(data, "Your Activity", "Like List", "ItemFavoriteList", default=[])
     if not like_list:
         like_list = _dig(data, "Activity", "Like List", "ItemFavoriteList", default=[])
-    if not like_list:
-        like_list = _dig(data, "Likes and Favorites", "Like List", "ItemFavoriteList", default=[])
     results = []
     for entry in like_list:
         results.append({
@@ -203,11 +211,11 @@ def _extract_likes(data: dict) -> list[dict]:
 
 def _extract_favorites(data: dict) -> list[dict]:
     """Extract favorite videos."""
-    fav_list = _dig(data, "Your Activity", "Favorite Videos", "FavoriteVideoList", default=[])
+    fav_list = _dig(data, "Likes and Favorites", "Favorite Videos", "FavoriteVideoList", default=[])
+    if not fav_list:
+        fav_list = _dig(data, "Your Activity", "Favorite Videos", "FavoriteVideoList", default=[])
     if not fav_list:
         fav_list = _dig(data, "Activity", "Favorite Videos", "FavoriteVideoList", default=[])
-    if not fav_list:
-        fav_list = _dig(data, "Likes and Favorites", "Favorite Videos", "FavoriteVideoList", default=[])
     results = []
     for entry in fav_list:
         results.append({
@@ -219,14 +227,14 @@ def _extract_favorites(data: dict) -> list[dict]:
 
 def _extract_favorite_collections(data: dict) -> list[str]:
     """Extract favorite collection names."""
-    collections = _dig(data, "Your Activity", "Favorite Collections", "FavoriteCollectionList", default=[])
-    if not collections:
-        collections = _dig(data, "Activity", "Favorite Collections", "FavoriteCollectionList", default=[])
+    collections = _dig(data, "Likes and Favorites", "Favorite Collection", "FavoriteCollectionList", default=[])
     if not collections:
         collections = _dig(data, "Likes and Favorites", "Favorite Collections", "FavoriteCollectionList", default=[])
+    if not collections:
+        collections = _dig(data, "Your Activity", "Favorite Collections", "FavoriteCollectionList", default=[])
     names = []
     for coll in collections:
-        name = coll.get("Name", coll.get("name", coll.get("CollectionName", "")))
+        name = coll.get("FavoriteCollection", coll.get("Name", coll.get("name", coll.get("CollectionName", ""))))
         if name:
             names.append(_safe_text(name))
     return names
@@ -280,11 +288,11 @@ def _extract_comments(data: dict) -> list[dict]:
 
 def _extract_blocked(data: dict) -> list[dict]:
     """Extract block list."""
-    block_list = _dig(data, "Your Activity", "Block List", "BlockList", default=[])
+    block_list = _dig(data, "Profile And Settings", "Block List", "BlockList", default=[])
+    if not block_list:
+        block_list = _dig(data, "Your Activity", "Block List", "BlockList", default=[])
     if not block_list:
         block_list = _dig(data, "Activity", "Block List", "BlockList", default=[])
-    if not block_list:
-        block_list = _dig(data, "Profile And Settings", "Block List", "BlockList", default=[])
     results = []
     for entry in block_list:
         results.append({
@@ -296,9 +304,9 @@ def _extract_blocked(data: dict) -> list[dict]:
 
 def _extract_following(data: dict) -> list[dict]:
     """Extract following list."""
-    following_list = _dig(data, "Your Activity", "Following List", "Following", default=[])
+    following_list = _dig(data, "Profile And Settings", "Following", "Following", default=[])
     if not following_list:
-        following_list = _dig(data, "Activity", "Following List", "Following", default=[])
+        following_list = _dig(data, "Your Activity", "Following List", "Following", default=[])
     if not following_list:
         following_list = _dig(data, "Profile And Settings", "Following List", "Following", default=[])
     results = []
@@ -312,9 +320,9 @@ def _extract_following(data: dict) -> list[dict]:
 
 def _extract_followers(data: dict) -> list[dict]:
     """Extract follower list."""
-    follower_list = _dig(data, "Your Activity", "Follower List", "FansList", default=[])
+    follower_list = _dig(data, "Profile And Settings", "Follower", "FansList", default=[])
     if not follower_list:
-        follower_list = _dig(data, "Activity", "Follower List", "FansList", default=[])
+        follower_list = _dig(data, "Your Activity", "Follower List", "FansList", default=[])
     if not follower_list:
         follower_list = _dig(data, "Profile And Settings", "Follower List", "FansList", default=[])
     results = []
@@ -361,8 +369,10 @@ def _extract_login_history(data: dict) -> tuple[list[dict], dict]:
 
 
 def _extract_off_tiktok_activity(data: dict) -> list:
-    """Extract off-TikTok activity (usually empty)."""
+    """Extract off-TikTok activity (usually empty if user opted out of tracking)."""
     off_activity = _dig(data, "Your Activity", "Off TikTok Activity", "OffTikTokActivityDataList", default=[])
+    if not off_activity:
+        off_activity = _dig(data, "Profile And Settings", "Off TikTok Activity", "OffTikTokActivityDataList", default=[])
     if not off_activity:
         off_activity = _dig(data, "Activity", "Off TikTok Activity", "OffTikTokActivityDataList", default=[])
     return off_activity if off_activity else []
@@ -370,23 +380,33 @@ def _extract_off_tiktok_activity(data: dict) -> list:
 
 def _extract_shop_orders(data: dict) -> list[dict]:
     """Extract TikTok Shop orders."""
+    # Try list format first
     orders_section = _dig(data, "TikTok Shop", "Order", "OrderList", default=[])
     if not orders_section:
         orders_section = _dig(data, "TikTok Shop", "Orders", "OrderList", default=[])
+
+    # Also try dict format (OrderHistories keyed by order ID)
+    order_histories = _dig(data, "TikTok Shop", "Order History", "OrderHistories", default={})
+    if isinstance(order_histories, dict) and order_histories:
+        orders_section = list(order_histories.values())
+
     results = []
     for order in orders_section:
         products = []
         product_list = order.get("Products", order.get("products", []))
         if isinstance(product_list, list):
             for p in product_list:
-                name = p.get("ProductName", p.get("productName", p.get("name", "")))
-                if name:
-                    products.append(_safe_text(name))
+                if isinstance(p, dict):
+                    name = p.get("ProductName", p.get("productName", p.get("name", "")))
+                    if name:
+                        products.append(_safe_text(name))
+                elif isinstance(p, str):
+                    products.append(_safe_text(p))
         elif isinstance(product_list, str):
             products.append(_safe_text(product_list))
         results.append({
-            "date": order.get("Date", order.get("date", order.get("CreateTime", ""))),
-            "total_price": order.get("TotalPrice", order.get("totalPrice", order.get("TotalAmount", ""))),
+            "date": order.get("Date", order.get("date", order.get("CreateTime", order.get("order_date", "")))),
+            "total_price": order.get("TotalPrice", order.get("totalPrice", order.get("TotalAmount", order.get("total_price", "")))),
             "products": products,
         })
     return results

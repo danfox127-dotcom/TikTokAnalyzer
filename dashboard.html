@@ -551,7 +551,7 @@ function renderBehavior(tk) {
         plugins: { legend: { labels: { color: '#94a3b8', font: { family: 'JetBrains Mono', size: 11 } } } },
         scales: {
           x: { grid: { color: 'rgba(148,163,184,0.05)' }, ticks: { color: '#64748b', font: { family: 'JetBrains Mono', size: 10 }, maxRotation: 45 } },
-          y: { grid: { color: 'rgba(148,163,184,0.05)' }, ticks: { color: '#64748b', font: { family: 'JetBrains Mono', size: 10 }, callback: v => v + '%' }, min: 0, max: 100 },
+          y: { grid: { color: 'rgba(148,163,184,0.05)' }, ticks: { color: '#64748b', font: { family: 'JetBrains Mono', size: 10 }, callback: v => v + '%' }, suggestedMin: 20, suggestedMax: 45 },
         }
       }
     });
@@ -616,9 +616,9 @@ function renderTikTokProfiling(tk) {
   document.getElementById('tk-ad-interests').innerHTML = adI.length
     ? makeTags(adI, 'tag-amber')
     : `<div class="text-center py-6">
-        <div class="text-3xl mb-2 opacity-30">&#128683;</div>
-        <div class="text-sm text-slate-400 font-medium">ByteDance declines to share</div>
-        <div class="text-xs text-slate-600 mt-1">TikTok's ad interest data is typically empty or a single comma in exports.</div>
+        <div class="text-3xl mb-2 opacity-30">&#9989;</div>
+        <div class="text-sm text-slate-400 font-medium">Opt-out honored</div>
+        <div class="text-xs text-slate-600 mt-1">You asked TikTok not to track ad interests, and this field is empty &mdash; suggesting they complied. Compare this to Meta's behavior below.</div>
       </div>`;
 
   // Off-TikTok
@@ -626,9 +626,9 @@ function renderTikTokProfiling(tk) {
   document.getElementById('tk-off-activity').innerHTML = offTk.length
     ? offTk.map(a => `<div class="tracker-row"><span class="text-sm text-slate-300">${escHtml(JSON.stringify(a))}</span></div>`).join('')
     : `<div class="text-center py-6">
-        <div class="text-3xl mb-2 opacity-30">&#128683;</div>
-        <div class="text-sm text-slate-400 font-medium">ByteDance declines to share</div>
-        <div class="text-xs text-slate-600 mt-1">Off-TikTok activity tracking data is typically empty in exports.</div>
+        <div class="text-3xl mb-2 opacity-30">&#9989;</div>
+        <div class="text-sm text-slate-400 font-medium">Opt-out honored</div>
+        <div class="text-xs text-slate-600 mt-1">No off-TikTok activity tracked &mdash; consistent with your privacy settings. Meanwhile, Meta logged ${(reportData?.platforms?.instagram?.off_meta_activity || []).length} third-party sources.</div>
       </div>`;
 
   // Login stats
@@ -830,7 +830,7 @@ function renderCrossPlatform(cross, tk, ig) {
         <div class="flex justify-between text-xs font-mono mb-1"><span class="text-purple-400">Instagram</span><span class="text-slate-500">${igPct}% revealed</span></div>
         <div class="progress-bar"><div class="progress-fill bg-purple-500" style="width:${igPct}%"></div></div>
       </div>
-      <p class="text-xs text-slate-500 mt-2">Meta reveals significantly more about how it profiles you. TikTok's export omits ad interests and off-platform tracking data.</p>
+      <p class="text-xs text-slate-500 mt-2">You opted out of tracking on both platforms. TikTok appears to have complied &mdash; empty ad interests and no off-platform data. Meta, despite similar settings, still assigns ${(reportData?.platforms?.instagram?.ad_categories || []).length} ad categories and shares your data with ${n(reportData?.platforms?.instagram?.advertiser_count)} advertisers.</p>
     </div>
   `;
 }

@@ -106,14 +106,25 @@ def _extract_locations_of_interest(dir_path: str) -> list[str]:
         return []
     locations = []
     try:
-        topics = data.get("inferred_data_ig_interest_location", [])
-        if not topics:
-            topics = data.get("topics_your_topics", [])
-        for entry in topics:
-            sm = entry.get("string_map_data", {})
-            name_val = sm.get("Name", {}).get("value", "")
-            if name_val:
-                locations.append(name_val)
+        # Format: label_values[0].vec[].value (same pattern as ad categories)
+        label_values = data.get("label_values", [])
+        if label_values and isinstance(label_values, list):
+            for lv in label_values:
+                if isinstance(lv, dict):
+                    vec = lv.get("vec", [])
+                    for item in vec:
+                        if isinstance(item, dict):
+                            val = item.get("value", "")
+                            if val:
+                                locations.append(val)
+        # Fallback: older format
+        if not locations:
+            topics = data.get("inferred_data_ig_interest_location", [])
+            for entry in topics:
+                sm = entry.get("string_map_data", {})
+                name_val = sm.get("Name", {}).get("value", "")
+                if name_val:
+                    locations.append(name_val)
     except (KeyError, TypeError):
         pass
     return locations
@@ -126,19 +137,30 @@ def _extract_ad_categories(dir_path: str) -> list[str]:
         return []
     categories = []
     try:
-        cat_list = data.get("label_values", [])
-        if not cat_list:
+        label_values = data.get("label_values", [])
+        # Format: label_values is a list with one entry containing {label: "Name", vec: [{value: "..."}, ...]}
+        if label_values and isinstance(label_values, list):
+            for lv in label_values:
+                if isinstance(lv, dict):
+                    vec = lv.get("vec", [])
+                    for item in vec:
+                        if isinstance(item, dict):
+                            val = item.get("value", "")
+                            if val:
+                                categories.append(val)
+                elif isinstance(lv, str):
+                    categories.append(lv)
+        # Fallback: try other known keys
+        if not categories:
             cat_list = data.get("ig_custom_audiences_all_types", [])
-        for entry in cat_list:
-            if isinstance(entry, str):
-                categories.append(entry)
-            elif isinstance(entry, dict):
-                sm = entry.get("string_map_data", {})
-                name = sm.get("Name", {}).get("value", "")
-                if not name:
-                    name = sm.get("Category", {}).get("value", "")
-                if name:
-                    categories.append(name)
+            for entry in cat_list:
+                if isinstance(entry, str):
+                    categories.append(entry)
+                elif isinstance(entry, dict):
+                    sm = entry.get("string_map_data", {})
+                    name = sm.get("Name", {}).get("value", "")
+                    if name:
+                        categories.append(name)
     except (KeyError, TypeError):
         pass
     return categories
@@ -159,19 +181,32 @@ def _extract_advertisers(dir_path: str) -> tuple[int, list[str], dict]:
             ig_data = data.get("custom_audiences_all_types", [])
         for entry in ig_data:
             if isinstance(entry, dict):
-                sm = entry.get("string_map_data", {})
-                name = sm.get("Advertiser", {}).get("value", sm.get("Name", {}).get("value", ""))
+                # Flat format: {advertiser_name: "...", has_data_file_custom_audience: true, ...}
+                name = entry.get("advertiser_name", "")
+                if not name:
+                    # Fallback: string_map_data format
+                    sm = entry.get("string_map_data", {})
+                    name = sm.get("Advertiser", {}).get("value", sm.get("Name", {}).get("value", ""))
                 if name:
                     all_advertisers.append(name)
-                has_type = sm.get("Has data file custom audience", {}).get("value", "")
-                has_remarketing = sm.get("Has remarketing custom audience", {}).get("value", "")
-                has_store = sm.get("Has in-person store visit", {}).get("value", "")
-                if has_type and has_type.lower() == "true":
+
+                # Check data types — flat boolean format
+                if entry.get("has_data_file_custom_audience") is True:
                     data_types["has_data_file_custom_audience"] += 1
-                if has_remarketing and has_remarketing.lower() == "true":
+                if entry.get("has_remarketing_custom_audience") is True:
                     data_types["has_remarketing_custom_audience"] += 1
-                if has_store and has_store.lower() == "true":
+                if entry.get("has_in_person_store_visit") is True:
                     data_types["has_in_person_store_visit"] += 1
+
+                # Fallback: string_map_data format
+                if "string_map_data" in entry:
+                    sm = entry["string_map_data"]
+                    if sm.get("Has data file custom audience", {}).get("value", "").lower() == "true":
+                        data_types["has_data_file_custom_audience"] += 1
+                    if sm.get("Has remarketing custom audience", {}).get("value", "").lower() == "true":
+                        data_types["has_remarketing_custom_audience"] += 1
+                    if sm.get("Has in-person store visit", {}).get("value", "").lower() == "true":
+                        data_types["has_in_person_store_visit"] += 1
     except (KeyError, TypeError):
         pass
 
@@ -203,7 +238,10 @@ def _extract_recommended_topics(dir_path: str) -> list[str]:
 
 def _extract_off_meta_activity(dir_path: str) -> list[dict]:
     """Extract off-Meta activity from third-party sites/apps."""
-    data = _load_json(dir_path, "apps_and_websites_off_of_instagram", "your_activity_off_meta_technologies.json")
+    # Try the nested path first (apps_and_websites subdirectory)
+    data = _load_json(dir_path, "apps_and_websites_off_of_instagram", "apps_and_websites", "your_activity_off_meta_technologies.json")
+    if not data:
+        data = _load_json(dir_path, "apps_and_websites_off_of_instagram", "your_activity_off_meta_technologies.json")
     if not data:
         data = _load_json(dir_path, "apps_and_websites_off_of_instagram", "off_meta_activity.json")
     if not data:
@@ -211,11 +249,13 @@ def _extract_off_meta_activity(dir_path: str) -> list[dict]:
 
     aggregated = defaultdict(lambda: {"events": [], "count": 0})
     try:
-        activities = data.get("off_meta_activity_all_activity", [])
+        activities = data.get("apps_and_websites_off_meta_activity", [])
+        if not activities:
+            activities = data.get("off_meta_activity_all_activity", [])
         if not activities:
             activities = data.get("off_facebook_activity_v2", [])
-            if not activities:
-                activities = data.get("off_meta_activity", [])
+        if not activities:
+            activities = data.get("off_meta_activity", [])
         for entry in activities:
             if isinstance(entry, dict):
                 source = entry.get("name", entry.get("advertiser_name", ""))
@@ -258,18 +298,69 @@ def _extract_devices(dir_path: str) -> list[dict]:
         for entry in device_list:
             if isinstance(entry, dict):
                 sm = entry.get("string_map_data", {})
-                device_type = sm.get("Type", {}).get("value", sm.get("Device", {}).get("value", ""))
-                os_val = sm.get("OS", {}).get("value", sm.get("Operating System", {}).get("value", ""))
+                # Parse User Agent string to extract meaningful device info
+                user_agent = sm.get("User Agent", {}).get("value", "")
+                device_type = _parse_user_agent(user_agent)
                 last_login_ts = sm.get("Last Login", {}).get("timestamp", sm.get("Last login", {}).get("timestamp", 0))
                 last_login = _ts_to_str(last_login_ts) if last_login_ts else ""
+                # Fallback to Type/OS fields if User Agent is empty
+                if not device_type:
+                    device_type = sm.get("Type", {}).get("value", sm.get("Device", {}).get("value", ""))
                 devices.append({
-                    "device_type": device_type,
-                    "os": os_val,
+                    "device_type": device_type or "Unknown",
+                    "os": user_agent[:80] if user_agent else "",
                     "last_login": last_login,
                 })
     except (KeyError, TypeError):
         pass
     return devices
+
+
+def _parse_user_agent(ua: str) -> str:
+    """Extract a human-readable device name from a User Agent string."""
+    if not ua:
+        return ""
+    ua_lower = ua.lower()
+    if "instagram" in ua_lower and "iphone" in ua_lower:
+        # Extract iPhone model from Instagram UA
+        import re
+        match = re.search(r'(iPhone\d+,\d+)', ua)
+        model = match.group(1) if match else "iPhone"
+        ios_match = re.search(r'iOS (\d+)', ua)
+        ios_ver = f" (iOS {ios_match.group(1)})" if ios_match else ""
+        return f"{model}{ios_ver} — Instagram App"
+    if "instagram" in ua_lower and "ipad" in ua_lower:
+        import re
+        match = re.search(r'(iPad\d+,\d+)', ua)
+        model = match.group(1) if match else "iPad"
+        return f"{model} — Instagram App"
+    if "firefox" in ua_lower:
+        import re
+        match = re.search(r'Firefox/([\d.]+)', ua)
+        ver = match.group(1) if match else ""
+        if "macintosh" in ua_lower:
+            return f"Firefox {ver} on Mac"
+        if "windows" in ua_lower:
+            return f"Firefox {ver} on Windows"
+        return f"Firefox {ver}"
+    if "chrome" in ua_lower and "safari" in ua_lower:
+        import re
+        match = re.search(r'Chrome/([\d.]+)', ua)
+        ver = match.group(1).split('.')[0] if match else ""
+        if "macintosh" in ua_lower:
+            return f"Chrome {ver} on Mac"
+        if "windows" in ua_lower:
+            return f"Chrome {ver} on Windows"
+        return f"Chrome {ver}"
+    if "safari" in ua_lower and "chrome" not in ua_lower:
+        if "iphone" in ua_lower:
+            return "Safari on iPhone"
+        if "ipad" in ua_lower:
+            return "Safari on iPad"
+        if "macintosh" in ua_lower:
+            return "Safari on Mac"
+        return "Safari"
+    return ua[:50]
 
 
 def _extract_searches(dir_path: str) -> list[dict]:

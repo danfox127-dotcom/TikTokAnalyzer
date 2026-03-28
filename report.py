@@ -79,11 +79,15 @@ def _compute_cross_platform(tiktok_data: dict | None, instagram_data: dict | Non
         ig_username = ig_profile.get("username", "")
 
     if tiktok_data and instagram_data:
+        tk_profile = tiktok_data.get("profile", {})
         ig_profile = instagram_data.get("profile", {})
+        tk_email = tk_profile.get("email", "")
         ig_email = ig_profile.get("email", "")
+        tk_phone = tk_profile.get("phone", "")
         ig_phone = ig_profile.get("phone", "")
-        shared_email = bool(ig_email)
-        shared_phone = bool(ig_phone)
+        # Check if both platforms have an email/phone (cross-linkable identity)
+        shared_email = bool(tk_email and ig_email)
+        shared_phone = bool(tk_phone and ig_phone)
 
     cross["profile_comparison"] = {
         "tiktok_username": tk_username,
