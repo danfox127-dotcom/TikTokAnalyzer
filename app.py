@@ -19,6 +19,11 @@ st.set_page_config(
 # Custom CSS for the "Premium" look
 st.markdown("""
 <style>
+    /* Hide Streamlit components */
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    header {visibility: hidden;}
+
     .main {
         background-color: #0f172a;
         color: #e2e8f0;
@@ -26,64 +31,60 @@ st.markdown("""
     .stApp {
         background-color: #0f172a;
     }
-    [data-testid="stHeader"] {
-        background-color: #0f172a;
-        border-bottom: 1px solid #1e293b;
-    }
     .stMarkdown h1 {
         color: #06b6d4;
         font-family: 'JetBrains Mono', monospace;
         letter-spacing: -0.05em;
         text-shadow: 0 0 20px rgba(6, 182, 212, 0.3);
+        margin-bottom: 0.5rem;
     }
     .stMarkdown h2, .stMarkdown h3 {
         color: #cbd5e1;
         font-family: 'Inter', sans-serif;
     }
-    .reportview-container .main .block-container {
-        padding-top: 2rem;
-    }
-    .stButton>button {
-        background-color: rgba(6, 182, 212, 0.1);
-        color: #06b6d4;
-        border: 1px solid rgba(6, 182, 212, 0.4);
-        border-radius: 8px;
-        transition: all 0.3s;
-    }
-    .stButton>button:hover {
-        background-color: rgba(6, 182, 212, 0.2);
-        border-color: #06b6d4;
-        box-shadow: 0 0 20px rgba(6, 182, 212, 0.2);
-    }
-    /* Glassmorphism card effect */
     .css-1r6slb0, .css-ke7v68 {
-        background: rgba(30, 41, 59, 0.7);
+        background: rgba(30, 41, 59, 0.6);
         backdrop-filter: blur(12px);
         border: 1px solid rgba(148, 163, 184, 0.1);
         border-radius: 12px;
-        padding: 1.5rem;
+        padding: 2rem;
+    }
+    .stButton>button {
+        background: linear-gradient(90deg, rgba(6, 182, 212, 0.1), rgba(168, 85, 247, 0.1));
+        color: #06b6d4;
+        border: 1px solid rgba(6, 182, 212, 0.4);
+        border-radius: 8px;
+        padding: 0.75rem 2rem;
+        font-weight: 700;
+        letter-spacing: 0.1em;
+        transition: all 0.3s;
+    }
+    .stButton>button:hover {
+        background: linear-gradient(90deg, rgba(6, 182, 212, 0.2), rgba(168, 85, 247, 0.2));
+        border-color: #06b6d4;
+        box-shadow: 0 0 30px rgba(6, 182, 212, 0.3);
+        transform: translateY(-2px);
     }
 </style>
 """, unsafe_allow_html=True)
 
 # --- Sidebar ---
 with st.sidebar:
-    st.image("https://img.icons8.com/isometric/512/cyber-security.png", width=100)
+    st.image("https://img.icons8.com/isometric/512/cyber-security.png", width=120)
     st.title("SYS.TEARDOWN")
-    st.markdown("### Social Media Forensic Analyzer")
+    st.markdown("### Forensic Protocol v1.2")
     st.markdown("---")
-    st.markdown("Analyze your data exports locally in your browser session.")
-    st.info("🔒 **Privacy First**: All processing happens in this session's memory. No data is stored or transmitted.")
+    st.markdown("Analyze platform-scale metadata exports locally within this encrypted session.")
+    st.info("🔒 **In-Memory Volatile RAM Only**: No data persists after the browser session closes.")
     
     st.markdown("---")
-    st.markdown("### Platform Status")
-    st.success("TikTok: Active")
-    st.success("Instagram/Meta: Active")
-    st.warning("YouTube: Coming Soon")
+    st.markdown("### Status Terminal")
+    st.success("🛰️ TikTok: Link Online")
+    st.success("🕵️ Meta/IG: Link Online")
 
 # --- Main App ---
 st.title("SYS.TEARDOWN // SOCIAL MEDIA FORENSICS")
-st.markdown("Upload your exports to reveal how platforms profile and track you.")
+st.markdown("<p style='font-family:JetBrains Mono; font-size: 0.8rem; color:#64748b; margin-top:-1rem;'>AHEAD OF THREAT CURVE // DATA VERIFICATION PROTOCOL</p>", unsafe_allow_html=True)
 
 col1, col2 = st.columns(2)
 
