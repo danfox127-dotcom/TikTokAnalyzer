@@ -1,4 +1,15 @@
+---
+title: TikTok Analyzer
+emoji: 🔍
+colorFrom: cyan
+colorTo: pink
+sdk: streamlit
+app_file: streamlit_app.py
+pinned: false
+---
+
 # SYS.TEARDOWN -- Social Media Forensic Analyzer
+
 
 A local-only forensic analysis tool that parses your TikTok and Instagram/Meta data exports to reveal exactly how these platforms profile, track, and categorize you. All processing happens on your machine -- no data ever leaves your computer.
 
