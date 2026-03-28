@@ -359,8 +359,19 @@ body {
 </footer>
 
 <script>
-let reportData = null;
+let reportData = window.embeddedData || null;
 const chartInstances = {};
+
+// ── Embed Initialization ──
+if (reportData) {
+  window.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('loader-section').classList.add('hidden');
+    document.getElementById('dashboard').classList.remove('hidden');
+    document.getElementById('status-badge').textContent = 'DATA LOADED';
+    document.getElementById('status-badge').className = 'font-mono text-xs px-3 py-1 rounded-full border border-cyan-500/40 text-cyan-400';
+    renderDashboard();
+  });
+}
 
 // ── File Loading ──
 const dropZone = document.getElementById('drop-zone');

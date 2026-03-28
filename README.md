@@ -45,3 +45,19 @@ Python 3.8+ (standard library only -- no pip installs needed).
 ## Privacy
 
 All analysis runs locally in Python. The dashboard is a single HTML file that reads your report via the browser FileReader API. Nothing is uploaded, transmitted, or stored remotely.
+
+## 🌐 Community & Hosting
+
+Want to host this as a private or public web app? We've included a **Streamlit** wrapper ready for deployment.
+
+### Deploy to HuggingFace Spaces
+1. Create a new **Space** on [HuggingFace](https://huggingface.co/new-space).
+2. Select **Streamlit** as the SDK.
+3. Upload all files in this repository (ensure `streamlit_app.py`, `dashboard.html`, `requirements.txt`, and the `parsers/` folder are included).
+4. Your analyzer will be live!
+
+### Run Streamlit Locally
+```bash
+pip install -r requirements.txt
+streamlit run streamlit_app.py
+```
