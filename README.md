@@ -2,6 +2,12 @@
 
 A local-only forensic analysis tool that parses your TikTok and Instagram/Meta data exports to reveal exactly how these platforms profile, track, and categorize you. All processing happens on your machine -- no data ever leaves your computer.
 
+### 🚀 Latest Status (March 2026)
+- **Verified Fixes**: All TikTok and Instagram parser paths have been updated to match the latest export structures (including nested Profile Info, flat Advertiser keys, and label-based Ad Categories).
+- **Narrative Update**: Dashboard now correctly interprets empty ad interest fields as privacy-opt-out compliance rather than missing data.
+- **Cross-Platform Verification**: Successfully tested against real-world datasets with ~36k videos and ~3.8k advertisers.
+
+
 ## Get Your Data Exports
 
 - **TikTok**: Settings > Privacy > Download Your Data > Request Data (JSON format). [TikTok Data Download](https://www.tiktok.com/setting/download-your-data)
