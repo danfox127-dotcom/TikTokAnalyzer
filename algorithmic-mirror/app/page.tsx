@@ -1,12 +1,61 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { Scan, ShieldOff, Eye } from "lucide-react";
 import { useDuality } from "./context/DualityContext";
 import { VideoCard } from "./components/VideoCard";
+import { UploadZone } from "./components/UploadZone";
+import { GhostProfileHUD, GhostProfile } from "./components/GhostProfileHUD";
 
 export default function Home() {
-  const { isMachineView, toggle } = useDuality();
+  const { isMachineView, toggle, setMachineView } = useDuality();
+  const [ghostProfile, setGhostProfile] = useState<GhostProfile | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+
+  const handleUpload = async (file: File) => {
+    setIsLoading(true);
+    setUploadError(null);
+
+    const formData = new FormData();
+    formData.append("file", file);
+
+    try {
+      const res = await fetch("http://localhost:8000/api/analyze", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!res.ok) {
+        const detail = await res.json().catch(() => ({ detail: "Unknown error" }));
+        throw new Error(detail.detail ?? `HTTP ${res.status}`);
+      }
+
+      const data: GhostProfile = await res.json();
+      setGhostProfile(data);
+      setMachineView(true);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Unknown error";
+      const isNetworkError =
+        message.includes("fetch") ||
+        message.includes("Failed to fetch") ||
+        message.includes("NetworkError") ||
+        message.includes("ECONNREFUSED");
+      setUploadError(
+        isNetworkError
+          ? "UPLINK FAILURE: Cannot reach forensics engine at localhost:8000"
+          : `PARSE ERROR: ${message}`
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleReset = () => {
+    setGhostProfile(null);
+    setUploadError(null);
+  };
 
   return (
     <main
@@ -80,16 +129,22 @@ export default function Home() {
         >
           {isMachineView
             ? "// DOSSIER MODE ACTIVE — WHAT THE ALGORITHM SEES WHEN YOU SCROLL"
-            : "You see a friendly video. The algorithm sees a data harvest. Toggle X-RAY to see what's really happening."}
+            : "You see a friendly video. The algorithm sees a data harvest. Upload your TikTok export to see what it knows about you."}
         </motion.p>
       </motion.div>
 
       {/* ── Mode badge ── */}
-      <div className="w-full max-w-sm mb-4 flex items-center justify-between text-xs uppercase tracking-widest">
+      <div className="w-full max-w-lg mb-4 flex items-center justify-between text-xs uppercase tracking-widest">
         <div className="flex items-center gap-2" style={{ color: "var(--text-secondary)" }}>
           <Eye size={12} />
           <span style={{ fontFamily: isMachineView ? "monospace" : "inherit" }}>
-            {isMachineView ? "MACHINE VIEW — RAW PAYLOAD" : "SHELL VIEW — AS PRESENTED"}
+            {ghostProfile
+              ? isMachineView
+                ? "GHOST PROFILE — LIVE DATA"
+                : "SHELL VIEW — PROFILE LOADED"
+              : isMachineView
+              ? "MACHINE VIEW — RAW PAYLOAD"
+              : "SHELL VIEW — AS PRESENTED"}
           </span>
         </div>
         <motion.div
@@ -104,24 +159,69 @@ export default function Home() {
         />
       </div>
 
-      {/* ── Video Card ── */}
-      <div className="w-full max-w-sm">
-        <VideoCard />
+      {/* ── Main content ── */}
+      <div className="w-full max-w-lg">
+        <AnimatePresence mode="wait">
+          {ghostProfile ? (
+            <motion.div
+              key="hud"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.3 }}
+            >
+              <GhostProfileHUD profile={ghostProfile} onReset={handleReset} />
+            </motion.div>
+          ) : (
+            <motion.div
+              key="upload"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.3 }}
+              className="space-y-8"
+            >
+              <UploadZone
+                onFile={handleUpload}
+                isLoading={isLoading}
+                error={uploadError}
+              />
+
+              {/* Demo VideoCard below upload zone */}
+              {!isLoading && (
+                <div>
+                  <p
+                    className="text-xs uppercase tracking-widest mb-3 text-center"
+                    style={{
+                      color: "var(--text-secondary)",
+                      fontFamily: isMachineView ? "monospace" : "inherit",
+                    }}
+                  >
+                    {isMachineView ? "// SAMPLE_PAYLOAD" : "Example — what the algorithm sees"}
+                  </p>
+                  <VideoCard />
+                </div>
+              )}
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       {/* ── Footer note ── */}
-      <motion.p
-        className="mt-16 text-xs text-center max-w-sm"
-        style={{
-          color: "var(--text-secondary)",
-          fontFamily: isMachineView ? "monospace" : "inherit",
-          opacity: 0.6,
-        }}
-      >
-        {isMachineView
-          ? "// All data is simulated for educational purposes. Real payloads are never exposed."
-          : "All data shown is simulated. For educational and awareness purposes only."}
-      </motion.p>
+      {!ghostProfile && (
+        <motion.p
+          className="mt-16 text-xs text-center max-w-sm"
+          style={{
+            color: "var(--text-secondary)",
+            fontFamily: isMachineView ? "monospace" : "inherit",
+            opacity: 0.6,
+          }}
+        >
+          {isMachineView
+            ? "// All analysis runs locally. Your data never leaves your browser."
+            : "Your data is never uploaded to any server. All analysis runs locally."}
+        </motion.p>
+      )}
     </main>
   );
 }

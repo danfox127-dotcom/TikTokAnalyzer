@@ -5,11 +5,13 @@ import { createContext, useContext, useState, ReactNode } from "react";
 interface DualityContextType {
   isMachineView: boolean;
   toggle: () => void;
+  setMachineView: (val: boolean) => void;
 }
 
 const DualityContext = createContext<DualityContextType>({
   isMachineView: false,
   toggle: () => {},
+  setMachineView: () => {},
 });
 
 export function DualityProvider({ children }: { children: ReactNode }) {
@@ -17,7 +19,11 @@ export function DualityProvider({ children }: { children: ReactNode }) {
 
   return (
     <DualityContext.Provider
-      value={{ isMachineView, toggle: () => setIsMachineView((v) => !v) }}
+      value={{
+        isMachineView,
+        toggle: () => setIsMachineView((v) => !v),
+        setMachineView: setIsMachineView,
+      }}
     >
       {children}
     </DualityContext.Provider>
