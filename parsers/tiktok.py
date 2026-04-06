@@ -25,10 +25,18 @@ def _parse_date(date_str: str) -> datetime | None:
 
 
 def _safe_text(text: str) -> str:
-    """Sanitize text with encode/decode to handle bad unicode."""
+    """
+    Sanitize text, stripping lone surrogates that cause UnicodeEncodeError.
+    TikTok exports sometimes embed broken emoji encoded as lone UTF-16
+    surrogates (e.g. \\uD83D without a following \\uDC00). The utf-16
+    surrogatepass roundtrip discards them cleanly.
+    """
     if not isinstance(text, str):
         return str(text) if text is not None else ""
-    return text.encode("utf-8", errors="replace").decode("utf-8", errors="replace")
+    try:
+        return text.encode("utf-16", "surrogatepass").decode("utf-16")
+    except (UnicodeEncodeError, UnicodeDecodeError):
+        return text.encode("utf-8", errors="replace").decode("utf-8")
 
 
 def _dig(data: dict, *keys, default=None):
@@ -434,18 +442,8 @@ def _count_dms(data: dict) -> int:
     return total
 
 
-def parse_tiktok_export(file_path: str) -> dict:
-    """
-    Parse a TikTok user_data_tiktok.json file into a structured analysis dict.
-
-    Args:
-        file_path: Path to the user_data_tiktok.json file.
-
-    Returns:
-        dict with all extracted and computed data.
-    """
-    with open(file_path, "r", encoding="utf-8") as f:
-        data = json.load(f)
+def _parse_tiktok_data(data: dict) -> dict:
+    """Core parsing logic, shared by file and bytes entry points."""
 
     profile = _extract_profile(data)
     settings_interests = _extract_settings_interests(data)
@@ -488,3 +486,34 @@ def parse_tiktok_export(file_path: str) -> dict:
         "shop_orders": shop_orders,
         "dm_count": dm_count,
     }
+
+
+def parse_tiktok_export(file_path: str) -> dict:
+    """
+    Parse a TikTok user_data_tiktok.json file into a structured analysis dict.
+
+    Args:
+        file_path: Path to the user_data_tiktok.json file.
+
+    Returns:
+        dict with all extracted and computed data.
+    """
+    with open(file_path, "r", encoding="utf-8", errors="replace") as f:
+        data = json.load(f)
+    return _parse_tiktok_data(data)
+
+
+def parse_tiktok_export_from_bytes(raw: bytes) -> dict:
+    """
+    Parse a TikTok export from raw bytes (e.g. an HTTP file upload).
+    Decodes with surrogate replacement so malformed emoji never raise.
+
+    Args:
+        raw: Raw bytes of the user_data_tiktok.json file.
+
+    Returns:
+        dict with all extracted and computed data.
+    """
+    text = raw.decode("utf-8", errors="replace")
+    data = json.loads(text)
+    return _parse_tiktok_data(data)
