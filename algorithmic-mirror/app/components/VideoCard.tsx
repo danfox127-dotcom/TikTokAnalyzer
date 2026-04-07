@@ -52,11 +52,11 @@ export function VideoCard() {
 
   return (
     <div className="relative w-full max-w-sm mx-auto" style={{ minHeight: 560 }}>
-      <AnimatePresence mode="wait">
+      <AnimatePresence mode="wait" initial={false}>
         {!isMachineView ? (
           <motion.div
             key="shell"
-            initial={{ opacity: 0, scale: 0.97 }}
+            initial={{ opacity: 1, scale: 1 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.95 }}
             transition={{ duration: 0.3 }}
