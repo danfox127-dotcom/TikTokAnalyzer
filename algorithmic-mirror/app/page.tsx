@@ -117,7 +117,7 @@ export default function Home() {
       <motion.div
         className="w-full max-w-2xl mb-10 text-center"
         animate={{ opacity: 1 }}
-        initial={{ opacity: 0 }}
+        initial={{ opacity: 1 }}
         transition={{ delay: 0.1 }}
       >
         <motion.p
@@ -161,7 +161,7 @@ export default function Home() {
 
       {/* ── Main content ── */}
       <div className="w-full max-w-lg">
-        <AnimatePresence mode="wait">
+        <AnimatePresence mode="wait" initial={false}>
           {ghostProfile ? (
             <motion.div
               key="hud"
@@ -175,7 +175,7 @@ export default function Home() {
           ) : (
             <motion.div
               key="upload"
-              initial={{ opacity: 0 }}
+              initial={{ opacity: 1 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.3 }}

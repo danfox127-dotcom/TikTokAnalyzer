@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Upload, FileJson, AlertTriangle, Loader2 } from "lucide-react";
 import { useDuality } from "../context/DualityContext";
@@ -26,18 +26,14 @@ export function UploadZone({ onFile, isLoading, error }: Props) {
   const [loadingStep, setLoadingStep] = useState(0);
 
   // Cycle through loading steps while loading
-  const stepsRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const prevLoading = useRef(false);
-  if (isLoading && !prevLoading.current) {
-    prevLoading.current = true;
+  useEffect(() => {
+    if (!isLoading) return;
     setLoadingStep(0);
-    stepsRef.current = setInterval(() => {
+    const id = setInterval(() => {
       setLoadingStep((s) => (s + 1) % LOADING_STEPS.length);
     }, 900);
-  } else if (!isLoading && prevLoading.current) {
-    prevLoading.current = false;
-    if (stepsRef.current) clearInterval(stepsRef.current);
-  }
+    return () => clearInterval(id);
+  }, [isLoading]);
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
