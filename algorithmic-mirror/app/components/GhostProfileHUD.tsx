@@ -23,6 +23,13 @@ export interface GhostProfile {
     total_videos: number;
     total_watch_time_minutes: number;
   };
+  behavioral_nodes?: {
+    peak_activity_hour: string;
+    skip_rate_percentage: number;
+    linger_rate_percentage: number;
+    night_shift_ratio: number;
+  };
+  interest_clusters?: string[];
 }
 
 interface Props {
@@ -44,6 +51,22 @@ function getVibeColor(score: number): string {
   return "#39ff14";
 }
 
+// Color-code cluster tags by rough category
+function getClusterColor(cluster: string): string {
+  const c = cluster.toLowerCase();
+  if (c.includes("adhd") || c.includes("anxiety") || c.includes("depression") || c.includes("trauma") || c.includes("burnout") || c.includes("sleep"))
+    return "#ff4444";
+  if (c.includes("debt") || c.includes("budget") || c.includes("hustle") || c.includes("crypto"))
+    return "#ffb300";
+  if (c.includes("politic") || c.includes("conspir"))
+    return "#ff4444";
+  if (c.includes("nostalgia") || c.includes("retro"))
+    return "#a78bfa";
+  if (c.includes("spirituality") || c.includes("manifestation"))
+    return "#a78bfa";
+  return "#39ff14";
+}
+
 export function GhostProfileHUD({ profile, onReset }: Props) {
   const { setMachineView } = useDuality();
 
@@ -54,6 +77,8 @@ export function GhostProfileHUD({ profile, onReset }: Props) {
 
   const inferences = profile.target_lock_inferences;
   const metrics = profile.raw_metrics;
+  const nodes = profile.behavioral_nodes;
+  const clusters = profile.interest_clusters ?? [];
 
   return (
     <motion.div
@@ -91,6 +116,46 @@ export function GhostProfileHUD({ profile, onReset }: Props) {
           RESET
         </motion.button>
       </div>
+
+      {/* ── Interest Clusters ── */}
+      {clusters.length > 0 && (
+        <div
+          className="p-4"
+          style={{
+            border: "1px solid var(--border)",
+            borderRadius: "var(--radius)",
+            background: "var(--surface)",
+          }}
+        >
+          <p className="text-xs uppercase tracking-widest mb-3" style={{ color: "var(--text-secondary)" }}>
+            NICHE_FINGERPRINT //{" "}
+            <span style={{ color: "var(--accent)" }}>DETECTED INTEREST CLUSTERS</span>
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {clusters.map((cluster, i) => {
+              const color = getClusterColor(cluster);
+              return (
+                <motion.span
+                  key={cluster}
+                  initial={{ opacity: 0, scale: 0.85 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: i * 0.05 }}
+                  className="text-xs px-2 py-1 font-bold uppercase tracking-wide"
+                  style={{
+                    border: `1px solid ${color}`,
+                    borderRadius: "2px",
+                    color,
+                    background: `${color}18`,
+                    boxShadow: `0 0 4px ${color}44`,
+                  }}
+                >
+                  {cluster}
+                </motion.span>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* ── Vibe Vectors ── */}
       <div
@@ -174,6 +239,42 @@ export function GhostProfileHUD({ profile, onReset }: Props) {
           </motion.div>
         ))}
       </div>
+
+      {/* ── Behavioral Nodes ── */}
+      {nodes && (
+        <div
+          className="p-4 space-y-3"
+          style={{
+            border: "1px solid var(--border)",
+            borderRadius: "var(--radius)",
+            background: "var(--surface)",
+          }}
+        >
+          <p className="text-xs uppercase tracking-widest" style={{ color: "var(--text-secondary)" }}>
+            BEHAVIORAL_NODES //{" "}
+            <span style={{ color: "var(--accent)" }}>ATTENTION PATTERN ANALYSIS</span>
+          </p>
+          {[
+            { label: "PEAK_HOUR", value: nodes.peak_activity_hour },
+            { label: "SKIP_RATE", value: `${nodes.skip_rate_percentage}%` },
+            { label: "LINGER_RATE", value: `${nodes.linger_rate_percentage}%` },
+            { label: "NIGHT_SHIFT", value: `${nodes.night_shift_ratio}%` },
+          ].map(({ label, value }, i) => (
+            <motion.div
+              key={label}
+              initial={{ opacity: 0, x: -8 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.6 + i * 0.08 }}
+              className="flex items-start justify-between gap-4 text-xs"
+            >
+              <span style={{ color: "var(--text-secondary)", flexShrink: 0 }}>{label}</span>
+              <span style={{ color: "var(--accent)", textShadow: "0 0 6px var(--accent-glow)" }}>
+                {value}
+              </span>
+            </motion.div>
+          ))}
+        </div>
+      )}
 
       {/* ── Raw Metrics ── */}
       <div
