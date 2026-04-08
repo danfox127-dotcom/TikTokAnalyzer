@@ -29,7 +29,10 @@ Thumbs.db
 # Data files — never commit user exports
 *.json
 !package.json
+!package-lock.json
 !tsconfig.json
+!pyrightconfig.json
+!mock-data.json
 data/
 exports/
 user_data_tiktok.json
