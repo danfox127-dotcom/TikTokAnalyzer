@@ -1,7 +1,12 @@
 """
-Ghost Profile Scoring Engine
+Ghost Profile Scoring Engine — v3 "Pure Stopwatch & Entity Resolution"
 Converts a parsed TikTok export dict (from parsers.tiktok) into the
 algorithmic forensics payload the Next.js frontend expects.
+
+Architecture
+------------
+1. True Stopwatch — parse timestamp deltas, scrub AFK anomalies, bucket conscious views.
+2. Cross-Platform Entity Resolution — extract creators from URLs, count skips vs lingers.
 
 Public API
 ----------
@@ -9,320 +14,207 @@ Public API
 """
 from __future__ import annotations
 
-# ---------------------------------------------------------------------------
-# Niche Taxonomy
-# Each entry: keywords matched against the full text corpus (lowercased).
-# Keys: keywords, cluster, vibe_boost, vulnerability, income, political
-# ---------------------------------------------------------------------------
+from collections import defaultdict
+import re
 
-NICHE_MAP: list[dict] = [
-    # ── Mental Health & Neurodivergence ────────────────────────────────────
-    {
-        "keywords": ["adhd", "attention deficit", "hyperfocus", "executive function", "neurodivergent"],
-        "cluster": "ADHD / Neurodivergence",
-        "vibe_boost": {"doomscrolling": 12, "escapism": 8},
-        "vulnerability": "HIGH: ADHD Dopamine Loop Susceptibility",
-    },
-    {
-        "keywords": ["anxiety", "anxious", "panic attack", "overthinking", "social anxiety", "nervous"],
-        "cluster": "Anxiety & Stress",
-        "vibe_boost": {"doomscrolling": 10, "escapism": 12},
-        "vulnerability": "HIGH: Anxiety Response Pattern Detected",
-    },
-    {
-        "keywords": ["depression", "depressed", "hopeless", "empty inside", "numb", "sad all"],
-        "cluster": "Depression / Low Mood",
-        "vibe_boost": {"doomscrolling": 15, "escapism": 10},
-        "vulnerability": "CRITICAL: Depression Signals — High Compulsion Risk",
-    },
-    {
-        "keywords": ["trauma", "ptsd", "abuse", "toxic relationship", "healing journey", "narcissist"],
-        "cluster": "Trauma & Recovery",
-        "vibe_boost": {"doomscrolling": 8, "escapism": 15},
-        "vulnerability": "HIGH: Trauma Processing State",
-    },
-    {
-        "keywords": ["insomnia", "cant sleep", "can't sleep", "sleep deprivation", "3am thoughts", "4am"],
-        "cluster": "Sleep Disruption",
-        "vibe_boost": {"doomscrolling": 18, "escapism": 5},
-        "vulnerability": "CRITICAL: Sleep-Deprived / Maximum Compulsion Window",
-    },
-    {
-        "keywords": ["burnout", "exhausted", "burnt out", "drained", "no motivation", "can't do anything"],
-        "cluster": "Burnout / Exhaustion",
-        "vibe_boost": {"doomscrolling": 14, "escapism": 10},
-        "vulnerability": "HIGH: Burnout State — Passive Content Binge Pattern",
-    },
-    # ── Finance ────────────────────────────────────────────────────────────
-    {
-        "keywords": ["budget meal", "cheap food", "food bank", "broke", "no money", "paycheck to paycheck", "cant afford"],
-        "cluster": "Budget Survival",
-        "vibe_boost": {"aspirational": 5, "doomscrolling": 8},
-        "income": "Low: Financial Distress Detected",
-        "vulnerability": "HIGH: Scarcity Mindset / Financial Stress",
-    },
-    {
-        "keywords": ["debt", "student loan", "credit card debt", "payday loan", "collections", "owe money", "overdraft"],
-        "cluster": "Debt & Financial Stress",
-        "vibe_boost": {"doomscrolling": 12, "aspirational": 3},
-        "income": "Low-Medium: Active Debt Burden",
-        "vulnerability": "HIGH: Financial Anxiety",
-    },
-    {
-        "keywords": ["crypto", "bitcoin", "ethereum", "nft", "web3", "defi", "altcoin", "doge", "shitcoin", "blockchain"],
-        "cluster": "Crypto / Digital Assets",
-        "vibe_boost": {"aspirational": 15, "outrage_mechanics": 5},
-        "income": "Medium: High-Risk Speculative Investor",
-    },
-    {
-        "keywords": ["investing", "stocks", "dividend", "index fund", "s&p", "sp500", "roth ira", "401k", "etf", "portfolio"],
-        "cluster": "Traditional Investing",
-        "vibe_boost": {"aspirational": 12},
-        "income": "Medium-High: Investment-Active",
-    },
-    {
-        "keywords": ["side hustle", "passive income", "dropshipping", "amazon fba", "make money online", "get rich", "financial freedom"],
-        "cluster": "Hustle Culture",
-        "vibe_boost": {"aspirational": 18, "doomscrolling": 5},
-        "income": "Low-Medium: Income-Anxious Grind Mode",
-    },
-    # ── Politics ───────────────────────────────────────────────────────────
-    {
-        "keywords": ["trump", "maga", "make america great", "republican", "conservative", "fox news", "desantis", "tucker carlson", "ben shapiro"],
-        "cluster": "Right-Wing Politics",
-        "vibe_boost": {"outrage_mechanics": 20},
-        "political": "Right / MAGA-Aligned",
-    },
-    {
-        "keywords": ["biden", "democrat", "liberal", "progressive", "bernie", "aoc", "squad", "socialism", "blm", "black lives matter"],
-        "cluster": "Left / Progressive Politics",
-        "vibe_boost": {"outrage_mechanics": 18},
-        "political": "Progressive / Left-Aligned",
-    },
-    {
-        "keywords": ["conspiracy", "deep state", "nwo", "new world order", "they don't want you", "plandemic", "wake up sheeple", "agenda", "elite control"],
-        "cluster": "Conspiracy / Alternative Narratives",
-        "vibe_boost": {"outrage_mechanics": 22, "doomscrolling": 10},
-        "political": "Anti-Establishment / Conspiratorial",
-        "vulnerability": "HIGH: Paranoid Pattern — Radicalization Risk",
-    },
-    # ── Lifestyle & Body ───────────────────────────────────────────────────
-    {
-        "keywords": ["weight loss", "calorie deficit", "intermittent fasting", "gym", "workout", "lose weight", "fat loss", "cutting"],
-        "cluster": "Fitness & Body Image",
-        "vibe_boost": {"aspirational": 14, "doomscrolling": 4},
-        "vulnerability": "MODERATE: Body Image Monitoring Behavior",
-    },
-    {
-        "keywords": ["skincare", "skin care", "acne", "glow up", "beauty routine", "sephora", "makeup", "anti-aging"],
-        "cluster": "Beauty & Aesthetics",
-        "vibe_boost": {"aspirational": 10, "escapism": 8},
-    },
-    {
-        "keywords": ["luxury", "designer", "gucci", "louis vuitton", "chanel", "expensive watch", "rich lifestyle", "penthouse", "yacht"],
-        "cluster": "Luxury Aspiration",
-        "vibe_boost": {"aspirational": 20},
-        "income": "Aspirational Middle Class (Luxury-Aspirant)",
-    },
-    {
-        "keywords": ["van life", "digital nomad", "backpacking", "travel the world", "quit my job", "expat", "relocate abroad"],
-        "cluster": "Escape / Travel Fantasy",
-        "vibe_boost": {"escapism": 18, "aspirational": 8},
-        "vulnerability": "MODERATE: Escape Fantasy — High Dissatisfaction Signal",
-    },
-    # ── Entertainment ──────────────────────────────────────────────────────
-    {
-        "keywords": ["anime", "manga", "webtoon", "isekai", "jujutsu", "one piece", "naruto", "demon slayer", "attack on titan"],
-        "cluster": "Anime & Manga",
-        "vibe_boost": {"escapism": 18},
-    },
-    {
-        "keywords": ["gaming", "minecraft", "roblox", "fortnite", "valorant", "streamer", "twitch", "fps", "rpg", "speedrun"],
-        "cluster": "Gaming",
-        "vibe_boost": {"escapism": 16},
-    },
-    {
-        "keywords": ["kpop", "k-pop", "bts", "blackpink", "stray kids", "enhypen", "kpop idol", "stan"],
-        "cluster": "K-Pop / Korean Pop Culture",
-        "vibe_boost": {"escapism": 14, "nostalgic": 5},
-    },
-    {
-        "keywords": ["asmr", "oddly satisfying", "sleep sounds", "rain sounds", "white noise"],
-        "cluster": "ASMR / Sensory Comfort",
-        "vibe_boost": {"escapism": 12, "doomscrolling": 5},
-        "vulnerability": "MODERATE: Sensory Soothing — Overstimulation Recovery",
-    },
-    # ── Relationships ──────────────────────────────────────────────────────
-    {
-        "keywords": ["breakup", "heartbreak", "divorce", "he left me", "she left me", "toxic ex", "gaslighting", "love bombing"],
-        "cluster": "Relationship Pain",
-        "vibe_boost": {"doomscrolling": 10, "escapism": 8},
-        "vulnerability": "HIGH: Relationship Distress Signal",
-    },
-    {
-        "keywords": ["situationship", "talking stage", "dating apps", "tinder", "rizz", "red flag", "attachment style"],
-        "cluster": "Modern Dating Culture",
-        "vibe_boost": {"escapism": 8, "doomscrolling": 5},
-    },
-    # ── Nostalgia ──────────────────────────────────────────────────────────
-    {
-        "keywords": ["90s", "80s", "y2k", "2000s", "retro", "childhood", "throwback", "old school", "vintage cartoons", "simpsons", "spongebob"],
-        "cluster": "Nostalgia & Retro Culture",
-        "vibe_boost": {"nostalgic": 22},
-    },
-    # ── Spirituality ───────────────────────────────────────────────────────
-    {
-        "keywords": ["astrology", "zodiac", "manifestation", "law of attraction", "crystals", "tarot", "spiritual awakening", "twin flame"],
-        "cluster": "Spirituality & Manifestation",
-        "vibe_boost": {"escapism": 12, "aspirational": 8},
-        "vulnerability": "MODERATE: Magical Thinking / Destiny Narrative",
-    },
-    # ── Food ───────────────────────────────────────────────────────────────
-    {
-        "keywords": ["mukbang", "food review", "meal prep", "recipe", "cooking hack", "gordon ramsay", "baking"],
-        "cluster": "Food & Cooking",
-        "vibe_boost": {"escapism": 8},
-    },
-    # ── Productivity / Self-Improvement ────────────────────────────────────
-    {
-        "keywords": ["productivity", "morning routine", "discipline", "stoicism", "self improvement", "reading list", "wake up 5am"],
-        "cluster": "Self-Optimization / Hustle Identity",
-        "vibe_boost": {"aspirational": 16, "doomscrolling": 6},
-        "vulnerability": "MODERATE: Performance Anxiety / Impostor Pattern",
-    },
-]
-
-# Severity ranking used when multiple vulnerability signals fire
-_VULN_SEVERITY = {
-    "CRITICAL": 4,
-    "HIGH": 3,
-    "MODERATE": 2,
-    "LOW": 1,
-}
-
-
-def _severity(label: str) -> int:
-    for prefix, score in _VULN_SEVERITY.items():
-        if label.startswith(prefix):
-            return score
-    return 0
-
+from parsers.tiktok import _parse_date
+import oembed
 
 # ---------------------------------------------------------------------------
-# Text footprint extraction
+# Cross-Platform Entity Resolution
 # ---------------------------------------------------------------------------
 
-def _mine_text_footprint(parsed: dict) -> list[str]:
+def _extract_creator_from_url(url: str) -> str | None:
     """
-    Collect every piece of user-generated text from the parsed export:
-    search terms, comment bodies, hashtag names, bio, favorite collection names.
-    Returns a flat list of lowercased strings.
+    Parse TikTok URL to extract creator username.
+    Handles: https://www.tiktok.com/@username/video/... → @username
+    Also supports: https://vm.tiktok.com/...
     """
-    corpus: list[str] = []
+    if not url:
+        return None
 
-    # Search history (most signal-rich)
-    for item in parsed.get("searches", []):
-        term = item.get("term", "")
-        if term:
-            corpus.append(term.lower())
+    match = re.search(r'@([a-zA-Z0-9._-]+)/', url)
+    if match:
+        return f"@{match.group(1)}"
 
-    # Comments the user wrote
-    for item in parsed.get("comments", []):
-        text = item.get("comment", "")
-        if text:
-            corpus.append(text.lower())
+    return None
 
-    # Favorite collection names (reveal interests user cared enough to save)
-    for name in parsed.get("favorite_collections", []):
-        corpus.append(name.lower())
 
-    # Bio
-    bio = parsed.get("profile", {}).get("bio", "")
-    if bio:
-        corpus.append(bio.lower())
+def _count_creators(link_set: set[str], limit: int = 15, count_key: str = "count") -> list[dict]:
+    """
+    Given a set of TikTok URLs, extract creators and count frequencies.
+    Return top N creators sorted by frequency descending.
+    """
+    creator_freq: dict[str, int] = {}
 
-    # Ad interest strings and settings interests
-    for item in parsed.get("ad_interests", []):
-        corpus.append(str(item).lower())
-    for item in parsed.get("settings_interests", []):
-        corpus.append(str(item).lower())
+    for link in link_set:
+        creator = _extract_creator_from_url(link)
+        if creator:
+            creator_freq[creator] = creator_freq.get(creator, 0) + 1
 
-    return corpus
+    sorted_creators = sorted(
+        creator_freq.items(),
+        key=lambda x: x[1],
+        reverse=True
+    )[:limit]
+
+    return [
+        {"handle": creator, count_key: count}
+        for creator, count in sorted_creators
+    ]
 
 
 # ---------------------------------------------------------------------------
-# Niche classification
+# Task 1: True Stopwatch & AFK Firewall
 # ---------------------------------------------------------------------------
 
-def _classify_niches(corpus: list[str]) -> tuple[list[str], dict, dict]:
+def _run_stopwatch(browsing_history: list[dict], exclude_hours: tuple[int, ...] = ()) -> dict:
     """
-    Run the full text corpus against NICHE_MAP.
-
-    Returns:
-        clusters     – list of matched cluster display names (deduplicated, ordered by hit count)
-        vibe_boosts  – cumulative {vibe_key: int} to add to behavioral scores
-        overrides    – {vulnerability: str | None, income: str | None, political: str | None}
+    Parse consecutive video timestamps to compute time-delta behavioral metrics.
     """
-    full_text = " ".join(corpus)
+    entries: list[dict] = []
+    for item in browsing_history:
+        dt = _parse_date(item.get("date", ""))
+        if dt:
+            entries.append({"dt": dt, "link": item.get("link", "")})
 
-    cluster_hits: dict[str, int] = {}           # cluster → hit count
-    vibe_accumulator: dict[str, int] = {}
+    entries.sort(key=lambda x: x["dt"])
 
-    best_vulnerability: str | None = None
-    income_signals: list[str] = []
-    political_signals: list[str] = []
+    # Thresholds
+    # 1200s = 20 minutes: phone left open while sleeping / accidental exposure.
+    # These are discarded entirely — they skew deep_dive counts and inflate lingers.
+    # 0s to <0: clock anomaly (impossible). Also discarded.
+    SLEEP_THRESHOLD_S = 1200
 
-    for entry in NICHE_MAP:
-        matched = sum(1 for kw in entry["keywords"] if kw in full_text)
-        if matched == 0:
+    clock_anomalies = 0   # delta < 0 (impossible timestamp)
+    sleep_scrubbed = 0    # delta >= 1200 (left open / fell asleep)
+    graveyard_count = 0
+    sandbox_count = 0
+    linger_count = 0
+    deep_dive_count = 0
+    night_count = 0
+    night_lingers = 0
+
+    graveyard_links: set[str] = set()
+    sandbox_links: set[str] = set()
+    linger_links: set[str] = set()
+    deep_dive_links: set[str] = set()
+    hourly: defaultdict[int, int] = defaultdict(int)
+    # weekly_heatmap: dow (0=Mon) → hour → count
+    weekly: defaultdict[int, defaultdict[int, int]] = defaultdict(lambda: defaultdict(int))
+
+    linger_events: list[dict] = []
+    graveyard_events: list[dict] = []
+    sandbox_events: list[dict] = []
+    night_linger_events: list[dict] = []
+    deep_dive_events: list[dict] = []
+
+    for i in range(len(entries) - 1):
+        cur = entries[i]
+        nxt = entries[i + 1]
+        delta = (nxt["dt"] - cur["dt"]).total_seconds()
+
+        # ── Clock anomaly (true impossibility) ──────────────────────────
+        if delta < 0:
+            clock_anomalies += 1
             continue
 
-        cluster = entry["cluster"]
-        cluster_hits[cluster] = cluster_hits.get(cluster, 0) + matched
+        # ── Sleep / accidental exposure (20+ minutes) ───────────────────
+        # Phone left on while sleeping, or TikTok open in background.
+        # These are NOT valid behavioral signals — scrub entirely.
+        if delta >= SLEEP_THRESHOLD_S:
+            sleep_scrubbed += 1
+            continue
 
-        # Accumulate vibe boosts (scaled: more keyword hits → stronger boost)
-        for vibe, delta in entry.get("vibe_boost", {}).items():
-            boost = min(delta * matched, delta * 2)   # cap at 2× base
-            vibe_accumulator[vibe] = vibe_accumulator.get(vibe, 0) + boost
+        # 0s–1199s: bucket normally. delta > 300 = phone briefly put down
+        # (session break) but the video still counts. Cap time_spent at 270s.
 
-        # Keep the highest-severity vulnerability signal
-        vuln = entry.get("vulnerability")
-        if vuln:
-            if best_vulnerability is None or _severity(vuln) > _severity(best_vulnerability):
-                best_vulnerability = vuln
+        hour = cur["dt"].hour
 
-        # Collect income and political signals (take the first/most-hit later)
-        if entry.get("income"):
-            income_signals.append(entry["income"])
-        if entry.get("political"):
-            political_signals.append(entry["political"])
+        # Optional sleep-hour filter (e.g. 1AM–4AM)
+        if exclude_hours and hour in exclude_hours:
+            continue
 
-    # Sort clusters by hit count descending
-    sorted_clusters = sorted(cluster_hits, key=lambda c: cluster_hits[c], reverse=True)
+        dow = cur["dt"].weekday()  # 0=Monday, 6=Sunday
+        hourly[hour] += 1
+        weekly[dow][hour] += 1
+        if 23 <= hour or hour < 4:
+            night_count += 1
 
-    overrides = {
-        "vulnerability": best_vulnerability,
-        "income": income_signals[0] if income_signals else None,
-        "political": _resolve_political(political_signals),
+        link = cur["link"]
+        vid = oembed.extract_video_id(link) if link else None
+        time_spent = min(delta, 270.0)
+        if delta < 3:
+            graveyard_count += 1
+            if link:
+                graveyard_links.add(link)
+            if vid:
+                graveyard_events.append({"video_id": vid, "link": link, "time_spent": time_spent, "hour": hour})
+        elif delta <= 15:
+            sandbox_count += 1
+            if link:
+                sandbox_links.add(link)
+            if vid:
+                sandbox_events.append({"video_id": vid, "link": link, "time_spent": time_spent, "hour": hour})
+        elif delta <= 180:
+            # 15–180s: sustained attention (deep_lingers for back-compat)
+            linger_count += 1
+            if 23 <= hour or hour < 4:
+                night_lingers += 1
+            if link:
+                linger_links.add(link)
+            if vid:
+                ev = {"video_id": vid, "link": link, "time_spent": time_spent, "hour": hour}
+                linger_events.append(ev)
+                if 23 <= hour or hour < 4:
+                    night_linger_events.append(ev)
+        else:
+            # >180s: deep dive — full commitment
+            deep_dive_count += 1
+            if 23 <= hour or hour < 4:
+                night_lingers += 1
+            if link:
+                deep_dive_links.add(link)
+                linger_links.add(link)  # also counts toward sustained for entity resolution
+            if vid:
+                ev = {"video_id": vid, "link": link, "time_spent": time_spent, "hour": hour}
+                deep_dive_events.append(ev)
+                linger_events.append(ev)  # deep dives are also lingered for theme extraction
+                if 23 <= hour or hour < 4:
+                    night_linger_events.append(ev)
+
+    total_conscious = graveyard_count + sandbox_count + linger_count + deep_dive_count
+
+    # Build weekly_heatmap as a plain dict for JSON serialisation
+    weekly_heatmap: dict[int, dict[int, int]] = {
+        dow: {h: weekly[dow].get(h, 0) for h in range(24)}
+        for dow in range(7)
     }
 
-    return sorted_clusters, vibe_accumulator, overrides
+    return {
+        "total_raw_videos": len(entries),
+        "total_conscious_videos": total_conscious,
+        "sleep_anomalies_scrubbed": clock_anomalies,
+        "sleep_scrubbed": sleep_scrubbed,
+        "graveyard_skips": graveyard_count,
+        "sandbox_views": sandbox_count,
+        "deep_lingers": linger_count,
+        "deep_dives": deep_dive_count,
+        "night_count": night_count,
+        "night_lingers": night_lingers,
+        "_graveyard_links": graveyard_links,
+        "_sandbox_links": sandbox_links,
+        "_linger_links": linger_links,
+        "_deep_dive_links": deep_dive_links,
+        "hourly_heatmap": {str(h): hourly.get(h, 0) for h in range(24)},
+        "weekly_heatmap": weekly_heatmap,
+        "linger_events": linger_events,
+        "graveyard_events": graveyard_events,
+        "sandbox_events": sandbox_events,
+        "night_linger_events": night_linger_events,
+        "deep_dive_events": deep_dive_events,
+    }
 
-
-def _resolve_political(signals: list[str]) -> str | None:
-    """If both left and right signals fired, return Fragmented."""
-    if not signals:
-        return None
-    has_right = any("Right" in s or "MAGA" in s or "Conspir" in s for s in signals)
-    has_left = any("Left" in s or "Progressive" in s for s in signals)
-    if has_right and has_left:
-        return "Politically Fragmented (Cross-Spectrum Engagement)"
-    return signals[0]
-
-
-# ---------------------------------------------------------------------------
-# Inference helpers
-# ---------------------------------------------------------------------------
 
 def _compute_peak_hour(hourly_heatmap: dict) -> str:
     if not hourly_heatmap or all(v == 0 for v in hourly_heatmap.values()):
@@ -338,218 +230,282 @@ def _compute_peak_hour(hourly_heatmap: dict) -> str:
     return f"{(hour - 12):02d}:00 PM"
 
 
-def _infer_age(birth_date: str, night_shift: float, skip_rate: float) -> str:
-    if birth_date:
-        try:
-            from datetime import date
-            parts = birth_date.replace("/", "-").split("-")
-            year = int(parts[0]) if len(parts[0]) == 4 else int(parts[-1])
-            age = date.today().year - year
-            if age < 18:
-                return "Under 18"
-            if age <= 24:
-                return "18–24"
-            if age <= 34:
-                return "25–34"
-            if age <= 44:
-                return "35–44"
-            if age <= 54:
-                return "45–54"
-            return "55+"
-        except (ValueError, IndexError):
-            pass
-    # Behavioral fallback
-    if night_shift > 35 and skip_rate > 60:
-        return "18–24"
-    if night_shift > 20 or skip_rate > 50:
-        return "25–34"
-    return "35–44"
-
-
-def _infer_income(
-    ad_interests: list[str],
-    shop_orders: list,
-    niche_override: str | None,
-) -> str:
-    """Income inference: niche text signals take precedence over ad category heuristics."""
-    if niche_override:
-        return niche_override
-
-    # Legacy keyword fallback (ad interests only)
-    _LUXURY = {"luxury", "premium", "designer", "wealth", "real estate", "investing", "crypto", "yacht"}
-    _BUDGET = {"discount", "deal", "sale", "budget", "affordable", "debt", "loan", "payday"}
-
-    low = " ".join(str(i).lower() for i in ad_interests)
-    luxury_hits = sum(1 for kw in _LUXURY if kw in low)
-    budget_hits = sum(1 for kw in _BUDGET if kw in low)
-    order_count = len(shop_orders)
-
-    if luxury_hits >= 3:
-        return "Medium-High"
-    if luxury_hits >= 1 and budget_hits == 0:
-        return "Medium"
-    if budget_hits >= 2 or (order_count > 5 and luxury_hits == 0):
-        return "Low"
-    if order_count > 10:
-        return "Medium"
-    return "Medium-Low"
-
-
-def _infer_vulnerability(
-    doomscrolling: int,
-    night_shift: float,
-    skip_rate: float,
-    linger_rate: float,
-    niche_override: str | None,
-) -> str:
-    """Vulnerability: niche text signals override behavioral estimates."""
-    if niche_override:
-        return niche_override
-
-    stress_score = doomscrolling * 0.5 + night_shift * 0.3 + skip_rate * 0.2
-    if stress_score >= 55:
-        return "CRITICAL: High Stress / Fatigue"
-    if stress_score >= 35:
-        return "HIGH: Elevated Compulsive Patterns"
-    if stress_score >= 20:
-        return "MODERATE: Occasional Escape Behavior"
-    return "LOW: Controlled Usage"
-
-
-def _infer_political_lean(
-    outrage_score: int,
-    all_interests: list[str],
-    blocked_count: int,
-    niche_override: str | None,
-) -> str:
-    """Political lean: niche text signals override ad interest heuristics."""
-    if niche_override:
-        return niche_override
-
-    if outrage_score < 15 and blocked_count == 0:
-        return "Apolitical"
-    if outrage_score >= 60 or blocked_count >= 10:
-        return "Highly Polarized"
-
-    low = " ".join(str(i).lower() for i in all_interests)
-    conservative_signals = sum(
-        1 for kw in ["conservative", "republican", "right", "maga", "trump", "fox"]
-        if kw in low
-    )
-    progressive_signals = sum(
-        1 for kw in ["progressive", "democrat", "liberal", "left", "socialist", "blm"]
-        if kw in low
-    )
-    if conservative_signals > progressive_signals:
-        return "Right-Leaning"
-    if progressive_signals > conservative_signals:
-        return "Left-Leaning"
-    if outrage_score >= 30:
-        return "Polarized (Undetermined)"
-    return "Moderate"
-
-
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
 
-def build_ghost_profile(parsed: dict) -> dict:
+def build_ghost_profile(parsed: dict, exclude_hours: tuple[int, ...] = ()) -> dict:
     """
-    Derive the Ghost Profile payload from a parsed TikTok export.
+    Derive the strictly behavioral Ghost Profile payload.
 
-    Args:
-        parsed: The dict returned by parsers.tiktok.parse_tiktok_export[_from_bytes].
-
-    Returns:
-        Full Ghost Profile dict ready to serialize as JSON.
+    exclude_hours: tuple of hour ints (0-23) to omit from stopwatch analysis.
+                   e.g. (1, 2, 3) to filter out 1AM–4AM (likely sleep time).
     """
-    ba = parsed.get("behavioral_analysis", {})
-    profile = parsed.get("profile", {})
-    ad_interests: list[str] = parsed.get("ad_interests", [])
-    settings_interests: list[str] = parsed.get("settings_interests", [])
-    all_interests = ad_interests + settings_interests
-    blocked_count = len(parsed.get("blocked_users", []))
-    favorites_count = len(parsed.get("favorites", []))
+    # ── Task 1: True Stopwatch ────────────────────────────────────────────
+    sw = _run_stopwatch(parsed.get("browsing_history", []), exclude_hours=exclude_hours)
+
+    total_conscious: int = sw["total_conscious_videos"]
+    graveyard_skips: int = sw["graveyard_skips"]
+    sandbox_views: int   = sw["sandbox_views"]
+    deep_lingers: int    = sw["deep_lingers"]
+    deep_dives_count: int = sw["deep_dives"]
+    sleep_anomalies: int = sw["sleep_anomalies_scrubbed"]
+    sleep_scrubbed: int  = sw["sleep_scrubbed"]
+    night_count: int     = sw["night_count"]
+
+    sustained_and_dives = deep_lingers + deep_dives_count
+    graveyard_rate     = (graveyard_skips / max(total_conscious, 1)) * 100
+    linger_rate_pct    = (sustained_and_dives / max(total_conscious, 1)) * 100
+    night_shift_pct    = (night_count    / max(total_conscious, 1)) * 100
+    night_linger_pct   = (sw["night_lingers"] / max(sustained_and_dives, 1)) * 100
+
+    peak_activity_hour = _compute_peak_hour(sw["hourly_heatmap"])
+
+    # ── Cross-Platform Entity Resolution ───────────────────────────────────
+    vibe_cluster = _count_creators(sw["_linger_links"], limit=20, count_key="linger_count")
+    graveyard = _count_creators(sw["_graveyard_links"], limit=20, count_key="skip_count")
+
+    # ── Evidence samples (raw excerpts for the Notes panel) ──────────────
+    searches_raw = parsed.get("searches", [])
+    login_history = parsed.get("login_history", [])
+    login_stats = parsed.get("login_history_stats", {})
+
+    # Rhythm of curiosity: search timestamps bucketed by hour
+    search_hour_hist: defaultdict[int, int] = defaultdict(int)
+    search_timeline: list[dict] = []
+    for s in searches_raw:
+        term = s.get("term") or s.get("SearchTerm") or ""
+        date_str = s.get("date") or s.get("Date") or ""
+        if not term or not date_str:
+            continue
+        dt = _parse_date(date_str)
+        if not dt:
+            continue
+        search_hour_hist[dt.hour] += 1
+        search_timeline.append({
+            "term": term,
+            "date": date_str,
+            "hour": dt.hour,
+            "dow": dt.weekday(),
+        })
+    search_timeline.sort(key=lambda x: x["date"], reverse=True)
+
+    # Discrepancy gap: what user declared vs. what machine inferred
+    declared_surface = set()
+    for s in searches_raw[:200]:
+        term = (s.get("term") or "").lower().strip()
+        if term:
+            declared_surface.add(term)
+    for ad in parsed.get("ad_interests", []):
+        declared_surface.add((ad or "").lower().strip())
+    for si in parsed.get("settings_interests", []):
+        declared_surface.add((si or "").lower().strip())
+
+    inferred_handles = [c.get("handle") for c in vibe_cluster[:10]]
+
+    # ── Academic Insights (ByteDance Monolith framing) ────────────────────
+    # Explicit vs Implicit: the "folk theory" (likes/comments) vs the true
+    # behavioral driver (passive retention on deep content).
+    explicit_total = len(parsed.get("likes", [])) + len(parsed.get("comments", []))
+    implicit_total = deep_lingers + deep_dives_count
+    if implicit_total > 0:
+        explicit_vs_implicit_ratio = round(explicit_total / implicit_total, 3)
+    else:
+        explicit_vs_implicit_ratio = 0.0
+
+    # Echo Chamber Index: top-5 creator concentration of sustained attention.
+    total_linger_links = sum(c.get("linger_count", 0) for c in vibe_cluster)
+    top5_linger = sum(c.get("linger_count", 0) for c in vibe_cluster[:5])
+    if total_linger_links > 0:
+        echo_chamber_index_pct = round((top5_linger / total_linger_links) * 100, 1)
+    else:
+        echo_chamber_index_pct = 0.0
+
+    # ── Social Graph Death ────────────────────────────────────────────────
+    following_usernames = {u.get("username", "").lower().lstrip("@") for u in parsed.get("following", [])}
+    followed_videos = 0
+    algorithmic_videos = 0
+    all_conscious_links = sw["_graveyard_links"] | sw["_sandbox_links"] | sw["_linger_links"]
+    for link in all_conscious_links:
+        creator = _extract_creator_from_url(link)
+        if creator:
+            clean_creator = creator.lstrip("@").lower()
+            if clean_creator in following_usernames:
+                followed_videos += 1
+            else:
+                algorithmic_videos += 1
+    
+    total_creators_found = followed_videos + algorithmic_videos
+    if total_creators_found > 0:
+        followed_pct = round((followed_videos / total_creators_found) * 100, 1)
+        algorithmic_pct = round((algorithmic_videos / total_creators_found) * 100, 1)
+    else:
+        followed_pct = 0.0
+        algorithmic_pct = 0.0
+
+    # ── Ad Targeting Profile ──────────────────────────────────────────────
+    # Top 3 activity hours = ad vulnerability windows (highest engagement density)
+    hourly_sorted = sorted(sw["hourly_heatmap"].items(), key=lambda x: x[1], reverse=True)
+    top_hours = [int(h) for h, v in hourly_sorted[:3] if v > 0]
+
+    def _fmt_hour(h: int) -> str:
+        if h == 0:   return "12 AM"
+        if h < 12:   return f"{h} AM"
+        if h == 12:  return "12 PM"
+        return f"{h - 12} PM"
+
+    vulnerability_window = " / ".join(_fmt_hour(h) for h in sorted(top_hours)) if top_hours else "Unknown"
+    off_tiktok = parsed.get("off_tiktok_activity", [])
     shop_orders = parsed.get("shop_orders", [])
-
-    # ── Behavioral primitives ─────────────────────────────────────────────
-    skip_rate: float = ba.get("skip_rate", 0.0)
-    linger_rate: float = ba.get("linger_rate", 0.0)
-    night_shift: float = ba.get("night_shift_ratio", 0.0)
-    total_videos: int = ba.get("total_videos", 0)
-    skip_count: int = ba.get("skip_count", 0)
-    casual_count: int = ba.get("casual_count", 0)
-    linger_count: int = ba.get("linger_count", 0)
-    hourly_heatmap: dict = ba.get("hourly_heatmap", {})
-
-    # ── Text mining ───────────────────────────────────────────────────────
-    corpus = _mine_text_footprint(parsed)
-    interest_clusters, vibe_boosts, overrides = _classify_niches(corpus)
-
-    search_terms = [s.get("term", "") for s in parsed.get("searches", []) if s.get("term")]
-
-    # ── Vibe Vectors (behavioral baseline + niche text boosts) ────────────
-
-    volume_factor = min(total_videos / 2000 * 20, 20)
-
-    # Base scores from behavior
-    doomscrolling_base = int(skip_rate * 0.5 + night_shift * 0.4 + volume_factor)
-    escapism_base = int(linger_rate * 0.5 + min(favorites_count / 10, 15))
-    aspirational_base = 0
-    nostalgic_base = 0
-    outrage_base = min(blocked_count * 3, 30)
-
-    # Apply niche boosts
-    doomscrolling = min(100, doomscrolling_base + vibe_boosts.get("doomscrolling", 0))
-    escapism      = min(100, escapism_base      + vibe_boosts.get("escapism", 0))
-    aspirational  = min(100, aspirational_base  + vibe_boosts.get("aspirational", 0))
-    nostalgic     = min(100, nostalgic_base     + vibe_boosts.get("nostalgic", 0))
-    outrage_mechanics = min(100, outrage_base   + vibe_boosts.get("outrage_mechanics", 0))
-
-    # ── Target Lock Inferences ────────────────────────────────────────────
-
-    estimated_age = _infer_age(profile.get("birth_date", ""), night_shift, skip_rate)
-    inferred_income = _infer_income(ad_interests, shop_orders, overrides["income"])
-    vulnerability_state = _infer_vulnerability(
-        doomscrolling, night_shift, skip_rate, linger_rate, overrides["vulnerability"]
-    )
-    political_lean = _infer_political_lean(
-        outrage_mechanics, all_interests, blocked_count, overrides["political"]
-    )
-
-    # ── Raw Metrics ───────────────────────────────────────────────────────
-
-    watch_seconds = skip_count * 1.5 + casual_count * 9 + linger_count * 30
-    total_watch_time_minutes = int(watch_seconds / 60)
-
-    # ── Behavioral Nodes ──────────────────────────────────────────────────
-
-    peak_activity_hour = _compute_peak_hour(hourly_heatmap)
 
     return {
         "status": "success",
-        "vibe_vectors": {
-            "doomscrolling": doomscrolling,
-            "escapism": escapism,
-            "aspirational": aspirational,
-            "nostalgic": nostalgic,
-            "outrage_mechanics": outrage_mechanics,
-        },
-        "target_lock_inferences": {
-            "estimated_age": estimated_age,
-            "inferred_income": inferred_income,
-            "vulnerability_state": vulnerability_state,
-            "political_lean": political_lean,
-        },
-        "raw_metrics": {
-            "total_videos": total_videos,
-            "total_watch_time_minutes": total_watch_time_minutes,
+        "stopwatch_metrics": {
+            "total_conscious_videos": total_conscious,
+            "sleep_anomalies_scrubbed": sleep_anomalies,
+            "sleep_scrubbed": sleep_scrubbed,
+            "graveyard_skips": graveyard_skips,
+            "sandbox_views": sandbox_views,
+            "deep_lingers": deep_lingers,
+            "deep_dives": deep_dives_count,
+            "total_videos": sw["total_raw_videos"],
+            "hourly_heatmap": sw["hourly_heatmap"],
+            "weekly_heatmap": sw["weekly_heatmap"],
+            "monthly_skip_rates": parsed.get("behavioral_analysis", {}).get("monthly_skip_rates", {}),
         },
         "behavioral_nodes": {
-            "peak_activity_hour": peak_activity_hour,
-            "skip_rate_percentage": round(skip_rate, 1),
-            "linger_rate_percentage": round(linger_rate, 1),
-            "night_shift_ratio": round(night_shift, 1),
+            "peak_hour": peak_activity_hour,
+            "skip_rate_percentage": round(graveyard_rate, 1),
+            "linger_rate_percentage": round(linger_rate_pct, 1),
+            "night_shift_ratio": round(night_shift_pct, 1),
+            "night_linger_pct": round(night_linger_pct, 1),
+            "night_lingers_count": sw["night_lingers"],
+            "social_graph_algorithmic_pct": algorithmic_pct,
+            "social_graph_followed_pct": followed_pct,
         },
-        "interest_clusters": interest_clusters,
+        "creator_entities": {
+            "vibe_cluster": vibe_cluster,
+            "graveyard": graveyard,
+        },
+        "academic_insights": {
+            "explicit_vs_implicit_ratio": explicit_vs_implicit_ratio,
+            "explicit_actions_count": explicit_total,
+            "implicit_linger_count": implicit_total,
+            "echo_chamber_index_pct": echo_chamber_index_pct,
+            "top_creator_handles": [c.get("handle") for c in vibe_cluster[:5]],
+        },
+        "night_shift": {
+            "percentage": round(night_shift_pct, 1),
+            "count": night_count,
+            "window": "23:00 – 04:00",
+        },
+        "digital_footprint": {
+            "login_count": len(login_history),
+            "unique_ips": login_stats.get("unique_ips", 0),
+            "unique_devices": login_stats.get("unique_devices", []),
+            "ip_locations": login_stats.get("ip_locations", []),
+            "recent_logins": sorted(
+                [
+                    {
+                        "date": l.get("date", ""),
+                        "ip": l.get("ip", ""),
+                        "device": l.get("device_model", ""),
+                        "system": l.get("device_system", ""),
+                        "network": l.get("network_type", ""),
+                        "carrier": l.get("carrier", ""),
+                    }
+                    for l in login_history if l.get("date")
+                ],
+                key=lambda x: x["date"],
+                reverse=True,
+            )[:25],
+        },
+        "search_rhythm": {
+            "total_searches": len(search_timeline),
+            "hourly_histogram": {str(h): search_hour_hist.get(h, 0) for h in range(24)},
+            "recent_searches": search_timeline[:30],
+        },
+        "discrepancy_gap": {
+            "declared_surface_sample": sorted(list(declared_surface))[:40],
+            "inferred_creator_handles": inferred_handles,
+            "declared_count": len(declared_surface),
+            "inferred_count": len(set(c.get("handle", "") for c in vibe_cluster)),
+        },
+        "_evidence": {
+            "prologue": {
+                "total_raw_videos": sw["total_raw_videos"],
+                "total_conscious": total_conscious,
+                "search_count": len(search_timeline),
+                "top_creators": [c.get("handle") for c in vibe_cluster[:5]],
+                "top_ad_interests": parsed.get("ad_interests", [])[:8],
+            },
+            "feedback_loop": {
+                "top_lingers_raw": sorted(sw["linger_events"], key=lambda e: e["time_spent"], reverse=True)[:12],
+                "echo_chamber_top5": vibe_cluster[:5],
+                "night_lingers_raw": sorted(sw["night_linger_events"], key=lambda e: e["time_spent"], reverse=True)[:10],
+            },
+            "discrepancy": {
+                "declared_searches_raw": [s for s in searches_raw[:30] if s.get("term")],
+                "declared_ad_interests": parsed.get("ad_interests", [])[:25],
+                "declared_settings_interests": parsed.get("settings_interests", [])[:25],
+                "inferred_vibe_cluster_raw": vibe_cluster[:15],
+                "inferred_graveyard_raw": graveyard[:15],
+            },
+            "digital_footprint": {
+                "login_history_raw": [
+                    {
+                        "date": l.get("date", ""),
+                        "ip": l.get("ip", ""),
+                        "device": l.get("device_model", ""),
+                        "system": l.get("device_system", ""),
+                        "carrier": l.get("carrier", ""),
+                    }
+                    for l in login_history[:40] if l.get("date")
+                ],
+                "shop_orders_count": len(shop_orders),
+                "off_tiktok_events": len(off_tiktok),
+            },
+            "psychographic": {
+                "ad_interests_raw": parsed.get("ad_interests", []),
+                "settings_interests_raw": parsed.get("settings_interests", []),
+                "top_deep_dives": sorted(sw["deep_dive_events"], key=lambda e: e["time_spent"], reverse=True)[:8],
+            },
+            "search_rhythm": {
+                "searches_sample": search_timeline[:25],
+                "peak_search_hour": max(search_hour_hist.items(), key=lambda x: x[1])[0] if search_hour_hist else None,
+            },
+        },
+        "enrichment_targets": {
+            "lingered": sorted(sw["linger_events"], key=lambda e: e["time_spent"], reverse=True)[:40],
+            "graveyard": sw["graveyard_events"][:40],
+            "sandbox": sw["sandbox_events"][:40],
+            "night_lingered": sorted(sw["night_linger_events"], key=lambda e: e["time_spent"], reverse=True)[:30],
+            "deep_dives": sorted(sw["deep_dive_events"], key=lambda e: e["time_spent"], reverse=True)[:20],
+            "following_usernames": list(following_usernames),
+        },
+        "deep_dives": {
+            "count": deep_dives_count,
+            "videos": sorted(sw["deep_dive_events"], key=lambda e: e["time_spent"], reverse=True)[:20],
+        },
+        "declared_signals": {
+            "settings_interests": parsed.get("settings_interests", []),
+            "ad_interests": parsed.get("ad_interests", []),
+            "recent_searches": [s.get("term", "") for s in parsed.get("searches", [])[:30] if s.get("term")],
+            "following_count": len(parsed.get("following", [])),
+            "follower_count": len(parsed.get("followers", [])),
+        },
+        "ad_profile": {
+            "advertiser_categories": parsed.get("ad_interests", []),
+            "vulnerability_window": vulnerability_window,
+            "peak_ad_hour": peak_activity_hour,
+            "night_targeting": round(night_shift_pct, 1),  # % of activity in 11PM–4AM window
+            "off_platform_tracked": len(off_tiktok) > 0,
+            "off_platform_events": len(off_tiktok),
+            "shop_order_count": len(shop_orders),
+            "shop_products": [
+                p
+                for order in shop_orders
+                for p in order.get("products", [])
+            ][:20],
+        },
     }

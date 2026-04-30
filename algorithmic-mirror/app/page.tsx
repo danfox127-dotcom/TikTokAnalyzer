@@ -1,155 +1,410 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Scan, ShieldOff, Eye } from "lucide-react";
-import { useDuality } from "@/context/DualityContext";
-import { VideoCard } from "@/components/VideoCard";
-import { UploadZone } from "@/components/UploadZone";
-import { GhostProfileHUD, GhostProfile } from "@/components/GhostProfileHUD";
+import { Upload, Loader2 } from "lucide-react";
+import { GhostProfileHUD, GhostProfile } from "./components/GhostProfileHUD";
+import { TheGlassHouse } from "./components/TheGlassHouse";
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8005";
+
+type View = "upload" | "narrative" | "hud";
 
 export default function Home() {
-  const { isMachineView, toggle, setMachineView } = useDuality();
-  const [ghostProfile, setGhostProfile] = useState<GhostProfile | null>(null);
+  const [profile, setProfile] = useState<GhostProfile | null>(null);
+  const [view, setView] = useState<View>("upload");
   const [isLoading, setIsLoading] = useState(false);
-  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [dragOver, setDragOver] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
 
-  const handleUpload = async (file: File) => {
+  const analyze = async (file: File) => {
     setIsLoading(true);
-    setUploadError(null);
-    const formData = new FormData();
-    formData.append("file", file);
+    setError(null);
     try {
-      const res = await fetch("http://localhost:8001/api/analyze", {
-        method: "POST",
-        body: formData,
-      });
+      const fd = new FormData();
+      fd.append("file", file);
+      const res = await fetch(`${API_URL}/api/analyze`, { method: "POST", body: fd });
       if (!res.ok) {
-        const detail = await res.json().catch(() => ({ detail: "Unknown error" }));
-        throw new Error(detail.detail ?? `HTTP ${res.status}`);
+        const j = await res.json().catch(() => ({ detail: `HTTP ${res.status}` }));
+        throw new Error(j.detail ?? `HTTP ${res.status}`);
       }
       const data: GhostProfile = await res.json();
-      setGhostProfile(data);
-      setMachineView(true);
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Unknown error";
-      const isNetworkError =
-        message.includes("fetch") ||
-        message.includes("Failed to fetch") ||
-        message.includes("NetworkError") ||
-        message.includes("ECONNREFUSED");
-      setUploadError(
-        isNetworkError
-          ? "UPLINK FAILURE: Cannot reach forensics engine at localhost:8001"
-          : `PARSE ERROR: ${message}`
-      );
+      setProfile(data);
+      setView("narrative");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Unknown error";
+      const net = /fetch|NetworkError|ECONNREFUSED|Failed to fetch/i.test(msg);
+      setError(net ? `Cannot reach forensics engine at ${API_URL}` : msg);
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleReset = () => {
-    setGhostProfile(null);
-    setUploadError(null);
+    setProfile(null);
+    setView("upload");
+    setError(null);
   };
 
-  return (
-    <main
-      className="min-h-screen flex flex-col items-center px-4 py-10"
-      style={{ background: "var(--bg)" }}
-    >
-      <header className="w-full max-w-2xl flex items-center justify-between mb-12">
-        <div>
-          <motion.p
-            className="text-xs uppercase tracking-widest mb-0.5"
-            style={{ color: "var(--text-secondary)", fontFamily: isMachineView ? "monospace" : "inherit" }}
-          >
-            {isMachineView ? "// SYSTEM: TARGETING_ACTIVE" : "Algorithmic Forensics"}
-          </motion.p>
-          <motion.h1
-            className="text-xl font-bold tracking-tight"
-            style={{ color: "var(--text-primary)", fontFamily: isMachineView ? "monospace" : "inherit" }}
-            animate={isMachineView ? { textShadow: "0 0 8px #39ff14, 0 0 20px rgba(57,255,20,0.35)" } : { textShadow: "none" }}
-            transition={{ duration: 0.4 }}
-          >
-            {isMachineView ? "[ THE_MACHINE ]" : "The Algorithmic Mirror"}
-          </motion.h1>
-        </div>
-        <motion.button
-          onClick={toggle}
-          whileTap={{ scale: 0.94 }}
-          whileHover={{ scale: 1.04 }}
-          className="flex items-center gap-2 px-5 py-2.5 font-bold text-sm uppercase tracking-widest"
+  const handleFile = (file: File | null | undefined) => {
+    if (!file) return;
+    if (!file.name.toLowerCase().endsWith(".json")) {
+      setError("Expected a TikTok .json export.");
+      return;
+    }
+    analyze(file);
+  };
+
+  if (profile && view === "narrative") {
+    return (
+      <TheGlassHouse
+        profile={profile}
+        onReset={handleReset}
+        onViewRawForensics={() => setView("hud")}
+      />
+    );
+  }
+
+  if (profile && view === "hud") {
+    return (
+      <div style={{ position: "relative" }}>
+        {/* Back-to-narrative ribbon */}
+        <button
+          onClick={() => setView("narrative")}
           style={{
-            background: isMachineView ? "var(--accent)" : "var(--text-primary)",
-            color: isMachineView ? "#000" : "var(--bg)",
-            borderRadius: "var(--radius)",
-            border: isMachineView ? "2px solid var(--accent)" : "2px solid transparent",
-            boxShadow: isMachineView ? "0 0 16px var(--accent-glow)" : "none",
-            fontFamily: isMachineView ? "monospace" : "inherit",
+            position: "fixed",
+            top: 20,
+            left: 20,
+            zIndex: 50,
+            padding: "10px 16px",
+            background: "#f5efe4",
+            color: "#1a1610",
+            border: "1px solid rgba(26,22,16,0.25)",
+            fontFamily: "var(--font-mono, ui-monospace, Menlo, monospace)",
+            fontSize: 10,
+            letterSpacing: "0.28em",
+            textTransform: "uppercase",
+            cursor: "pointer",
           }}
         >
-          {isMachineView ? <><ShieldOff size={15} /> DISENGAGE</> : <><Scan size={15} /> X-RAY</>}
-        </motion.button>
-      </header>
-
-      <motion.div className="w-full max-w-2xl mb-10 text-center">
-        <motion.p
-          className="text-sm leading-relaxed"
-          style={{ color: "var(--text-secondary)", fontFamily: isMachineView ? "monospace" : "inherit" }}
-        >
-          {isMachineView
-            ? "// DOSSIER MODE ACTIVE — WHAT THE ALGORITHM SEES WHEN YOU SCROLL"
-            : "You see a friendly video. The algorithm sees a data harvest. Upload your TikTok export to see what it knows about you."}
-        </motion.p>
-      </motion.div>
-
-      <div className="w-full max-w-lg mb-4 flex items-center justify-between text-xs uppercase tracking-widest">
-        <div className="flex items-center gap-2" style={{ color: "var(--text-secondary)" }}>
-          <Eye size={12} />
-          <span style={{ fontFamily: isMachineView ? "monospace" : "inherit" }}>
-            {ghostProfile
-              ? isMachineView ? "GHOST PROFILE — LIVE DATA" : "SHELL VIEW — PROFILE LOADED"
-              : isMachineView ? "MACHINE VIEW — RAW PAYLOAD" : "SHELL VIEW — AS PRESENTED"}
-          </span>
-        </div>
-        <motion.div
-          className="w-2 h-2 rounded-full"
-          style={{ background: "var(--accent)" }}
-          animate={isMachineView ? { opacity: [1, 0.2, 1], scale: [1, 0.8, 1] } : { opacity: 1, scale: 1 }}
-          transition={isMachineView ? { repeat: Infinity, duration: 1 } : {}}
-        />
+          ← Back to the Story
+        </button>
+        <GhostProfileHUD profile={profile} onReset={handleReset} />
       </div>
+    );
+  }
 
-      <div className="w-full max-w-lg">
-        <AnimatePresence mode="wait" initial={false}>
-          {ghostProfile ? (
-            <motion.div key="hud" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.3 }}>
-              <GhostProfileHUD profile={ghostProfile} onReset={handleReset} />
-            </motion.div>
-          ) : (
-            <motion.div key="upload" initial={{ opacity: 1 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.3 }} className="space-y-8">
-              <UploadZone onFile={handleUpload} isLoading={isLoading} error={uploadError} />
-              {!isLoading && (
-                <div>
-                  <p className="text-xs uppercase tracking-widest mb-3 text-center" style={{ color: "var(--text-secondary)" }}>
-                    {isMachineView ? "// SAMPLE_PAYLOAD" : "Example — what the algorithm sees"}
-                  </p>
-                  <VideoCard />
-                </div>
+  // ──────────────────────────────────────────────────────────────────────
+  // Upload state — editorial cover page
+  // ──────────────────────────────────────────────────────────────────────
+  return (
+    <main
+      style={{
+        minHeight: "100vh",
+        background: "#f5efe4",
+        color: "#1a1610",
+        fontFamily: "var(--font-body, 'Iowan Old Style', Georgia, serif)",
+        position: "relative",
+        overflow: "hidden",
+      }}
+    >
+      {/* Paper grain */}
+      <div
+        aria-hidden
+        style={{
+          position: "fixed",
+          inset: 0,
+          pointerEvents: "none",
+          opacity: 0.5,
+          mixBlendMode: "multiply",
+          backgroundImage: "radial-gradient(rgba(26,22,16,0.06) 1px, transparent 1px)",
+          backgroundSize: "3px 3px",
+          zIndex: 1,
+        }}
+      />
+
+      <div
+        style={{
+          position: "relative",
+          zIndex: 2,
+          maxWidth: 1100,
+          margin: "0 auto",
+          padding: "56px clamp(24px, 5vw, 72px) 120px",
+          minHeight: "100vh",
+          display: "flex",
+          flexDirection: "column",
+        }}
+      >
+        {/* Masthead */}
+        <header
+          style={{
+            display: "flex",
+            alignItems: "baseline",
+            justifyContent: "space-between",
+            borderBottom: "2px solid #1a1610",
+            paddingBottom: 18,
+            marginBottom: 80,
+            flexWrap: "wrap",
+            gap: 12,
+          }}
+        >
+          <div
+            style={{
+              fontFamily: "var(--font-mono, ui-monospace, Menlo, monospace)",
+              fontSize: 10,
+              letterSpacing: "0.38em",
+              color: "#6a5e4a",
+              textTransform: "uppercase",
+            }}
+          >
+            The Glass House · Vol. I · Dossier Edition
+          </div>
+          <div
+            style={{
+              fontFamily: "var(--font-mono, ui-monospace, Menlo, monospace)",
+              fontSize: 10,
+              letterSpacing: "0.28em",
+              color: "#6a5e4a",
+              textTransform: "uppercase",
+            }}
+          >
+            An Investigative Piece · About You
+          </div>
+        </header>
+
+        {/* Hero */}
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center" }}>
+          <div
+            style={{
+              fontFamily: "var(--font-mono, ui-monospace, Menlo, monospace)",
+              fontSize: 11,
+              letterSpacing: "0.32em",
+              color: "#8b2323",
+              textTransform: "uppercase",
+              marginBottom: 22,
+              display: "flex",
+              alignItems: "center",
+              gap: 12,
+            }}
+          >
+            <span style={{ width: 28, height: 1, background: "#8b2323", display: "inline-block" }} />
+            Prologue · The Hook
+          </div>
+
+          <h1
+            style={{
+              fontFamily: "var(--font-display, 'Fraunces', 'Playfair Display', Georgia, serif)",
+              fontWeight: 800,
+              fontSize: "clamp(52px, 8vw, 108px)",
+              lineHeight: 0.94,
+              letterSpacing: "-0.035em",
+              color: "#1a1610",
+              margin: 0,
+              maxWidth: "14ch",
+              marginBottom: 40,
+            }}
+          >
+            The House<br />
+            You Didn&rsquo;t<br />
+            Know Was{" "}
+            <span style={{ fontStyle: "italic", color: "#8b2323" }}>Glass.</span>
+          </h1>
+
+          <p
+            style={{
+              fontFamily: "var(--font-body, 'Iowan Old Style', Georgia, serif)",
+              fontSize: "clamp(18px, 2vw, 22px)",
+              lineHeight: 1.6,
+              color: "#3a3024",
+              maxWidth: "56ch",
+              margin: "0 0 48px",
+            }}
+          >
+            Upload the TikTok data export ByteDance delivered to you upon request.
+            This dossier is reconstructed from what&rsquo;s inside &mdash; every claim
+            backed by a raw excerpt you can inspect.
+          </p>
+
+          {/* Dropzone */}
+          <motion.div
+            onDragOver={e => { e.preventDefault(); setDragOver(true); }}
+            onDragLeave={() => setDragOver(false)}
+            onDrop={e => {
+              e.preventDefault();
+              setDragOver(false);
+              handleFile(e.dataTransfer.files?.[0]);
+            }}
+            onClick={() => !isLoading && inputRef.current?.click()}
+            animate={{
+              borderColor: dragOver ? "#8b2323" : "rgba(26,22,16,0.28)",
+              background: dragOver ? "rgba(139, 35, 35, 0.04)" : "#ede5d4",
+            }}
+            transition={{ duration: 0.2 }}
+            style={{
+              maxWidth: 560,
+              border: "1px dashed",
+              padding: "44px 32px",
+              cursor: isLoading ? "wait" : "pointer",
+              position: "relative",
+            }}
+          >
+            {/* corner ticks */}
+            <span style={{ position: "absolute", top: -1, left: -1, width: 10, height: 10, borderTop: "2px solid #8b2323", borderLeft: "2px solid #8b2323" }} />
+            <span style={{ position: "absolute", top: -1, right: -1, width: 10, height: 10, borderTop: "2px solid #8b2323", borderRight: "2px solid #8b2323" }} />
+            <span style={{ position: "absolute", bottom: -1, left: -1, width: 10, height: 10, borderBottom: "2px solid #8b2323", borderLeft: "2px solid #8b2323" }} />
+            <span style={{ position: "absolute", bottom: -1, right: -1, width: 10, height: 10, borderBottom: "2px solid #8b2323", borderRight: "2px solid #8b2323" }} />
+
+            <input
+              ref={inputRef}
+              type="file"
+              accept=".json,application/json"
+              style={{ display: "none" }}
+              onChange={e => handleFile(e.target.files?.[0])}
+            />
+
+            <AnimatePresence mode="wait">
+              {isLoading ? (
+                <motion.div key="loading" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+                    <motion.div
+                      animate={{ rotate: 360 }}
+                      transition={{ repeat: Infinity, duration: 1.2, ease: "linear" }}
+                    >
+                      <Loader2 size={24} color="#8b2323" />
+                    </motion.div>
+                    <div>
+                      <div
+                        style={{
+                          fontFamily: "var(--font-display, 'Fraunces', Georgia, serif)",
+                          fontSize: 18,
+                          fontStyle: "italic",
+                          color: "#1a1610",
+                          marginBottom: 4,
+                        }}
+                      >
+                        The staff analyst is reading your file&hellip;
+                      </div>
+                      <div
+                        style={{
+                          fontFamily: "var(--font-mono, ui-monospace, Menlo, monospace)",
+                          fontSize: 10,
+                          letterSpacing: "0.2em",
+                          color: "#6a5e4a",
+                          textTransform: "uppercase",
+                        }}
+                      >
+                        Stopwatch · entity resolution · citation audit
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+              ) : (
+                <motion.div key="idle" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={{ display: "flex", alignItems: "center", gap: 20 }}>
+                  <Upload size={28} color="#1a1610" />
+                  <div>
+                    <div
+                      style={{
+                        fontFamily: "var(--font-display, 'Fraunces', Georgia, serif)",
+                        fontSize: 22,
+                        fontWeight: 600,
+                        color: "#1a1610",
+                        lineHeight: 1.2,
+                      }}
+                    >
+                      Drop the TikTok export here.
+                    </div>
+                    <div
+                      style={{
+                        fontFamily: "var(--font-mono, ui-monospace, Menlo, monospace)",
+                        fontSize: 10,
+                        letterSpacing: "0.22em",
+                        color: "#6a5e4a",
+                        textTransform: "uppercase",
+                        marginTop: 6,
+                      }}
+                    >
+                      or click to select · .json
+                    </div>
+                  </div>
+                </motion.div>
               )}
+            </AnimatePresence>
+          </motion.div>
+
+          {error && (
+            <motion.div
+              initial={{ opacity: 0, y: -6 }}
+              animate={{ opacity: 1, y: 0 }}
+              style={{
+                marginTop: 20,
+                maxWidth: 560,
+                padding: "12px 16px",
+                border: "1px solid rgba(139, 35, 35, 0.4)",
+                background: "rgba(139, 35, 35, 0.06)",
+                color: "#6a1919",
+                fontFamily: "var(--font-body, Georgia, serif)",
+                fontStyle: "italic",
+                fontSize: 14,
+              }}
+            >
+              {error}
             </motion.div>
           )}
-        </AnimatePresence>
-      </div>
+        </div>
 
-      {!ghostProfile && (
-        <motion.p className="mt-16 text-xs text-center max-w-sm" style={{ color: "var(--text-secondary)", opacity: 0.6 }}>
-          {isMachineView
-            ? "// All analysis runs locally. Your data never leaves your browser."
-            : "Your data is never uploaded to any server. All analysis runs locally."}
-        </motion.p>
-      )}
+        {/* Method note */}
+        <div
+          style={{
+            marginTop: 80,
+            paddingTop: 20,
+            borderTop: "1px solid rgba(26,22,16,0.14)",
+            display: "grid",
+            gridTemplateColumns: "1fr 1fr",
+            gap: 48,
+            fontFamily: "var(--font-body, Georgia, serif)",
+            fontSize: 13,
+            color: "#6a5e4a",
+            lineHeight: 1.7,
+          }}
+        >
+          <div>
+            <div
+              style={{
+                fontFamily: "var(--font-mono, ui-monospace, Menlo, monospace)",
+                fontSize: 10,
+                letterSpacing: "0.25em",
+                color: "#6a5e4a",
+                textTransform: "uppercase",
+                marginBottom: 8,
+              }}
+            >
+              Method
+            </div>
+            Your JSON never leaves this machine. Parsing and stopwatch analysis run against
+            a local Python engine at{" "}
+            <span style={{ fontFamily: "var(--font-mono, monospace)", color: "#1a1610" }}>
+              {API_URL}
+            </span>.
+          </div>
+          <div>
+            <div
+              style={{
+                fontFamily: "var(--font-mono, ui-monospace, Menlo, monospace)",
+                fontSize: 10,
+                letterSpacing: "0.25em",
+                color: "#6a5e4a",
+                textTransform: "uppercase",
+                marginBottom: 8,
+              }}
+            >
+              Citation
+            </div>
+            Every underlined phrase in the dossier is a claim. Click it to reveal the exact
+            excerpt of your export that supports it. No synthesis. No paraphrase.
+          </div>
+        </div>
+      </div>
     </main>
   );
 }

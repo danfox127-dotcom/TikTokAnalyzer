@@ -1,66 +1,120 @@
 @import "tailwindcss";
 
 :root {
-  --bg: #f0f2f5;
-  --surface: #ffffff;
-  --border: #e4e6ea;
-  --text-primary: #1c1e21;
-  --text-secondary: #65676b;
-  --accent: #1877f2;
-  --accent-glow: rgba(24, 119, 242, 0.25);
-  --radius: 1rem;
-  --font-body: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  --font-mono: "Courier New", "Lucida Console", monospace;
-}
+  /* Backgrounds — deep navy-black, not pure black */
+  --bg: #05080f;
+  --surface: #0a0f1a;
+  --surface-2: #0f1626;
 
-[data-theme="machine"] {
-  --bg: #000000;
-  --surface: #050505;
-  --border: #39ff14;
-  --text-primary: #39ff14;
-  --text-secondary: #ffb300;
-  --accent: #39ff14;
-  --accent-glow: rgba(57, 255, 20, 0.35);
-  --radius: 0px;
+  /* Borders — blue-tinted, visible */
+  --border: rgba(100, 140, 200, 0.12);
+  --border-bright: rgba(120, 170, 240, 0.22);
+
+  /* Text — cold white with blue tint, high contrast */
+  --text-primary: #dde8f8;
+  --text-secondary: #7a94b8;
+  --text-dim: #334466;
+
+  /* Accent — cold electric blue (surveillance, not hacker) */
+  --accent: #4db8ff;
+  --accent-glow: rgba(77, 184, 255, 0.22);
+
+  /* Data warm accent — amber for contrast against blue */
+  --data-warm: #f0a030;
+  --data-warm-glow: rgba(240, 160, 48, 0.18);
+
+  /* Danger / Warning */
+  --danger: #ff4466;
+  --danger-glow: rgba(255, 68, 102, 0.18);
+  --warning: #38bdf8;
+
+  --radius: 2px;
+  --font-display: var(--font-display, "Bebas Neue", sans-serif);
+  --font-serif: var(--font-serif, "Courier Prime", monospace);
+  --font-mono: var(--font-mono, "JetBrains Mono", monospace);
 }
 
 * {
   box-sizing: border-box;
 }
 
-html,
-body {
+html, body {
   background-color: var(--bg);
   color: var(--text-primary);
-  font-family: var(--font-body);
-  transition: background-color 0.4s ease, color 0.4s ease;
+  font-family: var(--font-serif);
   min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
 }
 
-[data-theme="machine"] body {
-  font-family: var(--font-mono);
+::selection {
+  background: var(--accent);
+  color: #000;
 }
 
-/* Scanline overlay in machine mode */
-[data-theme="machine"] body::after {
-  content: "";
-  position: fixed;
-  inset: 0;
-  background: repeating-linear-gradient(
-    0deg,
-    transparent,
-    transparent 2px,
-    rgba(0, 0, 0, 0.18) 2px,
-    rgba(0, 0, 0, 0.18) 4px
-  );
-  pointer-events: none;
-  z-index: 9999;
+::-webkit-scrollbar { width: 3px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--border-bright); }
+
+.font-display { font-family: var(--font-display); }
+.font-mono-data { font-family: var(--font-mono); }
+
+.text-accent-glow {
+  color: var(--accent);
+  text-shadow: 0 0 24px var(--accent-glow), 0 0 48px rgba(77, 184, 255, 0.08);
+}
+
+.text-danger-glow {
+  color: var(--danger);
+  text-shadow: 0 0 24px var(--danger-glow);
 }
 
 .neon-glow {
   text-shadow: 0 0 8px var(--accent), 0 0 24px var(--accent-glow);
 }
 
-.neon-border {
-  box-shadow: 0 0 10px var(--accent-glow), inset 0 0 10px rgba(57, 255, 20, 0.04);
+/* ── PCB / Circuit Board Atmosphere ───────────────────────────────────────── */
+
+/* Repeating circuit trace background — use on pillar cards, header panels */
+.circuit-bg {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80'%3E%3Cg fill='none' stroke='%234db8ff' stroke-width='0.5' opacity='0.18'%3E%3Cline x1='0' y1='20' x2='60' y2='20'/%3E%3Cline x1='60' y1='0' x2='60' y2='40'/%3E%3Ccircle cx='60' cy='20' r='2' fill='%234db8ff'/%3E%3Cline x1='20' y1='80' x2='20' y2='40'/%3E%3Cline x1='20' y1='40' x2='80' y2='40'/%3E%3Ccircle cx='20' cy='40' r='2' fill='%234db8ff'/%3E%3Ccircle cx='80' cy='40' r='1.5' fill='%234db8ff' opacity='0.5'/%3E%3Cline x1='0' y1='60' x2='40' y2='60'/%3E%3Cline x1='40' y1='60' x2='40' y2='80'/%3E%3Ccircle cx='40' cy='60' r='2' fill='%234db8ff'/%3E%3C/g%3E%3C/svg%3E");
+  background-repeat: repeat;
+  background-size: 80px 80px;
+}
+
+/* Microchip-style chamfered corners on stat cards */
+.chip-card {
+  clip-path: polygon(
+    10px 0%, calc(100% - 10px) 0%,
+    100% 10px, 100% calc(100% - 10px),
+    calc(100% - 10px) 100%, 10px 100%,
+    0% calc(100% - 10px), 0% 10px
+  );
+}
+
+/* Section header with PCB trace extending right from label */
+.section-trace {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.section-trace::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(to right, var(--border-bright) 0%, var(--border-bright) 60%, transparent 100%);
+}
+
+/* Scan-line overlay — apply to a fixed-position full-screen div for CRT feel */
+.scanlines {
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent 0px,
+    transparent 3px,
+    rgba(0, 0, 0, 0.15) 3px,
+    rgba(0, 0, 0, 0.15) 4px
+  );
+  pointer-events: none;
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
 }

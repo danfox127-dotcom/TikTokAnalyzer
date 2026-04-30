@@ -147,8 +147,15 @@ def _compute_behavioral_analysis(browsing_history: list[dict]) -> dict:
         next_item = parsed[i + 1]
         delta = (next_item["dt"] - current["dt"]).total_seconds()
 
-        if delta < 0 or delta > 300:
+        if delta < 0:
             continue
+
+        # 20-minute upper bound: phone left open while sleeping / accidental.
+        # These are not valid behavioral signals — discard entirely.
+        if delta >= 1200:
+            continue
+
+        # 0s–1199s: bucket normally.
 
         valid_sessions += 1
         hour = current["dt"].hour

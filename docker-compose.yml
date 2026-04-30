@@ -1,0 +1,39 @@
+version: '3.8'
+
+services:
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8005:8005"
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - ALLOWED_ORIGINS=http://localhost:3000
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./algorithmic-mirror
+      dockerfile: Dockerfile
+      args:
+        # Pass the backend URL so the client browser knows where to send API calls
+        - NEXT_PUBLIC_API_URL=http://localhost:8005
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8005
+    depends_on:
+      - backend
