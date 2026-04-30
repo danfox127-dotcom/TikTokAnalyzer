@@ -537,9 +537,42 @@ def _analyze_share_behavior(shares: list[dict]) -> dict:
     }
 
 
-def calculate_transparency_gap(parsed: dict) -> dict:
-    """Stub — implemented in Task 6."""
-    return {}
+# ---------------------------------------------------------------------------
+# Task 6: Transparency Gap Calculation
+# ---------------------------------------------------------------------------
+
+
+def calculate_transparency_gap(parsed: dict, profile: dict) -> dict:
+    """
+    Compare TikTok's officially declared ad interests against the behaviorally
+    inferred interest clusters, and derive a plain-language interpretation.
+    """
+    official = parsed.get("ad_interests", [])
+    behavioral = profile.get("interest_clusters", [])
+
+    official_count = len(official)
+    behavioral_count = len(behavioral)
+
+    if official_count == 0 and behavioral_count > 5:
+        interpretation = (
+            "Ad interests empty — likely privacy opt-out or region restriction — "
+            "but behavioral profile shows strong inferred interests TikTok uses "
+            "regardless of official categorization."
+        )
+    elif official_count > 0 and official_count < behavioral_count * 0.5:
+        pct_diff = round((1 - official_count / behavioral_count) * 100)
+        interpretation = (
+            f"Significant gap: TikTok's declared interests underrepresent actual "
+            f"behavioral profile by approximately {pct_diff}%."
+        )
+    else:
+        interpretation = "Official interests roughly match behavioral profile."
+
+    return {
+        "official_ad_interest_count": official_count,
+        "behavioral_interest_count": behavioral_count,
+        "gap_interpretation": interpretation,
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -571,6 +604,12 @@ def build_ghost_profile(parsed: dict, exclude_hours: tuple[int, ...] = ()) -> di
         parsed.get("comments", []),
         active_video_count=sw["total_conscious_videos"],
         dm_share_count=share_behavior["dm_share_count"],
+    )
+
+    # ── Task 6: Transparency Gap ──────────────────────────────────────────
+    transparency_gap = calculate_transparency_gap(
+        parsed,
+        {"interest_clusters": interest_clusters},
     )
 
     total_conscious: int = sw["total_conscious_videos"]
@@ -842,4 +881,5 @@ def build_ghost_profile(parsed: dict, exclude_hours: tuple[int, ...] = ()) -> di
         },
         "comment_voice": comment_voice,
         "share_behavior": share_behavior,
+        "transparency_gap": transparency_gap,
     }

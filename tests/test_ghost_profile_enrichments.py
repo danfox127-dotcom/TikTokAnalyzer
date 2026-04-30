@@ -211,3 +211,38 @@ def test_missing_and_none_method_classified_as_unknown():
     result = _analyze_share_behavior(shares)
     assert result["share_methods"]["unknown"] == 2
     assert result["total_shares"] == 2
+
+
+# ── calculate_transparency_gap ────────────────────────────────────────────────
+
+def test_empty_official_large_behavioral_opt_out_message():
+    parsed = {"ad_interests": []}
+    profile = {"interest_clusters": [{"term": f"t{i}"} for i in range(10)]}
+    result = calculate_transparency_gap(parsed, profile)
+    interp = result["gap_interpretation"].lower()
+    assert "opt-out" in interp or "privacy" in interp or "empty" in interp
+
+
+def test_significant_gap_under_50_pct():
+    parsed = {"ad_interests": ["sports", "news"]}
+    profile = {"interest_clusters": [{"term": f"t{i}"} for i in range(10)]}
+    result = calculate_transparency_gap(parsed, profile)
+    assert result["official_ad_interest_count"] == 2
+    assert result["behavioral_interest_count"] == 10
+    interp = result["gap_interpretation"].lower()
+    assert "gap" in interp or "underrepresent" in interp
+
+
+def test_roughly_equal_counts():
+    parsed = {"ad_interests": [f"interest{i}" for i in range(10)]}
+    profile = {"interest_clusters": [{"term": f"t{i}"} for i in range(10)]}
+    result = calculate_transparency_gap(parsed, profile)
+    interp = result["gap_interpretation"].lower()
+    assert "match" in interp or "roughly" in interp
+
+
+def test_output_keys_present():
+    result = calculate_transparency_gap({"ad_interests": []}, {"interest_clusters": []})
+    assert "official_ad_interest_count" in result
+    assert "behavioral_interest_count" in result
+    assert "gap_interpretation" in result
