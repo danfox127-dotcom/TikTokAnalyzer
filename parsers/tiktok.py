@@ -24,6 +24,124 @@ def _parse_date(date_str: str) -> datetime | None:
     return None
 
 
+def _compute_night_shift_ratio(history: list[dict]) -> float:
+    """Night-shift ratio from raw history (23:00–04:00). Used on full history, not active."""
+    night = total = 0
+    for item in history:
+        dt = _parse_date(item.get("date", ""))
+        if dt:
+            total += 1
+            if 23 <= dt.hour or dt.hour < 4:
+                night += 1
+    return round(night / total * 100, 1) if total > 0 else 0.0
+
+
+_SESSION_GAP_S = 1800   # 30 minutes → new session
+_DM_METHODS = {
+    "chat_head", "dm", "message", "whatsapp", "instagram",
+    "line", "kakaotalk", "telegram",
+}
+
+
+def _detect_sessions(
+    browsing_history: list[dict],
+    likes: list[dict],
+    comments: list[dict],
+    shares: list[dict],
+) -> dict:
+    """
+    Split browsing_history into sessions and flag passive videos.
+
+    A video is passive if:
+    - It follows the previous video by < 2 seconds (autoplay artifact), OR
+    - It belongs to a session of 5+ videos with zero engagement actions.
+
+    Returns watch_history_active (passive removed) and watch_history_full (original).
+    """
+    if not browsing_history:
+        return {
+            "watch_history_full": [],
+            "watch_history_active": [],
+            "passive_videos_removed": 0,
+            "passive_sessions_detected": 0,
+            "active_video_count": 0,
+            "session_count": 0,
+            "avg_session_length_videos": 0.0,
+        }
+
+    # Build engagement timestamp list (likes + comments + shares)
+    engagement_times: list[datetime] = []
+    for source in (likes, comments, shares):
+        for item in source:
+            dt = _parse_date(item.get("date", ""))
+            if dt:
+                engagement_times.append(dt)
+
+    # Parse and index history; items without datetimes are kept as-is (active)
+    parsed_entries: list[dict] = []
+    unparseable: list[dict] = []
+    for idx, item in enumerate(browsing_history):
+        dt = _parse_date(item.get("date", ""))
+        if dt:
+            parsed_entries.append({"_dt": dt, "_orig": item, "_idx": idx})
+        else:
+            unparseable.append(item)
+
+    parsed_entries.sort(key=lambda e: e["_dt"])
+
+    # Split into sessions on gaps > 30 minutes
+    sessions: list[list[dict]] = []
+    if parsed_entries:
+        current: list[dict] = [parsed_entries[0]]
+        for i in range(1, len(parsed_entries)):
+            gap = (parsed_entries[i]["_dt"] - parsed_entries[i - 1]["_dt"]).total_seconds()
+            if gap > _SESSION_GAP_S:
+                sessions.append(current)
+                current = [parsed_entries[i]]
+            else:
+                current.append(parsed_entries[i])
+        sessions.append(current)
+
+    # Determine which entries are passive
+    passive_indices: set[int] = set()
+    passive_sessions = 0
+
+    for session in sessions:
+        s_start = session[0]["_dt"]
+        s_end = session[-1]["_dt"]
+
+        # Zero-engagement session with 5+ videos → whole session is passive
+        has_engagement = any(s_start <= et <= s_end for et in engagement_times)
+        if not has_engagement and len(session) >= 5:
+            passive_sessions += 1
+            for entry in session:
+                passive_indices.add(entry["_idx"])
+
+        # Autoplay artifacts: video follows previous by < 2 seconds
+        for i in range(1, len(session)):
+            delta = (session[i]["_dt"] - session[i - 1]["_dt"]).total_seconds()
+            if delta < 2:
+                passive_indices.add(session[i]["_idx"])
+
+    watch_history_full = [e["_orig"] for e in parsed_entries] + unparseable
+    watch_history_active = [
+        e["_orig"] for e in parsed_entries if e["_idx"] not in passive_indices
+    ] + unparseable
+
+    session_lengths = [len(s) for s in sessions]
+    avg_len = round(sum(session_lengths) / len(session_lengths), 1) if sessions else 0.0
+
+    return {
+        "watch_history_full": watch_history_full,
+        "watch_history_active": watch_history_active,
+        "passive_videos_removed": len(passive_indices),
+        "passive_sessions_detected": passive_sessions,
+        "active_video_count": len(watch_history_active),
+        "session_count": len(sessions),
+        "avg_session_length_videos": avg_len,
+    }
+
+
 def _safe_text(text: str) -> str:
     """
     Sanitize text, stripping lone surrogates that cause UnicodeEncodeError.
@@ -456,13 +574,24 @@ def _parse_tiktok_data(data: dict) -> dict:
     settings_interests = _extract_settings_interests(data)
     ad_interests = _extract_ad_interests(data)
     browsing_history = _extract_browsing_history(data)
-    behavioral_analysis = _compute_behavioral_analysis(browsing_history)
     likes = _extract_likes(data)
     favorites = _extract_favorites(data)
     favorite_collections = _extract_favorite_collections(data)
     searches = _extract_searches(data)
     shares = _extract_shares(data)
     comments = _extract_comments(data)
+    session_result = _detect_sessions(browsing_history, likes, comments, shares)
+    watch_history_active = session_result["watch_history_active"]
+    behavioral_analysis = _compute_behavioral_analysis(watch_history_active)
+    behavioral_analysis["night_shift_ratio"] = _compute_night_shift_ratio(browsing_history)
+    behavioral_analysis["night_shift_passive_adjusted"] = True
+    behavioral_analysis.update({
+        "passive_videos_removed": session_result["passive_videos_removed"],
+        "passive_sessions_detected": session_result["passive_sessions_detected"],
+        "active_video_count": session_result["active_video_count"],
+        "session_count": session_result["session_count"],
+        "avg_session_length_videos": session_result["avg_session_length_videos"],
+    })
     blocked_users = _extract_blocked(data)
     following = _extract_following(data)
     followers = _extract_followers(data)
@@ -477,6 +606,8 @@ def _parse_tiktok_data(data: dict) -> dict:
         "settings_interests": settings_interests,
         "ad_interests": ad_interests,
         "browsing_history": browsing_history,
+        "watch_history_full": session_result["watch_history_full"],
+        "watch_history_active": watch_history_active,
         "behavioral_analysis": behavioral_analysis,
         "likes": likes,
         "favorites": favorites,
