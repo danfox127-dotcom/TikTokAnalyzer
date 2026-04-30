@@ -756,6 +756,7 @@ def build_ghost_profile(parsed: dict, exclude_hours: tuple[int, ...] = ()) -> di
                 "ad_interests_raw": parsed.get("ad_interests", []),
                 "settings_interests_raw": parsed.get("settings_interests", []),
                 "top_deep_dives": sorted(sw["deep_dive_events"], key=lambda e: e["time_spent"], reverse=True)[:8],
+                "comment_voice_top_20_longest": comment_voice.get("top_20_longest", []),
             },
             "search_rhythm": {
                 "searches_sample": search_timeline[:25],
