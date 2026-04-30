@@ -73,3 +73,32 @@ def test_top_phrases_present():
     result = _mine_text_footprint(parsed)
     assert "top_phrases" in result
     assert isinstance(result["top_phrases"], list)
+
+
+def test_dm_share_weighted_higher_than_public_share():
+    """DM share (weight 8) should outrank an equivalent public share (weight 4).
+    Tokenizer splits on underscores, so @finance_guru → 'finance' + 'guru'."""
+    parsed = _minimal_parsed(
+        shares=[
+            {"link": "https://www.tiktok.com/@finance_guru/video/1", "method": "dm"},
+            {"link": "https://www.tiktok.com/@cooking_show/video/2", "method": "copy_link"},
+        ]
+    )
+    result = _mine_text_footprint(parsed)
+    terms = {c["term"]: c for c in result["interest_clusters"]}
+    # 'finance' comes from DM share (weight 8); 'cooking' from public share (weight 4)
+    assert "finance" in terms, f"expected 'finance' in {list(terms.keys())}"
+    assert "cooking" in terms, f"expected 'cooking' in {list(terms.keys())}"
+    assert terms["finance"]["count"] > terms["cooking"]["count"]
+    assert terms["finance"]["dominant_source"] == "share_dm"
+    assert terms["cooking"]["dominant_source"] == "share_public"
+
+
+def test_short_url_contributes_keywords_if_segments_present():
+    """A URL with meaningful path segments (not just a short code) should contribute."""
+    parsed = _minimal_parsed(
+        favorites=[{"link": "https://www.tiktok.com/tag/skateboarding", "date": "2024-01-01"}]
+    )
+    result = _mine_text_footprint(parsed)
+    terms = [c["term"] for c in result["interest_clusters"]]
+    assert "skateboarding" in terms

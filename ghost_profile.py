@@ -69,6 +69,26 @@ def _extract_creator_from_url(url: str) -> str | None:
     return None
 
 
+_URL_NOISE = {"www", "com", "tiktok", "http", "https", "video", "tag", "discover"}
+
+
+def _keywords_from_url(url: str) -> list[str]:
+    """Extract keyword hints from a URL as space-separated strings safe for tokenization.
+
+    Returns creator handle (underscores replaced with spaces) if present, otherwise
+    falls back to non-noise path segments.
+    """
+    if not url:
+        return []
+    creator = _extract_creator_from_url(url)
+    if creator:
+        # Replace underscores so "finance_guru" tokenizes to "finance guru"
+        return [creator.lstrip("@").replace("_", " ").replace(".", " ")]
+    # Fallback: split on common URL delimiters and return non-noise segments of length ≥ 4
+    parts = re.split(r'[/:?&=\-_.]', url)
+    return [p.lower() for p in parts if len(p) >= 4 and p.lower() not in _URL_NOISE and not p.isdigit()]
+
+
 def _count_creators(link_set: set[str], limit: int = 15, count_key: str = "count") -> list[dict]:
     """
     Given a set of TikTok URLs, extract creators and count frequencies.
@@ -294,28 +314,27 @@ def _mine_text_footprint(parsed: dict) -> dict:
             if text:
                 corpus_items.extend([(text, "follow")] * _SIGNAL_WEIGHTS["follow"])
 
-    # Shares — weight 8 (DM) or 4 (public); extract creator username from URL
+    # Shares — weight 8 (DM) or 4 (public); extract keyword hints from URL
     for item in parsed.get("shares", []):
         method = (item.get("method") or "").lower()
         link = item.get("link", "")
-        creator = _extract_creator_from_url(link) if link else None
-        if creator:
+        keywords = _keywords_from_url(link)
+        if keywords:
             source = "share_dm" if method in _DM_METHODS else "share_public"
-            corpus_items.extend([(creator, source)] * _SIGNAL_WEIGHTS[source])
+            for kw in keywords:
+                corpus_items.extend([(kw, source)] * _SIGNAL_WEIGHTS[source])
 
     # Favorites — weight 7
     for item in parsed.get("favorites", []):
         link = item.get("link", "")
-        creator = _extract_creator_from_url(link) if link else None
-        if creator:
-            corpus_items.extend([(creator, "favorite")] * _SIGNAL_WEIGHTS["favorite"])
+        for kw in _keywords_from_url(link):
+            corpus_items.extend([(kw, "favorite")] * _SIGNAL_WEIGHTS["favorite"])
 
     # Likes — weight 3
     for item in parsed.get("likes", []):
         link = item.get("link", "")
-        creator = _extract_creator_from_url(link) if link else None
-        if creator:
-            corpus_items.extend([(creator, "like")] * _SIGNAL_WEIGHTS["like"])
+        for kw in _keywords_from_url(link):
+            corpus_items.extend([(kw, "like")] * _SIGNAL_WEIGHTS["like"])
 
     if not corpus_items:
         return {"interest_clusters": [], "top_phrases": []}
