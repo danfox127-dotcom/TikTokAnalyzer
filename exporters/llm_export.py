@@ -63,6 +63,9 @@ def generate_llm_export(parsed: dict, ghost_profile: dict) -> dict:
         No watch URLs, IPs, or login records.
     """
     profile_clean = _strip_pii(copy.deepcopy(ghost_profile))
+    # Drop _evidence entirely — it contains raw video URLs (linger/skip links)
+    # which are excluded per spec ("Excluded from _evidence: raw link lists").
+    profile_clean.pop("_evidence", None)
 
     behavioral_summary = {
         k: v

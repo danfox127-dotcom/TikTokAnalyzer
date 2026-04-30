@@ -14,11 +14,16 @@ from fastapi.responses import PlainTextResponse, Response
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
+import json
+from datetime import date as _date
+
 from parsers.tiktok import parse_tiktok_export_from_bytes
 from ghost_profile import build_ghost_profile
 from exporters.llm_export import generate_llm_export
 import oembed
 import psychographic
+
+_LLM_EXPORT_MAX_BYTES = 100 * 1024 * 1024  # 100 MB
 
 # ---------------------------------------------------------------------------
 # App & CORS
@@ -136,15 +141,14 @@ async def export_llm(file: UploadFile = File(...)):
     Parse a TikTok export and return a privacy-safe LLM analysis JSON.
     Suitable for uploading directly to Claude.ai or Gemini.
     """
-    import json
-    from datetime import date as _date
-
     if not file.filename or not file.filename.endswith(".json"):
         raise HTTPException(status_code=400, detail="File must be a .json export.")
 
     raw = await file.read()
     if len(raw) == 0:
         raise HTTPException(status_code=400, detail="Uploaded file is empty.")
+    if len(raw) > _LLM_EXPORT_MAX_BYTES:
+        raise HTTPException(status_code=413, detail="File too large (max 100 MB).")
 
     try:
         parsed = parse_tiktok_export_from_bytes(raw)

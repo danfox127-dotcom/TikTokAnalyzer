@@ -61,6 +61,7 @@ def test_meta_block_present():
     assert "followup_prompts" in result["_meta"]
     assert "generated_at" in result["_meta"]
     assert "privacy_note" in result["_meta"]
+    assert "tool_version" in result["_meta"]
 
 
 def test_behavioral_summary_included():
@@ -79,3 +80,16 @@ def test_followup_prompts_is_list():
     result = generate_llm_export(_base_parsed(), _base_ghost())
     assert isinstance(result["_meta"]["followup_prompts"], list)
     assert len(result["_meta"]["followup_prompts"]) >= 3
+
+
+def test_evidence_block_excluded():
+    """_evidence contains raw video URLs — must not appear in export."""
+    ghost = _base_ghost()
+    ghost["_evidence"] = {
+        "feedback_loop": {
+            "top_lingers_raw": [{"link": "https://www.tiktok.com/@user/video/99", "time_spent": 120}]
+        }
+    }
+    result = generate_llm_export(_base_parsed(), ghost)
+    assert "_evidence" not in result.get("profile", {})
+    assert "tiktok.com" not in json.dumps(result)
