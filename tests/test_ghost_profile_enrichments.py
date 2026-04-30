@@ -166,6 +166,7 @@ def test_private_curator_over_70_pct_dm():
     )
     result = _analyze_share_behavior(shares)
     assert result["share_behavior_type"] == "Private Curator"
+    assert result["dm_share_count"] == 8
 
 
 def test_public_broadcaster_over_50_pct_public():
@@ -203,3 +204,10 @@ def test_empty_shares_returns_mixed_sharer():
     assert result["share_behavior_type"] == "Mixed Sharer"
     assert result["total_shares"] == 0
     assert result["dm_share_count"] == 0
+
+
+def test_missing_and_none_method_classified_as_unknown():
+    shares = [{"date": "2024-01-01"}, {"method": None, "date": "2024-01-01"}]
+    result = _analyze_share_behavior(shares)
+    assert result["share_methods"]["unknown"] == 2
+    assert result["total_shares"] == 2

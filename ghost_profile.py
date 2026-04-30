@@ -14,7 +14,7 @@ Public API
 """
 from __future__ import annotations
 
-from collections import defaultdict
+from collections import Counter, defaultdict
 import re
 
 from parsers.tiktok import _parse_date
@@ -288,9 +288,6 @@ def _mine_text_footprint(parsed: dict) -> dict:
     Build an engagement-weighted text corpus from all signal sources and
     extract interest clusters with source attribution.
     """
-    import re
-    from collections import Counter, defaultdict
-
     corpus_items: list[tuple[str, str]] = []  # (text, source_type), comments repeated for weight
     raw_comment_texts: list[str] = []  # unweighted, for bigram pass
 
@@ -491,13 +488,12 @@ def analyze_comment_voice(
 
 
 # ---------------------------------------------------------------------------
-# Task 4: Share Behavior Analysis
+# Task 5: Share Behavior Analysis
 # ---------------------------------------------------------------------------
 
 
 def _analyze_share_behavior(shares: list[dict]) -> dict:
     """Classify share behaviour as Private Curator, Public Broadcaster, or Mixed Sharer."""
-    from collections import Counter
 
     if not shares:
         return {
@@ -525,7 +521,7 @@ def _analyze_share_behavior(shares: list[dict]) -> dict:
     dm_pct = dm_count / total
     public_pct = public_count / total
 
-    if dm_pct > 0.70:
+    if dm_pct >= 0.70:
         behavior_type = "Private Curator"
     elif public_pct > 0.50:
         behavior_type = "Public Broadcaster"
