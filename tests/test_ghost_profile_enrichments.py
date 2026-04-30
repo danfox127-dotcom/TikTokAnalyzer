@@ -103,3 +103,55 @@ def test_short_url_contributes_keywords_if_segments_present():
     result = _mine_text_footprint(parsed)
     terms = [c["term"] for c in result["interest_clusters"]]
     assert "skateboarding" in terms
+
+
+# ── analyze_comment_voice ─────────────────────────────────────────────────────
+
+def test_lurker_label_below_half_percent():
+    """< 0.5% comment rate → Lurker."""
+    comments = [{"comment": "lol", "date": "2024-01-01"}]
+    result = analyze_comment_voice(comments, active_video_count=1000)
+    assert result["engagement_style_label"] == "Lurker"
+
+
+def test_analytical_label_long_avg_low_emoji():
+    long_text = "This is a detailed analytical observation about the subject matter " * 3
+    comments = [{"comment": long_text, "date": "2024-01-01"} for _ in range(30)]
+    result = analyze_comment_voice(comments, active_video_count=500)
+    assert result["engagement_style_label"] == "Analytical Commenter"
+
+
+def test_reactive_label_short_frequent():
+    comments = [{"comment": "lmao", "date": "2024-01-01"} for _ in range(60)]
+    result = analyze_comment_voice(comments, active_video_count=500)
+    assert result["engagement_style_label"] == "Reactive Commenter"
+
+
+def test_top_20_longest_sorted_descending():
+    comments = [{"comment": "x" * i, "date": "2024-01-01"} for i in range(1, 30)]
+    result = analyze_comment_voice(comments, active_video_count=1000)
+    assert len(result["top_20_longest"]) <= 20
+    lengths = [len(c) for c in result["top_20_longest"]]
+    assert lengths == sorted(lengths, reverse=True)
+
+
+def test_long_comment_count():
+    comments = [
+        {"comment": "a" * 200, "date": "2024-01-01"},
+        {"comment": "b" * 50,  "date": "2024-01-01"},
+    ]
+    result = analyze_comment_voice(comments, active_video_count=1000)
+    assert result["long_comments_count"] == 1
+
+
+def test_empty_comments_returns_lurker():
+    result = analyze_comment_voice([], active_video_count=500)
+    assert result["engagement_style_label"] == "Lurker"
+    assert result["total_comments"] == 0
+
+
+def test_references_detected_sports():
+    comments = [{"comment": "go lakers let's go!", "date": "2024-01-01"}]
+    result = analyze_comment_voice(comments, active_video_count=100)
+    assert "sports_teams" in result["references_detected"]
+    assert "lakers" in result["references_detected"]["sports_teams"]

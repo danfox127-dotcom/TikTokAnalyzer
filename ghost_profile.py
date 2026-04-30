@@ -378,12 +378,115 @@ def _mine_text_footprint(parsed: dict) -> dict:
 
 
 # ---------------------------------------------------------------------------
-# Tasks 4–6 stubs (implemented in subsequent tasks)
+# Task 3: Comment Voice Analysis
 # ---------------------------------------------------------------------------
 
-def analyze_comment_voice(parsed: dict) -> dict:
-    """Stub — implemented in Task 4."""
-    return {}
+_ENTITY_KEYWORDS: dict[str, list[str]] = {
+    "sports_teams": [
+        "lakers", "warriors", "celtics", "bulls", "knicks", "nets", "heat",
+        "patriots", "cowboys", "chiefs", "packers", "49ers", "yankees",
+        "dodgers", "cubs", "nba", "nfl", "mlb", "nhl",
+    ],
+    "tv_shows": [
+        "stranger things", "the office", "breaking bad", "game of thrones",
+        "friends", "seinfeld", "succession", "ozark", "sopranos", "wire",
+    ],
+    "musicians": [
+        "taylor swift", "drake", "beyonce", "kendrick", "billie eilish",
+        "eminem", "rihanna", "travis scott", "bad bunny", "sza",
+    ],
+    "political_figures": [
+        "trump", "biden", "obama", "aoc", "bernie", "pelosi", "desantis",
+        "harris", "musk",
+    ],
+    "films": [
+        "avengers", "oppenheimer", "barbie", "inception", "interstellar",
+        "joker", "parasite", "dune", "titanic", "matrix",
+    ],
+}
+
+_EMOJI_RE = re.compile(
+    "["
+    "\U0001F600-\U0001F64F"
+    "\U0001F300-\U0001F5FF"
+    "\U0001F680-\U0001F9FF"
+    "\U00002700-\U000027BF"
+    "\U0001FA00-\U0001FA9F"
+    "]+",
+    flags=re.UNICODE,
+)
+
+
+def analyze_comment_voice(
+    comments: list[dict],
+    active_video_count: int,
+    dm_share_count: int = 0,
+) -> dict:
+    """
+    Characterise HOW the user engages via comments — not just what topics appear.
+    """
+    texts = [c.get("comment", "") for c in comments if c.get("comment")]
+    total = len(texts)
+
+    if total == 0:
+        return {
+            "total_comments": 0,
+            "avg_length_chars": 0.0,
+            "long_comments_count": 0,
+            "long_comment_pct": 0.0,
+            "top_20_longest": [],
+            "references_detected": {},
+            "emoji_density": 0.0,
+            "engagement_style_label": "Lurker",
+        }
+
+    lengths = [len(t) for t in texts]
+    avg_length = sum(lengths) / total
+    long_comments = [t for t in texts if len(t) > 150]
+    top_20 = sorted(texts, key=len, reverse=True)[:20]
+
+    # Emoji density: emoji character count / total character count
+    total_chars = sum(lengths)
+    emoji_chars = sum(len("".join(_EMOJI_RE.findall(t))) for t in texts)
+    emoji_density = emoji_chars / total_chars if total_chars > 0 else 0.0
+
+    # Named entity detection
+    all_text = " ".join(texts).lower()
+    references: dict[str, list[str]] = {}
+    for category, keywords in _ENTITY_KEYWORDS.items():
+        found = [kw for kw in keywords if kw in all_text]
+        if found:
+            references[category] = found
+
+    # Engagement style label (priority order)
+    comment_rate = total / active_video_count if active_video_count > 0 else 0.0
+
+    if comment_rate < 0.005:
+        label = "Lurker"
+    elif avg_length > 100 and emoji_density < 0.05:
+        label = "Analytical Commenter"
+    elif avg_length < 40 and comment_rate > 0.05:
+        label = "Reactive Commenter"
+    elif total < 20 and dm_share_count > total * 3:
+        label = "Curator"
+    else:
+        label = "Community Participant"
+
+    return {
+        "total_comments": total,
+        "avg_length_chars": round(avg_length, 1),
+        "long_comments_count": len(long_comments),
+        "long_comment_pct": round(len(long_comments) / total * 100, 1),
+        "top_20_longest": top_20,
+        "references_detected": references,
+        "emoji_density": round(emoji_density, 4),
+        "engagement_style_label": label,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Tasks 5–6 stubs (implemented in subsequent tasks)
+# ---------------------------------------------------------------------------
 
 
 def _analyze_share_behavior(parsed: dict) -> dict:
@@ -418,6 +521,13 @@ def build_ghost_profile(parsed: dict, exclude_hours: tuple[int, ...] = ()) -> di
     footprint = _mine_text_footprint(parsed)
     interest_clusters = footprint["interest_clusters"]
     interest_phrases  = footprint["top_phrases"]
+
+    # ── Task 3: Comment Voice ─────────────────────────────────────────────
+    comment_voice = analyze_comment_voice(
+        parsed.get("comments", []),
+        active_video_count=sw["total_conscious_videos"],
+        dm_share_count=0,
+    )
 
     total_conscious: int = sw["total_conscious_videos"]
     graveyard_skips: int = sw["graveyard_skips"]
@@ -685,4 +795,5 @@ def build_ghost_profile(parsed: dict, exclude_hours: tuple[int, ...] = ()) -> di
                 for p in order.get("products", [])
             ][:20],
         },
+        "comment_voice": comment_voice,
     }
