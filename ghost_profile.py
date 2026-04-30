@@ -407,10 +407,11 @@ _ENTITY_KEYWORDS: dict[str, list[str]] = {
 
 _EMOJI_RE = re.compile(
     "["
-    "\U0001F600-\U0001F64F"
-    "\U0001F300-\U0001F5FF"
-    "\U0001F680-\U0001F9FF"
+    "\U00002600-\U000026FF"   # Miscellaneous Symbols (☀ ☕ ☠ ♥ zodiac…)
     "\U00002700-\U000027BF"
+    "\U0001F300-\U0001F5FF"
+    "\U0001F600-\U0001F64F"
+    "\U0001F680-\U0001F9FF"
     "\U0001FA00-\U0001FA9F"
     "]+",
     flags=re.UNICODE,
@@ -523,6 +524,9 @@ def build_ghost_profile(parsed: dict, exclude_hours: tuple[int, ...] = ()) -> di
     interest_phrases  = footprint["top_phrases"]
 
     # ── Task 3: Comment Voice ─────────────────────────────────────────────
+    # dm_share_count=0 placeholder — Task 5 (_analyze_share_behavior) replaces
+    # this call with one that back-fills the real DM count so the Curator label
+    # can fire correctly.
     comment_voice = analyze_comment_voice(
         parsed.get("comments", []),
         active_video_count=sw["total_conscious_videos"],
