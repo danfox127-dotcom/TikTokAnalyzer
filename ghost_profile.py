@@ -21,6 +21,35 @@ from parsers.tiktok import _parse_date
 import oembed
 
 # ---------------------------------------------------------------------------
+# Engagement signal weights & DM method set (shared by Tasks 2 and 4)
+# ---------------------------------------------------------------------------
+
+_DM_METHODS = {
+    "chat_head", "dm", "message", "whatsapp", "instagram",
+    "line", "kakaotalk", "telegram",
+}
+
+_SIGNAL_WEIGHTS = {
+    "comment":      10,
+    "favorite":      7,
+    "share_dm":      8,
+    "share_public":  4,
+    "follow":        6,
+    "search":        5,
+    "like":          3,
+}
+
+_FOOTPRINT_STOP = {
+    "the", "and", "to", "of", "a", "in", "is", "for", "on", "you", "that",
+    "this", "it", "with", "as", "at", "are", "be", "your", "my", "from",
+    "so", "but", "not", "have", "we", "all", "can", "by", "if", "or",
+    "an", "do", "what", "just", "about", "like", "how", "out", "up",
+    "when", "was", "will", "they", "me", "get", "no", "one", "there",
+    "its", "also", "more", "than", "then", "now", "has", "had", "him",
+    "her", "she", "he", "who", "which", "been", "would", "could", "should",
+}
+
+# ---------------------------------------------------------------------------
 # Cross-Platform Entity Resolution
 # ---------------------------------------------------------------------------
 
@@ -231,6 +260,123 @@ def _compute_peak_hour(hourly_heatmap: dict) -> str:
 
 
 # ---------------------------------------------------------------------------
+# Task 2: Engagement-Weighted Text Footprint
+# ---------------------------------------------------------------------------
+
+def _mine_text_footprint(parsed: dict) -> dict:
+    """
+    Build an engagement-weighted text corpus from all signal sources and
+    extract interest clusters with source attribution.
+    """
+    import re
+    from collections import Counter, defaultdict
+
+    corpus_items: list[tuple[str, str]] = []  # (text, source_type)
+
+    # Comments — weight 10
+    for item in parsed.get("comments", []):
+        text = item.get("comment", "")
+        if text:
+            corpus_items.extend([(text, "comment")] * _SIGNAL_WEIGHTS["comment"])
+
+    # Searches — weight 5
+    for item in parsed.get("searches", []):
+        text = item.get("term", "")
+        if text:
+            corpus_items.extend([(text, "search")] * _SIGNAL_WEIGHTS["search"])
+
+    # Follows — weight 6 (split username on _ and . to get keywords)
+    for item in parsed.get("following", []):
+        username = item.get("username", "")
+        if username:
+            words = re.split(r"[._@]", username.lower())
+            text = " ".join(w for w in words if len(w) > 2)
+            if text:
+                corpus_items.extend([(text, "follow")] * _SIGNAL_WEIGHTS["follow"])
+
+    # Shares — weight 8 (DM) or 4 (public); extract creator username from URL
+    for item in parsed.get("shares", []):
+        method = (item.get("method") or "").lower()
+        link = item.get("link", "")
+        creator = _extract_creator_from_url(link) if link else None
+        if creator:
+            source = "share_dm" if method in _DM_METHODS else "share_public"
+            corpus_items.extend([(creator, source)] * _SIGNAL_WEIGHTS[source])
+
+    # Favorites — weight 7
+    for item in parsed.get("favorites", []):
+        link = item.get("link", "")
+        creator = _extract_creator_from_url(link) if link else None
+        if creator:
+            corpus_items.extend([(creator, "favorite")] * _SIGNAL_WEIGHTS["favorite"])
+
+    # Likes — weight 3
+    for item in parsed.get("likes", []):
+        link = item.get("link", "")
+        creator = _extract_creator_from_url(link) if link else None
+        if creator:
+            corpus_items.extend([(creator, "like")] * _SIGNAL_WEIGHTS["like"])
+
+    if not corpus_items:
+        return {"interest_clusters": [], "top_phrases": []}
+
+    # Tokenise and count with source attribution
+    term_counts: Counter = Counter()
+    term_sources: dict[str, Counter] = defaultdict(Counter)
+
+    for text, source in corpus_items:
+        words = re.findall(r"\b[a-zA-Z]{3,}\b", text.lower())
+        for word in words:
+            if word not in _FOOTPRINT_STOP:
+                term_counts[word] += 1
+                term_sources[word][source] += 1
+
+    interest_clusters = [
+        {
+            "term": term,
+            "count": count,
+            "dominant_source": term_sources[term].most_common(1)[0][0],
+        }
+        for term, count in term_counts.most_common(20)
+    ]
+
+    # 2-gram phrases from comment text only (richest signal)
+    phrase_counts: Counter = Counter()
+    for text, source in corpus_items:
+        if source == "comment":
+            words = re.findall(r"\b[a-zA-Z]{3,}\b", text.lower())
+            for i in range(len(words) - 1):
+                if words[i] not in _FOOTPRINT_STOP and words[i + 1] not in _FOOTPRINT_STOP:
+                    phrase_counts[f"{words[i]} {words[i + 1]}"] += 1
+
+    top_phrases = [
+        {"phrase": phrase, "count": count}
+        for phrase, count in phrase_counts.most_common(10)
+    ]
+
+    return {"interest_clusters": interest_clusters, "top_phrases": top_phrases}
+
+
+# ---------------------------------------------------------------------------
+# Tasks 4–6 stubs (implemented in subsequent tasks)
+# ---------------------------------------------------------------------------
+
+def analyze_comment_voice(parsed: dict) -> dict:
+    """Stub — implemented in Task 4."""
+    return {}
+
+
+def _analyze_share_behavior(parsed: dict) -> dict:
+    """Stub — implemented in Task 5."""
+    return {}
+
+
+def calculate_transparency_gap(parsed: dict) -> dict:
+    """Stub — implemented in Task 6."""
+    return {}
+
+
+# ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
 
@@ -247,6 +393,11 @@ def build_ghost_profile(parsed: dict, exclude_hours: tuple[int, ...] = ()) -> di
         or parsed.get("browsing_history", [])
     )
     sw = _run_stopwatch(active_history, exclude_hours=exclude_hours)
+
+    # ── Task 2: Engagement-Weighted Interest Scoring ───────────────────────
+    footprint = _mine_text_footprint(parsed)
+    interest_clusters = footprint["interest_clusters"]
+    interest_phrases  = footprint["top_phrases"]
 
     total_conscious: int = sw["total_conscious_videos"]
     graveyard_skips: int = sw["graveyard_skips"]
@@ -364,6 +515,8 @@ def build_ghost_profile(parsed: dict, exclude_hours: tuple[int, ...] = ()) -> di
 
     return {
         "status": "success",
+        "interest_clusters": interest_clusters,
+        "interest_phrases": interest_phrases,
         "stopwatch_metrics": {
             "total_conscious_videos": total_conscious,
             "sleep_anomalies_scrubbed": sleep_anomalies,
