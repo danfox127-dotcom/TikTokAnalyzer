@@ -242,7 +242,11 @@ def build_ghost_profile(parsed: dict, exclude_hours: tuple[int, ...] = ()) -> di
                    e.g. (1, 2, 3) to filter out 1AM–4AM (likely sleep time).
     """
     # ── Task 1: True Stopwatch ────────────────────────────────────────────
-    sw = _run_stopwatch(parsed.get("browsing_history", []), exclude_hours=exclude_hours)
+    active_history = (
+        parsed.get("watch_history_active")
+        or parsed.get("browsing_history", [])
+    )
+    sw = _run_stopwatch(active_history, exclude_hours=exclude_hours)
 
     total_conscious: int = sw["total_conscious_videos"]
     graveyard_skips: int = sw["graveyard_skips"]
