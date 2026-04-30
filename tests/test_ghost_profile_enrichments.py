@@ -155,3 +155,51 @@ def test_references_detected_sports():
     result = analyze_comment_voice(comments, active_video_count=100)
     assert "sports_teams" in result["references_detected"]
     assert "lakers" in result["references_detected"]["sports_teams"]
+
+
+# ── _analyze_share_behavior ───────────────────────────────────────────────────
+
+def test_private_curator_over_70_pct_dm():
+    shares = (
+        [{"method": "chat_head", "date": "2024-01-01"}] * 8
+        + [{"method": "copy", "date": "2024-01-01"}] * 2
+    )
+    result = _analyze_share_behavior(shares)
+    assert result["share_behavior_type"] == "Private Curator"
+
+
+def test_public_broadcaster_over_50_pct_public():
+    shares = (
+        [{"method": "copy", "date": "2024-01-01"}] * 6
+        + [{"method": "chat_head", "date": "2024-01-01"}] * 4
+    )
+    result = _analyze_share_behavior(shares)
+    assert result["share_behavior_type"] == "Public Broadcaster"
+
+
+def test_mixed_sharer_no_dominant_method():
+    shares = (
+        [{"method": "chat_head", "date": "2024-01-01"}] * 5
+        + [{"method": "copy", "date": "2024-01-01"}] * 5
+    )
+    result = _analyze_share_behavior(shares)
+    assert result["share_behavior_type"] == "Mixed Sharer"
+
+
+def test_share_methods_counted_correctly():
+    shares = [
+        {"method": "chat_head", "date": "2024-01-01"},
+        {"method": "copy",      "date": "2024-01-01"},
+        {"method": "chat_head", "date": "2024-01-01"},
+    ]
+    result = _analyze_share_behavior(shares)
+    assert result["share_methods"]["chat_head"] == 2
+    assert result["share_methods"]["copy"] == 1
+    assert result["total_shares"] == 3
+
+
+def test_empty_shares_returns_mixed_sharer():
+    result = _analyze_share_behavior([])
+    assert result["share_behavior_type"] == "Mixed Sharer"
+    assert result["total_shares"] == 0
+    assert result["dm_share_count"] == 0

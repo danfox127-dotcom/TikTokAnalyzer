@@ -490,9 +490,55 @@ def analyze_comment_voice(
 # ---------------------------------------------------------------------------
 
 
-def _analyze_share_behavior(parsed: dict) -> dict:
-    """Stub — implemented in Task 5."""
-    return {}
+# ---------------------------------------------------------------------------
+# Task 4: Share Behavior Analysis
+# ---------------------------------------------------------------------------
+
+
+def _analyze_share_behavior(shares: list[dict]) -> dict:
+    """Classify share behaviour as Private Curator, Public Broadcaster, or Mixed Sharer."""
+    from collections import Counter
+
+    if not shares:
+        return {
+            "total_shares": 0,
+            "share_methods": {},
+            "primary_share_method": None,
+            "share_behavior_type": "Mixed Sharer",
+            "dm_share_count": 0,
+        }
+
+    method_counts: Counter = Counter()
+    dm_count = 0
+    public_count = 0
+
+    for item in shares:
+        method = (item.get("method") or "unknown").lower()
+        method_counts[method] += 1
+        if method in _DM_METHODS:
+            dm_count += 1
+        else:
+            public_count += 1
+
+    total = len(shares)
+    primary = method_counts.most_common(1)[0][0]
+    dm_pct = dm_count / total
+    public_pct = public_count / total
+
+    if dm_pct > 0.70:
+        behavior_type = "Private Curator"
+    elif public_pct > 0.50:
+        behavior_type = "Public Broadcaster"
+    else:
+        behavior_type = "Mixed Sharer"
+
+    return {
+        "total_shares": total,
+        "share_methods": dict(method_counts),
+        "primary_share_method": primary,
+        "share_behavior_type": behavior_type,
+        "dm_share_count": dm_count,
+    }
 
 
 def calculate_transparency_gap(parsed: dict) -> dict:
@@ -523,14 +569,12 @@ def build_ghost_profile(parsed: dict, exclude_hours: tuple[int, ...] = ()) -> di
     interest_clusters = footprint["interest_clusters"]
     interest_phrases  = footprint["top_phrases"]
 
-    # ── Task 3: Comment Voice ─────────────────────────────────────────────
-    # dm_share_count=0 placeholder — Task 5 (_analyze_share_behavior) replaces
-    # this call with one that back-fills the real DM count so the Curator label
-    # can fire correctly.
+    # ── Task 3: Comment Voice + Task 4: Share Behavior ───────────────────
+    share_behavior = _analyze_share_behavior(parsed.get("shares", []))
     comment_voice = analyze_comment_voice(
         parsed.get("comments", []),
         active_video_count=sw["total_conscious_videos"],
-        dm_share_count=0,
+        dm_share_count=share_behavior["dm_share_count"],
     )
 
     total_conscious: int = sw["total_conscious_videos"]
@@ -801,4 +845,5 @@ def build_ghost_profile(parsed: dict, exclude_hours: tuple[int, ...] = ()) -> di
             ][:20],
         },
         "comment_voice": comment_voice,
+        "share_behavior": share_behavior,
     }
