@@ -57,6 +57,8 @@ def _detect_sessions(
     - It belongs to a session of 5+ videos with zero engagement actions.
 
     Returns watch_history_active (passive removed) and watch_history_full (original).
+    Items with unparseable dates are included in both lists unconditionally (treated as active).
+    active_video_count therefore includes unparseable items.
     """
     if not browsing_history:
         return {

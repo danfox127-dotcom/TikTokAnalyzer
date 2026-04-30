@@ -17,16 +17,16 @@ def test_autoplay_artifact_flagged_passive():
         _entry(BASE + timedelta(seconds=30)),
     ]
     result = _detect_sessions(history, [], [], [])
-    assert result["passive_videos_removed"] >= 1
-    assert result["active_video_count"] <= 2
+    assert result["passive_videos_removed"] == 1
+    assert result["active_video_count"] == 2
 
 
 def test_zero_engagement_session_with_5_plus_videos_is_passive():
     """Sessions with 5+ videos and no engagement actions are passive."""
     history = [_entry(BASE + timedelta(minutes=i * 3)) for i in range(6)]
     result = _detect_sessions(history, [], [], [])
-    assert result["passive_sessions_detected"] >= 1
-    assert result["active_video_count"] < 6
+    assert result["passive_sessions_detected"] == 1
+    assert result["active_video_count"] == 0
 
 
 def test_zero_engagement_session_with_fewer_than_5_videos_not_passive():
