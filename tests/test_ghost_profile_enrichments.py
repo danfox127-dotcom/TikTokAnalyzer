@@ -42,8 +42,9 @@ def test_comment_weighted_higher_than_equivalent_searches():
     result = _mine_text_footprint(parsed)
     terms = [c["term"] for c in result["interest_clusters"]]
     # "jazz" appears at weight 10; "classical" at weight 5 — jazz should rank higher
-    if "jazz" in terms and "classical" in terms:
-        assert terms.index("jazz") < terms.index("classical")
+    assert "jazz" in terms, f"expected 'jazz' in clusters, got {terms}"
+    assert "classical" in terms, f"expected 'classical' in clusters, got {terms}"
+    assert terms.index("jazz") < terms.index("classical")
 
 
 def test_dominant_source_is_comment_when_comment_drives_term():

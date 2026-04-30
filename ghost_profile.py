@@ -291,13 +291,15 @@ def _mine_text_footprint(parsed: dict) -> dict:
     import re
     from collections import Counter, defaultdict
 
-    corpus_items: list[tuple[str, str]] = []  # (text, source_type)
+    corpus_items: list[tuple[str, str]] = []  # (text, source_type), comments repeated for weight
+    raw_comment_texts: list[str] = []  # unweighted, for bigram pass
 
     # Comments — weight 10
     for item in parsed.get("comments", []):
         text = item.get("comment", "")
         if text:
             corpus_items.extend([(text, "comment")] * _SIGNAL_WEIGHTS["comment"])
+            raw_comment_texts.append(text)
 
     # Searches — weight 5
     for item in parsed.get("searches", []):
@@ -359,14 +361,13 @@ def _mine_text_footprint(parsed: dict) -> dict:
         for term, count in term_counts.most_common(20)
     ]
 
-    # 2-gram phrases from comment text only (richest signal)
+    # 2-gram phrases from raw (unweighted) comment text only — avoids 10x inflation
     phrase_counts: Counter = Counter()
-    for text, source in corpus_items:
-        if source == "comment":
-            words = re.findall(r"\b[a-zA-Z]{3,}\b", text.lower())
-            for i in range(len(words) - 1):
-                if words[i] not in _FOOTPRINT_STOP and words[i + 1] not in _FOOTPRINT_STOP:
-                    phrase_counts[f"{words[i]} {words[i + 1]}"] += 1
+    for text in raw_comment_texts:
+        words = re.findall(r"\b[a-zA-Z]{3,}\b", text.lower())
+        for i in range(len(words) - 1):
+            if words[i] not in _FOOTPRINT_STOP and words[i + 1] not in _FOOTPRINT_STOP:
+                phrase_counts[f"{words[i]} {words[i + 1]}"] += 1
 
     top_phrases = [
         {"phrase": phrase, "count": count}
