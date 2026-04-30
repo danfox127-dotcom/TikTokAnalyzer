@@ -10,12 +10,13 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from fastapi import FastAPI, UploadFile, File, HTTPException, Query
 from typing import Optional
-from fastapi.responses import PlainTextResponse
+from fastapi.responses import PlainTextResponse, Response
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from parsers.tiktok import parse_tiktok_export_from_bytes
 from ghost_profile import build_ghost_profile
+from exporters.llm_export import generate_llm_export
 import oembed
 import psychographic
 
@@ -127,6 +128,40 @@ async def analyze(
         exclude_hours = ()
 
     return build_ghost_profile(parsed, exclude_hours=exclude_hours)
+
+
+@app.post("/api/export/llm")
+async def export_llm(file: UploadFile = File(...)):
+    """
+    Parse a TikTok export and return a privacy-safe LLM analysis JSON.
+    Suitable for uploading directly to Claude.ai or Gemini.
+    """
+    import json
+    from datetime import date as _date
+
+    if not file.filename or not file.filename.endswith(".json"):
+        raise HTTPException(status_code=400, detail="File must be a .json export.")
+
+    raw = await file.read()
+    if len(raw) == 0:
+        raise HTTPException(status_code=400, detail="Uploaded file is empty.")
+
+    try:
+        parsed = parse_tiktok_export_from_bytes(raw)
+    except Exception as exc:
+        raise HTTPException(status_code=422, detail=f"Failed to parse export: {exc}")
+
+    ghost = build_ghost_profile(parsed)
+    payload = generate_llm_export(parsed, ghost)
+
+    filename = f"tiktok_analysis_{_date.today().isoformat()}.json"
+    content = json.dumps(payload, indent=2, ensure_ascii=False)
+
+    return Response(
+        content=content,
+        media_type="application/json",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 class EnrichRequest(BaseModel):
