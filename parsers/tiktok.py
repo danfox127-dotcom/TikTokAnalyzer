@@ -240,7 +240,7 @@ def _compute_behavioral_analysis(browsing_history: list[dict]) -> dict:
     """
     Compute behavioral analysis from browsing history timestamps.
     Uses timestamp-delta approach: for consecutive videos, compute the time delta.
-    If delta > 300s or < 0, skip (AFK/session break).
+    If delta >= 1200s or < 0, skip (AFK/session break).
     Otherwise bucket: <3s = skip, 3-15s = casual, >15s = linger.
     """
     parsed = []

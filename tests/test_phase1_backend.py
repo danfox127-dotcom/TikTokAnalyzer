@@ -106,10 +106,10 @@ class TestTierClassification:
         assert result["deep_dive_events"][0]["time_spent"] == 200.0
 
     def test_deep_dive_capped_at_270s(self):
-        history = _make_history([500.0])
+        history = _make_history([1300.0])
         result = _run_stopwatch(history)
-        # 500 > 300 → AFK firewall → scrubbed, not classified
-        assert result["sleep_anomalies_scrubbed"] == 1
+        # 1300 >= 1200 (SLEEP_THRESHOLD_S) → AFK firewall → sleep_scrubbed, not classified
+        assert result["sleep_scrubbed"] == 1
         assert result["deep_dives"] == 0
 
     def test_total_conscious_includes_deep_dives(self):
