@@ -704,34 +704,36 @@ export function GhostProfileHUD({ profile, onReset, sourceFile }: Props) {
             </div>
           </div>
 
-          <motion.button
-            onClick={onReset}
-            whileTap={{ scale: 0.96 }}
-            whileHover={{ scale: 1.02 }}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 8,
-              padding: "10px 18px",
-              border: `1px solid ${LINE_BRIGHT}`,
-              background: "transparent",
-              color: INK,
-              fontFamily: "var(--font-mono, monospace)",
-              fontSize: 11,
-              letterSpacing: "0.2em",
-              textTransform: "uppercase",
-              cursor: "pointer",
-            }}
-          >
-            <ArrowLeft size={14} />
-            Reset
-          </motion.button>
-          {sourceFile && (
-            <DownloadExportButton
-              file={sourceFile}
-              apiUrl={process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8005"}
-            />
-          )}
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <motion.button
+              onClick={onReset}
+              whileTap={{ scale: 0.96 }}
+              whileHover={{ scale: 1.02 }}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                padding: "10px 18px",
+                border: `1px solid ${LINE_BRIGHT}`,
+                background: "transparent",
+                color: INK,
+                fontFamily: "var(--font-mono, monospace)",
+                fontSize: 11,
+                letterSpacing: "0.2em",
+                textTransform: "uppercase",
+                cursor: "pointer",
+              }}
+            >
+              <ArrowLeft size={14} />
+              Reset
+            </motion.button>
+            {sourceFile && (
+              <DownloadExportButton
+                file={sourceFile}
+                apiUrl={process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8005"}
+              />
+            )}
+          </div>
         </div>
 
         {/* Grid */}
