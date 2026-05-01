@@ -57,7 +57,7 @@ def _build_algorithmic_identity_block(ghost_profile: dict, parsed: dict) -> dict
     top5 = vibe[:5]
     top5_linger = sum(c.get("linger_count", 0) for c in top5)
     chart_data = [
-        {"name": c["handle"], "value": c.get("linger_count", 0)}
+        {"name": c.get("handle", "Unknown"), "value": c.get("linger_count", 0)}
         for c in top5 if c.get("linger_count", 0) > 0
     ]
     if total_linger > top5_linger and total_linger > 0:
