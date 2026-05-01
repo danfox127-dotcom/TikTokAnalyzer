@@ -317,7 +317,7 @@ export function TheGlassHouse({ profile, onReset, onViewRawForensics, sourceFile
   const sw = profile.stopwatch_metrics;
   const ai = profile.academic_insights;
   const ns = profile.night_shift ?? {
-    percentage: profile.behavioral_nodes.night_shift_ratio,
+    percentage: profile.behavioral_nodes?.night_shift_ratio ?? 0,
     count: 0,
     window: "23:00 – 04:00",
   };
@@ -326,7 +326,7 @@ export function TheGlassHouse({ profile, onReset, onViewRawForensics, sourceFile
   const gap = profile.discrepancy_gap;
   const decl = profile.declared_signals;
   const ev = profile._evidence ?? {};
-  const vibe = profile.creator_entities.vibe_cluster;
+  const vibe = profile.creator_entities?.vibe_cluster ?? [];
 
   const totalSearches = rhythm?.total_searches ?? decl?.recent_searches?.length ?? 0;
 
@@ -758,7 +758,7 @@ export function TheGlassHouse({ profile, onReset, onViewRawForensics, sourceFile
                     color: INK_GHOST,
                   }}
                 >
-                  // no login history captured in this export
+                  {"//"} no login history captured in this export
                 </div>
               )}
 
