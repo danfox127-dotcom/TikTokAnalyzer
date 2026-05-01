@@ -20,6 +20,8 @@ from datetime import date as _date
 from parsers.tiktok import parse_tiktok_export_from_bytes
 from ghost_profile import build_ghost_profile
 from exporters.llm_export import generate_llm_export
+from api.narratives import build_narrative_blocks
+from utils.ip_geo import enrich_logins_with_geo
 import oembed
 import psychographic
 
@@ -132,7 +134,17 @@ async def analyze(
     else:
         exclude_hours = ()
 
-    return build_ghost_profile(parsed, exclude_hours=exclude_hours)
+    ghost_profile = build_ghost_profile(parsed, exclude_hours=exclude_hours)
+
+    # Enrich recent_logins with geolocation data (async, cached, fallback-safe)
+    raw_logins: list[dict] = ghost_profile.get("digital_footprint", {}).get("recent_logins", [])
+    if raw_logins:
+        enriched_logins = await enrich_logins_with_geo(raw_logins)
+        ghost_profile["digital_footprint"]["recent_logins"] = enriched_logins
+
+    narrative_blocks = build_narrative_blocks(ghost_profile, parsed)
+
+    return {**ghost_profile, "narrative_blocks": narrative_blocks}
 
 
 @app.post("/api/export/llm")

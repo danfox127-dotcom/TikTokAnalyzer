@@ -97,3 +97,36 @@ def test_metrics_endpoint():
     assert "text/plain" in response.headers["content-type"]
     text = response.text
     assert "algorithmic_enrich_requests_total" in text
+
+from unittest.mock import AsyncMock
+
+def test_analyze_returns_narrative_blocks():
+    """narrative_blocks should be present with 9 items after wiring."""
+    fake_export = {
+        "Activity": {
+            "Video Browsing History": {
+                "VideoList": [
+                    {"Date": "2023-10-01 10:00:00", "VideoLink": "https://www.tiktok.com/@user1/video/12345"},
+                    {"Date": "2023-10-01 10:00:03", "VideoLink": "https://www.tiktok.com/@user2/video/67890"},
+                ]
+            }
+        }
+    }
+    # Mock enrich_logins_with_geo to avoid real HTTP calls
+    with patch("api.main.enrich_logins_with_geo", new_callable=AsyncMock) as mock_enrich:
+        mock_enrich.return_value = []  # no logins to enrich in this fixture
+        response = client.post(
+            "/api/analyze",
+            files={"file": ("user_data_tiktok.json", json.dumps(fake_export).encode("utf-8"))}
+        )
+    assert response.status_code == 200
+    data = response.json()
+    assert "narrative_blocks" in data
+    assert isinstance(data["narrative_blocks"], list)
+    assert len(data["narrative_blocks"]) == 9
+    # Check first block schema
+    b = data["narrative_blocks"][0]
+    assert b["id"] == "algorithmic_identity"
+    assert "prose" in b
+    assert "stats" in b
+    assert "accent" in b
