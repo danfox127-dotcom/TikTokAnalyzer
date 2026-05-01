@@ -398,16 +398,190 @@ def _build_comment_voice_block(ghost_profile: dict, parsed: dict) -> dict:
     }
 
 
-def _build_transparency_gap_block(ghost_profile: dict, parsed: dict) -> dict:
-    raise NotImplementedError
+# ---------------------------------------------------------------------------
+# Block 7 — Transparency Gap
+# ---------------------------------------------------------------------------
 
+def _build_transparency_gap_block(ghost_profile: dict, parsed: dict) -> dict:
+    tg = ghost_profile.get("transparency_gap", {})
+    official_count = int(tg.get("official_ad_interest_count", 0))
+    behavioral_count = int(tg.get("behavioral_interest_count", 0))
+    interpretation = tg.get("gap_interpretation", "")
+    footprint = ghost_profile.get("digital_footprint", {})
+    login_count = int(footprint.get("login_count", 0))
+    unique_ips = int(footprint.get("unique_ips", 0))
+    unique_devices = footprint.get("unique_devices", [])
+    device_count = len(unique_devices) if isinstance(unique_devices, list) else int(unique_devices or 0)
+    searches = int(ghost_profile.get("search_rhythm", {}).get("total_searches", 0))
+    likes = len(parsed.get("likes", []))
+    comments = len(parsed.get("comments", []))
+    shares = len(parsed.get("shares", []))
+
+    if official_count == 0 and behavioral_count > 5:
+        prose = (
+            f"Your ad interest profile is empty — TikTok's official record claims no declared "
+            f"interests, yet behavioral analysis shows {behavioral_count} inferred interest clusters. "
+            f"This suggests a privacy opt-out, region restriction, or data suppression in the export. "
+            f"The algorithm sees far more than what it reports to you."
+        )
+    elif official_count < behavioral_count * 0.5 and behavioral_count > 0:
+        prose = (
+            f"TikTok's official export shows {official_count} declared ad interest categories — "
+            f"but behavioral signals reveal {behavioral_count} active interest clusters. "
+            f"{interpretation} What TikTok discloses is a fraction of what it knows."
+        )
+    else:
+        prose = (
+            f"Your export contains {official_count} declared ad interest categories, "
+            f"roughly matching the {behavioral_count} behavioral clusters. "
+            f"Across {login_count} logins, {unique_ips} unique IPs, and {device_count} devices, "
+            f"TikTok has assembled a cross-surface profile. {interpretation}"
+        )
+
+    stats = [
+        {"label": "Declared Interests", "value": str(official_count)},
+        {"label": "Behavioral Clusters", "value": str(behavioral_count)},
+        {"label": "Login Events", "value": str(login_count)},
+        {"label": "Unique IPs", "value": str(unique_ips)},
+        {"label": "Unique Devices", "value": str(device_count)},
+    ]
+
+    chart_data = [
+        {"category": "Ad Interests", "count": official_count},
+        {"category": "Behaviors", "count": behavioral_count},
+        {"category": "Searches", "count": searches},
+        {"category": "Likes", "count": likes},
+        {"category": "Comments", "count": comments},
+        {"category": "Shares", "count": shares},
+        {"category": "Logins", "count": login_count},
+    ]
+
+    return {
+        "id": "transparency_gap",
+        "title": "TRANSPARENCY GAP",
+        "icon": "🔍",
+        "prose": prose,
+        "accent": "#ff4466",
+        "stats": stats,
+        "chart": {"type": "bar", "data": chart_data},
+    }
+
+
+# ---------------------------------------------------------------------------
+# Block 8 — Location Trace
+# ---------------------------------------------------------------------------
 
 def _build_location_trace_block(ghost_profile: dict, parsed: dict) -> dict:
-    raise NotImplementedError
+    footprint = ghost_profile.get("digital_footprint", {})
+    logins: list[dict] = footprint.get("recent_logins", [])
 
+    city_counter: Counter = Counter()
+    country_counter: Counter = Counter()
+    for login in logins:
+        city = login.get("city", "") or ""
+        country = login.get("country_name", "") or ""
+        if city and city != "Unknown":
+            city_counter[city] += 1
+        if country and country != "Unknown":
+            country_counter[country] += 1
+
+    home_city = city_counter.most_common(1)[0][0] if city_counter else "Unknown"
+    country_count = len(country_counter)
+    city_count = len(city_counter)
+    top_country = list(country_counter.keys())[0] if country_counter else "one country"
+
+    sorted_logins = sorted(logins, key=lambda l: l.get("date", ""))
+    first_login = sorted_logins[0].get("date", "Unknown")[:10] if sorted_logins else "Unknown"
+
+    if country_count > 3:
+        prose = (
+            f"TikTok has tracked you across {country_count} countries and {city_count} cities. "
+            f"Your login history spans significant geographic range — {home_city} appears most "
+            f"frequently. Cross-border usage means your data may be subject to multiple regulatory "
+            f"jurisdictions simultaneously."
+        )
+    elif city_count > 5:
+        prose = (
+            f"Your TikTok activity has been logged from {city_count} distinct cities, primarily "
+            f"in {top_country}. Home base: {home_city}. First recorded login: {first_login}. "
+            f"Each login IP is a geolocation data point TikTok retains indefinitely."
+        )
+    else:
+        prose = (
+            f"Your login history is geographically concentrated — primarily {home_city}. "
+            f"First recorded login: {first_login}. TikTok has logged {len(logins)} login events "
+            f"with associated IPs. Even a single IP can reveal your home ISP, city, and "
+            f"approximate neighborhood."
+        )
+
+    stats = [
+        {"label": "Home City", "value": home_city},
+        {"label": "Countries Seen", "value": str(country_count)},
+        {"label": "Cities Seen", "value": str(city_count)},
+        {"label": "First Login", "value": first_login},
+        {"label": "Login Events", "value": str(len(logins))},
+    ]
+
+    return {
+        "id": "location_trace",
+        "title": "WHERE TIKTOK FOUND YOU",
+        "icon": "📍",
+        "prose": prose,
+        "accent": "#00e5ff",
+        "stats": stats,
+        "chart": None,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Block 9 — Closing Synthesis
+# ---------------------------------------------------------------------------
 
 def _build_closing_synthesis_block(ghost_profile: dict, parsed: dict) -> dict:
-    raise NotImplementedError
+    bn = ghost_profile.get("behavioral_nodes", {})
+    followed_pct = float(bn.get("social_graph_followed_pct", 0))
+    linger_rate = float(bn.get("linger_rate_percentage", 0))
+    tg = ghost_profile.get("transparency_gap", {})
+    official = int(tg.get("official_ad_interest_count", 0))
+    behavioral = int(tg.get("behavioral_interest_count", 0))
+    cv = ghost_profile.get("comment_voice", {})
+    style = cv.get("engagement_style_label", "Lurker")
+
+    if linger_rate > 20 and followed_pct > 50:
+        engagement = "a loyal, deep watcher whose attention is genuinely intentional"
+    elif linger_rate > 20 and followed_pct < 30:
+        engagement = "a deep but algorithmically-captured viewer — you watch closely, but the machine picks what"
+    elif linger_rate < 10 and followed_pct < 30:
+        engagement = "a passive scroller whose engagement is broad and shallow"
+    else:
+        engagement = "a balanced viewer with moderate engagement depth"
+
+    gap_ratio = official / max(behavioral, 1)
+    if gap_ratio < 0.5:
+        exposure = "significant — the official export substantially under-represents TikTok's model of you"
+    else:
+        exposure = "moderate — declared interests roughly match behavioral signals"
+
+    textual_trace = "a readable textual trace" if style != "Lurker" else "almost no public record"
+
+    prose = (
+        f"Across your usage history, you emerge as {engagement}. "
+        f"The algorithm characterizes you through behavior rather than stated preferences: "
+        f"every linger, skip, and late-night session updates a model you never consented to build. "
+        f"Your transparency gap is {exposure}. "
+        f"As a {style.lower()}, your comment behavior leaves {textual_trace}. "
+        f"This dossier is a partial reconstruction — TikTok's actual model is orders of magnitude more granular."
+    )
+
+    return {
+        "id": "closing_synthesis",
+        "title": "CLOSING SYNTHESIS",
+        "icon": "🧠",
+        "prose": prose,
+        "accent": "#e0e0e0",
+        "stats": [],
+        "chart": None,
+    }
 
 
 # ---------------------------------------------------------------------------

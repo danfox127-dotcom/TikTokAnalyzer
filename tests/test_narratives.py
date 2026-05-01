@@ -274,3 +274,83 @@ def test_comment_voice_analytical():
     ghost["comment_voice"]["avg_length_chars"] = 180.0
     block = _build_comment_voice_block(ghost, _base_parsed())
     assert "analytical" in block["prose"].lower()
+
+# ── Block 7: Transparency Gap ─────────────────────────────────────────────────
+
+def test_transparency_gap_schema():
+    from api.narratives import _build_transparency_gap_block
+    block = _build_transparency_gap_block(_base_ghost(), _base_parsed())
+    _assert_block_schema(block, "transparency_gap")
+    assert block["chart"] is not None
+    assert block["chart"]["type"] == "bar"
+
+
+def test_transparency_gap_empty_official():
+    from api.narratives import _build_transparency_gap_block
+    ghost = _base_ghost()
+    ghost["transparency_gap"]["official_ad_interest_count"] = 0
+    ghost["transparency_gap"]["behavioral_interest_count"] = 15
+    block = _build_transparency_gap_block(ghost, _base_parsed())
+    assert "empty" in block["prose"].lower() or "opt-out" in block["prose"].lower() or "no declared" in block["prose"].lower() or "privacy" in block["prose"].lower()
+
+
+def test_transparency_gap_bar_has_expected_categories():
+    from api.narratives import _build_transparency_gap_block
+    block = _build_transparency_gap_block(_base_ghost(), _base_parsed())
+    names = [d["category"] for d in block["chart"]["data"]]
+    assert "Ad Interests" in names
+    assert "Logins" in names
+
+
+# ── Block 8: Location Trace ───────────────────────────────────────────────────
+
+def test_location_trace_schema():
+    from api.narratives import _build_location_trace_block
+    block = _build_location_trace_block(_base_ghost(), _base_parsed())
+    _assert_block_schema(block, "location_trace")
+    assert block["chart"] is None
+
+
+def test_location_trace_home_city_in_stats():
+    from api.narratives import _build_location_trace_block
+    block = _build_location_trace_block(_base_ghost(), _base_parsed())
+    labels = [s["label"] for s in block["stats"]]
+    assert "Home City" in labels
+    values = {s["label"]: s["value"] for s in block["stats"]}
+    assert values["Home City"] == "Paris"
+
+
+def test_location_trace_no_logins():
+    from api.narratives import _build_location_trace_block
+    ghost = _base_ghost()
+    ghost["digital_footprint"]["recent_logins"] = []
+    block = _build_location_trace_block(ghost, _base_parsed())
+    # Should not crash; home city should be Unknown
+    values = {s["label"]: s["value"] for s in block["stats"]}
+    assert values.get("Home City") == "Unknown"
+
+
+# ── Block 9: Closing Synthesis ────────────────────────────────────────────────
+
+def test_closing_synthesis_schema():
+    from api.narratives import _build_closing_synthesis_block
+    block = _build_closing_synthesis_block(_base_ghost(), _base_parsed())
+    _assert_block_schema(block, "closing_synthesis")
+    assert block["chart"] is None
+    assert block["stats"] == []
+
+
+def test_closing_synthesis_prose_references_engagement():
+    from api.narratives import _build_closing_synthesis_block
+    block = _build_closing_synthesis_block(_base_ghost(), _base_parsed())
+    prose_lower = block["prose"].lower()
+    # Should mention something about engagement or algorithm
+    assert any(word in prose_lower for word in ["algorithm", "engagement", "linger", "watch", "behavior"])
+
+
+# ── Final count check ─────────────────────────────────────────────────────────
+
+def test_build_narrative_blocks_returns_9_after_all_implemented():
+    from api.narratives import build_narrative_blocks
+    blocks = build_narrative_blocks(_base_ghost(), _base_parsed())
+    assert len(blocks) == 9, f"Expected 9 blocks, got {len(blocks)}: {[b['id'] for b in blocks]}"
