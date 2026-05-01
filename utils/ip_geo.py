@@ -14,7 +14,7 @@ _FALLBACK = {"city": "Unknown", "country_name": "Unknown"}
 async def geolocate_ip(ip: str) -> dict:
     """
     Return {"city": str, "country_name": str} for the given IP.
-    Returns _FALLBACK on empty input, cache hit bypass not applicable here.
+    Only caches successful responses — transient failures are not cached.
     Never raises.
     """
     if not ip:
@@ -30,9 +30,9 @@ async def geolocate_ip(ip: str) -> dict:
                 "city": data.get("city") or "Unknown",
                 "country_name": data.get("country_name") or "Unknown",
             }
+            _CACHE[ip] = result
     except Exception:
         result = _FALLBACK.copy()
-    _CACHE[ip] = result
     return result
 
 

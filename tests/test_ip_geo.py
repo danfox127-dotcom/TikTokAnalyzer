@@ -2,9 +2,6 @@ import pytest
 import httpx
 import respx
 
-# Reset the module-level cache between tests
-import importlib
-
 
 @pytest.fixture(autouse=True)
 def clear_cache():
