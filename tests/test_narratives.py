@@ -1,0 +1,199 @@
+# tests/test_narratives.py
+"""Unit tests for narrative block builders."""
+import pytest
+
+
+# ── Fixtures ─────────────────────────────────────────────────────────────────
+
+def _base_ghost() -> dict:
+    """Minimal ghost_profile dict covering all blocks."""
+    return {
+        "behavioral_nodes": {
+            "peak_hour": "14",
+            "skip_rate_percentage": 30.0,
+            "linger_rate_percentage": 15.0,
+            "night_shift_ratio": 10.0,
+            "night_linger_pct": 8.0,
+            "social_graph_followed_pct": 45.0,
+            "social_graph_algorithmic_pct": 55.0,
+        },
+        "stopwatch_metrics": {
+            "total_conscious_videos": 500,
+            "deep_lingers": 50,
+            "deep_dives": 25,
+            "graveyard_skips": 150,
+            "hourly_heatmap": {str(h): (5 if h == 14 else 1) for h in range(24)},
+        },
+        "creator_entities": {
+            "vibe_cluster": [
+                {"handle": "@creator1", "linger_count": 30},
+                {"handle": "@creator2", "linger_count": 20},
+                {"handle": "@creator3", "linger_count": 10},
+            ],
+            "graveyard": [],
+        },
+        "comment_voice": {
+            "total_comments": 42,
+            "avg_length_chars": 85.0,
+            "long_comments_count": 4,
+            "long_comment_pct": 9.5,
+            "emoji_density": 0.02,
+            "engagement_style_label": "Community Participant",
+        },
+        "share_behavior": {
+            "total_shares": 15,
+            "share_methods": {"chat": 10, "instagram": 5},
+            "share_behavior_type": "Private Curator",
+            "primary_share_method": "chat",
+            "dm_share_count": 10,
+        },
+        "transparency_gap": {
+            "official_ad_interest_count": 8,
+            "behavioral_interest_count": 12,
+            "gap_interpretation": "Official interests roughly match behavioral profile.",
+        },
+        "digital_footprint": {
+            "login_count": 25,
+            "unique_ips": 3,
+            "unique_devices": ["iPhone 14", "MacBook Pro"],
+            "recent_logins": [
+                {"date": "2024-03-01", "ip": "1.2.3.4", "city": "Paris", "country_name": "France"},
+                {"date": "2024-02-01", "ip": "1.2.3.4", "city": "Paris", "country_name": "France"},
+            ],
+        },
+        "declared_signals": {
+            "following_count": 120,
+            "ad_interests": ["Technology", "Sports"],
+            "recent_searches": ["python", "cooking"],
+        },
+        "search_rhythm": {"total_searches": 200},
+        "academic_insights": {"echo_chamber_index_pct": 55.0},
+    }
+
+
+def _base_parsed() -> dict:
+    return {
+        "likes": [{}] * 80,
+        "comments": [{}] * 42,
+        "shares": [{}] * 15,
+        "following": [{}] * 120,
+    }
+
+
+# ── Block schema helper ───────────────────────────────────────────────────────
+
+def _assert_block_schema(block: dict, expected_id: str):
+    assert block["id"] == expected_id
+    assert isinstance(block["title"], str) and block["title"]
+    assert isinstance(block["icon"], str) and block["icon"]
+    assert isinstance(block["prose"], str) and len(block["prose"]) > 20
+    assert isinstance(block["accent"], str) and block["accent"].startswith("#")
+    assert isinstance(block["stats"], list)
+    # chart is either None or has type + data
+    if block["chart"] is not None:
+        assert block["chart"]["type"] in ("bar", "donut", "line")
+        assert isinstance(block["chart"]["data"], list)
+
+
+# ── Block 1: Algorithmic Identity ─────────────────────────────────────────────
+
+def test_algorithmic_identity_schema():
+    from api.narratives import _build_algorithmic_identity_block
+    block = _build_algorithmic_identity_block(_base_ghost(), _base_parsed())
+    _assert_block_schema(block, "algorithmic_identity")
+
+
+def test_algorithmic_identity_high_followed():
+    from api.narratives import _build_algorithmic_identity_block
+    ghost = _base_ghost()
+    ghost["behavioral_nodes"]["social_graph_followed_pct"] = 75.0
+    ghost["behavioral_nodes"]["social_graph_algorithmic_pct"] = 25.0
+    block = _build_algorithmic_identity_block(ghost, _base_parsed())
+    assert "follow" in block["prose"].lower() or "intentional" in block["prose"].lower()
+
+
+def test_algorithmic_identity_low_followed():
+    from api.narratives import _build_algorithmic_identity_block
+    ghost = _base_ghost()
+    ghost["behavioral_nodes"]["social_graph_followed_pct"] = 10.0
+    ghost["behavioral_nodes"]["social_graph_algorithmic_pct"] = 90.0
+    block = _build_algorithmic_identity_block(ghost, _base_parsed())
+    assert "algorithm" in block["prose"].lower()
+
+
+def test_algorithmic_identity_no_vibe_cluster():
+    from api.narratives import _build_algorithmic_identity_block
+    ghost = _base_ghost()
+    ghost["creator_entities"]["vibe_cluster"] = []
+    block = _build_algorithmic_identity_block(ghost, _base_parsed())
+    assert block["chart"] is None or block["chart"]["data"] == []
+
+
+# ── Block 2: Attention Signature ──────────────────────────────────────────────
+
+def test_attention_signature_schema():
+    from api.narratives import _build_attention_signature_block
+    block = _build_attention_signature_block(_base_ghost(), _base_parsed())
+    _assert_block_schema(block, "attention_signature")
+    assert block["chart"] is not None
+    assert block["chart"]["type"] == "bar"
+
+
+def test_attention_signature_high_linger():
+    from api.narratives import _build_attention_signature_block
+    ghost = _base_ghost()
+    ghost["behavioral_nodes"]["linger_rate_percentage"] = 35.0
+    block = _build_attention_signature_block(ghost, _base_parsed())
+    assert "deep" in block["prose"].lower() or "extended" in block["prose"].lower()
+
+
+def test_attention_signature_high_skip():
+    from api.narratives import _build_attention_signature_block
+    ghost = _base_ghost()
+    ghost["behavioral_nodes"]["skip_rate_percentage"] = 65.0
+    ghost["behavioral_nodes"]["linger_rate_percentage"] = 5.0
+    block = _build_attention_signature_block(ghost, _base_parsed())
+    assert "skip" in block["prose"].lower() or "curator" in block["prose"].lower()
+
+
+# ── Block 3: Daily Rhythm ──────────────────────────────────────────────────────
+
+def test_daily_rhythm_schema():
+    from api.narratives import _build_daily_rhythm_block
+    block = _build_daily_rhythm_block(_base_ghost(), _base_parsed())
+    _assert_block_schema(block, "dayparting")
+    assert block["chart"] is not None
+    assert block["chart"]["type"] == "bar"
+    assert len(block["chart"]["data"]) == 24
+
+
+def test_daily_rhythm_night_owl():
+    from api.narratives import _build_daily_rhythm_block
+    ghost = _base_ghost()
+    ghost["behavioral_nodes"]["night_shift_ratio"] = 40.0
+    block = _build_daily_rhythm_block(ghost, _base_parsed())
+    assert "night" in block["prose"].lower()
+
+
+def test_daily_rhythm_peak_hour_in_stats():
+    from api.narratives import _build_daily_rhythm_block
+    block = _build_daily_rhythm_block(_base_ghost(), _base_parsed())
+    labels = [s["label"] for s in block["stats"]]
+    assert "Peak Hour" in labels
+
+
+# ── build_narrative_blocks smoke test ────────────────────────────────────────
+
+def test_build_narrative_blocks_returns_9():
+    from api.narratives import build_narrative_blocks
+    blocks = build_narrative_blocks(_base_ghost(), _base_parsed())
+    assert len(blocks) == 9
+
+
+def test_build_narrative_blocks_correct_ids():
+    from api.narratives import build_narrative_blocks
+    blocks = build_narrative_blocks(_base_ghost(), _base_parsed())
+    ids = [b["id"] for b in blocks]
+    assert ids[0] == "algorithmic_identity"
+    assert ids[1] == "attention_signature"
+    assert ids[2] == "dayparting"
