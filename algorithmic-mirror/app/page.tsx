@@ -16,6 +16,7 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
+  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const analyze = async (file: File) => {
@@ -45,6 +46,7 @@ export default function Home() {
     setProfile(null);
     setView("upload");
     setError(null);
+    setUploadedFile(null);
   };
 
   const handleFile = (file: File | null | undefined) => {
@@ -53,6 +55,7 @@ export default function Home() {
       setError("Expected a TikTok .json export.");
       return;
     }
+    setUploadedFile(file);
     analyze(file);
   };
 
@@ -62,6 +65,7 @@ export default function Home() {
         profile={profile}
         onReset={handleReset}
         onViewRawForensics={() => setView("hud")}
+        sourceFile={uploadedFile ?? undefined}
       />
     );
   }
@@ -90,7 +94,7 @@ export default function Home() {
         >
           ← Back to the Story
         </button>
-        <GhostProfileHUD profile={profile} onReset={handleReset} />
+        <GhostProfileHUD profile={profile} onReset={handleReset} sourceFile={uploadedFile ?? undefined} />
       </div>
     );
   }
