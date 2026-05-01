@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import { DownloadExportButton } from '../app/components/DownloadExportButton';
 
 const mockFile = new File(['{}'], 'user_data_tiktok.json', { type: 'application/json' });
@@ -61,7 +61,9 @@ test('shows error message on fetch failure then resets to idle', async () => {
 
   expect(await screen.findByText(/export failed/i)).toBeInTheDocument();
 
-  jest.advanceTimersByTime(3000);
+  act(() => {
+    jest.advanceTimersByTime(3000);
+  });
   await waitFor(() =>
     expect(screen.getByRole('button', { name: /download for llm/i })).toBeInTheDocument()
   );
