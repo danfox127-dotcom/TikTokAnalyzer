@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion";
 import { ArrowLeft } from "lucide-react";
+import { DownloadExportButton } from "./DownloadExportButton";
 
 export interface EnrichmentTarget {
   video_id: string;
@@ -152,6 +153,7 @@ export interface GhostProfile {
 interface Props {
   profile: GhostProfile;
   onReset: () => void;
+  sourceFile?: File;
   enrichment?: EnrichmentResult | null;
   enrichmentLoading?: boolean;
   sleepWindow?: { start: number; end: number } | null;
@@ -670,7 +672,7 @@ function CreatorLedger({
 // Main
 // ---------------------------------------------------------------------------
 
-export function GhostProfileHUD({ profile, onReset }: Props) {
+export function GhostProfileHUD({ profile, onReset, sourceFile }: Props) {
   const graveyard = (profile.creator_entities.graveyard ?? []).map(g => ({ handle: g.handle, count: g.skip_count }));
   const vibe = (profile.creator_entities.vibe_cluster ?? []).map(v => ({ handle: v.handle, count: v.linger_count }));
 
@@ -724,6 +726,12 @@ export function GhostProfileHUD({ profile, onReset }: Props) {
             <ArrowLeft size={14} />
             Reset
           </motion.button>
+          {sourceFile && (
+            <DownloadExportButton
+              file={sourceFile}
+              apiUrl={process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8005"}
+            />
+          )}
         </div>
 
         {/* Grid */}

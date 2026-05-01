@@ -2,6 +2,11 @@ import React from 'react';
 import { render, screen } from '@testing-library/react';
 import { GhostProfileHUD } from '../app/components/GhostProfileHUD';
 
+// Mock DownloadExportButton to avoid testing it here
+jest.mock('../app/components/DownloadExportButton', () => ({
+  DownloadExportButton: () => React.createElement(React.Fragment),
+}));
+
 const minimalProfile: any = {
   status: 'success',
   stopwatch_metrics: {
@@ -10,8 +15,10 @@ const minimalProfile: any = {
     graveyard_skips: 0,
     sandbox_views: 0,
     deep_lingers: 1,
+    deep_dives: 0,
     total_videos: 1,
     hourly_heatmap: {},
+    sleep_scrubbed: 0,
   },
   behavioral_nodes: {
     peak_hour: '12',
@@ -24,6 +31,13 @@ const minimalProfile: any = {
     social_graph_followed_pct: 0,
   },
   creator_entities: { vibe_cluster: [], graveyard: [] },
+  academic_insights: {
+    explicit_vs_implicit_ratio: 1,
+    explicit_actions_count: 0,
+    implicit_linger_count: 0,
+    echo_chamber_index_pct: 0,
+    top_creator_handles: [],
+  },
   declared_signals: {},
 };
 

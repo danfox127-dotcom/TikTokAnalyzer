@@ -19,5 +19,6 @@ jest.mock('lucide-react', () => {
     RotateCcw: createIcon('RotateCcw'),
     Scan: createIcon('Scan'),
     Eye: createIcon('Eye'),
+    ArrowLeft: createIcon('ArrowLeft'),
   };
 });
