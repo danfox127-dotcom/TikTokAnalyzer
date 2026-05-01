@@ -197,3 +197,80 @@ def test_build_narrative_blocks_correct_ids():
     assert ids[0] == "algorithmic_identity"
     assert ids[1] == "attention_signature"
     assert ids[2] == "dayparting"
+
+# ── Block 4: Social Graph ─────────────────────────────────────────────────────
+
+def test_social_graph_schema():
+    from api.narratives import _build_social_graph_block
+    block = _build_social_graph_block(_base_ghost(), _base_parsed())
+    _assert_block_schema(block, "social_graph")
+    assert block["chart"] is not None
+    assert block["chart"]["type"] == "bar"
+
+
+def test_social_graph_high_followed():
+    from api.narratives import _build_social_graph_block
+    ghost = _base_ghost()
+    ghost["behavioral_nodes"]["social_graph_followed_pct"] = 80.0
+    block = _build_social_graph_block(ghost, _base_parsed())
+    assert "follow" in block["prose"].lower()
+
+
+def test_social_graph_low_followed():
+    from api.narratives import _build_social_graph_block
+    ghost = _base_ghost()
+    ghost["behavioral_nodes"]["social_graph_followed_pct"] = 10.0
+    block = _build_social_graph_block(ghost, _base_parsed())
+    assert "algorithm" in block["prose"].lower()
+
+
+# ── Block 5: Share Behavior ───────────────────────────────────────────────────
+
+def test_share_behavior_schema():
+    from api.narratives import _build_share_behavior_block
+    block = _build_share_behavior_block(_base_ghost(), _base_parsed())
+    _assert_block_schema(block, "share_behavior")
+
+
+def test_share_behavior_no_shares():
+    from api.narratives import _build_share_behavior_block
+    ghost = _base_ghost()
+    ghost["share_behavior"]["total_shares"] = 0
+    ghost["share_behavior"]["share_methods"] = {}
+    block = _build_share_behavior_block(ghost, _base_parsed())
+    assert block["chart"] is None
+    assert "silent" in block["prose"].lower() or "no content" in block["prose"].lower() or "no share" in block["prose"].lower() or "no comm" in block["prose"].lower()
+
+
+def test_share_behavior_private_curator():
+    from api.narratives import _build_share_behavior_block
+    ghost = _base_ghost()
+    ghost["share_behavior"]["share_behavior_type"] = "Private Curator"
+    block = _build_share_behavior_block(ghost, _base_parsed())
+    assert "private" in block["prose"].lower() or "curator" in block["prose"].lower()
+
+
+# ── Block 6: Comment Voice ────────────────────────────────────────────────────
+
+def test_comment_voice_schema():
+    from api.narratives import _build_comment_voice_block
+    block = _build_comment_voice_block(_base_ghost(), _base_parsed())
+    _assert_block_schema(block, "comment_voice")
+    assert block["chart"] is None
+
+
+def test_comment_voice_no_comments():
+    from api.narratives import _build_comment_voice_block
+    ghost = _base_ghost()
+    ghost["comment_voice"]["total_comments"] = 0
+    block = _build_comment_voice_block(ghost, _base_parsed())
+    assert "silent" in block["prose"].lower() or "no comment" in block["prose"].lower() or "lurk" in block["prose"].lower()
+
+
+def test_comment_voice_analytical():
+    from api.narratives import _build_comment_voice_block
+    ghost = _base_ghost()
+    ghost["comment_voice"]["engagement_style_label"] = "Analytical Commenter"
+    ghost["comment_voice"]["avg_length_chars"] = 180.0
+    block = _build_comment_voice_block(ghost, _base_parsed())
+    assert "analytical" in block["prose"].lower()
