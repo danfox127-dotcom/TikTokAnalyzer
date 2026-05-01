@@ -15,6 +15,7 @@ import { motion } from "framer-motion";
 import { ArrowDown, FileText, Quote } from "lucide-react";
 import type { GhostProfile } from "./GhostProfileHUD";
 import { EvidencePanel } from "./EvidencePanel";
+import { DownloadExportButton } from "./DownloadExportButton";
 
 // ---------------------------------------------------------------------------
 // Design tokens — warm paper, ink black, quiet accent
@@ -294,9 +295,10 @@ interface Props {
   profile: GhostProfile;
   onReset: () => void;
   onViewRawForensics: () => void;
+  sourceFile?: File;
 }
 
-export function TheGlassHouse({ profile, onReset, onViewRawForensics }: Props) {
+export function TheGlassHouse({ profile, onReset, onViewRawForensics, sourceFile }: Props) {
   const [evidence, setEvidence] = useState<ClaimMeta | null>(null);
   const openEvidence = useCallback((m: ClaimMeta) => setEvidence(m), []);
   const closeEvidence = useCallback(() => setEvidence(null), []);
@@ -416,6 +418,12 @@ export function TheGlassHouse({ profile, onReset, onViewRawForensics }: Props) {
             >
               ← Upload different export
             </button>
+            {sourceFile && (
+              <DownloadExportButton
+                file={sourceFile}
+                apiUrl={process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8005"}
+              />
+            )}
           </header>
 
           {/* ======================= PROLOGUE ======================= */}
