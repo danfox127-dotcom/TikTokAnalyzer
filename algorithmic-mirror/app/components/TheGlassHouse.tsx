@@ -296,9 +296,10 @@ interface Props {
   onReset: () => void;
   onViewRawForensics: () => void;
   sourceFile?: File;
+  onOpenReport?: () => void;
 }
 
-export function TheGlassHouse({ profile, onReset, onViewRawForensics, sourceFile }: Props) {
+export function TheGlassHouse({ profile, onReset, onViewRawForensics, sourceFile, onOpenReport }: Props) {
   const [evidence, setEvidence] = useState<ClaimMeta | null>(null);
   const openEvidence = useCallback((m: ClaimMeta) => setEvidence(m), []);
   const closeEvidence = useCallback(() => setEvidence(null), []);
@@ -423,6 +424,24 @@ export function TheGlassHouse({ profile, onReset, onViewRawForensics, sourceFile
                 file={sourceFile}
                 apiUrl={process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8005"}
               />
+            )}
+            {onOpenReport && (
+              <button
+                onClick={onOpenReport}
+                style={{
+                  fontFamily: "var(--font-mono, ui-monospace, Menlo, monospace)",
+                  fontSize: 10,
+                  letterSpacing: "0.28em",
+                  textTransform: "uppercase",
+                  color: "#1a1610",
+                  background: "transparent",
+                  border: "1px solid rgba(26,22,16,0.4)",
+                  padding: "6px 14px",
+                  cursor: "pointer",
+                }}
+              >
+                DOSSIER →
+              </button>
             )}
           </header>
 

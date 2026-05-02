@@ -5,10 +5,12 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Upload, Loader2 } from "lucide-react";
 import { GhostProfileHUD, GhostProfile } from "./components/GhostProfileHUD";
 import { TheGlassHouse } from "./components/TheGlassHouse";
+import { NarrativeReportView } from "./components/NarrativeReportView";
+import type { NarrativeBlock } from "./types/narrative";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8005";
 
-type View = "upload" | "narrative" | "hud";
+type View = "upload" | "narrative" | "hud" | "report";
 
 export default function Home() {
   const [profile, setProfile] = useState<GhostProfile | null>(null);
@@ -17,6 +19,7 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
+  const [narrativeBlocks, setNarrativeBlocks] = useState<NarrativeBlock[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const analyze = async (file: File) => {
@@ -30,8 +33,9 @@ export default function Home() {
         const j = await res.json().catch(() => ({ detail: `HTTP ${res.status}` }));
         throw new Error(j.detail ?? `HTTP ${res.status}`);
       }
-      const data: GhostProfile = await res.json();
-      setProfile(data);
+      const raw = await res.json();
+      setProfile(raw as GhostProfile);
+      setNarrativeBlocks((raw as { narrative_blocks?: NarrativeBlock[] }).narrative_blocks ?? []);
       setView("narrative");
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Unknown error";
@@ -47,6 +51,7 @@ export default function Home() {
     setView("upload");
     setError(null);
     setUploadedFile(null);
+    setNarrativeBlocks([]);
   };
 
   const handleFile = (file: File | null | undefined) => {
@@ -59,6 +64,15 @@ export default function Home() {
     analyze(file);
   };
 
+  if (profile && view === "report") {
+    return (
+      <NarrativeReportView
+        narrativeBlocks={narrativeBlocks}
+        onBack={() => setView("narrative")}
+      />
+    );
+  }
+
   if (profile && view === "narrative") {
     return (
       <TheGlassHouse
@@ -66,6 +80,7 @@ export default function Home() {
         onReset={handleReset}
         onViewRawForensics={() => setView("hud")}
         sourceFile={uploadedFile ?? undefined}
+        onOpenReport={() => setView("report")}
       />
     );
   }
