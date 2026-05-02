@@ -151,8 +151,8 @@ export function LLMAnalysisView({ file, apiUrl, onBack }: Props) {
           {(["claude", "gemini-pro", "gemini-flash"] as const).map(p => {
             let label = p.replace("-", " ").toUpperCase();
             if (p === "claude") label = "CLAUDE 4.5";
-            if (p === "gemini-pro") label = "GEMINI 3.1";
-            if (p === "gemini-flash") label = "GEMINI 3 FLASH";
+            if (p === "gemini-pro") label = "GEMINI 3.1 PRO";
+            if (p === "gemini-flash") label = "GEMINI 3.1 FLASH";
             
             return (
               <button

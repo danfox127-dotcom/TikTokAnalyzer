@@ -17,8 +17,8 @@ describe('LLMAnalysisView', () => {
     render(<LLMAnalysisView file={mockFile} apiUrl={apiUrl} onBack={mockOnBack} />);
     expect(screen.getByText('// AI ANALYSIS ENGINE')).toBeInTheDocument();
     expect(screen.getByText('CLAUDE 4.5')).toBeInTheDocument();
-    expect(screen.getByText('GEMINI 3.1')).toBeInTheDocument();
-    expect(screen.getByText('GEMINI 3 FLASH')).toBeInTheDocument();
+    expect(screen.getByText('GEMINI 3.1 PRO')).toBeInTheDocument();
+    expect(screen.getByText('GEMINI 3.1 FLASH')).toBeInTheDocument();
   });
 
   test('back button calls onBack', () => {

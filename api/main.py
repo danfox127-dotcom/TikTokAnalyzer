@@ -251,7 +251,7 @@ async def analyze_llm(
     elif provider == "gemini-pro":
         return StreamingResponse(stream_gemini("gemini-3.1-pro"), media_type="text/event-stream")
     else: # gemini-flash
-        return StreamingResponse(stream_gemini("gemini-3-flash"), media_type="text/event-stream")
+        return StreamingResponse(stream_gemini("gemini-3.1-flash"), media_type="text/event-stream")
 
 
 class EnrichRequest(BaseModel):
