@@ -225,7 +225,7 @@ async def analyze_llm(
             async with client.messages.stream(
                 max_tokens=2048,
                 messages=[{"role": "user", "content": prompt}],
-                model="claude-3-5-sonnet-latest", # Updated to a current model
+                model="claude-4-5-opus-latest",
             ) as stream:
                 async for text in stream.text_stream:
                     yield f"data: {text}\n\n"
@@ -249,9 +249,9 @@ async def analyze_llm(
     if provider == "claude":
         return StreamingResponse(stream_claude(), media_type="text/event-stream")
     elif provider == "gemini-pro":
-        return StreamingResponse(stream_gemini("gemini-1.5-pro"), media_type="text/event-stream")
+        return StreamingResponse(stream_gemini("gemini-3.1-pro"), media_type="text/event-stream")
     else: # gemini-flash
-        return StreamingResponse(stream_gemini("gemini-1.5-flash"), media_type="text/event-stream")
+        return StreamingResponse(stream_gemini("gemini-3-flash"), media_type="text/event-stream")
 
 
 class EnrichRequest(BaseModel):

@@ -148,26 +148,33 @@ export function LLMAnalysisView({ file, apiUrl, onBack }: Props) {
 
         {/* Provider Selector */}
         <div style={{ display: "flex", gap: 10, marginBottom: 24 }}>
-          {(["claude", "gemini-pro", "gemini-flash"] as const).map(p => (
-            <button
-              key={p}
-              onClick={() => setProvider(p)}
-              style={{
-                flex: 1,
-                padding: "12px",
-                background: provider === p ? "#111" : "transparent",
-                border: `1px solid ${provider === p ? "#4db8ff" : "#222"}`,
-                color: provider === p ? "#4db8ff" : "#666",
-                fontSize: 10,
-                fontWeight: 600,
-                letterSpacing: "0.1em",
-                cursor: "pointer",
-                textTransform: "uppercase",
-              }}
-            >
-              {p.replace("-", " ").toUpperCase()}
-            </button>
-          ))}
+          {(["claude", "gemini-pro", "gemini-flash"] as const).map(p => {
+            let label = p.replace("-", " ").toUpperCase();
+            if (p === "claude") label = "CLAUDE 4.5";
+            if (p === "gemini-pro") label = "GEMINI 3.1";
+            if (p === "gemini-flash") label = "GEMINI 3 FLASH";
+            
+            return (
+              <button
+                key={p}
+                onClick={() => setProvider(p)}
+                style={{
+                  flex: 1,
+                  padding: "12px",
+                  background: provider === p ? "#111" : "transparent",
+                  border: `1px solid ${provider === p ? "#4db8ff" : "#222"}`,
+                  color: provider === p ? "#4db8ff" : "#666",
+                  fontSize: 10,
+                  fontWeight: 600,
+                  letterSpacing: "0.1em",
+                  cursor: "pointer",
+                  textTransform: "uppercase",
+                }}
+              >
+                {label}
+              </button>
+            );
+          })}
         </div>
 
         {/* API Key Input */}

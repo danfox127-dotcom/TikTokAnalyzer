@@ -16,9 +16,9 @@ describe('LLMAnalysisView', () => {
   test('renders header and provider buttons', () => {
     render(<LLMAnalysisView file={mockFile} apiUrl={apiUrl} onBack={mockOnBack} />);
     expect(screen.getByText('// AI ANALYSIS ENGINE')).toBeInTheDocument();
-    expect(screen.getByText('CLAUDE')).toBeInTheDocument();
-    expect(screen.getByText('GEMINI PRO')).toBeInTheDocument();
-    expect(screen.getByText('GEMINI FLASH')).toBeInTheDocument();
+    expect(screen.getByText('CLAUDE 4.5')).toBeInTheDocument();
+    expect(screen.getByText('GEMINI 3.1')).toBeInTheDocument();
+    expect(screen.getByText('GEMINI 3 FLASH')).toBeInTheDocument();
   });
 
   test('back button calls onBack', () => {
@@ -34,7 +34,7 @@ describe('LLMAnalysisView', () => {
     const input = screen.getByPlaceholderText('AIza...');
     expect(input).toBeInTheDocument();
     
-    fireEvent.click(screen.getByText('CLAUDE'));
+    fireEvent.click(screen.getByText('CLAUDE 4.5'));
     expect(screen.getByPlaceholderText('sk-ant-...')).toBeInTheDocument();
   });
 

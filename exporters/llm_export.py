@@ -28,7 +28,9 @@ _INSTRUCTIONS_FOR_LLM = (
     "treat them as an intelligent adult working through something real.\n\n"
     "If comment samples are included, use them to characterise HOW the user "
     "engages — their voice, their analytical style, their cultural references — "
-    "and note where this diverges from the algorithmic profile."
+    "and note where this diverges from the algorithmic profile.\n\n"
+    "FINAL SUMMARY: End your response with a line labeled 'CHARACTERIZATION:' "
+    "containing a 3-5 word summary of the user's digital archetype."
 )
 
 _PII_KEYS = frozenset({
