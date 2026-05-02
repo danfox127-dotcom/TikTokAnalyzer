@@ -98,7 +98,9 @@ export interface GhostProfile {
     following_usernames: string[];
   };
   deep_dives?: { count: number; videos: EnrichmentTarget[] };
-  declared_signals?: {
+  narrative_blocks?: import("../types/narrative").NarrativeBlock[];
+  _evidence?: {
+
     settings_interests: string[];
     ad_interests: string[];
     recent_searches: string[];
@@ -247,7 +249,7 @@ function SectionTitle({ accent, children }: { accent: string; children: React.Re
         marginBottom: 20,
       }}
     >
-      <span style={{ color: INK_GHOST, marginRight: 8 }}>//</span>
+      <span style={{ color: INK_GHOST, marginRight: 8 }}>{"//"}</span>
       {children}
     </h3>
   );
@@ -275,7 +277,7 @@ function Copy({ children, dim = false }: { children: React.ReactNode; dim?: bool
 // ---------------------------------------------------------------------------
 
 function StopwatchFunnel({ profile }: { profile: GhostProfile }) {
-  const sw = profile.stopwatch_metrics;
+  const sw = profile.stopwatch_metrics ?? { total_conscious_videos: 0, graveyard_skips: 0, sandbox_views: 0, deep_lingers: 0, deep_dives: 0, total_videos: 0, sleep_scrubbed: 0, hourly_heatmap: {} };
   const total = Math.max(sw.total_conscious_videos, 1);
   const buckets = [
     { key: "GRAVEYARD", sub: "<3s skips", value: sw.graveyard_skips, color: GRAVEYARD_ACCENT },
@@ -451,7 +453,7 @@ function EchoChamber({ profile }: { profile: GhostProfile }) {
 // ---------------------------------------------------------------------------
 
 function PersonalizationTrap({ profile }: { profile: GhostProfile }) {
-  const pct = profile.night_shift?.percentage ?? profile.behavioral_nodes.night_shift_ratio;
+  const pct = profile.night_shift?.percentage ?? profile.behavioral_nodes?.night_shift_ratio ?? 0;
   const count = profile.night_shift?.count ?? 0;
   const window = profile.night_shift?.window ?? "23:00 – 04:00";
 
@@ -629,7 +631,7 @@ function CreatorLedger({
 
       {entries.length === 0 ? (
         <div style={{ fontFamily: "var(--font-mono, monospace)", fontSize: 11, color: INK_GHOST }}>
-          // NO SIGNAL
+          {"//"} NO SIGNAL
         </div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -660,7 +662,7 @@ function CreatorLedger({
             );
           })}
           <div style={{ marginTop: 4, fontFamily: "var(--font-mono, monospace)", fontSize: 9, color: INK_GHOST, letterSpacing: "0.15em", textTransform: "uppercase" }}>
-            // top {Math.min(entries.length, 10)} · sorted by {countKey}
+            {"//"} top {Math.min(entries.length, 10)} · sorted by {countKey}
           </div>
         </div>
       )}
@@ -673,8 +675,8 @@ function CreatorLedger({
 // ---------------------------------------------------------------------------
 
 export function GhostProfileHUD({ profile, onReset, sourceFile }: Props) {
-  const graveyard = (profile.creator_entities.graveyard ?? []).map(g => ({ handle: g.handle, count: g.skip_count }));
-  const vibe = (profile.creator_entities.vibe_cluster ?? []).map(v => ({ handle: v.handle, count: v.linger_count }));
+  const graveyard = (profile.creator_entities?.graveyard ?? []).map(g => ({ handle: g.handle, count: g.skip_count }));
+  const vibe = (profile.creator_entities?.vibe_cluster ?? []).map(v => ({ handle: v.handle, count: v.linger_count }));
 
   return (
     <div style={{ background: BG, minHeight: "100vh", color: INK, fontFamily: "var(--font-mono, monospace)" }}>
@@ -772,7 +774,7 @@ export function GhostProfileHUD({ profile, onReset, sourceFile }: Props) {
 
         {/* Footer */}
         <div style={{ marginTop: 48, paddingTop: 24, borderTop: `1px solid ${LINE}`, display: "flex", justifyContent: "space-between", fontSize: 10, color: INK_GHOST, letterSpacing: "0.2em", textTransform: "uppercase" }}>
-          <span>// END DOSSIER</span>
+          <span>{"//"} END DOSSIER</span>
           <span>RETENTION-DRIVEN · NOT ACTION-DRIVEN</span>
         </div>
       </div>
