@@ -14,11 +14,7 @@ jest.mock('framer-motion', () => {
 jest.mock('lucide-react', () => {
   const React = require('react');
   const createIcon = (name) => (props) => React.createElement('svg', { ...props, 'data-icon': name });
-  return {
-    ShieldOff: createIcon('ShieldOff'),
-    RotateCcw: createIcon('RotateCcw'),
-    Scan: createIcon('Scan'),
-    Eye: createIcon('Eye'),
-    ArrowLeft: createIcon('ArrowLeft'),
-  };
+  return new Proxy({}, {
+    get: (target, prop) => createIcon(prop)
+  });
 });

@@ -297,9 +297,10 @@ interface Props {
   onViewRawForensics: () => void;
   sourceFile?: File;
   onOpenReport?: () => void;
+  onAnalyzeWithAI?: () => void;
 }
 
-export function TheGlassHouse({ profile, onReset, onViewRawForensics, sourceFile, onOpenReport }: Props) {
+export function TheGlassHouse({ profile, onReset, onViewRawForensics, sourceFile, onOpenReport, onAnalyzeWithAI }: Props) {
   const [evidence, setEvidence] = useState<ClaimMeta | null>(null);
   const openEvidence = useCallback((m: ClaimMeta) => setEvidence(m), []);
   const closeEvidence = useCallback(() => setEvidence(null), []);
@@ -441,6 +442,24 @@ export function TheGlassHouse({ profile, onReset, onViewRawForensics, sourceFile
                 }}
               >
                 DOSSIER →
+              </button>
+            )}
+            {onAnalyzeWithAI && (
+              <button
+                onClick={onAnalyzeWithAI}
+                style={{
+                  fontFamily: "var(--font-mono, ui-monospace, Menlo, monospace)",
+                  fontSize: 10,
+                  letterSpacing: "0.28em",
+                  textTransform: "uppercase",
+                  color: "#8b2323",
+                  background: "transparent",
+                  border: "1px solid rgba(139,35,35,0.4)",
+                  padding: "6px 14px",
+                  cursor: "pointer",
+                }}
+              >
+                Analyze with AI →
               </button>
             )}
           </header>

@@ -6,11 +6,12 @@ import { Upload, Loader2 } from "lucide-react";
 import { GhostProfileHUD, GhostProfile } from "./components/GhostProfileHUD";
 import { TheGlassHouse } from "./components/TheGlassHouse";
 import { NarrativeReportView } from "./components/NarrativeReportView";
+import { LLMAnalysisView } from "./components/LLMAnalysisView";
 import type { NarrativeBlock } from "./types/narrative";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8005";
 
-type View = "upload" | "narrative" | "hud" | "report";
+type View = "upload" | "narrative" | "hud" | "report" | "llm";
 
 export default function Home() {
   const [profile, setProfile] = useState<GhostProfile | null>(null);
@@ -73,6 +74,16 @@ export default function Home() {
     );
   }
 
+  if (profile && view === "llm") {
+    return (
+      <LLMAnalysisView
+        file={uploadedFile!}
+        apiUrl={API_URL}
+        onBack={() => setView("narrative")}
+      />
+    );
+  }
+
   if (profile && view === "narrative") {
     return (
       <TheGlassHouse
@@ -81,6 +92,7 @@ export default function Home() {
         onViewRawForensics={() => setView("hud")}
         sourceFile={uploadedFile ?? undefined}
         onOpenReport={() => setView("report")}
+        onAnalyzeWithAI={() => setView("llm")}
       />
     );
   }

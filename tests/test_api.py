@@ -130,3 +130,74 @@ def test_analyze_returns_narrative_blocks():
     assert "prose" in b
     assert "stats" in b
     assert "accent" in b
+
+@patch("api.main.anthropic.AsyncAnthropic")
+def test_analyze_llm_claude(mock_anthropic):
+    """Verify Claude streaming response."""
+    # Mock the streaming context manager and the text_stream
+    class MockStream:
+        async def __aenter__(self): return self
+        async def __aexit__(self, *args): pass
+        @property
+        def text_stream(self):
+            async def gen():
+                yield "Hello"
+                yield " world"
+            return gen()
+
+    mock_client = mock_anthropic.return_value
+    mock_client.messages.stream.return_value = MockStream()
+
+    fake_export = {
+        "Activity": {
+            "Video Browsing History": {"VideoList": []}
+        }
+    }
+    
+    response = client.post(
+        "/api/analyze/llm?provider=claude&api_key=test-key",
+        files={"file": ("user_data_tiktok.json", json.dumps(fake_export).encode("utf-8"))}
+    )
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/event-stream")
+    
+    # Read chunks from stream
+    chunks = [chunk for chunk in response.iter_lines()]
+    assert "data: Hello" in chunks
+    assert "data:  world" in chunks
+    assert "data: [DONE]" in chunks
+
+@patch("api.main.genai.GenerativeModel")
+def test_analyze_llm_gemini(mock_gemini_model):
+    """Verify Gemini streaming response."""
+    # Mock the chunk objects
+    class MockChunk:
+        def __init__(self, text): self.text = text
+
+    async def mock_gen():
+        yield MockChunk("Gemini")
+        yield MockChunk(" response")
+
+    async def mock_call(*args, **kwargs):
+        return mock_gen()
+
+    mock_model = mock_gemini_model.return_value
+    mock_model.generate_content_async.side_effect = mock_call
+
+    fake_export = {
+        "Activity": {
+            "Video Browsing History": {"VideoList": []}
+        }
+    }
+    
+    response = client.post(
+        "/api/analyze/llm?provider=gemini-pro&api_key=test-key",
+        files={"file": ("user_data_tiktok.json", json.dumps(fake_export).encode("utf-8"))}
+    )
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/event-stream")
+    
+    chunks = [chunk for chunk in response.iter_lines()]
+    assert "data: Gemini" in chunks
+    assert "data:  response" in chunks
+    assert "data: [DONE]" in chunks

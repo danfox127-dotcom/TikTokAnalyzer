@@ -10,12 +10,16 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from fastapi import FastAPI, UploadFile, File, HTTPException, Query
 from typing import Optional
-from fastapi.responses import PlainTextResponse, Response
+from fastapi.responses import PlainTextResponse, Response, StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 import json
 from datetime import date as _date
+import asyncio
+
+import anthropic
+import google.generativeai as genai
 
 from parsers.tiktok import parse_tiktok_export_from_bytes
 from ghost_profile import build_ghost_profile
@@ -178,6 +182,76 @@ async def export_llm(file: UploadFile = File(...)):
         media_type="application/json",
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
+
+
+@app.post("/api/analyze/llm")
+async def analyze_llm(
+    file: UploadFile = File(...),
+    provider: str = Query(..., pattern="^(claude|gemini-pro|gemini-flash)$"),
+    api_key: str = Query(...),
+):
+    """
+    Stream an LLM analysis of the TikTok behavioral profile using a user-provided API key.
+    The key is used only for this request and never logged or stored.
+    """
+    if not file.filename or not file.filename.endswith(".json"):
+        raise HTTPException(status_code=400, detail="File must be a .json export.")
+
+    raw = await file.read()
+    if len(raw) == 0:
+        raise HTTPException(status_code=400, detail="Uploaded file is empty.")
+
+    try:
+        parsed = parse_tiktok_export_from_bytes(raw)
+    except Exception as exc:
+        raise HTTPException(status_code=422, detail=f"Failed to parse export: {exc}")
+
+    ghost = build_ghost_profile(parsed)
+    payload = generate_llm_export(parsed, ghost)
+    
+    # Construct the prompt
+    meta = payload["_meta"]
+    profile_json = json.dumps(payload, indent=2, ensure_ascii=False)
+    
+    prompt = (
+        f"{meta['instructions_for_llm']}\n\n"
+        f"DATA_EXPORT_JSON:\n{profile_json}\n\n"
+        f"{meta['suggested_opening']}"
+    )
+
+    async def stream_claude():
+        try:
+            client = anthropic.AsyncAnthropic(api_key=api_key)
+            async with client.messages.stream(
+                max_tokens=2048,
+                messages=[{"role": "user", "content": prompt}],
+                model="claude-3-5-sonnet-latest", # Updated to a current model
+            ) as stream:
+                async for text in stream.text_stream:
+                    yield f"data: {text}\n\n"
+            yield "data: [DONE]\n\n"
+        except Exception as e:
+            yield f"data: Error: {str(e)}\n\n"
+
+    async def stream_gemini(model_name: str):
+        try:
+            genai.configure(api_key=api_key)
+            model = genai.GenerativeModel(model_name)
+            # generate_content_async with stream=True
+            response = await model.generate_content_async(prompt, stream=True)
+            async for chunk in response:
+                if chunk.text:
+                    yield f"data: {chunk.text}\n\n"
+            yield "data: [DONE]\n\n"
+        except Exception as e:
+            yield f"data: Error: {str(e)}\n\n"
+
+    if provider == "claude":
+        return StreamingResponse(stream_claude(), media_type="text/event-stream")
+    elif provider == "gemini-pro":
+        return StreamingResponse(stream_gemini("gemini-1.5-pro"), media_type="text/event-stream")
+    else: # gemini-flash
+        return StreamingResponse(stream_gemini("gemini-1.5-flash"), media_type="text/event-stream")
 
 
 class EnrichRequest(BaseModel):
