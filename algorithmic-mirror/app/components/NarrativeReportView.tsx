@@ -12,6 +12,7 @@ interface Props {
 export function NarrativeReportView({ narrativeBlocks, onBack }: Props) {
   return (
     <div
+      className="noise"
       style={{
         minHeight: "100vh",
         background: "#0a0a0a",

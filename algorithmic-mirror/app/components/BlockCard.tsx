@@ -1,7 +1,8 @@
 // algorithmic-mirror/app/components/BlockCard.tsx
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState, useEffect } from "react";
+import { motion } from "framer-motion";
 import {
   BarChart,
   Bar,
@@ -25,6 +26,46 @@ const CHART_PALETTE = [
   "#ff4466",
   "#00e5ff",
 ];
+
+function DecodingText({ text, delay = 0 }: { text: string; delay?: number }) {
+  const [displayedText, setDisplayedText] = useState("");
+  const chars = "!<>-_\\/[]{}—=+*^?#________";
+
+  useEffect(() => {
+    // Skip animation in tests
+    if (process.env.NODE_ENV === "test") {
+      setDisplayedText(text);
+      return;
+    }
+
+    let iteration = 0;
+    const timeout = setTimeout(() => {
+      const interval = setInterval(() => {
+        setDisplayedText(
+          text
+            .split("")
+            .map((char, index) => {
+              if (index < iteration) {
+                return text[index];
+              }
+              return chars[Math.floor(Math.random() * chars.length)];
+            })
+            .join("")
+        );
+
+        if (iteration >= text.length) {
+          clearInterval(interval);
+        }
+
+        iteration += 1 / 3;
+      }, 30);
+      return () => clearInterval(interval);
+    }, delay * 1000);
+    return () => clearTimeout(timeout);
+  }, [text, delay]);
+
+  return <>{displayedText}</>;
+}
 
 function BlockBarChart({ data }: { data: Record<string, unknown>[] }) {
   if (!data.length) return null;
@@ -103,7 +144,11 @@ export function BlockCard({ block }: BlockCardProps) {
   }, [block.chart]);
 
   return (
-    <div
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: "-10% 0px" }}
+      transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
       style={{
         background: "#111",
         border: "1px solid #1e1e1e",
@@ -135,18 +180,22 @@ export function BlockCard({ block }: BlockCardProps) {
         </span>
       </div>
 
-      {/* Prose */}
-      <p
+      {/* Prose with subtle fade-in and decoding effect */}
+      <motion.p
+        initial={{ opacity: 0 }}
+        whileInView={{ opacity: 1 }}
+        transition={{ duration: 0.8, delay: 0.2 }}
         style={{
           fontSize: 13,
           lineHeight: 1.8,
           color: "#bbb",
           marginBottom: 16,
           maxWidth: 640,
+          minHeight: "3.6em", // Prevent layout shift during decoding
         }}
       >
-        {block.prose}
-      </p>
+        <DecodingText text={block.prose} delay={0.4} />
+      </motion.p>
 
       {/* Stats */}
       {block.stats.length > 0 && (
@@ -224,6 +273,6 @@ export function BlockCard({ block }: BlockCardProps) {
           {block.provenance}
         </span>
       </footer>
-    </div>
+    </motion.div>
   );
 }

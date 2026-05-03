@@ -159,6 +159,31 @@ function Claim({
   );
 }
 
+function Marginalia({ children, side = "left", top = 0 }: { children: React.ReactNode; side?: "left" | "right"; top?: number | string }) {
+  return (
+    <div
+      style={{
+        position: "absolute",
+        top: top,
+        [side]: "-160px",
+        width: "130px",
+        fontFamily: "var(--font-mono, ui-monospace, Menlo, monospace)",
+        fontSize: 9,
+        lineHeight: 1.4,
+        color: INK_GHOST,
+        letterSpacing: "0.05em",
+        textAlign: side === "left" ? "right" : "left",
+        opacity: 0.6,
+        pointerEvents: "none",
+        borderTop: `1px solid ${RULE}`,
+        paddingTop: 8,
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
 // ---------------------------------------------------------------------------
 // Layout primitives
 // ---------------------------------------------------------------------------
@@ -469,7 +494,19 @@ export function TheGlassHouse({ profile, onReset, onViewRawForensics, sourceFile
           </header>
 
           {/* ======================= PROLOGUE ======================= */}
-          <section style={{ marginBottom: 40 }}>
+          <section style={{ marginBottom: 40, position: "relative" }}>
+            <Marginalia side="left" top="40px">
+              DATASET.CONSCIOUS_VIDEOS
+              <br />
+              COUNT: {formatInt(profile.stopwatch_metrics.total_conscious_videos)}
+            </Marginalia>
+
+            <Marginalia side="right" top="120px">
+              TEMPORAL.PEAK_HOUR
+              <br />
+              {profile.behavioral_nodes.peak_hour}
+            </Marginalia>
+
             <motion.div
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
@@ -770,11 +807,24 @@ export function TheGlassHouse({ profile, onReset, onViewRawForensics, sourceFile
           </div>
 
           {/* ======================= CHAPTER 1 ======================= */}
-          <Chapter
-            number="I"
-            kicker="The Digital Footprint"
-            title="They Watched You Log In."
-          >
+          <section style={{ position: "relative" }}>
+            <Marginalia side="left" top={100}>
+              SESSION.LEDGER
+              <br />
+              EVENTS: {formatInt(footprint?.login_count ?? 0)}
+            </Marginalia>
+
+            <Marginalia side="right" top={300}>
+              NETWORK.DIVERSITY
+              <br />
+              UNIQUE_IPS: {formatInt(footprint?.unique_ips ?? 0)}
+            </Marginalia>
+
+            <Chapter
+              number="I"
+              kicker="The Digital Footprint"
+              title="They Watched You Log In."
+            >
             <Body>
               You are not just what you scroll. You are a device model, a
               carrier, an IP string, and a date. Every time your phone
@@ -938,13 +988,27 @@ export function TheGlassHouse({ profile, onReset, onViewRawForensics, sourceFile
               tracked.
             </PullQuote>
           </Chapter>
+          </section>
 
           {/* ======================= CHAPTER 2 ======================= */}
-          <Chapter
-            number="II"
-            kicker="The Whispered Interests"
-            title="What You Told It, vs. What It Learned."
-          >
+          <section style={{ position: "relative" }}>
+            <Marginalia side="left" top={80}>
+              INTENT.ACTIVE
+              <br />
+              SEARCH_QUERIES: {formatInt(totalSearches)}
+            </Marginalia>
+
+            <Marginalia side="right" top={240}>
+              SIGNAL.DECLARED
+              <br />
+              INTEREST_TAGS: {formatInt(decl?.settings_interests?.length ?? 0)}
+            </Marginalia>
+
+            <Chapter
+              number="II"
+              kicker="The Whispered Interests"
+              title="What You Told It, vs. What It Learned."
+            >
             <Body>
               You told TikTok a story about yourself. You searched for{" "}
               <Claim
@@ -1507,68 +1571,101 @@ export function TheGlassHouse({ profile, onReset, onViewRawForensics, sourceFile
               that knows you had one.
             </PullQuote>
           </Chapter>
+          </section>
 
           {/* ======================= EPILOGUE — HUD LINK ======================= */}
-          <section
+          <motion.section
+            initial={{ backgroundColor: "transparent" }}
+            whileInView={{ backgroundColor: "#0a0a0a" }}
+            viewport={{ margin: "-20% 0px" }}
+            transition={{ duration: 1.5 }}
+            className="noise"
             style={{
               borderTop: `2px solid ${INK}`,
-              paddingTop: 60,
-              paddingBottom: 40,
-              marginTop: 80,
+              paddingTop: 80,
+              paddingBottom: 160,
+              marginTop: 120,
+              marginLeft: -140,
+              marginRight: -140,
+              paddingLeft: 140,
+              paddingRight: 140,
+              textAlign: "center",
+              color: "#eee",
             }}
           >
-            <div
-              style={{
-                fontFamily:
-                  "var(--font-mono, ui-monospace, Menlo, monospace)",
-                fontSize: 11,
-                letterSpacing: "0.32em",
-                color: ACCENT,
-                textTransform: "uppercase",
-                marginBottom: 18,
-              }}
-            >
-              Appendix · Raw Forensics
+            <div style={{ maxWidth: 640, margin: "0 auto" }}>
+              <div
+                style={{
+                  fontFamily: "var(--font-mono, ui-monospace, Menlo, monospace)",
+                  fontSize: 10,
+                  letterSpacing: "0.42em",
+                  textTransform: "uppercase",
+                  color: ACCENT,
+                  marginBottom: 24,
+                }}
+              >
+                // END OF STORY · BEGINNING OF AUDIT
+              </div>
+              <h2
+                style={{
+                  fontFamily: "var(--font-display, serif)",
+                  fontSize: 48,
+                  fontWeight: 800,
+                  lineHeight: 1.05,
+                  marginBottom: 32,
+                  letterSpacing: "-0.02em",
+                }}
+              >
+                The Machine Has<br />
+                Finished Its Work.
+              </h2>
+              <Body>
+                <span style={{ color: "#aaa" }}>
+                  What you have just read is the curated surface. The narrative
+                  the staff analyst built for your understanding. But the raw
+                  forensic truth remains &mdash; a cold, collisionless embedding of
+                  every second you gave the algorithm.
+                </span>
+              </Body>
+              
+              <div style={{ marginTop: 60, display: "flex", flexWrap: "wrap", justifyContent: "center", gap: 24 }}>
+                <button
+                  onClick={onOpenReport}
+                  style={{
+                    background: ACCENT,
+                    color: "white",
+                    border: "none",
+                    padding: "16px 32px",
+                    fontFamily: "var(--font-mono, ui-monospace, Menlo, monospace)",
+                    fontSize: 12,
+                    letterSpacing: "0.2em",
+                    textTransform: "uppercase",
+                    cursor: "pointer",
+                    boxShadow: "0 4px 20px rgba(139, 35, 35, 0.3)",
+                  }}
+                >
+                  Enter the Dossier →
+                </button>
+
+                <button
+                  onClick={onViewRawForensics}
+                  style={{
+                    background: "transparent",
+                    color: "#eee",
+                    border: "1px solid rgba(255,255,255,0.3)",
+                    padding: "16px 32px",
+                    fontFamily: "var(--font-mono, ui-monospace, Menlo, monospace)",
+                    fontSize: 12,
+                    letterSpacing: "0.2em",
+                    textTransform: "uppercase",
+                    cursor: "pointer",
+                  }}
+                >
+                  View Raw Forensics →
+                </button>
+              </div>
             </div>
-            <h2
-              style={{
-                fontFamily:
-                  "var(--font-display, 'Fraunces', Georgia, serif)",
-                fontSize: "clamp(36px, 4.5vw, 52px)",
-                lineHeight: 1.05,
-                letterSpacing: "-0.02em",
-                color: INK,
-                marginTop: 0,
-                marginBottom: 18,
-                maxWidth: "18ch",
-              }}
-            >
-              The evidence room is open.
-            </h2>
-            <Body>
-              You&rsquo;ve read the story. If you want to inspect the raw
-              machine &mdash; the brutalist dashboard where every metric lives
-              without the prose &mdash; step inside.
-            </Body>
-            <button
-              onClick={onViewRawForensics}
-              style={{
-                marginTop: 20,
-                padding: "14px 28px",
-                background: INK,
-                color: PAPER,
-                border: "none",
-                fontFamily:
-                  "var(--font-mono, ui-monospace, Menlo, monospace)",
-                fontSize: 12,
-                letterSpacing: "0.28em",
-                textTransform: "uppercase",
-                cursor: "pointer",
-              }}
-            >
-              View Raw Forensics →
-            </button>
-          </section>
+          </motion.section>
 
           {/* Colophon */}
           <footer

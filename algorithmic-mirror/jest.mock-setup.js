@@ -4,7 +4,12 @@ const React = require('react');
 jest.mock('framer-motion', () => {
   const motion = new Proxy({}, {
     get: () => (props) => {
-      const { initial, animate, transition, whileTap, whileHover, whileFocus, whileDrag, ...rest } = props || {};
+      const { 
+        initial, animate, transition, 
+        whileTap, whileHover, whileFocus, whileDrag,
+        whileInView, viewport,
+        ...rest 
+      } = props || {};
       return React.createElement('div', rest, props && props.children);
     },
   });

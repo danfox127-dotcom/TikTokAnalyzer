@@ -7,11 +7,12 @@ import { GhostProfileHUD, GhostProfile } from "./components/GhostProfileHUD";
 import { TheGlassHouse } from "./components/TheGlassHouse";
 import { NarrativeReportView } from "./components/NarrativeReportView";
 import { LLMAnalysisView } from "./components/LLMAnalysisView";
+import { PhaseTransition } from "./components/PhaseTransition";
 import type { NarrativeBlock } from "./types/narrative";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8005";
 
-type View = "upload" | "narrative" | "hud" | "report" | "llm";
+type View = "upload" | "transition" | "narrative" | "hud" | "report" | "llm";
 
 export default function Home() {
   const [profile, setProfile] = useState<GhostProfile | null>(null);
@@ -37,7 +38,7 @@ export default function Home() {
       const raw = await res.json();
       setProfile(raw as GhostProfile);
       setNarrativeBlocks((raw as { narrative_blocks?: NarrativeBlock[] }).narrative_blocks ?? []);
-      setView("narrative");
+      setView("transition");
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Unknown error";
       const net = /fetch|NetworkError|ECONNREFUSED|Failed to fetch/i.test(msg);
@@ -72,6 +73,10 @@ export default function Home() {
         onBack={() => setView("narrative")}
       />
     );
+  }
+
+  if (view === "transition") {
+    return <PhaseTransition onComplete={() => setView("narrative")} />;
   }
 
   if (profile && view === "llm") {

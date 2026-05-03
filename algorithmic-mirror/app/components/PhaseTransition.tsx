@@ -70,6 +70,32 @@ export function PhaseTransition({ onComplete }: Props) {
             overflow: "hidden",
           }}
         >
+          {/* Flash Bulb Effect */}
+          <motion.div
+            initial={{ opacity: 1 }}
+            animate={{ opacity: 0 }}
+            transition={{ duration: 1, ease: "easeOut" }}
+            style={{
+              position: "absolute",
+              inset: 0,
+              background: "white",
+              zIndex: 10000,
+              pointerEvents: "none",
+            }}
+          />
+          <motion.div
+            initial={{ opacity: 0.8 }}
+            animate={{ opacity: 0 }}
+            transition={{ duration: 1.5, ease: "easeOut", delay: 0.1 }}
+            style={{
+              position: "absolute",
+              inset: 0,
+              background: "radial-gradient(circle, #f5d57a 0%, transparent 70%)",
+              zIndex: 9999,
+              pointerEvents: "none",
+            }}
+          />
+
           {/* Background — gradient wipe warm → cold */}
           <motion.div
             initial={{ background: "linear-gradient(160deg, #faf8f5 0%, #f2ede6 100%)" }}
