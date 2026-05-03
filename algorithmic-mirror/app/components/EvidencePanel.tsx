@@ -151,7 +151,7 @@ export function EvidencePanel({ open, title, claim, payload, onClose }: Props) {
                   marginBottom: 10,
                 }}
               >
-                // raw excerpt · parsed from your export
+                {"//"} raw excerpt · parsed from your export
               </div>
               <pre
                 style={{
@@ -203,7 +203,7 @@ export function EvidencePanel({ open, title, claim, payload, onClose }: Props) {
                 background: "#f3ede2",
               }}
             >
-              <span>// evidence panel</span>
+              <span>{"//"} evidence panel</span>
               <span>press esc to close</span>
             </div>
           </motion.aside>

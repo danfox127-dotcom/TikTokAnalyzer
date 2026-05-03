@@ -541,6 +541,8 @@ export function TheGlassHouse({ profile, onReset, onViewRawForensics, sourceFile
                   color: "#f5efe4",
                   display: "inline-block",
                   borderLeft: `6px solid ${ACCENT}`,
+                  width: "100%",
+                  maxWidth: 520,
                 }}
               >
                 <div
@@ -561,23 +563,70 @@ export function TheGlassHouse({ profile, onReset, onViewRawForensics, sourceFile
                     fontFamily: "var(--font-display, serif)",
                     fontSize: 24,
                     fontWeight: 700,
-                    marginBottom: 8,
+                    marginBottom: 12,
                     letterSpacing: "-0.01em",
                   }}
                 >
                   {profile.primary_archetype.name}
                 </div>
-                <div
-                  style={{
-                    fontFamily: "var(--font-body, serif)",
-                    fontSize: 14,
-                    opacity: 0.8,
-                    lineHeight: 1.5,
-                    maxWidth: 400,
-                  }}
-                >
-                  {profile.primary_archetype.description}
+                
+                {/* Sub-archetypes */}
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 20 }}>
+                  {profile.primary_archetype.sub_archetypes.map((sub, i) => (
+                    <div 
+                      key={i}
+                      style={{ 
+                        fontSize: 10, 
+                        border: "1px solid rgba(245,239,228,0.3)", 
+                        padding: "4px 10px",
+                        fontFamily: "var(--font-mono, monospace)",
+                        letterSpacing: "0.05em",
+                        color: "rgba(245,239,228,0.7)"
+                      }}
+                    >
+                      {sub.name}
+                    </div>
+                  ))}
                 </div>
+
+                {/* Dissonance Alert */}
+                {profile.primary_archetype.dissonance.detected && (
+                  <div 
+                    style={{ 
+                      padding: "16px", 
+                      background: "rgba(139, 35, 35, 0.15)", 
+                      border: "1px solid rgba(139, 35, 35, 0.3)",
+                    }}
+                  >
+                    <div style={{ 
+                      fontFamily: "var(--font-mono, monospace)", 
+                      fontSize: 9, 
+                      color: ACCENT, 
+                      fontWeight: 700, 
+                      letterSpacing: "0.2em",
+                      marginBottom: 6,
+                      textTransform: "uppercase"
+                    }}>
+                      [ CONTRADICTION DETECTED ]
+                    </div>
+                    <div style={{ 
+                      fontSize: 13, 
+                      fontWeight: 600, 
+                      marginBottom: 4,
+                      fontFamily: "var(--font-display, serif)"
+                    }}>
+                      {profile.primary_archetype.dissonance.label}
+                    </div>
+                    <div style={{ 
+                      fontSize: 12, 
+                      opacity: 0.8, 
+                      lineHeight: 1.4,
+                      fontFamily: "var(--font-body, serif)"
+                    }}>
+                      {profile.primary_archetype.dissonance.note}
+                    </div>
+                  </div>
+                )}
               </motion.div>
             )}
 

@@ -145,6 +145,11 @@ def _run_stopwatch(browsing_history: list[dict], exclude_hours: tuple[int, ...] 
     night_count = 0
     night_lingers = 0
 
+    consecutive_skips = 0
+    max_consecutive_skips = 0
+    current_session_duration = 0
+    max_session_duration = 0
+
     graveyard_links: set[str] = set()
     sandbox_links: set[str] = set()
     linger_links: set[str] = set()
@@ -174,10 +179,16 @@ def _run_stopwatch(browsing_history: list[dict], exclude_hours: tuple[int, ...] 
         # These are NOT valid behavioral signals — scrub entirely.
         if delta >= SLEEP_THRESHOLD_S:
             sleep_scrubbed += 1
+            current_session_duration = 0
             continue
 
         # 0s–1199s: bucket normally. delta > 300 = phone briefly put down
         # (session break) but the video still counts. Cap time_spent at 270s.
+        if delta > 300:
+            current_session_duration = 0
+        else:
+            current_session_duration += delta
+            max_session_duration = max(max_session_duration, current_session_duration)
 
         hour = cur["dt"].hour
 
@@ -196,17 +207,21 @@ def _run_stopwatch(browsing_history: list[dict], exclude_hours: tuple[int, ...] 
         time_spent = min(delta, 270.0)
         if delta < 3:
             graveyard_count += 1
+            consecutive_skips += 1
+            max_consecutive_skips = max(max_consecutive_skips, consecutive_skips)
             if link:
                 graveyard_links.add(link)
             if vid:
                 graveyard_events.append({"video_id": vid, "link": link, "time_spent": time_spent, "hour": hour})
         elif delta <= 15:
+            consecutive_skips = 0
             sandbox_count += 1
             if link:
                 sandbox_links.add(link)
             if vid:
                 sandbox_events.append({"video_id": vid, "link": link, "time_spent": time_spent, "hour": hour})
         elif delta <= 180:
+            consecutive_skips = 0
             # 15–180s: sustained attention (deep_lingers for back-compat)
             linger_count += 1
             if 23 <= hour or hour < 4:
@@ -219,6 +234,7 @@ def _run_stopwatch(browsing_history: list[dict], exclude_hours: tuple[int, ...] 
                 if 23 <= hour or hour < 4:
                     night_linger_events.append(ev)
         else:
+            consecutive_skips = 0
             # >180s: deep dive — full commitment
             deep_dive_count += 1
             if 23 <= hour or hour < 4:
@@ -252,6 +268,8 @@ def _run_stopwatch(browsing_history: list[dict], exclude_hours: tuple[int, ...] 
         "deep_dives": deep_dive_count,
         "night_count": night_count,
         "night_lingers": night_lingers,
+        "max_consecutive_skips": max_consecutive_skips,
+        "max_session_duration": max_session_duration,
         "_graveyard_links": graveyard_links,
         "_sandbox_links": sandbox_links,
         "_linger_links": linger_links,
@@ -576,55 +594,146 @@ def calculate_transparency_gap(parsed: dict, profile: dict) -> dict:
     }
 
 
+def _detect_atomic_traits(
+    sw: dict,
+    total_conscious: int,
+    parsed: dict,
+    linger_rate_pct: float,
+    night_shift_pct: float,
+    vibe_cluster: list[dict],
+) -> dict:
+    """Detect boolean atomic traits based on behavioral data."""
+    traits = {}
+    
+    # trapped: Session > 60m OR Linger Rate > 30%
+    traits["trapped"] = (sw["max_session_duration"] > 3600) or (linger_rate_pct > 30)
+    
+    # ruthless: 10+ consecutive skips (< 3s)
+    traits["ruthless"] = sw["max_consecutive_skips"] >= 10
+    
+    # nocturnal: Night Shift Ratio > 35%
+    traits["nocturnal"] = night_shift_pct > 35
+    
+    # curator: Share-to-Like Ratio > 0.5
+    shares_count = len(parsed.get("shares", []))
+    likes_count = len(parsed.get("likes", []))
+    traits["curator"] = (shares_count / max(likes_count, 1)) > 0.5
+    
+    # ghost: Actions (Like/Comm/Share) < 1% of Views
+    actions_count = likes_count + shares_count + len(parsed.get("comments", []))
+    traits["ghost"] = (actions_count / max(total_conscious, 1)) < 0.01
+    
+    # optimizer: Linger on Academic/Tech Category > 20%
+    tech_linger_count = sum(c.get("linger_count", 0) for c in vibe_cluster if c.get("genre") == "tech")
+    total_linger_count = sum(c.get("linger_count", 0) for c in vibe_cluster)
+    traits["optimizer"] = (tech_linger_count / max(total_linger_count, 1)) > 0.2
+    
+    return traits
+
+
+def _synthesize_sub_archetypes(
+    traits: dict,
+    behavioral_nodes: dict,
+) -> list[dict]:
+    """Cluster traits into 2-4 sub-archetypes."""
+    sub_archetypes = []
+    
+    # The Intentional Curator: curator + socially_dense (followed_pct > 60)
+    if traits.get("curator") and behavioral_nodes.get("social_graph_followed_pct", 0) > 60:
+        sub_archetypes.append({"name": "The Intentional Curator", "confidence": 0.9})
+        
+    # The Nocturnal Seeker: nocturnal + deep_linger (linger_rate_pct > 25)
+    if traits.get("nocturnal") and behavioral_nodes.get("linger_rate_percentage", 0) > 25:
+        sub_archetypes.append({"name": "The Nocturnal Seeker", "confidence": 0.85})
+        
+    # The Algorithmic Captured: trapped + algorithmic_dominant (algorithmic_pct > 75)
+    if traits.get("trapped") and behavioral_nodes.get("social_graph_algorithmic_pct", 0) > 75:
+        sub_archetypes.append({"name": "The Algorithmic Captured", "confidence": 0.95})
+        
+    # The Passive Observer: ghost + low_linger (linger_rate_pct < 10)
+    if traits.get("ghost") and behavioral_nodes.get("linger_rate_percentage", 0) < 10:
+        sub_archetypes.append({"name": "The Passive Observer", "confidence": 0.8})
+        
+    return sub_archetypes
+
+
+def _detect_cognitive_dissonance(
+    traits: dict,
+    sw: dict,
+    behavioral_nodes: dict,
+    parsed: dict,
+    vibe_cluster: list[dict],
+) -> dict:
+    """Identify contradictory behavioral identities."""
+    # Circadian Drift: High ruthless (Day) vs. High trapped (Night)
+    night_total = sw["night_count"]
+    night_lingers = sw["night_lingers"]
+    night_trapped = night_total > 0 and (night_lingers / night_total) > 0.3
+        
+    if traits.get("ruthless") and night_trapped:
+        return {
+            "detected": True,
+            "label": "Circadian Drift",
+            "note": "Your daytime curation is ruthless, but you lose control to the algorithm after midnight."
+        }
+        
+    # Social Paradox: Follows many creators but watches 90%+ Algorithmic feed
+    following_count = len(parsed.get("following", []))
+    if following_count > 100 and behavioral_nodes.get("social_graph_algorithmic_pct", 0) > 90:
+        return {
+            "detected": True,
+            "label": "Social Paradox",
+            "note": "You follow a village of creators but let the algorithm choose 90% of what you actually see."
+        }
+        
+    # Silent Expert: High watch-time on educational content but zero public footprint (ghost)
+    total_linger_count = sum(c.get("linger_count", 0) for c in vibe_cluster)
+    tech_linger_pct = sum(c.get("linger_count", 0) for c in vibe_cluster if c.get("genre") == "tech") / max(total_linger_count, 1)
+    if tech_linger_pct > 0.2 and traits.get("ghost"):
+         return {
+            "detected": True,
+            "label": "Silent Expert",
+            "note": "You consume high-fidelity knowledge at scale while leaving zero digital trace of your expertise."
+        }
+         
+    return {"detected": False, "label": None, "note": None}
+
+
 def _determine_primary_archetype(
     behavioral_nodes: dict,
-    interest_clusters: list[dict],
-    share_behavior: dict,
-    comment_voice: dict,
+    parsed: dict,
+    sw: dict,
     vibe_cluster: list[dict],
 ) -> dict:
     """
     Synthesize high-level metrics into a deterministic 'Spotify Wrapped' style archetype.
     """
-    followed_pct = behavioral_nodes.get("social_graph_followed_pct", 0)
-    algo_pct = behavioral_nodes.get("social_graph_algorithmic_pct", 0)
-    night_pct = behavioral_nodes.get("night_shift_ratio", 0)
     linger_rate = behavioral_nodes.get("linger_rate_percentage", 0)
+    night_pct = behavioral_nodes.get("night_shift_ratio", 0)
     
-    share_count = share_behavior.get("total_shares", 0)
-    dm_count = share_behavior.get("dm_share_count", 0)
+    traits = _detect_atomic_traits(
+        sw, 
+        sw["total_conscious_videos"], 
+        parsed, 
+        linger_rate, 
+        night_pct, 
+        vibe_cluster
+    )
     
-    avg_comment_len = comment_voice.get("avg_length_chars", 0)
-    style_label = comment_voice.get("engagement_style_label", "Lurker")
+    sub_archetypes = _synthesize_sub_archetypes(traits, behavioral_nodes)
+    dissonance = _detect_cognitive_dissonance(traits, sw, behavioral_nodes, parsed, vibe_cluster)
     
-    top_terms = [c.get("term", "").lower() for c in interest_clusters[:5]]
-    
-    # Archetype Selection Logic
-    if followed_pct > 60 and share_count > 10 and (dm_count / max(share_count, 1)) > 0.5:
-        name = "The Intentional Curator"
-        desc = "You use TikTok as a high-signal recommendation engine for your inner circle."
-    elif night_pct > 35 and any(t in ["spirituality", "news", "wellness"] for t in top_terms):
-        name = "The Nocturnal Seeker"
-        desc = "You turn to the feed for deep processing and big questions when the world is quiet."
-    elif algo_pct > 75 and linger_rate > 25:
-        name = "The Algorithmic Captured"
-        desc = "You have surrendered your taste to the machine, and it has learned to keep you forever."
-    elif any(t in ["tech", "labor", "finance"] for t in top_terms) and avg_comment_len > 120:
-        name = "The High-Performance Optimizer"
-        desc = "You engage with the platform as a tool for mastery, leaving a trail of analytical traces."
-    elif any(t in ["local_life", "food"] for t in top_terms):
-        name = "The Urban Resident"
-        desc = "Your feed is a mirror of your physical surroundings and local neighborhoods."
-    elif style_label == "Lurker" and linger_rate < 10:
-        name = "The Passive Observer"
-        desc = "You move through the feed like a ghost, consuming everything while revealing nothing."
+    # Pick primary name from sub-archetypes or fallback
+    if sub_archetypes:
+        primary_name = sub_archetypes[0]["name"]
     else:
-        name = "The Balanced Viewer"
-        desc = "You maintain a measured relationship with the algorithm, curious but not captured."
+        primary_name = "The Balanced Viewer"
 
     return {
-        "name": name,
-        "description": desc,
+        "name": primary_name,
+        "sub_archetypes": sub_archetypes,
+        "dissonance": dissonance,
+        "atomic_traits": traits
     }
 
 
@@ -722,9 +831,8 @@ def build_ghost_profile(parsed: dict, exclude_hours: tuple[int, ...] = ()) -> di
 
     primary_archetype = _determine_primary_archetype(
         behavioral_nodes,
-        interest_clusters,
-        share_behavior,
-        comment_voice,
+        parsed,
+        sw,
         vibe_cluster
     )
 
