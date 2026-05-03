@@ -15,6 +15,7 @@ import {
   Cell,
 } from "recharts";
 import type { NarrativeBlock } from "../types/narrative";
+import { CreatorGraph } from "./CreatorGraph";
 
 const CHART_PALETTE = [
   "#4db8ff",
@@ -140,6 +141,7 @@ export function BlockCard({ block }: BlockCardProps) {
     if (!block.chart || !block.chart.data.length) return null;
     if (block.chart.type === "bar") return <BlockBarChart data={block.chart.data} />;
     if (block.chart.type === "donut") return <BlockDonutChart data={block.chart.data} />;
+    if (block.chart.type === "creator_graph") return <CreatorGraph data={block.chart.data} />;
     return null;
   }, [block.chart]);
 

@@ -259,10 +259,18 @@ def _build_social_graph_block(ghost_profile: dict, parsed: dict) -> dict:
         {"label": "Top Watched", "value": top_creator},
     ]
 
-    chart_data = [
-        {"name": "Followed", "value": round(followed_pct, 1)},
-        {"name": "Algorithmic", "value": round(algo_pct, 1)},
-    ]
+    # Node data for interactive graph
+    following_usernames = set(ghost_profile.get("enrichment_targets", {}).get("following_usernames", []))
+    nodes = []
+    for c in vibe:
+        handle = c.get("handle", "Unknown")
+        clean_handle = handle.lstrip("@").lower()
+        nodes.append({
+            "name": handle,
+            "size": c.get("linger_count", 0),
+            "is_followed": clean_handle in following_usernames,
+            "genre": c.get("genre", "unknown"),
+        })
 
     return {
         "id": "social_graph",
@@ -271,7 +279,7 @@ def _build_social_graph_block(ghost_profile: dict, parsed: dict) -> dict:
         "prose": prose,
         "accent": "#ff4db8",
         "stats": stats,
-        "chart": {"type": "bar", "data": chart_data},
+        "chart": {"type": "creator_graph", "data": nodes},
         "provenance": "Determined by comparing engagement metrics on followed accounts vs algorithmically-surfaced creators.",
     }
 

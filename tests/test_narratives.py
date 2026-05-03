@@ -91,9 +91,8 @@ def _assert_block_schema(block: dict, expected_id: str):
     assert isinstance(block["stats"], list)
     # chart is either None or has type + data
     if block["chart"] is not None:
-        assert block["chart"]["type"] in ("bar", "donut", "line")
+        assert block["chart"]["type"] in ("bar", "donut", "line", "creator_graph")
         assert isinstance(block["chart"]["data"], list)
-
 
 # ── Block 1: Algorithmic Identity ─────────────────────────────────────────────
 
@@ -205,7 +204,7 @@ def test_social_graph_schema():
     block = _build_social_graph_block(_base_ghost(), _base_parsed())
     _assert_block_schema(block, "social_graph")
     assert block["chart"] is not None
-    assert block["chart"]["type"] == "bar"
+    assert block["chart"]["type"] == "creator_graph"
 
 
 def test_social_graph_high_followed():

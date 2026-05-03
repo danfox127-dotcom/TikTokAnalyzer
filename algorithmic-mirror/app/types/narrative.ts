@@ -6,7 +6,7 @@ export interface NarrativeStat {
 }
 
 export interface NarrativeChart {
-  type: "bar" | "line" | "donut";
+  type: "bar" | "line" | "donut" | "creator_graph";
   data: Record<string, unknown>[];
 }
 
