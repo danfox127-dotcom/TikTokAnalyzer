@@ -3,6 +3,7 @@
 import { motion } from "framer-motion";
 import { ArrowLeft } from "lucide-react";
 import { DownloadExportButton } from "./DownloadExportButton";
+import { CreatorGraph } from "./CreatorGraph";
 
 export interface EnrichmentTarget {
   video_id: string;
@@ -74,8 +75,8 @@ export interface GhostProfile {
     social_graph_followed_pct: number;
   };
   creator_entities: {
-    vibe_cluster: { handle: string; linger_count: number }[];
-    graveyard: { handle: string; skip_count: number }[];
+    vibe_cluster: { handle: string; linger_count: number; is_followed?: boolean }[];
+    graveyard: { handle: string; skip_count: number; is_followed?: boolean }[];
   };
   academic_insights?: {
     explicit_vs_implicit_ratio: number;
@@ -625,7 +626,7 @@ function CreatorLedger({
   num: string;
   accent: string;
   title: string;
-  entries: { handle: string; count: number }[];
+  entries: { handle: string; count: number; is_followed?: boolean }[];
   countKey: string;
   countLabel: string;
 }) {
@@ -649,8 +650,26 @@ function CreatorLedger({
                   {String(i + 1).padStart(2, "0")}
                 </div>
                 <div style={{ minWidth: 0 }}>
-                  <div style={{ fontFamily: "var(--font-mono, monospace)", fontSize: 12, color: INK, marginBottom: 4, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                    {e.handle}
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                    <div style={{ fontFamily: "var(--font-mono, monospace)", fontSize: 12, color: INK, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                      {e.handle}
+                    </div>
+                    {e.is_followed && (
+                      <div 
+                        style={{ 
+                          fontSize: 7, 
+                          background: accent, 
+                          color: "black", 
+                          padding: "0px 3px", 
+                          borderRadius: 1,
+                          letterSpacing: "0.05em",
+                          fontWeight: 900,
+                          lineHeight: 1.2
+                        }}
+                      >
+                        FOLLOWED
+                      </div>
+                    )}
                   </div>
                   <div style={{ width: "100%", height: 3, background: "rgba(148,163,184,0.1)" }}>
                     <motion.div
@@ -767,6 +786,7 @@ export function GhostProfileHUD({ profile, onReset, sourceFile }: Props) {
             countKey="skip_count"
             countLabel="skips"
           />
+
           <CreatorLedger
             label="Module F"
             num="07"
@@ -776,6 +796,19 @@ export function GhostProfileHUD({ profile, onReset, sourceFile }: Props) {
             countKey="linger_count"
             countLabel="lingers"
           />
+
+          {/* Module G — Social Connectivity Graph */}
+          <div className="md:col-span-2">
+            <Panel label="08 · Module G" accent={INK}>
+              <SectionTitle accent={INK}>Social Connectivity Graph — The Village vs. The Machine</SectionTitle>
+              <div style={{ marginTop: 16 }}>
+                <CreatorGraph data={profile.creator_entities?.vibe_cluster ?? []} />
+              </div>
+              <Copy>
+                Mapping the explicit social graph against implicit behavioral capture. Cyan nodes represent intentional following; Magenta nodes represent algorithmic injections that successfully captured your attention.
+              </Copy>
+            </Panel>
+          </div>
         </div>
 
         {/* Footer */}

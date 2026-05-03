@@ -795,6 +795,15 @@ def build_ghost_profile(parsed: dict, exclude_hours: tuple[int, ...] = ()) -> di
     vibe_cluster = resolve_vibe_cluster(_count_creators(sw["_linger_links"], limit=20, count_key="linger_count"))
     graveyard = resolve_vibe_cluster(_count_creators(sw["_graveyard_links"], limit=20, count_key="skip_count"))
 
+    # Tag creators with is_followed status
+    following_usernames = {u.get("username", "").lower().lstrip("@") for u in parsed.get("following", [])}
+    for c in vibe_cluster:
+        handle = c.get("handle", "").lower().lstrip("@")
+        c["is_followed"] = handle in following_usernames
+    for c in graveyard:
+        handle = c.get("handle", "").lower().lstrip("@")
+        c["is_followed"] = handle in following_usernames
+
     # ── Social Graph Death ────────────────────────────────────────────────
     following_usernames = {u.get("username", "").lower().lstrip("@") for u in parsed.get("following", [])}
     followed_videos = 0
