@@ -3,7 +3,7 @@
 Deterministic Narrative Block System.
 
 Generates 9 structured blocks from ghost_profile + parsed export.
-Each block: {id, title, icon, prose, accent, stats, chart}.
+Each block: {id, title, icon, prose, accent, stats, chart, provenance}.
 """
 from __future__ import annotations
 
@@ -71,6 +71,7 @@ def _build_algorithmic_identity_block(ghost_profile: dict, parsed: dict) -> dict
         "accent": "#4db8ff",
         "stats": stats,
         "chart": {"type": "donut", "data": chart_data} if chart_data else None,
+        "provenance": "Derived from watch time deltas (linger count) on identified creator handles vs discovery feed.",
     }
 
 
@@ -129,6 +130,7 @@ def _build_attention_signature_block(ghost_profile: dict, parsed: dict) -> dict:
         "accent": "#ff8c42",
         "stats": stats,
         "chart": {"type": "bar", "data": chart_data},
+        "provenance": f"Calculated from video interaction events (skip/linger ratios) across {total} conscious views.",
     }
 
 
@@ -150,6 +152,7 @@ def _build_daily_rhythm_block(ghost_profile: dict, parsed: dict) -> dict:
     sw = ghost_profile.get("stopwatch_metrics", {})
     bn = ghost_profile.get("behavioral_nodes", {})
     heatmap: dict = sw.get("hourly_heatmap", {})
+    total_events = int(sw.get("total_videos", 0))
     night_pct = float(bn.get("night_shift_ratio", 0))
     peak_hour_raw = bn.get("peak_hour", "0")
 
@@ -210,6 +213,7 @@ def _build_daily_rhythm_block(ghost_profile: dict, parsed: dict) -> dict:
         "accent": "#a8ff78",
         "stats": stats,
         "chart": {"type": "bar", "data": chart_data},
+        "provenance": f"Aggregated from hourly engagement frequency (timestamp analysis) of {total_events} video events.",
     }
 
 
@@ -268,6 +272,7 @@ def _build_social_graph_block(ghost_profile: dict, parsed: dict) -> dict:
         "accent": "#ff4db8",
         "stats": stats,
         "chart": {"type": "bar", "data": chart_data},
+        "provenance": "Determined by comparing engagement metrics on followed accounts vs algorithmically-surfaced creators.",
     }
 
 
@@ -331,6 +336,7 @@ def _build_share_behavior_block(ghost_profile: dict, parsed: dict) -> dict:
         "accent": "#ffd700",
         "stats": stats,
         "chart": {"type": "donut", "data": chart_data} if chart_data else None,
+        "provenance": "Extracted from share method metadata (DM, Chat, etc.) and correlated with like/favorite volume.",
     }
 
 
@@ -395,6 +401,7 @@ def _build_comment_voice_block(ghost_profile: dict, parsed: dict) -> dict:
         "accent": "#c8a2c8",
         "stats": stats,
         "chart": None,
+        "provenance": "Analyzed from comment character length, emoji density, and frequency relative to viewing volume.",
     }
 
 
@@ -464,6 +471,7 @@ def _build_transparency_gap_block(ghost_profile: dict, parsed: dict) -> dict:
         "accent": "#ff4466",
         "stats": stats,
         "chart": {"type": "bar", "data": chart_data},
+        "provenance": "Forensic gap between 'Settings Interests' in TikTok export and behavioral categories inferred from video metadata.",
     }
 
 
@@ -530,6 +538,7 @@ def _build_location_trace_block(ghost_profile: dict, parsed: dict) -> dict:
         "accent": "#00e5ff",
         "stats": stats,
         "chart": None,
+        "provenance": f"Geolocated from IP addresses recorded in {len(logins)} distinct login events.",
     }
 
 
@@ -581,6 +590,7 @@ def _build_closing_synthesis_block(ghost_profile: dict, parsed: dict) -> dict:
         "accent": "#e0e0e0",
         "stats": [],
         "chart": None,
+        "provenance": "Cross-dimensional behavioral synthesis mapped from all deterministic forensic blocks.",
     }
 
 

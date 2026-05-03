@@ -190,6 +190,40 @@ export function BlockCard({ block }: BlockCardProps) {
 
       {/* Chart */}
       {chart}
+
+      {/* Provenance */}
+      <footer
+        style={{
+          marginTop: 20,
+          paddingTop: 12,
+          borderTop: "1px solid rgba(255,255,255,0.05)",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+        }}
+      >
+        <span
+          style={{
+            fontSize: 9,
+            color: "#444",
+            textTransform: "uppercase",
+            letterSpacing: "0.1em",
+          }}
+        >
+          // PROVENANCE
+        </span>
+        <span
+          style={{
+            fontSize: 9,
+            color: "#666",
+            fontStyle: "italic",
+            maxWidth: "80%",
+            textAlign: "right",
+          }}
+        >
+          {block.provenance}
+        </span>
+      </footer>
     </div>
   );
 }

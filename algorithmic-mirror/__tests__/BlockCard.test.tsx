@@ -37,6 +37,7 @@ const mockBarBlock: NarrativeBlock = {
     type: "bar",
     data: [{ metric: "X", value: 10 }, { metric: "Y", value: 20 }],
   },
+  provenance: "Test provenance string.",
 };
 
 const mockDonutBlock: NarrativeBlock = {

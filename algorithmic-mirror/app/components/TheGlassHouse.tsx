@@ -40,6 +40,10 @@ function formatInt(n: number) {
 }
 
 function inferIdentity(p: GhostProfile): string {
+  if (p.primary_archetype) {
+    return p.primary_archetype.name;
+  }
+  
   const ad = p.declared_signals?.ad_interests ?? [];
   const topCreator = p.creator_entities?.vibe_cluster?.[0]?.handle ?? "";
   const night = p.night_shift?.percentage ?? p.behavioral_nodes.night_shift_ratio;
@@ -524,6 +528,58 @@ export function TheGlassHouse({ profile, onReset, onViewRawForensics, sourceFile
                 Glass.
               </span>
             </motion.h1>
+
+            {profile.primary_archetype && (
+              <motion.div
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.6, delay: 0.3 }}
+                style={{
+                  marginTop: 48,
+                  padding: "24px 32px",
+                  background: "#1a1610",
+                  color: "#f5efe4",
+                  display: "inline-block",
+                  borderLeft: `6px solid ${ACCENT}`,
+                }}
+              >
+                <div
+                  style={{
+                    fontFamily: "var(--font-mono, ui-monospace, Menlo, monospace)",
+                    fontSize: 10,
+                    letterSpacing: "0.4em",
+                    textTransform: "uppercase",
+                    color: ACCENT,
+                    marginBottom: 12,
+                    fontWeight: 700,
+                  }}
+                >
+                  // ALGORITHMIC CHARACTERIZATION
+                </div>
+                <div
+                  style={{
+                    fontFamily: "var(--font-display, serif)",
+                    fontSize: 24,
+                    fontWeight: 700,
+                    marginBottom: 8,
+                    letterSpacing: "-0.01em",
+                  }}
+                >
+                  {profile.primary_archetype.name}
+                </div>
+                <div
+                  style={{
+                    fontFamily: "var(--font-body, serif)",
+                    fontSize: 14,
+                    opacity: 0.8,
+                    lineHeight: 1.5,
+                    maxWidth: 400,
+                  }}
+                >
+                  {profile.primary_archetype.description}
+                </div>
+              </motion.div>
+            )}
 
             <motion.div
               initial={{ opacity: 0 }}

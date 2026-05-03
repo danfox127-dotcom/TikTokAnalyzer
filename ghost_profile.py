@@ -19,6 +19,7 @@ import re
 
 from parsers.tiktok import _parse_date
 import oembed
+from utils.creators import resolve_vibe_cluster
 
 # ---------------------------------------------------------------------------
 # Engagement signal weights & DM method set (shared by Tasks 2 and 4)
@@ -575,6 +576,58 @@ def calculate_transparency_gap(parsed: dict, profile: dict) -> dict:
     }
 
 
+def _determine_primary_archetype(
+    behavioral_nodes: dict,
+    interest_clusters: list[dict],
+    share_behavior: dict,
+    comment_voice: dict,
+    vibe_cluster: list[dict],
+) -> dict:
+    """
+    Synthesize high-level metrics into a deterministic 'Spotify Wrapped' style archetype.
+    """
+    followed_pct = behavioral_nodes.get("social_graph_followed_pct", 0)
+    algo_pct = behavioral_nodes.get("social_graph_algorithmic_pct", 0)
+    night_pct = behavioral_nodes.get("night_shift_ratio", 0)
+    linger_rate = behavioral_nodes.get("linger_rate_percentage", 0)
+    
+    share_count = share_behavior.get("total_shares", 0)
+    dm_count = share_behavior.get("dm_share_count", 0)
+    
+    avg_comment_len = comment_voice.get("avg_length_chars", 0)
+    style_label = comment_voice.get("engagement_style_label", "Lurker")
+    
+    top_terms = [c.get("term", "").lower() for c in interest_clusters[:5]]
+    
+    # Archetype Selection Logic
+    if followed_pct > 60 and share_count > 10 and (dm_count / max(share_count, 1)) > 0.5:
+        name = "The Intentional Curator"
+        desc = "You use TikTok as a high-signal recommendation engine for your inner circle."
+    elif night_pct > 35 and any(t in ["spirituality", "news", "wellness"] for t in top_terms):
+        name = "The Nocturnal Seeker"
+        desc = "You turn to the feed for deep processing and big questions when the world is quiet."
+    elif algo_pct > 75 and linger_rate > 25:
+        name = "The Algorithmic Captured"
+        desc = "You have surrendered your taste to the machine, and it has learned to keep you forever."
+    elif any(t in ["tech", "labor", "finance"] for t in top_terms) and avg_comment_len > 120:
+        name = "The High-Performance Optimizer"
+        desc = "You engage with the platform as a tool for mastery, leaving a trail of analytical traces."
+    elif any(t in ["local_life", "food"] for t in top_terms):
+        name = "The Urban Resident"
+        desc = "Your feed is a mirror of your physical surroundings and local neighborhoods."
+    elif style_label == "Lurker" and linger_rate < 10:
+        name = "The Passive Observer"
+        desc = "You move through the feed like a ghost, consuming everything while revealing nothing."
+    else:
+        name = "The Balanced Viewer"
+        desc = "You maintain a measured relationship with the algorithm, curious but not captured."
+
+    return {
+        "name": name,
+        "description": desc,
+    }
+
+
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
@@ -630,8 +683,50 @@ def build_ghost_profile(parsed: dict, exclude_hours: tuple[int, ...] = ()) -> di
     peak_activity_hour = _compute_peak_hour(sw["hourly_heatmap"])
 
     # ── Cross-Platform Entity Resolution ───────────────────────────────────
-    vibe_cluster = _count_creators(sw["_linger_links"], limit=20, count_key="linger_count")
-    graveyard = _count_creators(sw["_graveyard_links"], limit=20, count_key="skip_count")
+    vibe_cluster = resolve_vibe_cluster(_count_creators(sw["_linger_links"], limit=20, count_key="linger_count"))
+    graveyard = resolve_vibe_cluster(_count_creators(sw["_graveyard_links"], limit=20, count_key="skip_count"))
+
+    # ── Social Graph Death ────────────────────────────────────────────────
+    following_usernames = {u.get("username", "").lower().lstrip("@") for u in parsed.get("following", [])}
+    followed_videos = 0
+    algorithmic_videos = 0
+    all_conscious_links = sw["_graveyard_links"] | sw["_sandbox_links"] | sw["_linger_links"]
+    for link in all_conscious_links:
+        creator = _extract_creator_from_url(link)
+        if creator:
+            clean_creator = creator.lstrip("@").lower()
+            if clean_creator in following_usernames:
+                followed_videos += 1
+            else:
+                algorithmic_videos += 1
+    
+    total_creators_found = followed_videos + algorithmic_videos
+    if total_creators_found > 0:
+        followed_pct = round((followed_videos / total_creators_found) * 100, 1)
+        algorithmic_pct = round((algorithmic_videos / total_creators_found) * 100, 1)
+    else:
+        followed_pct = 0.0
+        algorithmic_pct = 0.0
+
+    # ── Archetype Detection (Deterministic 'Spotify Wrapped' logic) ─────────
+    behavioral_nodes = {
+        "peak_hour": peak_activity_hour,
+        "skip_rate_percentage": round(graveyard_rate, 1),
+        "linger_rate_percentage": round(linger_rate_pct, 1),
+        "night_shift_ratio": round(night_shift_pct, 1),
+        "night_linger_pct": round(night_linger_pct, 1),
+        "night_lingers_count": sw["night_lingers"],
+        "social_graph_algorithmic_pct": algorithmic_pct,
+        "social_graph_followed_pct": followed_pct,
+    }
+
+    primary_archetype = _determine_primary_archetype(
+        behavioral_nodes,
+        interest_clusters,
+        share_behavior,
+        comment_voice,
+        vibe_cluster
+    )
 
     # ── Evidence samples (raw excerpts for the Notes panel) ──────────────
     searches_raw = parsed.get("searches", [])
@@ -743,16 +838,8 @@ def build_ghost_profile(parsed: dict, exclude_hours: tuple[int, ...] = ()) -> di
             "weekly_heatmap": sw["weekly_heatmap"],
             "monthly_skip_rates": parsed.get("behavioral_analysis", {}).get("monthly_skip_rates", {}),
         },
-        "behavioral_nodes": {
-            "peak_hour": peak_activity_hour,
-            "skip_rate_percentage": round(graveyard_rate, 1),
-            "linger_rate_percentage": round(linger_rate_pct, 1),
-            "night_shift_ratio": round(night_shift_pct, 1),
-            "night_linger_pct": round(night_linger_pct, 1),
-            "night_lingers_count": sw["night_lingers"],
-            "social_graph_algorithmic_pct": algorithmic_pct,
-            "social_graph_followed_pct": followed_pct,
-        },
+        "behavioral_nodes": behavioral_nodes,
+        "primary_archetype": primary_archetype,
         "creator_entities": {
             "vibe_cluster": vibe_cluster,
             "graveyard": graveyard,

@@ -149,7 +149,37 @@ KEYWORD_CATEGORY: dict[str, str] = {
     "coffee": "food",
     "kitchen": "food",
 
-    # parenting
+    # sports (new)
+    "sports": "sports",
+    "football": "sports",
+    "soccer": "sports",
+    "chelsea": "sports",
+    "premier league": "sports",
+    "nba": "sports",
+    "basketball": "sports",
+    "wsl": "sports",
+    "mason mount": "sports",
+    "reece james": "sports",
+
+    # hobbies (new)
+    "hobby": "hobbies",
+    "pinball": "hobbies",
+    "game vault": "hobbies",
+    "collecting": "hobbies",
+    "diy": "hobbies",
+    "crafting": "hobbies",
+
+    # local life (new)
+    "brooklyn": "local_life",
+    "park slope": "local_life",
+    "industry city": "local_life",
+    "coney island": "local_life",
+    "prospect park": "local_life",
+    "whitney": "local_life",
+    "bakery": "local_life",
+    "restaurant": "local_life",
+
+    # parenting (enhanced)
     "parenting": "parenting",
     "mom": "parenting",
     "dad": "parenting",
@@ -160,6 +190,21 @@ KEYWORD_CATEGORY: dict[str, str] = {
     "fatherhood": "parenting",
     "kids": "parenting",
     "children": "parenting",
+    "uppababy": "parenting",
+    "stroller": "parenting",
+    "disney": "parenting",
+    "encanto": "parenting",
+
+    # academic / professional (enhanced)
+    "columbia university": "labor",
+    "neurobiology": "labor",
+    "research": "labor",
+    "lab": "labor",
+    "seo": "labor",
+    "information architecture": "labor",
+    "firebase": "tech",
+    "cursor ai": "tech",
+    "gemini": "tech",
 
     # fitness
     "fitness": "fitness",
@@ -249,6 +294,9 @@ CATEGORY_PHRASES: dict[str, str] = {
     "music": "sound and musical culture",
     "fashion": "style, beauty, and self-expression",
     "spirituality": "meaning, ritual, and the metaphysical",
+    "sports": "competition, teams, and the arena",
+    "hobbies": "niche interests and personal craft",
+    "local_life": "the physical world and local neighborhoods",
 }
 
 

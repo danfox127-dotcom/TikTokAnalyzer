@@ -130,6 +130,7 @@ def test_analyze_returns_narrative_blocks():
     assert "prose" in b
     assert "stats" in b
     assert "accent" in b
+    assert "provenance" in b
 
 @patch("api.main.anthropic.AsyncAnthropic")
 def test_analyze_llm_claude(mock_anthropic):

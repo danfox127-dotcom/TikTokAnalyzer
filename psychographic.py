@@ -199,10 +199,17 @@ _INTERPRETATIONS: dict[str, dict[str, str]] = {
             "You spend time with content about meaning, ritual, and the metaphysical. "
             "The algorithm thinks you are searching for something beyond the material."
         ),
-        "humor": (
-            "You reliably pause for comedy and absurdity. "
-            "The algorithm treats you as someone who uses laughter as a coping mechanism "
-            "and a lens on the world."
+        "sports": (
+            "You are a dedicated sports viewer. The algorithm has noted your loyalty "
+            "to specific teams and leagues, placing you in high-value competitive archetypes."
+        ),
+        "hobbies": (
+            "You linger on niche crafts and specialized hobbies. The algorithm "
+            "sees you as someone who values mastery and specific personal interests."
+        ),
+        "local_life": (
+            "The algorithm has linked you to your physical geography. It prioritises "
+            "content from your immediate neighborhood and local landmarks."
         ),
     },
     "anti_profile": {

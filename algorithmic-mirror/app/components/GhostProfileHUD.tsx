@@ -98,6 +98,7 @@ export interface GhostProfile {
     following_usernames: string[];
   };
   deep_dives?: { count: number; videos: EnrichmentTarget[] };
+  primary_archetype?: { name: string; description: string };
   narrative_blocks?: import("../types/narrative").NarrativeBlock[];
   _evidence?: {
 

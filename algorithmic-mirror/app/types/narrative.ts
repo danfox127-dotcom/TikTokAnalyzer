@@ -18,4 +18,5 @@ export interface NarrativeBlock {
   accent: string;
   stats: NarrativeStat[];
   chart?: NarrativeChart | null;
+  provenance: string;
 }

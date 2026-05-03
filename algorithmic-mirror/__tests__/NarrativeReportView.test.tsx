@@ -31,6 +31,7 @@ const makeBlock = (id: string, title: string): NarrativeBlock => ({
   accent: "#4db8ff",
   stats: [],
   chart: null,
+  provenance: "Test provenance.",
 });
 
 const twoBlocks: NarrativeBlock[] = [
