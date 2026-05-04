@@ -15,8 +15,11 @@ def clear_cache():
 async def test_geolocate_ip_success():
     from utils.ip_geo import geolocate_ip
     with respx.mock:
-        respx.get("https://api.iplocation.net/?ip=1.2.3.4").mock(
-            return_value=httpx.Response(200, json={"city": "Paris", "country_name": "France"})
+        respx.get("http://ip-api.com/json/1.2.3.4").mock(
+            return_value=httpx.Response(
+                200,
+                json={"status": "success", "city": "Paris", "country": "France"},
+            )
         )
         result = await geolocate_ip("1.2.3.4")
     assert result == {"city": "Paris", "country_name": "France"}
@@ -35,10 +38,22 @@ async def test_geolocate_ip_cache_hit():
 async def test_geolocate_ip_fallback_on_error():
     from utils.ip_geo import geolocate_ip
     with respx.mock:
-        respx.get("https://api.iplocation.net/?ip=9.9.9.9").mock(
+        respx.get("http://ip-api.com/json/9.9.9.9").mock(
             side_effect=httpx.ConnectTimeout("timeout")
         )
         result = await geolocate_ip("9.9.9.9")
+    assert result == {"city": "Unknown", "country_name": "Unknown"}
+
+
+@pytest.mark.asyncio
+async def test_geolocate_ip_fallback_on_api_error_status():
+    """Provider can return 200 with status=fail; we should still fall back."""
+    from utils.ip_geo import geolocate_ip
+    with respx.mock:
+        respx.get("http://ip-api.com/json/8.8.8.8").mock(
+            return_value=httpx.Response(200, json={"status": "fail", "message": "private"})
+        )
+        result = await geolocate_ip("8.8.8.8")
     assert result == {"city": "Unknown", "country_name": "Unknown"}
 
 
@@ -48,6 +63,14 @@ async def test_geolocate_ip_empty_string():
     # Should return fallback without hitting network
     result = await geolocate_ip("")
     assert result == {"city": "Unknown", "country_name": "Unknown"}
+
+
+@pytest.mark.asyncio
+async def test_geolocate_ip_loopback_skipped():
+    from utils.ip_geo import geolocate_ip
+    # Loopback / localhost should short-circuit to fallback (no network).
+    assert await geolocate_ip("127.0.0.1") == {"city": "Unknown", "country_name": "Unknown"}
+    assert await geolocate_ip("localhost") == {"city": "Unknown", "country_name": "Unknown"}
 
 
 @pytest.mark.asyncio
@@ -63,13 +86,17 @@ async def test_enrich_logins_with_geo():
         def make_response(request):
             nonlocal call_count
             call_count += 1
-            ip = str(request.url).split("ip=")[1]
+            # URL form is /json/<ip>
+            ip = str(request.url).rsplit("/", 1)[-1]
             data = {
-                "1.2.3.4": {"city": "Paris", "country_name": "France"},
-                "5.6.7.8": {"city": "Berlin", "country_name": "Germany"},
+                "1.2.3.4": {"status": "success", "city": "Paris", "country": "France"},
+                "5.6.7.8": {"status": "success", "city": "Berlin", "country": "Germany"},
             }
-            return httpx.Response(200, json=data.get(ip, {"city": "Unknown", "country_name": "Unknown"}))
-        respx.get(url__startswith="https://api.iplocation.net/").mock(side_effect=make_response)
+            return httpx.Response(
+                200, json=data.get(ip, {"status": "fail", "message": "unknown"})
+            )
+
+        respx.get(url__startswith="http://ip-api.com/json/").mock(side_effect=make_response)
         result = await enrich_logins_with_geo(logins)
 
     # 2 unique IPs → 2 HTTP calls

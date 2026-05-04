@@ -1,7 +1,7 @@
 """Tests for Tasks 3–6: _mine_text_footprint, analyze_comment_voice,
 _analyze_share_behavior, calculate_transparency_gap."""
 
-from ghost_profile import (
+from api.ghost_profile import (
     _mine_text_footprint,
     analyze_comment_voice,
     _analyze_share_behavior,

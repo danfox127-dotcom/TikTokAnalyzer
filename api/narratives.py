@@ -7,8 +7,10 @@ Each block: {id, title, icon, prose, accent, stats, chart, provenance}.
 """
 from __future__ import annotations
 
+import json
 from collections import Counter
-
+import anthropic
+import google.generativeai as genai
 
 # ---------------------------------------------------------------------------
 # Block 1 — Algorithmic Identity
@@ -52,7 +54,6 @@ def _build_algorithmic_identity_block(ghost_profile: dict, parsed: dict) -> dict
     for i, (handle, _) in enumerate(top3, 1):
         stats.append({"label": f"#{i} Creator", "value": handle})
 
-    # Donut: top 5 creators by linger count + Other
     total_linger = sum(c.get("linger_count", 0) for c in vibe)
     top5 = vibe[:5]
     top5_linger = sum(c.get("linger_count", 0) for c in top5)
@@ -139,12 +140,9 @@ def _build_attention_signature_block(ghost_profile: dict, parsed: dict) -> dict:
 # ---------------------------------------------------------------------------
 
 def _fmt_hour(h: int) -> str:
-    if h == 0:
-        return "12 AM"
-    if h < 12:
-        return f"{h} AM"
-    if h == 12:
-        return "12 PM"
+    if h == 0: return "12 AM"
+    if h < 12: return f"{h} AM"
+    if h == 12: return "12 PM"
     return f"{h - 12} PM"
 
 
@@ -152,25 +150,9 @@ def _build_daily_rhythm_block(ghost_profile: dict, parsed: dict) -> dict:
     sw = ghost_profile.get("stopwatch_metrics", {})
     bn = ghost_profile.get("behavioral_nodes", {})
     heatmap: dict = sw.get("hourly_heatmap", {})
-    total_events = int(sw.get("total_videos", 0))
+    total_events = int(sw.get("total_raw_videos", 0))
     night_pct = float(bn.get("night_shift_ratio", 0))
-    peak_hour_raw = bn.get("peak_hour", "0")
-
-    try:
-        peak_h = int(peak_hour_raw) if peak_hour_raw else 0
-    except (ValueError, TypeError):
-        peak_h = 0
-
-    peak_label = _fmt_hour(peak_h)
-
-    if 5 <= peak_h < 12:
-        window = "morning"
-    elif 12 <= peak_h < 17:
-        window = "afternoon"
-    elif 17 <= peak_h < 22:
-        window = "evening"
-    else:
-        window = "late night"
+    peak_label = bn.get("peak_hour", "Unknown")
 
     if night_pct > 30:
         prose = (
@@ -179,25 +161,14 @@ def _build_daily_rhythm_block(ghost_profile: dict, parsed: dict) -> dict:
             f"associated with passive consumption and higher ad susceptibility. TikTok's ad "
             f"targeting systems actively exploit this window."
         )
-    elif window == "morning":
-        prose = (
-            f"You're a morning viewer — your peak engagement hour is {peak_label}. Morning usage "
-            f"tends to be quick and habitual, content as a daily ritual rather than a late-night "
-            f"escape. Only {night_pct:.0f}% of your activity occurs in the late-night window."
-        )
     else:
         prose = (
-            f"Your peak viewing hour is {peak_label}, placing you in the {window} cohort. "
-            f"{night_pct:.0f}% of your activity occurs in the late-night window (11 PM–4 AM). "
-            f"Your usage pattern follows a typical circadian rhythm — consistent with intentional "
-            f"rather than compulsive consumption."
+            f"Your peak viewing hour is {peak_label}. {night_pct:.0f}% of your activity occurs in "
+            f"the late-night window (11 PM–4 AM). Your usage pattern follows a typical circadian "
+            f"rhythm — consistent with intentional rather than compulsive consumption."
         )
 
-    chart_data = [
-        {"hour": str(h), "count": int(heatmap.get(str(h), 0))}
-        for h in range(24)
-    ]
-
+    chart_data = [{"hour": str(h), "count": int(heatmap.get(str(h), 0))} for h in range(24)]
     active_hours = len([v for v in heatmap.values() if int(v) > 0])
     stats = [
         {"label": "Peak Hour", "value": peak_label},
@@ -213,7 +184,7 @@ def _build_daily_rhythm_block(ghost_profile: dict, parsed: dict) -> dict:
         "accent": "#a8ff78",
         "stats": stats,
         "chart": {"type": "bar", "data": chart_data},
-        "provenance": f"Aggregated from hourly engagement frequency (timestamp analysis) of {total_events} video events.",
+        "provenance": f"Aggregated from hourly engagement frequency across {total_events} video events.",
     }
 
 
@@ -241,15 +212,13 @@ def _build_social_graph_block(ghost_profile: dict, parsed: dict) -> dict:
         prose = (
             f"You follow {following_count} accounts, but only {followed_pct:.0f}% of your sustained "
             f"viewing goes to them. The algorithm has almost entirely displaced your social graph. "
-            f"In effect, your follower list is decorative — the machine decides what you see. "
-            f"This is TikTok's design working as intended."
+            f"In effect, your follower list is decorative — the machine decides what you see."
         )
     else:
         prose = (
             f"You follow {following_count} accounts, with {followed_pct:.0f}% of your viewing "
             f"going to followed creators and {algo_pct:.0f}% to algorithmically-surfaced content. "
-            f"Your top watched creator is {top_creator}. The FYP is steadily colonizing your "
-            f"timeline, but your social graph still has influence."
+            f"Your top watched creator is {top_creator}. The social graph still has some influence."
         )
 
     stats = [
@@ -259,16 +228,12 @@ def _build_social_graph_block(ghost_profile: dict, parsed: dict) -> dict:
         {"label": "Top Watched", "value": top_creator},
     ]
 
-    # Node data for interactive graph
-    following_usernames = set(ghost_profile.get("enrichment_targets", {}).get("following_usernames", []))
     nodes = []
-    for c in vibe:
-        handle = c.get("handle", "Unknown")
-        clean_handle = handle.lstrip("@").lower()
+    for c in vibe[:12]:
         nodes.append({
-            "name": handle,
+            "name": c.get("handle", "Unknown"),
             "size": c.get("linger_count", 0),
-            "is_followed": clean_handle in following_usernames,
+            "is_followed": c.get("is_followed", False),
             "genre": c.get("genre", "unknown"),
         })
 
@@ -298,30 +263,17 @@ def _build_share_behavior_block(ghost_profile: dict, parsed: dict) -> dict:
     share_to_like = round(total_shares / max(total_likes, 1), 3)
 
     if total_shares == 0:
-        prose = (
-            "You have shared no content from TikTok — or your export does not include share data. "
-            "This puts you in the silent majority: viewers who consume without redistributing. "
-            "You leave no traceable content trail outside the platform."
-        )
+        prose = "You have shared no content from TikTok. You leave no traceable content trail outside the platform."
     elif behavior_type == "Private Curator":
         prose = (
             f"You are a Private Curator. The majority of your {total_shares} shares go through "
-            f"direct message or private channels, primarily via {primary_method}. You share content "
-            f"intentionally with specific people rather than broadcasting broadly. Your shares are "
-            f"high-signal recommendations, not reflexive reposting."
-        )
-    elif behavior_type == "Public Broadcaster":
-        prose = (
-            f"You are a Public Broadcaster — {total_shares} shares, primarily via {primary_method}. "
-            f"You redistribute content publicly, extending TikTok's reach beyond the platform. "
-            f"Your share-to-like ratio of {share_to_like:.3f} suggests curation is a primary "
-            f"mode of engagement."
+            f"direct message, primarily via {primary_method}. Your shares are high-signal "
+            f"recommendations, not reflexive reposting."
         )
     else:
         prose = (
-            f"Your sharing behavior is mixed — {total_shares} shares across multiple channels, "
-            f"with {primary_method} as the primary method. You balance private curation with "
-            f"public sharing, acting as a connector between TikTok and the broader social web."
+            f"Your sharing behavior is {behavior_type.lower()} — {total_shares} shares, "
+            f"with {primary_method} as the primary method. You extend TikTok's reach beyond the platform."
         )
 
     stats = [
@@ -331,10 +283,7 @@ def _build_share_behavior_block(ghost_profile: dict, parsed: dict) -> dict:
         {"label": "Share/Like Ratio", "value": f"{share_to_like:.3f}"},
     ]
 
-    chart_data = [
-        {"name": k.title(), "value": v}
-        for k, v in share_methods.items() if v > 0
-    ]
+    chart_data = [{"name": k.title(), "value": v} for k, v in share_methods.items() if v > 0]
 
     return {
         "id": "share_behavior",
@@ -344,7 +293,7 @@ def _build_share_behavior_block(ghost_profile: dict, parsed: dict) -> dict:
         "accent": "#ffd700",
         "stats": stats,
         "chart": {"type": "donut", "data": chart_data} if chart_data else None,
-        "provenance": "Extracted from share method metadata (DM, Chat, etc.) and correlated with like/favorite volume.",
+        "provenance": "Extracted from share method metadata and correlated with like volume.",
     }
 
 
@@ -356,48 +305,19 @@ def _build_comment_voice_block(ghost_profile: dict, parsed: dict) -> dict:
     cv = ghost_profile.get("comment_voice", {})
     total = int(cv.get("total_comments", 0))
     avg_chars = float(cv.get("avg_length_chars", 0))
-    long_pct = float(cv.get("long_comment_pct", 0))
-    emoji_density = float(cv.get("emoji_density", 0))
     style_label = cv.get("engagement_style_label", "Lurker")
 
     if total == 0:
-        prose = (
-            "No comments found in your export. You are a silent viewer — consuming without "
-            "leaving textual traces in the public record. TikTok registers your presence through "
-            "behavioral signals (watch time, skips, lingers), not your words."
-        )
-    elif style_label == "Analytical Commenter":
-        prose = (
-            f"You are an Analytical Commenter. Your {total} comments average {avg_chars:.0f} "
-            f"characters — longer than typical reactions — with low emoji density ({emoji_density:.1%}). "
-            f"You engage substantively. {long_pct:.0f}% of your comments exceed 150 characters, "
-            f"leaving a readable and interpretable textual record."
-        )
-    elif style_label == "Reactive Commenter":
-        prose = (
-            f"You are a Reactive Commenter — quick, frequent responses averaging {avg_chars:.0f} "
-            f"characters. Your {total} comments are short-form reactions. Emoji density: "
-            f"{emoji_density:.1%}. You're highly engaged but leave minimal interpretable signal "
-            f"in your comment text."
-        )
-    elif style_label == "Lurker":
-        prose = (
-            f"You comment rarely relative to your viewing volume. Your {total} total comments "
-            f"average {avg_chars:.0f} characters. Lurkers account for the majority of TikTok's "
-            "audience — most consumption happens silently, engagement expressed through watch "
-            "time and sharing rather than text."
-        )
+        prose = "No comments found. You are a silent viewer, engaging through watch time rather than text."
     else:
         prose = (
-            f"You are a {style_label}. {total} total comments averaging {avg_chars:.0f} characters. "
-            f"{long_pct:.0f}% exceed 150 characters. Emoji density: {emoji_density:.1%}. "
-            f"Your comment behavior reflects deliberate, selective engagement."
+            f"You are a {style_label}. Your {total} comments average {avg_chars:.0f} characters. "
+            f"Your textual footprint reflects a {style_label.lower()} mode of engagement."
         )
 
     stats = [
         {"label": "Total Comments", "value": str(total)},
         {"label": "Avg Length", "value": f"{avg_chars:.0f} chars"},
-        {"label": "Long Comments", "value": f"{long_pct:.0f}%"},
         {"label": "Style", "value": style_label},
     ]
 
@@ -409,7 +329,7 @@ def _build_comment_voice_block(ghost_profile: dict, parsed: dict) -> dict:
         "accent": "#c8a2c8",
         "stats": stats,
         "chart": None,
-        "provenance": "Analyzed from comment character length, emoji density, and frequency relative to viewing volume.",
+        "provenance": "Analyzed from comment length and frequency relative to viewing volume.",
     }
 
 
@@ -425,32 +345,16 @@ def _build_transparency_gap_block(ghost_profile: dict, parsed: dict) -> dict:
     footprint = ghost_profile.get("digital_footprint", {})
     login_count = int(footprint.get("login_count", 0))
     unique_ips = int(footprint.get("unique_ips", 0))
-    unique_devices = footprint.get("unique_devices", [])
-    device_count = len(unique_devices) if isinstance(unique_devices, list) else int(unique_devices or 0)
-    searches = int(ghost_profile.get("search_rhythm", {}).get("total_searches", 0))
-    likes = len(parsed.get("likes", []))
-    comments = len(parsed.get("comments", []))
-    shares = len(parsed.get("shares", []))
 
     if official_count == 0 and behavioral_count > 5:
         prose = (
-            f"Your ad interest profile is empty — TikTok's official record claims no declared "
-            f"interests, yet behavioral analysis shows {behavioral_count} inferred interest clusters. "
-            f"This suggests a privacy opt-out, region restriction, or data suppression in the export. "
-            f"The algorithm sees far more than what it reports to you."
-        )
-    elif official_count < behavioral_count * 0.5 and behavioral_count > 0:
-        prose = (
-            f"TikTok's official export shows {official_count} declared ad interest categories — "
-            f"but behavioral signals reveal {behavioral_count} active interest clusters. "
-            f"{interpretation} What TikTok discloses is a fraction of what it knows."
+            f"Your ad interest profile is empty, yet behavioral analysis shows {behavioral_count} "
+            f"inferred interest clusters. The algorithm sees far more than what it reports."
         )
     else:
         prose = (
-            f"Your export contains {official_count} declared ad interest categories, "
-            f"roughly matching the {behavioral_count} behavioral clusters. "
-            f"Across {login_count} logins, {unique_ips} unique IPs, and {device_count} devices, "
-            f"TikTok has assembled a cross-surface profile. {interpretation}"
+            f"TikTok discloses {official_count} declared interests — but behavioral signals "
+            f"reveal {behavioral_count} clusters. {interpretation}"
         )
 
     stats = [
@@ -458,16 +362,11 @@ def _build_transparency_gap_block(ghost_profile: dict, parsed: dict) -> dict:
         {"label": "Behavioral Clusters", "value": str(behavioral_count)},
         {"label": "Login Events", "value": str(login_count)},
         {"label": "Unique IPs", "value": str(unique_ips)},
-        {"label": "Unique Devices", "value": str(device_count)},
     ]
 
     chart_data = [
         {"category": "Ad Interests", "count": official_count},
         {"category": "Behaviors", "count": behavioral_count},
-        {"category": "Searches", "count": searches},
-        {"category": "Likes", "count": likes},
-        {"category": "Comments", "count": comments},
-        {"category": "Shares", "count": shares},
         {"category": "Logins", "count": login_count},
     ]
 
@@ -479,7 +378,7 @@ def _build_transparency_gap_block(ghost_profile: dict, parsed: dict) -> dict:
         "accent": "#ff4466",
         "stats": stats,
         "chart": {"type": "bar", "data": chart_data},
-        "provenance": "Forensic gap between 'Settings Interests' in TikTok export and behavioral categories inferred from video metadata.",
+        "provenance": "Forensic gap between 'Settings Interests' and behavioral categories inferred from video metadata.",
     }
 
 
@@ -492,49 +391,21 @@ def _build_location_trace_block(ghost_profile: dict, parsed: dict) -> dict:
     logins: list[dict] = footprint.get("recent_logins", [])
 
     city_counter: Counter = Counter()
-    country_counter: Counter = Counter()
     for login in logins:
         city = login.get("city", "") or ""
-        country = login.get("country_name", "") or ""
-        if city and city != "Unknown":
-            city_counter[city] += 1
-        if country and country != "Unknown":
-            country_counter[country] += 1
+        if city and city != "Unknown": city_counter[city] += 1
 
     home_city = city_counter.most_common(1)[0][0] if city_counter else "Unknown"
-    country_count = len(country_counter)
     city_count = len(city_counter)
-    top_country = list(country_counter.keys())[0] if country_counter else "one country"
 
-    sorted_logins = sorted(logins, key=lambda l: l.get("date", ""))
-    first_login = sorted_logins[0].get("date", "Unknown")[:10] if sorted_logins else "Unknown"
-
-    if country_count > 3:
-        prose = (
-            f"TikTok has tracked you across {country_count} countries and {city_count} cities. "
-            f"Your login history spans significant geographic range — {home_city} appears most "
-            f"frequently. Cross-border usage means your data may be subject to multiple regulatory "
-            f"jurisdictions simultaneously."
-        )
-    elif city_count > 5:
-        prose = (
-            f"Your TikTok activity has been logged from {city_count} distinct cities, primarily "
-            f"in {top_country}. Home base: {home_city}. First recorded login: {first_login}. "
-            f"Each login IP is a geolocation data point TikTok retains indefinitely."
-        )
-    else:
-        prose = (
-            f"Your login history is geographically concentrated — primarily {home_city}. "
-            f"First recorded login: {first_login}. TikTok has logged {len(logins)} login events "
-            f"with associated IPs. Even a single IP can reveal your home ISP, city, and "
-            f"approximate neighborhood."
-        )
+    prose = (
+        f"Your login history covers {city_count} cities, with {home_city} as your home base. "
+        f"Even a single IP can reveal your ISP and approximate neighborhood."
+    )
 
     stats = [
         {"label": "Home City", "value": home_city},
-        {"label": "Countries Seen", "value": str(country_count)},
         {"label": "Cities Seen", "value": str(city_count)},
-        {"label": "First Login", "value": first_login},
         {"label": "Login Events", "value": str(len(logins))},
     ]
 
@@ -556,37 +427,11 @@ def _build_location_trace_block(ghost_profile: dict, parsed: dict) -> dict:
 
 def _build_closing_synthesis_block(ghost_profile: dict, parsed: dict) -> dict:
     bn = ghost_profile.get("behavioral_nodes", {})
-    followed_pct = float(bn.get("social_graph_followed_pct", 0))
-    linger_rate = float(bn.get("linger_rate_percentage", 0))
-    tg = ghost_profile.get("transparency_gap", {})
-    official = int(tg.get("official_ad_interest_count", 0))
-    behavioral = int(tg.get("behavioral_interest_count", 0))
-    cv = ghost_profile.get("comment_voice", {})
-    style = cv.get("engagement_style_label", "Lurker")
-
-    if linger_rate > 20 and followed_pct > 50:
-        engagement = "a loyal, deep watcher whose attention is genuinely intentional"
-    elif linger_rate > 20 and followed_pct < 30:
-        engagement = "a deep but algorithmically-captured viewer — you watch closely, but the machine picks what"
-    elif linger_rate < 10 and followed_pct < 30:
-        engagement = "a passive scroller whose engagement is broad and shallow"
-    else:
-        engagement = "a balanced viewer with moderate engagement depth"
-
-    gap_ratio = official / max(behavioral, 1)
-    if gap_ratio < 0.5:
-        exposure = "significant — the official export substantially under-represents TikTok's model of you"
-    else:
-        exposure = "moderate — declared interests roughly match behavioral signals"
-
-    textual_trace = "a readable textual trace" if style != "Lurker" else "almost no public record"
-
+    archetype = ghost_profile.get("primary_archetype", {}).get("name", "The Balanced Viewer")
+    
     prose = (
-        f"Across your usage history, you emerge as {engagement}. "
-        f"The algorithm characterizes you through behavior rather than stated preferences: "
-        f"every linger, skip, and late-night session updates a model you never consented to build. "
-        f"Your transparency gap is {exposure}. "
-        f"As a {style.lower()}, your comment behavior leaves {textual_trace}. "
+        f"Across your usage history, you emerge as {archetype}. "
+        f"The algorithm characterizes you through behavior rather than stated preferences. "
         f"This dossier is a partial reconstruction — TikTok's actual model is orders of magnitude more granular."
     )
 
@@ -598,20 +443,92 @@ def _build_closing_synthesis_block(ghost_profile: dict, parsed: dict) -> dict:
         "accent": "#e0e0e0",
         "stats": [],
         "chart": None,
-        "provenance": "Cross-dimensional behavioral synthesis mapped from all deterministic forensic blocks.",
+        "provenance": "Cross-dimensional behavioral synthesis mapped from all forensic blocks.",
     }
 
+
+# ---------------------------------------------------------------------------
+# LLM Generation
+# ---------------------------------------------------------------------------
+
+async def generate_narrative_blocks_llm(
+    ghost_profile: dict, 
+    api_key: str, 
+    provider: str = "claude"
+) -> list[dict]:
+    """
+    Generate 9 Dossier blocks using an LLM with a strict execution prompt.
+    """
+    compact_profile = {
+        "archetype": ghost_profile.get("primary_archetype", {}),
+        "metrics": ghost_profile.get("behavioral_nodes", {}),
+        "interests": ghost_profile.get("interest_clusters", [])[:15],
+        "creators": ghost_profile.get("creator_entities", {}).get("vibe_cluster", [])[:10],
+        "night_shift": ghost_profile.get("night_shift", {}),
+        "transparency": ghost_profile.get("transparency_gap", {})
+    }
+
+    prompt = f"""
+You are a social media forensic analyst. Generate a 9-block "Dossier" for a user based on their TikTok behavioral data.
+The data shows how the algorithm sees them, not their stated preferences.
+
+DATA:
+{json.dumps(compact_profile, indent=2)}
+
+TASK:
+Generate exactly 9 narrative blocks. Each block MUST follow this JSON schema:
+{{
+  "id": "algorithmic_identity | attention_signature | dayparting | social_graph | share_behavior | comment_voice | transparency_gap | location_trace | closing_synthesis",
+  "title": "UPPERCASE TITLE",
+  "icon": "emoji",
+  "prose": "2-3 sentences of direct, slightly noir, insightful analysis",
+  "accent": "hex color",
+  "stats": [{{ "label": "string", "value": "string" }}],
+  "chart": {{ "type": "donut|bar|creator_graph", "data": [...] }} | null,
+  "provenance": "1 sentence explaining the data origin"
+}}
+
+STRICT RULES:
+1. Return ONLY a valid JSON array of 9 objects.
+2. Tone: "Dark Deco" — forensic, noir, objective.
+3. Be specific: Reference the numbers in the prose.
+4. Address the user as "you".
+
+RESPONSE:
+"""
+
+    try:
+        if provider == "claude":
+            client = anthropic.AsyncAnthropic(api_key=api_key)
+            response = await client.messages.create(
+                max_tokens=4096,
+                messages=[{"role": "user", "content": prompt}],
+                model="claude-sonnet-4-5",
+            )
+            raw_text = response.content[0].text
+        elif provider.startswith("gemini"):
+            genai.configure(api_key=api_key)
+            model = genai.GenerativeModel("gemini-3-pro")
+            response = await model.generate_content_async(prompt)
+            raw_text = response.text
+        else:
+            return []
+
+        start = raw_text.find("[")
+        end = raw_text.rfind("]") + 1
+        if start != -1 and end > start:
+            return json.loads(raw_text[start:end])
+        return []
+    except Exception as e:
+        print(f"LLM Narrative Error: {e}")
+        return []
 
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
 
 def build_narrative_blocks(ghost_profile: dict, parsed: dict) -> list[dict]:
-    """
-    Generate ordered list of 9 narrative blocks.
-    Each block that raises is silently skipped to prevent one bad block
-    from crashing the whole response.
-    """
+    """Generate ordered list of 9 narrative blocks (deterministic fallback)."""
     builders = [
         _build_algorithmic_identity_block,
         _build_attention_signature_block,
@@ -627,6 +544,6 @@ def build_narrative_blocks(ghost_profile: dict, parsed: dict) -> list[dict]:
     for builder in builders:
         try:
             blocks.append(builder(ghost_profile, parsed))
-        except Exception:
-            pass
+        except Exception as e:
+            print(f"Block Builder Error: {e}")
     return blocks

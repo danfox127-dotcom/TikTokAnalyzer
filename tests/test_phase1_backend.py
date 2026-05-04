@@ -16,8 +16,8 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import pytest
 from datetime import datetime, timedelta
 
-from ghost_profile import _run_stopwatch
-from psychographic import build_pillar_narrative, build_anti_profile_signature
+from api.ghost_profile import _run_stopwatch
+from utils.psychographic import build_pillar_narrative, build_anti_profile_signature
 
 
 # ---------------------------------------------------------------------------

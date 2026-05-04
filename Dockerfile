@@ -8,7 +8,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy source code
 # We copy the entire root folder because the FastAPI app is inside api/
-# and imports modules from the root (e.g., oembed, psychographic)
+# and imports modules from sub-packages (e.g., utils.oembed, utils.psychographic)
 COPY . .
 
 # Expose port

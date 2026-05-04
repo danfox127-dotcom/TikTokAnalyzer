@@ -2,7 +2,7 @@ import pytest
 import httpx
 import respx
 
-from oembed import fetch_oembed, fetch_many
+from utils.oembed import fetch_oembed, fetch_many
 
 
 @pytest.mark.asyncio

@@ -75,9 +75,40 @@ export interface GhostProfile {
     social_graph_followed_pct: number;
   };
   creator_entities: {
-    vibe_cluster: { handle: string; linger_count: number; is_followed?: boolean }[];
-    graveyard: { handle: string; skip_count: number; is_followed?: boolean }[];
+    vibe_cluster: {
+      handle: string;
+      linger_count: number;
+      is_followed?: boolean;
+      // Populated by the oEmbed bridge in /api/analyze
+      display_name?: string;
+      thumbnail?: string;
+      sample_titles?: string[];
+      video_id?: string;
+      // Populated by static registry or the optional LLM enrichment pass
+      genre?: string;
+      archetype?: string;
+      confidence?: number;
+    }[];
+    graveyard: {
+      handle: string;
+      skip_count: number;
+      is_followed?: boolean;
+      display_name?: string;
+      thumbnail?: string;
+      sample_titles?: string[];
+      video_id?: string;
+      genre?: string;
+      archetype?: string;
+      confidence?: number;
+    }[];
   };
+  // Optional LLM-derived "Shadow Clusters" — cross-creator thematic groupings.
+  // Populated only when /api/analyze is called with ?api_key=...
+  shadow_clusters?: {
+    label: string;
+    description: string;
+    creators: string[];
+  }[];
   academic_insights?: {
     explicit_vs_implicit_ratio: number;
     explicit_actions_count: number;

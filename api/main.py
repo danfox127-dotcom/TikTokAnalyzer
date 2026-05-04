@@ -22,12 +22,14 @@ import anthropic
 import google.generativeai as genai
 
 from parsers.tiktok import parse_tiktok_export_from_bytes
-from ghost_profile import build_ghost_profile
+from api.ghost_profile import build_ghost_profile
 from exporters.llm_export import generate_llm_export
-from api.narratives import build_narrative_blocks
+from api.narratives import build_narrative_blocks, generate_narrative_blocks_llm
 from utils.ip_geo import enrich_logins_with_geo
-import oembed
-import psychographic
+from utils.creators import enrich_creators_with_llm, cluster_creators_llm
+from utils import oembed
+from utils import psychographic
+from utils import pillar_categories
 
 _LLM_EXPORT_MAX_BYTES = 100 * 1024 * 1024  # 100 MB
 
@@ -45,7 +47,7 @@ _allowed_origins = [
 app = FastAPI(
     title="Algorithmic Forensics API",
     description="Threat assessment engine — exposes how the algorithm sees you.",
-    version="1.0.0",
+    version="1.1.0",
 )
 
 app.add_middleware(
@@ -56,27 +58,18 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Simple in-process metrics (counters)
 _metrics = {
     "enrich_requests_total": 0,
     "enrich_requested_videos_total": 0,
     "enrich_fetched_videos_total": 0,
 }
 
-# ---------------------------------------------------------------------------
-# Routes
-# ---------------------------------------------------------------------------
-
 @app.get("/health")
 async def health():
     return {"status": "online", "service": "algorithmic-forensics-api"}
 
-
 @app.get("/metrics")
 async def metrics():
-    """Prometheus-style plaintext metrics for quick scraping.
-    Contains basic enrich counters and oEmbed cache metrics.
-    """
     try:
         cache_metrics = oembed.get_cache_metrics()
     except Exception:
@@ -102,70 +95,114 @@ async def metrics():
         "# TYPE algorithmic_oembed_cache_evictions counter",
         f"algorithmic_oembed_cache_evictions {cache_metrics.get('evictions', 0)}",
     ]
-
     return PlainTextResponse("\n".join(lines), media_type="text/plain; version=0.0.4")
-
 
 @app.post("/api/analyze")
 async def analyze(
     file: UploadFile = File(...),
-    sleep_start: Optional[int] = Query(None, ge=0, le=23, description="Sleep window start hour (0–23)"),
-    sleep_end: Optional[int] = Query(None, ge=0, le=23, description="Sleep window end hour (0–23)"),
+    sleep_start: Optional[int] = Query(None, ge=0, le=23),
+    sleep_end: Optional[int] = Query(None, ge=0, le=23),
+    api_key: Optional[str] = Query(None),
+    provider: str = Query("claude", pattern="^(claude|gemini-pro|gemini-flash)$"),
 ):
-    """
-    Accept a TikTok user_data_tiktok.json upload and return the Ghost Profile payload.
-    Pass ?sleep_start=1&sleep_end=7 to exclude a custom sleep window from behavioral metrics.
-    Supports wrap-around (e.g. sleep_start=22, sleep_end=6 covers 10PM–6AM).
-    """
     if not file.filename or not file.filename.endswith(".json"):
         raise HTTPException(status_code=400, detail="File must be a .json export.")
 
     raw = await file.read()
-    if len(raw) == 0:
+    if not raw:
         raise HTTPException(status_code=400, detail="Uploaded file is empty.")
-
     try:
         parsed = parse_tiktok_export_from_bytes(raw)
     except Exception as exc:
         raise HTTPException(status_code=422, detail=f"Failed to parse export: {exc}")
 
+    exclude_hours = ()
     if sleep_start is not None and sleep_end is not None:
         if sleep_start <= sleep_end:
             exclude_hours = tuple(range(sleep_start, sleep_end + 1))
         else:
-            # Wrap-around midnight (e.g. 11PM–6AM)
             exclude_hours = tuple(range(sleep_start, 24)) + tuple(range(0, sleep_end + 1))
-    else:
-        exclude_hours = ()
 
     ghost_profile = build_ghost_profile(parsed, exclude_hours=exclude_hours)
 
-    # Enrich recent_logins with geolocation data (async, cached, fallback-safe)
-    raw_logins: list[dict] = ghost_profile.get("digital_footprint", {}).get("recent_logins", [])
+    # 1. Geo Enrichment
+    raw_logins = ghost_profile.get("digital_footprint", {}).get("recent_logins", [])
     if raw_logins:
         enriched_logins = await enrich_logins_with_geo(raw_logins)
         ghost_profile["digital_footprint"]["recent_logins"] = enriched_logins
 
-    narrative_blocks = build_narrative_blocks(ghost_profile, parsed)
+    # 2. Bridge Enrichment: Resolve Unknown Handles via oEmbed.
+    # Strategy (d): deterministic — pull canonical handle from oEmbed `author_unique_id`
+    # (already mapped to data.author by utils/oembed.py), capture display_name + thumbnail
+    # for rendering, fall back to display name when handle is missing.
+    vibe = ghost_profile.get("creator_entities", {}).get("vibe_cluster", [])
+    unknown_vids = [c["video_id"] for c in vibe if c.get("handle") == "Unknown" and c.get("video_id")]
+
+    if unknown_vids:
+        fetch_targets = unknown_vids[:10]  # cap fan-out
+        oembed_results = await oembed.fetch_many(fetch_targets, concurrency=5)
+        vid_to_meta: dict[str, dict] = {}
+        for r in oembed_results:
+            if r.get("status") != "ok":
+                continue
+            data = r.get("data") or {}
+            handle = (data.get("author") or "").strip()
+            display_name = (data.get("author_name") or "").strip()
+            if not handle and not display_name:
+                continue
+            vid_to_meta[r["video_id"]] = {
+                "handle": handle,           # canonical, may be empty
+                "display_name": display_name,
+                "thumbnail": data.get("thumbnail") or "",
+            }
+
+        following_set = {
+            u.lower().lstrip("@")
+            for u in ghost_profile.get("enrichment_targets", {}).get("following_usernames", [])
+        }
+        for c in vibe:
+            meta = vid_to_meta.get(c.get("video_id"))
+            if not meta:
+                continue
+            if meta["handle"]:
+                c["handle"] = f"@{meta['handle']}"
+                c["is_followed"] = meta["handle"].lower() in following_set
+            # Always carry display name + thumbnail when we have them.
+            if meta["display_name"]:
+                c["display_name"] = meta["display_name"]
+            if meta["thumbnail"]:
+                c["thumbnail"] = meta["thumbnail"]
+
+    # 3. Automated Vibe & Narrative (if API key provided)
+    if api_key:
+        # Enrich creators
+        vibe = ghost_profile.get("creator_entities", {}).get("vibe_cluster", [])
+        enriched_vibe = await enrich_creators_with_llm(vibe, api_key, provider)
+        ghost_profile["creator_entities"]["vibe_cluster"] = enriched_vibe
+        
+        # New: Shadow Clusters
+        ghost_profile["shadow_clusters"] = await cluster_creators_llm(enriched_vibe, api_key, provider)
+        
+        # Generate LLM narratives
+        narrative_blocks = await generate_narrative_blocks_llm(ghost_profile, api_key, provider)
+        if not narrative_blocks:
+            narrative_blocks = build_narrative_blocks(ghost_profile, parsed)
+    else:
+        narrative_blocks = build_narrative_blocks(ghost_profile, parsed)
 
     return {**ghost_profile, "narrative_blocks": narrative_blocks}
 
 
 @app.post("/api/export/llm")
 async def export_llm(file: UploadFile = File(...)):
-    """
-    Parse a TikTok export and return a privacy-safe LLM analysis JSON.
-    Suitable for uploading directly to Claude.ai or Gemini.
-    """
+    """Parse a TikTok export and return a privacy-safe LLM analysis JSON."""
     if not file.filename or not file.filename.endswith(".json"):
         raise HTTPException(status_code=400, detail="File must be a .json export.")
-
     raw = await file.read()
-    if len(raw) == 0:
+    if not raw:
         raise HTTPException(status_code=400, detail="Uploaded file is empty.")
     if len(raw) > _LLM_EXPORT_MAX_BYTES:
         raise HTTPException(status_code=413, detail="File too large (max 100 MB).")
-
     try:
         parsed = parse_tiktok_export_from_bytes(raw)
     except Exception as exc:
@@ -173,16 +210,11 @@ async def export_llm(file: UploadFile = File(...)):
 
     ghost = build_ghost_profile(parsed)
     payload = generate_llm_export(parsed, ghost)
-
-    filename = f"tiktok_analysis_{_date.today().isoformat()}.json"
-    content = json.dumps(payload, indent=2, ensure_ascii=False)
-
     return Response(
-        content=content,
+        content=json.dumps(payload, indent=2, ensure_ascii=False),
         media_type="application/json",
-        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        headers={"Content-Disposition": f'attachment; filename="tiktok_analysis_{_date.today().isoformat()}.json"'},
     )
-
 
 @app.post("/api/analyze/llm")
 async def analyze_llm(
@@ -190,17 +222,12 @@ async def analyze_llm(
     provider: str = Query(..., pattern="^(claude|gemini-pro|gemini-flash)$"),
     api_key: str = Query(...),
 ):
-    """
-    Stream an LLM analysis of the TikTok behavioral profile using a user-provided API key.
-    The key is used only for this request and never logged or stored.
-    """
+    """Stream an LLM analysis using the user's API key. Key lives in memory only."""
     if not file.filename or not file.filename.endswith(".json"):
         raise HTTPException(status_code=400, detail="File must be a .json export.")
-
     raw = await file.read()
-    if len(raw) == 0:
+    if not raw:
         raise HTTPException(status_code=400, detail="Uploaded file is empty.")
-
     try:
         parsed = parse_tiktok_export_from_bytes(raw)
     except Exception as exc:
@@ -208,14 +235,10 @@ async def analyze_llm(
 
     ghost = build_ghost_profile(parsed)
     payload = generate_llm_export(parsed, ghost)
-    
-    # Construct the prompt
     meta = payload["_meta"]
-    profile_json = json.dumps(payload, indent=2, ensure_ascii=False)
-    
     prompt = (
         f"{meta['instructions_for_llm']}\n\n"
-        f"DATA_EXPORT_JSON:\n{profile_json}\n\n"
+        f"DATA_EXPORT_JSON:\n{json.dumps(payload, indent=2, ensure_ascii=False)}\n\n"
         f"{meta['suggested_opening']}"
     )
 
@@ -225,7 +248,7 @@ async def analyze_llm(
             async with client.messages.stream(
                 max_tokens=2048,
                 messages=[{"role": "user", "content": prompt}],
-                model="claude-4-5-opus-latest",
+                model="claude-opus-4-5",
             ) as stream:
                 async for text in stream.text_stream:
                     yield f"data: {text}\n\n"
@@ -237,7 +260,6 @@ async def analyze_llm(
         try:
             genai.configure(api_key=api_key)
             model = genai.GenerativeModel(model_name)
-            # generate_content_async with stream=True
             response = await model.generate_content_async(prompt, stream=True)
             async for chunk in response:
                 if chunk.text:
@@ -248,10 +270,8 @@ async def analyze_llm(
 
     if provider == "claude":
         return StreamingResponse(stream_claude(), media_type="text/event-stream")
-    elif provider == "gemini-pro":
-        return StreamingResponse(stream_gemini("gemini-3.1-pro"), media_type="text/event-stream")
-    else: # gemini-flash
-        return StreamingResponse(stream_gemini("gemini-3.1-flash"), media_type="text/event-stream")
+    model = "gemini-3-pro" if provider == "gemini-pro" else "gemini-3-flash"
+    return StreamingResponse(stream_gemini(model), media_type="text/event-stream")
 
 
 class EnrichRequest(BaseModel):
@@ -260,81 +280,101 @@ class EnrichRequest(BaseModel):
     sandbox: list[dict]
     night_lingered: list[dict]
     following_usernames: list[str]
-
+    api_key: Optional[str] = None
+    provider: str = "claude"
 
 @app.post("/api/enrich")
 async def enrich(req: EnrichRequest):
-    buckets = {
-        "lingered": req.lingered,
-        "graveyard": req.graveyard,
-        "sandbox": req.sandbox,
-        "night_lingered": req.night_lingered,
-    }
-
-    all_ids: list[str] = []
-    seen: set[str] = set()
+    buckets = {"lingered": req.lingered, "graveyard": req.graveyard, "sandbox": req.sandbox, "night_lingered": req.night_lingered}
+    all_ids = []
+    seen = set()
     for events in buckets.values():
         for ev in events:
             vid = ev.get("video_id")
             if vid and vid not in seen:
-                seen.add(vid)
-                all_ids.append(vid)
+                seen.add(vid); all_ids.append(vid)
 
     fetched_results = await oembed.fetch_many(all_ids, concurrency=8)
-    # Map of video_id -> result dict returned by oembed.fetch_oembed
-    results_map: dict[str, dict] = {r["video_id"]: r for r in fetched_results if r.get("video_id")}
-    # videos_map keeps only the metadata (data) for easy merging into events
-    videos_map: dict[str, dict] = {vid: (res.get("data") or {}) for vid, res in results_map.items()}
-    # Per-video status summary for UI/diagnostics
-    video_results: dict[str, dict] = {vid: {"status": res.get("status"), "error": res.get("error")} for vid, res in results_map.items()}
+    videos_map = {r["video_id"]: (r.get("data") or {}) for r in fetched_results if r.get("video_id")}
+    video_results = {r["video_id"]: {"status": r.get("status"), "error": r.get("error")} for r in fetched_results if r.get("video_id")}
 
-    enriched: dict[str, list[dict]] = {}
+    enriched = {}
     for key, events in buckets.items():
         enriched_list = []
         for ev in events:
             vid = ev.get("video_id")
-            if not vid:
-                continue
             meta = videos_map.get(vid, {"title": "Title Hidden", "author": "Unknown", "author_name": "Unknown", "thumbnail": ""})
             enriched_list.append({**ev, **meta})
         enriched[key] = enriched_list[:24]
 
     def top_creators(items: list[dict], limit: int = 12) -> list[dict]:
-        agg: dict[str, dict] = {}
+        agg = {}
         for it in items:
             author = (it.get("author") or "").lower()
-            if not author:
-                continue
-            if author not in agg:
-                agg[author] = {"author": author, "author_name": it.get("author_name") or author, "count": 0}
+            if not author: continue
+            if author not in agg: agg[author] = {"author": author, "author_name": it.get("author_name") or author, "count": 0}
             agg[author]["count"] += 1
         return sorted(agg.values(), key=lambda x: x["count"], reverse=True)[:limit]
 
     following_set = {u.lower().lstrip("@") for u in req.following_usernames}
-    followed_n = 0
-    algo_n = 0
+    matched = followed_n = algo_n = 0
     for key in ("lingered", "sandbox", "graveyard"):
         for it in enriched[key]:
             author = (it.get("author") or "").lower().lstrip("@")
-            if not author:
-                continue
-            if author in following_set:
-                followed_n += 1
-            else:
-                algo_n += 1
-    matched = followed_n + algo_n
-    if matched > 0:
-        followed_pct = round((followed_n / matched) * 100, 1)
-        algo_pct = round((algo_n / matched) * 100, 1)
-    else:
-        followed_pct = 0.0
-        algo_pct = 0.0
+            if not author: continue
+            matched += 1
+            if author in following_set: followed_n += 1
+            else: algo_n += 1
+    
+    followed_pct = round((followed_n / matched) * 100, 1) if matched > 0 else 0.0
+    algo_pct = round((algo_n / matched) * 100, 1) if matched > 0 else 0.0
 
     def titles(items: list[dict]) -> list[str]:
         return [it.get("title", "") for it in items if it.get("title")]
 
+    # ── Theme extraction ──────────────────────────────────────────────────────
+    p_themes = psychographic.extract_themes(titles(enriched["lingered"]))
+    a_themes = psychographic.extract_themes(titles(enriched["graveyard"]))
+    s_themes = psychographic.extract_themes(titles(enriched["sandbox"]))
+    n_themes = psychographic.extract_themes(titles(enriched["night_lingered"]))
+
+    # ── Optional LLM keyword categorization ──
+    # Currently advisory-only — surfaces an `llm_categories` map for the frontend
+    # to override deterministic categories. Wire into build_pillar_narrative when
+    # the rendering layer needs it.
+    llm_categories: dict[str, str] = {}
+    if req.api_key:
+        try:
+            llm_categories = await pillar_categories.categorize_keywords_llm(
+                p_themes["top_keywords"] + a_themes["top_keywords"] + s_themes["top_keywords"] + n_themes["top_keywords"],
+                req.api_key,
+                req.provider,
+            )
+        except Exception as e:
+            # Never let an LLM failure take the route down.
+            logger_msg = f"LLM keyword categorization failed: {e}"
+            print(logger_msg)
+            llm_categories = {}
+
+    anti_signature = psychographic.build_anti_profile_signature(a_themes["top_keywords"], p_themes["top_keywords"])
+
+    def _narr(pillar: str, themes: dict, items: list[dict]) -> dict:
+        return psychographic.build_pillar_narrative(pillar, themes["top_keywords"], themes["top_phrases"], themes["top_emojis"], [it.get("title", "") for it in items if it.get("title")])
+
+    themes_out = {
+        "psychographic": {**p_themes, "narrative": _narr("psychographic", p_themes, enriched["lingered"])},
+        "anti_profile": {**a_themes, "raw": a_themes["top_keywords"], "signature": anti_signature, "narrative": _narr("anti_profile", a_themes, enriched["graveyard"])},
+        "sandbox": {**s_themes, "narrative": _narr("sandbox", s_themes, enriched["sandbox"])},
+        "night": {**n_themes, "narrative": _narr("night", n_themes, enriched["night_lingered"])},
+    }
+
+    # cache metrics + enrich counters
+    try:
+        cache_metrics = oembed.get_cache_metrics()
+    except Exception:
+        cache_metrics = {"hits": 0, "misses": 0, "evictions": 0}
+
     fetched_ok = sum(1 for r in fetched_results if r.get("status") == "ok")
-    # update simple enrich counters
     try:
         _metrics["enrich_requests_total"] += 1
         _metrics["enrich_requested_videos_total"] += len(all_ids)
@@ -342,70 +382,14 @@ async def enrich(req: EnrichRequest):
     except Exception:
         pass
 
-    # include simple cache metrics from oembed helper
-    try:
-        cache_metrics = oembed.get_cache_metrics()
-    except Exception:
-        cache_metrics = {"hits": 0, "misses": 0, "evictions": 0}
-
-    # ── Theme extraction ──────────────────────────────────────────────────────
-    psychographic_themes = psychographic.extract_themes(titles(enriched["lingered"]))
-    anti_profile_themes  = psychographic.extract_themes(titles(enriched["graveyard"]))
-    sandbox_themes       = psychographic.extract_themes(titles(enriched["sandbox"]))
-    night_themes         = psychographic.extract_themes(titles(enriched["night_lingered"]))
-
-    # ── Anti-profile signature (rejection contrast) ───────────────────────────
-    anti_signature = psychographic.build_anti_profile_signature(
-        anti_keywords=anti_profile_themes["top_keywords"],
-        pro_keywords=psychographic_themes["top_keywords"],
-    )
-
-    # ── Per-pillar narratives (deterministic) ────────────────────────────────
-    def _narrative(pillar: str, themes: dict, bucket_items: list[dict]) -> dict:
-        sample_titles = [it.get("title", "") for it in bucket_items if it.get("title")]
-        return psychographic.build_pillar_narrative(
-            pillar=pillar,
-            keywords=themes["top_keywords"],
-            phrases=themes["top_phrases"],
-            emojis=themes["top_emojis"],
-            sample_titles=sample_titles,
-        )
-
-    themes_out = {
-        "psychographic": {
-            **psychographic_themes,
-            "narrative": _narrative("psychographic", psychographic_themes, enriched["lingered"]),
-        },
-        "anti_profile": {
-            **anti_profile_themes,
-            "raw": anti_profile_themes["top_keywords"],
-            "signature": anti_signature,
-            "narrative": _narrative("anti_profile", anti_profile_themes, enriched["graveyard"]),
-        },
-        "sandbox": {
-            **sandbox_themes,
-            "narrative": _narrative("sandbox", sandbox_themes, enriched["sandbox"]),
-        },
-        "night": {
-            **night_themes,
-            "narrative": _narrative("night", night_themes, enriched["night_lingered"]),
-        },
-    }
-
     return {
         "videos": enriched,
         "video_results": video_results,
         "cache_metrics": cache_metrics,
-        "top_creators": {
-            "lingered": top_creators(enriched["lingered"]),
-            "graveyard": top_creators(enriched["graveyard"]),
-        },
+        "top_creators": {"lingered": top_creators(enriched["lingered"]), "graveyard": top_creators(enriched["graveyard"])},
         "themes": themes_out,
-        "following_ratio": {
-            "followed_pct": followed_pct,
-            "algorithmic_pct": algo_pct,
-            "matched_videos": matched,
-        },
+        "llm_categories": llm_categories,
+        "following_ratio": {"followed_pct": followed_pct, "algorithmic_pct": algo_pct, "matched_videos": matched},
         "fetched_count": fetched_ok,
         "requested_count": len(all_ids),
     }

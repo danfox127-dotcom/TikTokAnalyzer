@@ -24,24 +24,7 @@ def _parse_date(date_str: str) -> datetime | None:
     return None
 
 
-def _compute_night_shift_ratio(history: list[dict]) -> float:
-    """Night-shift ratio from raw history (23:00–04:00). Used on full history, not active."""
-    night = total = 0
-    for item in history:
-        dt = _parse_date(item.get("date", ""))
-        if dt:
-            total += 1
-            if 23 <= dt.hour or dt.hour < 4:
-                night += 1
-    return round(night / total * 100, 1) if total > 0 else 0.0
-
-
 _SESSION_GAP_S = 1800   # 30 minutes → new session
-_DM_METHODS = {
-    "chat_head", "dm", "message", "whatsapp", "instagram",
-    "line", "kakaotalk", "telegram",
-}
-
 
 def _detect_sessions(
     browsing_history: list[dict],
@@ -58,7 +41,6 @@ def _detect_sessions(
 
     Returns watch_history_active (passive removed) and watch_history_full (original).
     Items with unparseable dates are included in both lists unconditionally (treated as active).
-    active_video_count therefore includes unparseable items.
     """
     if not browsing_history:
         return {
@@ -145,12 +127,7 @@ def _detect_sessions(
 
 
 def _safe_text(text: str) -> str:
-    """
-    Sanitize text, stripping lone surrogates that cause UnicodeEncodeError.
-    TikTok exports sometimes embed broken emoji encoded as lone UTF-16
-    surrogates (e.g. \\uD83D without a following \\uDC00). The utf-16
-    surrogatepass roundtrip discards them cleanly.
-    """
+    """Sanitize text, stripping lone surrogates."""
     if not isinstance(text, str):
         return str(text) if text is not None else ""
     try:
@@ -173,7 +150,7 @@ def _dig(data: dict, *keys, default=None):
 
 
 def _extract_profile(data: dict) -> dict:
-    """Extract profile information from Profile And Settings."""
+    """Extract profile information."""
     profile_section = _dig(data, "Profile And Settings", "Profile Info", "ProfileMap", default={})
     if not profile_section:
         profile_section = _dig(data, "Profile And Settings", "ProfileMap", default={})
@@ -190,7 +167,7 @@ def _extract_profile(data: dict) -> dict:
 
 
 def _extract_settings_interests(data: dict) -> list[str]:
-    """Extract declared interests from Settings, split on pipe delimiter."""
+    """Extract declared interests from Settings."""
     settings = _dig(data, "Profile And Settings", "Settings", "SettingsMap", default={})
     if not settings:
         settings = _dig(data, "Profile And Settings", "SettingsMap", default={})
@@ -201,131 +178,31 @@ def _extract_settings_interests(data: dict) -> list[str]:
 
 
 def _extract_ad_interests(data: dict) -> list[str]:
-    """Extract ad interests from Ad Interests section."""
+    """Extract ad interests."""
     ad_section = _dig(data, "Your Activity", "Ad Interests", "AdInterestCategories", default=None)
     if ad_section is None:
         ad_section = _dig(data, "Ad Interests", "AdInterestCategories", default=[])
     if isinstance(ad_section, str):
-        items = [i.strip() for i in ad_section.split(",") if i.strip()]
-        return items
+        return [i.strip() for i in ad_section.split(",") if i.strip()]
     if isinstance(ad_section, list):
         return [_safe_text(item) for item in ad_section if item and str(item).strip() and str(item).strip() != ","]
     return []
 
 
 def _extract_browsing_history(data: dict) -> list[dict]:
-    """Extract and sort video browsing history."""
+    """Extract video browsing history."""
     video_list = _dig(data, "Your Activity", "Watch History", "VideoList", default=[])
     if not video_list:
         video_list = _dig(data, "Your Activity", "Video Browsing History", "VideoList", default=[])
     if not video_list:
         video_list = _dig(data, "Activity", "Video Browsing History", "VideoList", default=[])
+    
     history = []
     for entry in video_list:
         date_str = entry.get("Date", entry.get("date", ""))
         link = entry.get("Link", entry.get("VideoLink", entry.get("link", "")))
-        dt = _parse_date(date_str)
-        history.append({
-            "date": date_str,
-            "link": link,
-            "_dt": dt,
-        })
-    history.sort(key=lambda x: x["_dt"] or datetime.min)
-    for item in history:
-        del item["_dt"]
+        history.append({"date": date_str, "link": link})
     return history
-
-
-def _compute_behavioral_analysis(browsing_history: list[dict]) -> dict:
-    """
-    Compute behavioral analysis from browsing history timestamps.
-    Uses timestamp-delta approach: for consecutive videos, compute the time delta.
-    If delta >= 1200s or < 0, skip (AFK/session break).
-    Otherwise bucket: <3s = skip, 3-15s = casual, >15s = linger.
-    """
-    parsed = []
-    for entry in browsing_history:
-        dt = _parse_date(entry.get("date", ""))
-        if dt:
-            parsed.append({"dt": dt, "link": entry.get("link", "")})
-
-    parsed.sort(key=lambda x: x["dt"])
-    total_videos = len(parsed)
-
-    skip_count = 0
-    casual_count = 0
-    linger_count = 0
-    valid_sessions = 0
-    night_count = 0
-    hourly_heatmap = defaultdict(int)
-    monthly_data = defaultdict(lambda: {"skip": 0, "total": 0})
-    linger_links = []
-    skip_links = []
-
-    for i in range(len(parsed) - 1):
-        current = parsed[i]
-        next_item = parsed[i + 1]
-        delta = (next_item["dt"] - current["dt"]).total_seconds()
-
-        if delta < 0:
-            continue
-
-        # 20-minute upper bound: phone left open while sleeping / accidental.
-        # These are not valid behavioral signals — discard entirely.
-        if delta >= 1200:
-            continue
-
-        # 0s–1199s: bucket normally.
-
-        valid_sessions += 1
-        hour = current["dt"].hour
-        hourly_heatmap[hour] += 1
-        month_key = current["dt"].strftime("%Y-%m")
-
-        if 23 <= hour or hour < 4:
-            night_count += 1
-
-        if delta < 3:
-            skip_count += 1
-            skip_links.append(current["link"])
-            monthly_data[month_key]["skip"] += 1
-            monthly_data[month_key]["total"] += 1
-        elif delta <= 15:
-            casual_count += 1
-            monthly_data[month_key]["total"] += 1
-        else:
-            linger_count += 1
-            linger_links.append(current["link"])
-            monthly_data[month_key]["total"] += 1
-
-    skip_rate = (skip_count / valid_sessions * 100) if valid_sessions > 0 else 0
-    linger_rate = (linger_count / valid_sessions * 100) if valid_sessions > 0 else 0
-    night_shift_ratio = (night_count / valid_sessions * 100) if valid_sessions > 0 else 0
-
-    hourly_dict = {str(h): hourly_heatmap.get(h, 0) for h in range(24)}
-
-    monthly_skip_rates = {}
-    for month_key in sorted(monthly_data.keys()):
-        md = monthly_data[month_key]
-        if md["total"] > 0:
-            monthly_skip_rates[month_key] = round(md["skip"] / md["total"] * 100, 1)
-        else:
-            monthly_skip_rates[month_key] = 0.0
-
-    return {
-        "total_videos": total_videos,
-        "valid_sessions": valid_sessions,
-        "skip_count": skip_count,
-        "casual_count": casual_count,
-        "linger_count": linger_count,
-        "skip_rate": round(skip_rate, 1),
-        "linger_rate": round(linger_rate, 1),
-        "night_shift_ratio": round(night_shift_ratio, 1),
-        "hourly_heatmap": hourly_dict,
-        "monthly_skip_rates": monthly_skip_rates,
-        "top_linger_links": linger_links,
-        "top_skip_links": skip_links,
-    }
 
 
 def _extract_likes(data: dict) -> list[dict]:
@@ -504,7 +381,7 @@ def _extract_login_history(data: dict) -> tuple[list[dict], dict]:
 
 
 def _extract_off_tiktok_activity(data: dict) -> list:
-    """Extract off-TikTok activity (usually empty if user opted out of tracking)."""
+    """Extract off-TikTok activity."""
     off_activity = _dig(data, "Your Activity", "Off TikTok Activity", "OffTikTokActivityDataList", default=[])
     if not off_activity:
         off_activity = _dig(data, "Profile And Settings", "Off TikTok Activity", "OffTikTokActivityDataList", default=[])
@@ -515,12 +392,10 @@ def _extract_off_tiktok_activity(data: dict) -> list:
 
 def _extract_shop_orders(data: dict) -> list[dict]:
     """Extract TikTok Shop orders."""
-    # Try list format first
     orders_section = _dig(data, "TikTok Shop", "Order", "OrderList", default=[])
     if not orders_section:
         orders_section = _dig(data, "TikTok Shop", "Orders", "OrderList", default=[])
 
-    # Also try dict format (OrderHistories keyed by order ID)
     order_histories = _dig(data, "TikTok Shop", "Order History", "OrderHistories", default={})
     if isinstance(order_histories, dict) and order_histories:
         orders_section = list(order_histories.values())
@@ -571,89 +446,55 @@ def _count_dms(data: dict) -> int:
 
 def _parse_tiktok_data(data: dict) -> dict:
     """Core parsing logic, shared by file and bytes entry points."""
-
-    profile = _extract_profile(data)
-    settings_interests = _extract_settings_interests(data)
-    ad_interests = _extract_ad_interests(data)
-    browsing_history = _extract_browsing_history(data)
-    likes = _extract_likes(data)
-    favorites = _extract_favorites(data)
-    favorite_collections = _extract_favorite_collections(data)
-    searches = _extract_searches(data)
-    shares = _extract_shares(data)
-    comments = _extract_comments(data)
-    session_result = _detect_sessions(browsing_history, likes, comments, shares)
-    watch_history_active = session_result["watch_history_active"]
-    behavioral_analysis = _compute_behavioral_analysis(watch_history_active)
-    behavioral_analysis["night_shift_ratio"] = _compute_night_shift_ratio(browsing_history)
-    behavioral_analysis["night_shift_passive_adjusted"] = True
-    behavioral_analysis.update({
-        "passive_videos_removed": session_result["passive_videos_removed"],
-        "passive_sessions_detected": session_result["passive_sessions_detected"],
-        "active_video_count": session_result["active_video_count"],
-        "session_count": session_result["session_count"],
-        "avg_session_length_videos": session_result["avg_session_length_videos"],
-    })
-    blocked_users = _extract_blocked(data)
-    following = _extract_following(data)
-    followers = _extract_followers(data)
     login_history, login_stats = _extract_login_history(data)
-    off_tiktok_activity = _extract_off_tiktok_activity(data)
-    shop_orders = _extract_shop_orders(data)
-    dm_count = _count_dms(data)
+    likes = _extract_likes(data)
+    comments = _extract_comments(data)
+    shares = _extract_shares(data)
+    browsing_history = _extract_browsing_history(data)
+    
+    session_result = _detect_sessions(browsing_history, likes, comments, shares)
 
     return {
         "platform": "tiktok",
-        "profile": profile,
-        "settings_interests": settings_interests,
-        "ad_interests": ad_interests,
+        "profile": _extract_profile(data),
+        "settings_interests": _extract_settings_interests(data),
+        "ad_interests": _extract_ad_interests(data),
         "browsing_history": browsing_history,
         "watch_history_full": session_result["watch_history_full"],
-        "watch_history_active": watch_history_active,
-        "behavioral_analysis": behavioral_analysis,
+        "watch_history_active": session_result["watch_history_active"],
+        "session_metrics": {
+            "passive_videos_removed": session_result["passive_videos_removed"],
+            "passive_sessions_detected": session_result["passive_sessions_detected"],
+            "active_video_count": session_result["active_video_count"],
+            "session_count": session_result["session_count"],
+            "avg_session_length_videos": session_result["avg_session_length_videos"],
+        },
         "likes": likes,
-        "favorites": favorites,
-        "favorite_collections": favorite_collections,
-        "searches": searches,
+        "favorites": _extract_favorites(data),
+        "favorite_collections": _extract_favorite_collections(data),
+        "searches": _extract_searches(data),
         "shares": shares,
         "comments": comments,
-        "blocked_users": blocked_users,
-        "following": following,
-        "followers": followers,
+        "blocked_users": _extract_blocked(data),
+        "following": _extract_following(data),
+        "followers": _extract_followers(data),
         "login_history": login_history,
         "login_history_stats": login_stats,
-        "off_tiktok_activity": off_tiktok_activity,
-        "shop_orders": shop_orders,
-        "dm_count": dm_count,
+        "off_tiktok_activity": _extract_off_tiktok_activity(data),
+        "shop_orders": _extract_shop_orders(data),
+        "dm_count": _count_dms(data),
     }
 
 
 def parse_tiktok_export(file_path: str) -> dict:
-    """
-    Parse a TikTok user_data_tiktok.json file into a structured analysis dict.
-
-    Args:
-        file_path: Path to the user_data_tiktok.json file.
-
-    Returns:
-        dict with all extracted and computed data.
-    """
+    """Parse a TikTok user_data_tiktok.json file."""
     with open(file_path, "r", encoding="utf-8", errors="replace") as f:
         data = json.load(f)
     return _parse_tiktok_data(data)
 
 
 def parse_tiktok_export_from_bytes(raw: bytes) -> dict:
-    """
-    Parse a TikTok export from raw bytes (e.g. an HTTP file upload).
-    Decodes with surrogate replacement so malformed emoji never raise.
-
-    Args:
-        raw: Raw bytes of the user_data_tiktok.json file.
-
-    Returns:
-        dict with all extracted and computed data.
-    """
+    """Parse a TikTok export from raw bytes."""
     text = raw.decode("utf-8", errors="replace")
     data = json.loads(text)
     return _parse_tiktok_data(data)

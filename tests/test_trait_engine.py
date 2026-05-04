@@ -1,5 +1,5 @@
 import pytest
-from ghost_profile import _detect_atomic_traits, _synthesize_sub_archetypes, _detect_cognitive_dissonance
+from api.ghost_profile import _detect_atomic_traits, _synthesize_sub_archetypes, _detect_cognitive_dissonance
 
 @pytest.fixture
 def base_sw():

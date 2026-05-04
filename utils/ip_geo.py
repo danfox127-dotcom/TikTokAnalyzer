@@ -14,23 +14,25 @@ _FALLBACK = {"city": "Unknown", "country_name": "Unknown"}
 async def geolocate_ip(ip: str) -> dict:
     """
     Return {"city": str, "country_name": str} for the given IP.
-    Only caches successful responses — transient failures are not cached.
-    Never raises.
+    Using ip-api.com (JSON) for better city-level precision.
     """
-    if not ip:
+    if not ip or ip in ("127.0.0.1", "localhost"):
         return _FALLBACK.copy()
     if ip in _CACHE:
         return _CACHE[ip]
     try:
         async with httpx.AsyncClient(timeout=_TIMEOUT) as client:
-            r = await client.get(f"https://api.iplocation.net/?ip={ip}")
+            r = await client.get(f"http://ip-api.com/json/{ip}")
             r.raise_for_status()
             data = r.json()
-            result = {
-                "city": data.get("city") or "Unknown",
-                "country_name": data.get("country_name") or "Unknown",
-            }
-            _CACHE[ip] = result
+            if data.get("status") == "success":
+                result = {
+                    "city": data.get("city") or "Unknown",
+                    "country_name": data.get("country") or "Unknown",
+                }
+                _CACHE[ip] = result
+            else:
+                result = _FALLBACK.copy()
     except Exception:
         result = _FALLBACK.copy()
     return result

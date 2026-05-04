@@ -1,6 +1,6 @@
 import pytest
 
-from psychographic import extract_themes
+from utils.psychographic import extract_themes
 
 
 def test_extract_themes_basic():

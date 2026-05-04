@@ -4,8 +4,7 @@ import os
 from collections import Counter
 
 # Ensure repo root is importable when this module is loaded directly
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from utils.pillar_categories import top_category, CATEGORY_PHRASES
+from .pillar_categories import top_category, CATEGORY_PHRASES
 
 # Common stop words to ignore when extracting themes
 STOP_WORDS = {

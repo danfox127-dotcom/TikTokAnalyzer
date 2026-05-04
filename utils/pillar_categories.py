@@ -1,283 +1,37 @@
 """
-Pillar Categories — static keyword → category map for narrative generation.
-
-~80 entries covering major content verticals. Used by psychographic.py to
-infer which category best characterises a keyword cluster, then select the
-matching interpretation sentence from the library.
-
-Public API
-----------
-    categorize(keyword: str) -> str | None
-    top_category(keywords: list[dict]) -> tuple[str, float]
-        Returns (category_name, confidence_0_to_1).
+Pillar Categories & Automated Category Detection.
+Maps keywords to content verticals for narrative generation.
 """
 from __future__ import annotations
 
+import json
+import anthropic
+import google.generativeai as genai
+from collections import defaultdict
+
 # ---------------------------------------------------------------------------
-# Keyword → Category map
-# Each keyword is lowercased. Partial-match logic handled in categorize().
+# Static Fallback Map
 # ---------------------------------------------------------------------------
 
 KEYWORD_CATEGORY: dict[str, str] = {
-    # labor / work
-    "work": "labor",
-    "job": "labor",
-    "boss": "labor",
-    "salary": "labor",
-    "career": "labor",
-    "office": "labor",
-    "hustle": "labor",
-    "grind": "labor",
-    "freelance": "labor",
-    "startup": "labor",
-    "entrepreneur": "labor",
-    "corporate": "labor",
-    "layoff": "labor",
-    "interview": "labor",
-    "resume": "labor",
-
-    # relationships
-    "love": "relationships",
-    "dating": "relationships",
-    "relationship": "relationships",
-    "boyfriend": "relationships",
-    "girlfriend": "relationships",
-    "marriage": "relationships",
-    "breakup": "relationships",
-    "toxic": "relationships",
-    "situationship": "relationships",
-    "heartbreak": "relationships",
-    "crush": "relationships",
-    "romance": "relationships",
-    "couple": "relationships",
-
-    # humor
-    "funny": "humor",
-    "comedy": "humor",
-    "meme": "humor",
-    "prank": "humor",
-    "skit": "humor",
-    "roast": "humor",
-    "joke": "humor",
-    "lol": "humor",
-    "lmao": "humor",
-    "humor": "humor",
-    "parody": "humor",
-
-    # news / politics
-    "news": "news",
-    "politics": "news",
-    "election": "news",
-    "government": "news",
-    "protest": "news",
-    "policy": "news",
-    "senate": "news",
-    "congress": "news",
-    "democracy": "news",
-    "rights": "news",
-    "war": "news",
-    "climate": "news",
-    "trump": "news",
-    "biden": "news",
-
-    # aesthetics / art
-    "aesthetic": "aesthetics",
-    "art": "aesthetics",
-    "photography": "aesthetics",
-    "design": "aesthetics",
-    "vintage": "aesthetics",
-    "minimalist": "aesthetics",
-    "cottagecore": "aesthetics",
-    "dark": "aesthetics",
-    "grunge": "aesthetics",
-    "anime": "aesthetics",
-    "illustration": "aesthetics",
-
-    # wellness / mental health
-    "wellness": "wellness",
-    "anxiety": "wellness",
-    "depression": "wellness",
-    "therapy": "wellness",
-    "mindfulness": "wellness",
-    "selfcare": "wellness",
-    "healing": "wellness",
-    "mentalhealth": "wellness",
-    "meditation": "wellness",
-    "burnout": "wellness",
-    "trauma": "wellness",
-
-    # finance
-    "money": "finance",
-    "investing": "finance",
-    "stocks": "finance",
-    "crypto": "finance",
-    "budget": "finance",
-    "debt": "finance",
-    "savings": "finance",
-    "finance": "finance",
-    "wealth": "finance",
-    "taxes": "finance",
-    "real estate": "finance",
-    "frugal": "finance",
-
-    # gaming
-    "gaming": "gaming",
-    "game": "gaming",
-    "minecraft": "gaming",
-    "fortnite": "gaming",
-    "roblox": "gaming",
-    "fps": "gaming",
-    "rpg": "gaming",
-    "esports": "gaming",
-    "twitch": "gaming",
-    "streamer": "gaming",
-    "playstation": "gaming",
-    "xbox": "gaming",
-    "nintendo": "gaming",
-
-    # food
-    "food": "food",
-    "recipe": "food",
-    "cooking": "food",
-    "baking": "food",
-    "restaurant": "food",
-    "vegan": "food",
-    "foodie": "food",
-    "meal": "food",
-    "snack": "food",
-    "dessert": "food",
-    "coffee": "food",
-    "kitchen": "food",
-
-    # sports (new)
-    "sports": "sports",
-    "football": "sports",
-    "soccer": "sports",
-    "chelsea": "sports",
-    "premier league": "sports",
-    "nba": "sports",
-    "basketball": "sports",
-    "wsl": "sports",
-    "mason mount": "sports",
-    "reece james": "sports",
-
-    # hobbies (new)
-    "hobby": "hobbies",
-    "pinball": "hobbies",
-    "game vault": "hobbies",
-    "collecting": "hobbies",
-    "diy": "hobbies",
-    "crafting": "hobbies",
-
-    # local life (new)
-    "brooklyn": "local_life",
-    "park slope": "local_life",
-    "industry city": "local_life",
-    "coney island": "local_life",
-    "prospect park": "local_life",
-    "whitney": "local_life",
-    "bakery": "local_life",
-    "restaurant": "local_life",
-
-    # parenting (enhanced)
-    "parenting": "parenting",
-    "mom": "parenting",
-    "dad": "parenting",
-    "baby": "parenting",
-    "toddler": "parenting",
-    "pregnancy": "parenting",
-    "motherhood": "parenting",
-    "fatherhood": "parenting",
-    "kids": "parenting",
-    "children": "parenting",
-    "uppababy": "parenting",
-    "stroller": "parenting",
-    "disney": "parenting",
-    "encanto": "parenting",
-
-    # academic / professional (enhanced)
-    "columbia university": "labor",
-    "neurobiology": "labor",
-    "research": "labor",
-    "lab": "labor",
-    "seo": "labor",
-    "information architecture": "labor",
-    "firebase": "tech",
-    "cursor ai": "tech",
-    "gemini": "tech",
-
-    # fitness
-    "fitness": "fitness",
-    "workout": "fitness",
-    "gym": "fitness",
-    "weightlifting": "fitness",
-    "running": "fitness",
-    "yoga": "fitness",
-    "pilates": "fitness",
-    "bodybuilding": "fitness",
-    "cardio": "fitness",
-    "diet": "fitness",
-    "nutrition": "fitness",
-
-    # tech
-    "tech": "tech",
-    "coding": "tech",
-    "programming": "tech",
-    "software": "tech",
-    "developer": "tech",
-    "ai": "tech",
-    "robot": "tech",
-    "iphone": "tech",
-    "android": "tech",
-    "apple": "tech",
-    "google": "tech",
-    "cybersecurity": "tech",
-    "hacking": "tech",
-
-    # music
-    "music": "music",
-    "song": "music",
-    "album": "music",
-    "artist": "music",
-    "rap": "music",
-    "hiphop": "music",
-    "pop": "music",
-    "indie": "music",
-    "concert": "music",
-    "playlist": "music",
-    "spotify": "music",
-    "lyrics": "music",
-
-    # fashion
-    "fashion": "fashion",
-    "style": "fashion",
-    "outfit": "fashion",
-    "clothes": "fashion",
-    "ootd": "fashion",
-    "thrift": "fashion",
-    "streetwear": "fashion",
-    "luxury": "fashion",
-    "skincare": "fashion",
-    "makeup": "fashion",
-    "beauty": "fashion",
-    "nails": "fashion",
-
-    # spirituality
-    "spirituality": "spirituality",
-    "astrology": "spirituality",
-    "zodiac": "spirituality",
-    "tarot": "spirituality",
-    "manifestation": "spirituality",
-    "universe": "spirituality",
-    "faith": "spirituality",
-    "prayer": "spirituality",
-    "god": "spirituality",
-    "witch": "spirituality",
-    "ritual": "spirituality",
-    "chakra": "spirituality",
+    "work": "labor", "job": "labor", "salary": "labor", "career": "labor",
+    "love": "relationships", "dating": "relationships", "toxic": "relationships",
+    "funny": "humor", "comedy": "humor", "meme": "humor", "joke": "humor",
+    "news": "news", "politics": "news", "election": "news",
+    "art": "aesthetics", "design": "aesthetics", "aesthetic": "aesthetics",
+    "wellness": "wellness", "anxiety": "wellness", "therapy": "wellness",
+    "money": "finance", "investing": "finance", "crypto": "finance",
+    "gaming": "gaming", "game": "gaming", "minecraft": "gaming",
+    "food": "food", "recipe": "food", "cooking": "food",
+    "parenting": "parenting", "baby": "parenting", "kids": "parenting",
+    "fitness": "fitness", "workout": "fitness", "gym": "fitness",
+    "tech": "tech", "coding": "tech", "ai": "tech", "software": "tech",
+    "music": "music", "song": "music", "artist": "music",
+    "style": "fashion", "outfit": "fashion", "makeup": "fashion",
+    "spirituality": "spirituality", "zodiac": "spirituality",
+    "sports": "sports", "football": "sports", "basketball": "sports",
 }
 
-# Human-readable display phrases for each category (used in headline templates)
 CATEGORY_PHRASES: dict[str, str] = {
     "labor": "the hustle and the grind",
     "relationships": "love, longing, and the people in your life",
@@ -299,45 +53,29 @@ CATEGORY_PHRASES: dict[str, str] = {
     "local_life": "the physical world and local neighborhoods",
 }
 
-
 # ---------------------------------------------------------------------------
-# Public functions
+# Public Functions
 # ---------------------------------------------------------------------------
 
 def categorize(keyword: str) -> str | None:
-    """
-    Return the category for a keyword, or None if unrecognised.
-    Matching is case-insensitive. Tries exact match first, then
-    checks whether the keyword contains any known key as a substring.
-    """
+    """Return the category for a keyword (static fallback)."""
     kw = keyword.lower().strip()
     if kw in KEYWORD_CATEGORY:
         return KEYWORD_CATEGORY[kw]
-    # Substring fallback: keyword contains a known map key
     for key, cat in KEYWORD_CATEGORY.items():
         if key in kw:
             return cat
     return None
 
-
 def top_category(keywords: list[dict]) -> tuple[str, float]:
-    """
-    Given a list of keyword dicts with 'term' and 'count' keys,
-    return the (category, confidence) tuple where confidence is the
-    fraction of total keyword weight accounted for by that category.
-
-    Falls back to ("humor", 0.0) when no keywords match any category.
-    """
-    from collections import defaultdict
-
+    """Identify the dominant category from a weighted keyword list."""
     category_weight: dict[str, float] = defaultdict(float)
     total_weight: float = 0.0
 
     for kw in keywords:
-        term = kw.get("term", "")
-        count = float(kw.get("count", 1))
-        cat = categorize(term)
+        term, count = kw.get("term", ""), float(kw.get("count", 1))
         total_weight += count
+        cat = categorize(term)
         if cat:
             category_weight[cat] += count
 
@@ -347,3 +85,51 @@ def top_category(keywords: list[dict]) -> tuple[str, float]:
     best_cat = max(category_weight, key=lambda c: category_weight[c])
     confidence = category_weight[best_cat] / total_weight if total_weight else 0.0
     return (best_cat, round(confidence, 3))
+
+async def categorize_keywords_llm(
+    keywords: list[dict], 
+    api_key: str, 
+    provider: str = "claude"
+) -> dict[str, str]:
+    """
+    Use an LLM to assign categories to a list of keywords.
+    Returns a map of keyword -> category.
+    """
+    terms = [kw.get("term") for kw in keywords if kw.get("term")]
+    if not terms:
+        return {}
+
+    prompt = f"""
+Assign one of these categories to each keyword: 
+labor, relationships, humor, news, aesthetics, wellness, finance, gaming, food, parenting, fitness, tech, music, fashion, spirituality, sports, hobbies, local_life.
+
+KEYWORDS: {", ".join(terms)}
+
+RESPONSE FORMAT (JSON):
+{{ "keyword": "category" }}
+"""
+
+    try:
+        if provider == "claude":
+            client = anthropic.AsyncAnthropic(api_key=api_key)
+            response = await client.messages.create(
+                max_tokens=1024,
+                messages=[{"role": "user", "content": prompt}],
+                model="claude-haiku-4-5",
+            )
+            raw_text = response.content[0].text
+        elif provider.startswith("gemini"):
+            genai.configure(api_key=api_key)
+            model = genai.GenerativeModel("gemini-3-flash")
+            response = await model.generate_content_async(prompt)
+            raw_text = response.text
+        else:
+            return {}
+
+        start, end = raw_text.find("{"), raw_text.rfind("}") + 1
+        if start != -1 and end > start:
+            return json.loads(raw_text[start:end])
+        return {}
+    except Exception as e:
+        print(f"Keyword Categorization Error: {e}")
+        return {}
