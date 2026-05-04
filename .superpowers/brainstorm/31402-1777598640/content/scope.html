@@ -1,0 +1,42 @@
+<h2>SYS.TEARDOWN Part 2 — Scope</h2>
+<p class="subtitle">Three independent pieces. Which order makes sense?</p>
+
+<div class="section">
+  <div class="options">
+    <div class="option" data-choice="a" onclick="toggleSelect(this)">
+      <div class="letter">A</div>
+      <div class="content">
+        <h3>Download Button</h3>
+        <p>Add a button to the frontend that calls <code>POST /api/export/llm</code> and triggers a browser download of the privacy-safe JSON. One new component, one fetch call. ~1–2 hours.</p>
+        <div class="label" style="margin-top:8px;color:#4db8ff">SMALL — pure frontend, no design ambiguity</div>
+      </div>
+    </div>
+
+    <div class="option" data-choice="b" onclick="toggleSelect(this)">
+      <div class="letter">B</div>
+      <div class="content">
+        <h3>API Key + In-App LLM Panel</h3>
+        <p>User pastes their Claude API key → app sends the export to Claude directly → shows the narrative analysis inline, no file download needed. Requires a new backend proxy endpoint and a new frontend panel component.</p>
+        <div class="label" style="margin-top:8px;color:#f0a030">MEDIUM — new backend route + LLM streaming UI</div>
+      </div>
+    </div>
+
+    <div class="option" data-choice="c" onclick="toggleSelect(this)">
+      <div class="letter">C</div>
+      <div class="content">
+        <h3>Narrative UI Layers (0–6)</h3>
+        <p>Restructure the existing GhostProfileHUD / TheGlassHouse into scroll-driven chapters with section intros, progressive reveal, pillar narrative cards, and a closing synthesis. The story design spec (2026-04-14) covers this in detail as Phases 2 &amp; 3.</p>
+        <div class="label" style="margin-top:8px;color:#ff6b6b">LARGE — touches ~2,000 lines across multiple components</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section" style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:6px;padding:16px;margin-top:8px">
+  <p style="margin:0;font-size:13px;color:#aaa">
+    <strong style="color:#fff">Recommended order:</strong> A → B → C.<br>
+    A unblocks the export workflow immediately. B depends on A's export format being solid. C is independent but benefits from A+B being done so the "download or analyze in-app" choice is clear in the UI design.
+  </p>
+</div>
+
+<p style="margin-top:24px;color:#aaa">Click to select where you'd like to start, or just reply in the terminal.</p>
