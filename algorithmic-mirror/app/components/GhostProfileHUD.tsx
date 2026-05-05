@@ -137,14 +137,17 @@ export interface GhostProfile {
     atomic_traits: Record<string, boolean>;
   };
   narrative_blocks?: import("../types/narrative").NarrativeBlock[];
-  _evidence?: {
 
+  // Declared/explicit signals the user gave to TikTok directly.
+  // Required because three separate components read from it without optional chaining.
+  declared_signals?: {
     settings_interests: string[];
     ad_interests: string[];
     recent_searches: string[];
     following_count: number;
     follower_count: number;
   };
+
   ad_profile?: {
     advertiser_categories: string[];
     vulnerability_window: string;
@@ -155,11 +158,14 @@ export interface GhostProfile {
     shop_order_count: number;
     shop_products: string[];
   };
+
   digital_footprint?: {
     login_count: number;
     unique_ips: number;
     unique_devices: string[];
-    ip_locations: string[];
+    // ip_locations is read with a default of [] in TheGlassHouse but isn't emitted
+    // by the backend yet. Optional + tolerant; safe to remove once unused.
+    ip_locations?: string[];
     recent_logins: {
       date: string;
       ip: string;
@@ -167,27 +173,68 @@ export interface GhostProfile {
       system: string;
       network: string;
       carrier: string;
+      // Populated by enrich_logins_with_geo in /api/analyze.
+      city?: string;
+      country_name?: string;
     }[];
   };
+
   search_rhythm?: {
     total_searches: number;
     hourly_histogram: Record<string, number>;
     recent_searches: { term: string; date: string; hour: number; dow: number }[];
   };
+
   discrepancy_gap?: {
     declared_surface_sample: string[];
     inferred_creator_handles: string[];
     declared_count: number;
     inferred_count: number;
   };
-  _evidence?: {
-    prologue?: Record<string, unknown>;
-    feedback_loop?: Record<string, unknown>;
-    discrepancy?: Record<string, unknown>;
-    digital_footprint?: Record<string, unknown>;
-    psychographic?: Record<string, unknown>;
-    search_rhythm?: Record<string, unknown>;
+
+  // Word-level cluster + phrase summary of declared + behavioral text corpus.
+  interest_clusters?: {
+    term: string;
+    count: number;
+    dominant_source: string;
+  }[];
+  interest_phrases?: {
+    phrase: string;
+    count: number;
+  }[];
+
+  // Comment style summary — see api/ghost_profile.py::analyze_comment_voice.
+  comment_voice?: {
+    total_comments: number;
+    avg_length_chars: number;
+    long_comments_count: number;
+    long_comment_pct: number;
+    top_20_longest: string[];
+    references_detected: Record<string, string[]>;
+    emoji_density: number;
+    engagement_style_label: string;
   };
+
+  // Share behaviour — see api/ghost_profile.py::_analyze_share_behavior.
+  share_behavior?: {
+    total_shares: number;
+    share_methods: Record<string, number>;
+    primary_share_method: string | null;
+    share_behavior_type: string; // "Private Curator" | "Public Broadcaster" | "Mixed Sharer"
+    dm_share_count: number;
+  };
+
+  // Transparency gap — official ad interests vs. inferred behavioral profile.
+  transparency_gap?: {
+    official_ad_interest_count: number;
+    behavioral_interest_count: number;
+    gap_interpretation: string;
+  };
+
+  // Single source of truth for claim evidence payloads.
+  // Map of claim-id (chapter / section / metric) -> opaque payload rendered as JSON
+  // by EvidencePanel. See TheGlassHouse <Claim payload={ev[…]} />.
+  _evidence?: Record<string, unknown>;
 }
 
 interface Props {
