@@ -8,11 +8,16 @@ import { TheGlassHouse } from "./components/TheGlassHouse";
 import { NarrativeReportView } from "./components/NarrativeReportView";
 import { LLMAnalysisView } from "./components/LLMAnalysisView";
 import { PhaseTransition } from "./components/PhaseTransition";
+import { SurfaceDataDisplay } from "./components/SurfaceDataDisplay";
 import type { NarrativeBlock } from "./types/narrative";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8005";
 
-type View = "upload" | "transition" | "narrative" | "hud" | "report" | "llm";
+// View order for the bright→dark scroll story:
+//   upload → surface (Miami Day Art Deco) → transition → narrative (Dossier)
+// "report" / "llm" / "hud" branch off narrative; "back to surface" ribbon on
+// narrative view returns here without resetting the file.
+type View = "upload" | "surface" | "transition" | "narrative" | "hud" | "report" | "llm";
 
 export default function Home() {
   const [profile, setProfile] = useState<GhostProfile | null>(null);
@@ -38,7 +43,9 @@ export default function Home() {
       const raw = await res.json();
       setProfile(raw as GhostProfile);
       setNarrativeBlocks((raw as { narrative_blocks?: NarrativeBlock[] }).narrative_blocks ?? []);
-      setView("transition");
+      // Bright→dark story starts on the Surface. The Surface's scroll
+      // sentinel kicks the transition once the reader reaches the bottom.
+      setView("surface");
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Unknown error";
       const net = /fetch|NetworkError|ECONNREFUSED|Failed to fetch/i.test(msg);
@@ -75,6 +82,15 @@ export default function Home() {
     );
   }
 
+  if (profile && view === "surface") {
+    return (
+      <SurfaceDataDisplay
+        profile={profile}
+        onReveal={() => setView("transition")}
+      />
+    );
+  }
+
   if (view === "transition") {
     return <PhaseTransition onComplete={() => setView("narrative")} />;
   }
@@ -91,14 +107,39 @@ export default function Home() {
 
   if (profile && view === "narrative") {
     return (
-      <TheGlassHouse
-        profile={profile}
-        onReset={handleReset}
-        onViewRawForensics={() => setView("hud")}
-        sourceFile={uploadedFile ?? undefined}
-        onOpenReport={() => setView("report")}
-        onAnalyzeWithAI={() => setView("llm")}
-      />
+      <div style={{ position: "relative" }}>
+        {/* Back-to-Surface ribbon — returns to the bright phase without
+            clearing the uploaded file. Use the Reset control inside
+            TheGlassHouse to drop the file and return to upload. */}
+        <button
+          onClick={() => setView("surface")}
+          style={{
+            position: "fixed",
+            top: 20,
+            left: 20,
+            zIndex: 50,
+            padding: "10px 16px",
+            background: "#f5efe4",
+            color: "#1a1610",
+            border: "1px solid rgba(26,22,16,0.25)",
+            fontFamily: "var(--font-mono, ui-monospace, Menlo, monospace)",
+            fontSize: 10,
+            letterSpacing: "0.28em",
+            textTransform: "uppercase",
+            cursor: "pointer",
+          }}
+        >
+          ← Back to the Surface
+        </button>
+        <TheGlassHouse
+          profile={profile}
+          onReset={handleReset}
+          onViewRawForensics={() => setView("hud")}
+          sourceFile={uploadedFile ?? undefined}
+          onOpenReport={() => setView("report")}
+          onAnalyzeWithAI={() => setView("llm")}
+        />
+      </div>
     );
   }
 
