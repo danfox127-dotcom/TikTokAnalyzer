@@ -282,10 +282,10 @@ export default function Home() {
               marginBottom: 40,
             }}
           >
-            The House<br />
-            You Didn&rsquo;t<br />
-            Know Was{" "}
-            <span style={{ fontStyle: "italic", color: "#8b2323" }}>Glass.</span>
+            How Much<br />
+            Does TikTok{" "}
+            <span style={{ fontStyle: "italic", color: "#8b2323" }}>Really</span><br />
+            Know About You?
           </h1>
 
           <p

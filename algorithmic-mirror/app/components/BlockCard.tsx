@@ -17,23 +17,36 @@ import {
 import type { NarrativeBlock } from "../types/narrative";
 import { CreatorGraph } from "./CreatorGraph";
 
+// ── Design tokens — warm editorial register ────────────────────────────────
+const PAPER       = "#f5efe4";
+const PAPER_LIGHT = "#fdfbf6";
+const PAPER_DEEP  = "#ede5d4";
+const INK         = "#1a1610";
+const INK_SOFT    = "#3a3024";
+const INK_DIM     = "#6a5e4a";
+const INK_GHOST   = "#a89a80";
+const RULE        = "rgba(26, 22, 16, 0.12)";
+
+// Warm editorial chart palette — no neon
 const CHART_PALETTE = [
-  "#4db8ff",
-  "#ff8c42",
-  "#a8ff78",
-  "#ff4db8",
-  "#ffd700",
-  "#c8a2c8",
-  "#ff4466",
-  "#00e5ff",
+  "#8b2323", // oxblood
+  "#c87941", // amber
+  "#5a7a5a", // sage
+  "#8b6b3a", // warm brown
+  "#3a5a7a", // muted slate
+  "#7a3a5a", // dusty rose
+  "#2a5a4a", // muted teal
+  "#6a7a3a", // ochre-green
 ];
+
+// ── Decoding text animation ────────────────────────────────────────────────
+// Keeps the "data resolving" feel but in the editorial register.
+const GLITCH_CHARS = "!<>-_\\/[]{}—=+*^?#________";
 
 function DecodingText({ text, delay = 0 }: { text: string; delay?: number }) {
   const [displayedText, setDisplayedText] = useState("");
-  const chars = "!<>-_\\/[]{}—=+*^?#________";
 
   useEffect(() => {
-    // Skip animation in tests
     if (process.env.NODE_ENV === "test") {
       setDisplayedText(text);
       return;
@@ -46,18 +59,12 @@ function DecodingText({ text, delay = 0 }: { text: string; delay?: number }) {
           text
             .split("")
             .map((char, index) => {
-              if (index < iteration) {
-                return text[index];
-              }
-              return chars[Math.floor(Math.random() * chars.length)];
+              if (index < iteration) return text[index];
+              return GLITCH_CHARS[Math.floor(Math.random() * GLITCH_CHARS.length)];
             })
             .join("")
         );
-
-        if (iteration >= text.length) {
-          clearInterval(interval);
-        }
-
+        if (iteration >= text.length) clearInterval(interval);
         iteration += 1 / 3;
       }, 30);
       return () => clearInterval(interval);
@@ -67,6 +74,8 @@ function DecodingText({ text, delay = 0 }: { text: string; delay?: number }) {
 
   return <>{displayedText}</>;
 }
+
+// ── Chart components ───────────────────────────────────────────────────────
 
 function BlockBarChart({ data }: { data: Record<string, unknown>[] }) {
   if (!data.length) return null;
@@ -78,22 +87,23 @@ function BlockBarChart({ data }: { data: Record<string, unknown>[] }) {
       <BarChart data={data} margin={{ top: 4, right: 8, bottom: 4, left: 0 }}>
         <XAxis
           dataKey={xKey}
-          tick={{ fill: "#888", fontSize: 10, fontFamily: "ui-monospace, monospace" }}
+          tick={{ fill: INK_DIM, fontSize: 10, fontFamily: "var(--font-mono, ui-monospace, monospace)" }}
           axisLine={false}
           tickLine={false}
         />
         <YAxis hide />
         <Tooltip
           contentStyle={{
-            background: "#111",
-            border: "1px solid #333",
-            color: "#eee",
+            background: PAPER_LIGHT,
+            border: `1px solid ${RULE}`,
+            color: INK,
             fontSize: 11,
-            fontFamily: "ui-monospace, monospace",
+            fontFamily: "var(--font-mono, ui-monospace, monospace)",
+            boxShadow: "2px 2px 0 rgba(26,22,16,0.08)",
           }}
-          cursor={{ fill: "rgba(255,255,255,0.04)" }}
+          cursor={{ fill: "rgba(26,22,16,0.04)" }}
         />
-        <Bar dataKey={yKey} fill="#4db8ff" radius={[2, 2, 0, 0]} />
+        <Bar dataKey={yKey} fill="#8b2323" radius={[1, 1, 0, 0]} />
       </BarChart>
     </ResponsiveContainer>
   );
@@ -120,11 +130,11 @@ function BlockDonutChart({ data }: { data: Record<string, unknown>[] }) {
         </Pie>
         <Tooltip
           contentStyle={{
-            background: "#111",
-            border: "1px solid #333",
-            color: "#eee",
+            background: PAPER_LIGHT,
+            border: `1px solid ${RULE}`,
+            color: INK,
             fontSize: 11,
-            fontFamily: "ui-monospace, monospace",
+            fontFamily: "var(--font-mono, ui-monospace, monospace)",
           }}
         />
       </PieChart>
@@ -132,48 +142,65 @@ function BlockDonutChart({ data }: { data: Record<string, unknown>[] }) {
   );
 }
 
+// ── BlockCard ──────────────────────────────────────────────────────────────
+
 interface BlockCardProps {
   block: NarrativeBlock;
+  index?: number;
 }
 
-export function BlockCard({ block }: BlockCardProps) {
+export function BlockCard({ block, index = 0 }: BlockCardProps) {
   const chart = useMemo(() => {
     if (!block.chart || !block.chart.data.length) return null;
-    if (block.chart.type === "bar") return <BlockBarChart data={block.chart.data} />;
-    if (block.chart.type === "donut") return <BlockDonutChart data={block.chart.data} />;
+    if (block.chart.type === "bar")          return <BlockBarChart data={block.chart.data} />;
+    if (block.chart.type === "donut")        return <BlockDonutChart data={block.chart.data} />;
     if (block.chart.type === "creator_graph") return <CreatorGraph data={block.chart.data} />;
     return null;
   }, [block.chart]);
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
+      initial={{ opacity: 0, y: 16 }}
       whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, margin: "-10% 0px" }}
-      transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+      viewport={{ once: true, margin: "-8% 0px" }}
+      transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1], delay: 0.05 }}
       style={{
-        background: "#111",
-        border: "1px solid #1e1e1e",
-        borderLeft: `4px solid ${block.accent}`,
-        padding: "20px 24px",
-        fontFamily: "ui-monospace, Menlo, Monaco, 'Cascadia Mono', monospace",
+        background: PAPER,
+        borderTop: `1px solid ${RULE}`,
+        borderLeft: `3px solid ${block.accent ?? "#8b2323"}`,
+        padding: "32px 28px 28px",
+        fontFamily: "var(--font-body, Georgia, serif)",
+        marginBottom: 0,
       }}
     >
-      {/* Icon + Title */}
+      {/* Finding number + title */}
       <div
         style={{
           display: "flex",
-          alignItems: "center",
-          gap: 10,
-          marginBottom: 14,
+          alignItems: "baseline",
+          gap: 14,
+          marginBottom: 16,
         }}
       >
-        <span style={{ fontSize: 18, lineHeight: 1 }}>{block.icon}</span>
         <span
           style={{
+            fontFamily: "var(--font-mono, ui-monospace, Menlo, monospace)",
+            fontSize: 9,
+            letterSpacing: "0.2em",
+            color: INK_GHOST,
+            textTransform: "uppercase",
+            flexShrink: 0,
+          }}
+        >
+          {String(index + 1).padStart(2, "0")}
+        </span>
+        <span style={{ fontSize: 16, lineHeight: 1, flexShrink: 0 }}>{block.icon}</span>
+        <span
+          style={{
+            fontFamily: "var(--font-mono, ui-monospace, Menlo, monospace)",
             fontSize: 10,
-            letterSpacing: "0.25em",
-            color: block.accent,
+            letterSpacing: "0.22em",
+            color: block.accent ?? "#8b2323",
             fontWeight: 700,
             textTransform: "uppercase",
           }}
@@ -182,21 +209,22 @@ export function BlockCard({ block }: BlockCardProps) {
         </span>
       </div>
 
-      {/* Prose with subtle fade-in and decoding effect */}
+      {/* Prose — decoding animation gives a data-reveal feel */}
       <motion.p
         initial={{ opacity: 0 }}
         whileInView={{ opacity: 1 }}
-        transition={{ duration: 0.8, delay: 0.2 }}
+        transition={{ duration: 0.7, delay: 0.15 }}
         style={{
-          fontSize: 13,
-          lineHeight: 1.8,
-          color: "#bbb",
-          marginBottom: 16,
-          maxWidth: 640,
-          minHeight: "3.6em", // Prevent layout shift during decoding
+          fontSize: 16,
+          lineHeight: 1.75,
+          color: INK_SOFT,
+          marginBottom: 20,
+          maxWidth: "64ch",
+          minHeight: "3.6em",
+          fontFamily: "var(--font-body, 'Source Serif 4', Georgia, serif)",
         }}
       >
-        <DecodingText text={block.prose} delay={0.4} />
+        <DecodingText text={block.prose} delay={0.3} />
       </motion.p>
 
       {/* Stats */}
@@ -204,21 +232,26 @@ export function BlockCard({ block }: BlockCardProps) {
         <dl
           style={{
             display: "grid",
-            gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))",
+            gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))",
             gap: "8px 12px",
-            marginBottom: chart ? 20 : 0,
+            marginBottom: chart ? 24 : 0,
           }}
         >
           {block.stats.map((stat) => (
             <div
               key={stat.label}
-              style={{ background: "#1a1a1a", padding: "8px 12px" }}
+              style={{
+                background: PAPER_DEEP,
+                padding: "10px 14px",
+                borderTop: `1px solid ${RULE}`,
+              }}
             >
               <dt
                 style={{
+                  fontFamily: "var(--font-mono, ui-monospace, Menlo, monospace)",
                   fontSize: 9,
-                  letterSpacing: "0.15em",
-                  color: "#555",
+                  letterSpacing: "0.18em",
+                  color: INK_DIM,
                   textTransform: "uppercase",
                 }}
               >
@@ -226,10 +259,12 @@ export function BlockCard({ block }: BlockCardProps) {
               </dt>
               <dd
                 style={{
-                  fontSize: 14,
-                  color: "#eee",
-                  marginTop: 3,
-                  fontWeight: 600,
+                  fontFamily: "var(--font-display, 'Fraunces', Georgia, serif)",
+                  fontSize: 22,
+                  fontWeight: 700,
+                  color: INK,
+                  marginTop: 4,
+                  lineHeight: 1.1,
                 }}
               >
                 {stat.value}
@@ -240,36 +275,45 @@ export function BlockCard({ block }: BlockCardProps) {
       )}
 
       {/* Chart */}
-      {chart}
+      {chart && (
+        <div style={{ marginTop: 4 }}>
+          {chart}
+        </div>
+      )}
 
-      {/* Provenance */}
+      {/* Provenance footer */}
       <footer
         style={{
           marginTop: 20,
           paddingTop: 12,
-          borderTop: "1px solid rgba(255,255,255,0.05)",
+          borderTop: `1px solid ${RULE}`,
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
+          gap: 12,
+          flexWrap: "wrap",
         }}
       >
         <span
           style={{
+            fontFamily: "var(--font-mono, ui-monospace, Menlo, monospace)",
             fontSize: 9,
-            color: "#444",
+            color: INK_GHOST,
             textTransform: "uppercase",
-            letterSpacing: "0.1em",
+            letterSpacing: "0.15em",
           }}
         >
-          // PROVENANCE
+          Source
         </span>
         <span
           style={{
-            fontSize: 9,
-            color: "#666",
+            fontFamily: "var(--font-body, Georgia, serif)",
+            fontSize: 11,
+            color: INK_DIM,
             fontStyle: "italic",
             maxWidth: "80%",
             textAlign: "right",
+            lineHeight: 1.5,
           }}
         >
           {block.provenance}

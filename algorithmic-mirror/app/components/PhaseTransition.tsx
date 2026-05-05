@@ -1,10 +1,13 @@
 "use client";
 
 /**
- * PhaseTransition — holographic bridge between Phase 1 (light/Bespin) and Phase 3 (dark/Ghost).
+ * PhaseTransition — the cinematic pivot between Phase 1 (bright Surface) and
+ * Phase 2 (warm editorial Glass House).
  *
- * Rendered as a full-screen overlay that plays once then unmounts.
- * The sequence: warm → scan line wipe → cold dark.
+ * Visual language: editorial warm paper → brief ink-dark reveal moment → fades
+ * back to warm paper as the dossier renders beneath it.
+ * Colors are the same oxblood/ink register as TheGlassHouse, not the old
+ * surveillance neon-blue palette.
  */
 
 import { motion, AnimatePresence } from "framer-motion";
@@ -19,6 +22,10 @@ const DATA_FRAGMENTS = [
   "DOSSIER READY",
 ];
 
+const ACCENT  = "#8b2323"; // oxblood — matches TheGlassHouse
+const INK     = "#1a1610";
+const PAPER   = "#f5efe4";
+
 interface Props {
   onComplete: () => void;
 }
@@ -28,7 +35,6 @@ export function PhaseTransition({ onComplete }: Props) {
   const [visible, setVisible] = useState(true);
 
   useEffect(() => {
-    // Advance text fragments
     const interval = setInterval(() => {
       setStep(s => {
         if (s >= DATA_FRAGMENTS.length - 1) {
@@ -42,7 +48,6 @@ export function PhaseTransition({ onComplete }: Props) {
   }, []);
 
   useEffect(() => {
-    // Exit after full sequence
     const timer = setTimeout(() => {
       setVisible(false);
       setTimeout(onComplete, 600);
@@ -70,59 +75,47 @@ export function PhaseTransition({ onComplete }: Props) {
             overflow: "hidden",
           }}
         >
-          {/* Flash Bulb Effect */}
+          {/* Flash Bulb — white to transparent */}
           <motion.div
             initial={{ opacity: 1 }}
             animate={{ opacity: 0 }}
-            transition={{ duration: 1, ease: "easeOut" }}
+            transition={{ duration: 0.9, ease: "easeOut" }}
             style={{
               position: "absolute",
               inset: 0,
               background: "white",
-              zIndex: 10000,
-              pointerEvents: "none",
-            }}
-          />
-          <motion.div
-            initial={{ opacity: 0.8 }}
-            animate={{ opacity: 0 }}
-            transition={{ duration: 1.5, ease: "easeOut", delay: 0.1 }}
-            style={{
-              position: "absolute",
-              inset: 0,
-              background: "radial-gradient(circle, #f5d57a 0%, transparent 70%)",
-              zIndex: 9999,
+              zIndex: 10,
               pointerEvents: "none",
             }}
           />
 
-          {/* Background — gradient wipe warm → cold */}
+          {/* Background — warm paper → deep ink (cinematic reveal) */}
           <motion.div
-            initial={{ background: "linear-gradient(160deg, #faf8f5 0%, #f2ede6 100%)" }}
-            animate={{ background: "linear-gradient(160deg, #05080f 0%, #0a0f1a 100%)" }}
-            transition={{ duration: 1.2, ease: [0.22, 1, 0.36, 1], delay: 0.3 }}
+            initial={{ background: `linear-gradient(160deg, ${PAPER} 0%, #ede5d4 100%)` }}
+            animate={{ background: `linear-gradient(160deg, ${INK} 0%, #2a221a 100%)` }}
+            transition={{ duration: 1.1, ease: [0.22, 1, 0.36, 1], delay: 0.25 }}
             style={{ position: "absolute", inset: 0 }}
           />
 
-          {/* Holographic scan wipe — horizontal line sweeping down */}
+          {/* Oxblood scan wipe — editorial, not surveillance */}
           <motion.div
             initial={{ top: "-2px" }}
             animate={{ top: "102%" }}
-            transition={{ duration: 1.1, ease: [0.4, 0, 0.2, 1], delay: 0.2 }}
+            transition={{ duration: 1.0, ease: [0.4, 0, 0.2, 1], delay: 0.15 }}
             style={{
               position: "absolute",
               left: 0,
               right: 0,
-              height: 2,
-              background: "linear-gradient(to right, transparent 0%, #4db8ff 20%, #4db8ff 80%, transparent 100%)",
-              boxShadow: "0 0 24px rgba(77,184,255,0.8), 0 0 60px rgba(77,184,255,0.3)",
+              height: 1,
+              background: `linear-gradient(to right, transparent 0%, ${ACCENT} 20%, ${ACCENT} 80%, transparent 100%)`,
+              boxShadow: `0 0 16px rgba(139,35,35,0.6), 0 0 40px rgba(139,35,35,0.2)`,
               zIndex: 2,
             }}
           />
 
-          {/* Glassmorphic data panel */}
+          {/* Data panel — ink-on-paper, editorial register */}
           <motion.div
-            initial={{ opacity: 0, scale: 0.96, y: 20 }}
+            initial={{ opacity: 0, scale: 0.97, y: 16 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.98 }}
             transition={{ duration: 0.4, delay: 0.1 }}
@@ -130,19 +123,19 @@ export function PhaseTransition({ onComplete }: Props) {
               position: "relative",
               zIndex: 3,
               padding: "40px 48px",
-              background: "rgba(255,255,255,0.04)",
-              border: "1px solid rgba(77,184,255,0.2)",
+              background: "rgba(253,251,246,0.06)",
+              border: `1px solid rgba(139,35,35,0.28)`,
               backdropFilter: "blur(20px)",
               minWidth: 360,
               textAlign: "center",
             }}
           >
-            {/* Corner chips */}
-            {["tl","tr","bl","br"].map(corner => (
+            {/* Corner chips — oxblood */}
+            {(["tl","tr","bl","br"] as const).map(corner => (
               <div key={corner} style={{
                 position: "absolute",
                 width: 8, height: 8,
-                border: "1px solid rgba(77,184,255,0.5)",
+                border: `1px solid rgba(139,35,35,0.55)`,
                 ...(corner === "tl" ? { top: -1, left: -1, borderRight: "none", borderBottom: "none" } : {}),
                 ...(corner === "tr" ? { top: -1, right: -1, borderLeft: "none", borderBottom: "none" } : {}),
                 ...(corner === "bl" ? { bottom: -1, left: -1, borderRight: "none", borderTop: "none" } : {}),
@@ -150,22 +143,23 @@ export function PhaseTransition({ onComplete }: Props) {
               }} />
             ))}
 
+            {/* Pulsing dot */}
             <motion.div
               animate={{ opacity: [0.4, 1, 0.4] }}
               transition={{ repeat: Infinity, duration: 1.2 }}
               style={{
-                width: 8, height: 8, borderRadius: "50%",
-                background: "#4db8ff",
-                boxShadow: "0 0 12px #4db8ff",
+                width: 7, height: 7, borderRadius: "50%",
+                background: ACCENT,
+                boxShadow: `0 0 10px ${ACCENT}`,
                 margin: "0 auto 24px",
               }}
             />
 
             <div style={{
-              fontFamily: "monospace",
-              fontSize: 11,
-              letterSpacing: "0.18em",
-              color: "rgba(77,184,255,0.6)",
+              fontFamily: "var(--font-mono, ui-monospace, Menlo, monospace)",
+              fontSize: 10,
+              letterSpacing: "0.22em",
+              color: `rgba(139,35,35,0.7)`,
               marginBottom: 20,
               textTransform: "uppercase",
             }}>
@@ -176,15 +170,15 @@ export function PhaseTransition({ onComplete }: Props) {
               <AnimatePresence mode="wait">
                 <motion.div
                   key={step}
-                  initial={{ opacity: 0, y: 8 }}
+                  initial={{ opacity: 0, y: 6 }}
                   animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -8 }}
-                  transition={{ duration: 0.2 }}
+                  exit={{ opacity: 0, y: -6 }}
+                  transition={{ duration: 0.18 }}
                   style={{
-                    fontFamily: "monospace",
-                    fontSize: 13,
-                    letterSpacing: "0.12em",
-                    color: step === DATA_FRAGMENTS.length - 1 ? "#4db8ff" : "#dde8f8",
+                    fontFamily: "var(--font-mono, ui-monospace, Menlo, monospace)",
+                    fontSize: 12,
+                    letterSpacing: "0.14em",
+                    color: step === DATA_FRAGMENTS.length - 1 ? ACCENT : "rgba(253,251,246,0.85)",
                     textTransform: "uppercase",
                   }}
                 >
@@ -201,19 +195,20 @@ export function PhaseTransition({ onComplete }: Props) {
               </AnimatePresence>
             </div>
 
-            {/* Progress bar */}
-            <div style={{ width: "100%", height: 1, background: "rgba(77,184,255,0.15)", marginTop: 20 }}>
+            {/* Progress bar — oxblood */}
+            <div style={{ width: "100%", height: 1, background: "rgba(139,35,35,0.18)", marginTop: 20 }}>
               <motion.div
                 initial={{ width: "0%" }}
                 animate={{ width: `${((step + 1) / DATA_FRAGMENTS.length) * 100}%` }}
                 transition={{ duration: 0.26, ease: "easeOut" }}
-                style={{ height: "100%", background: "#4db8ff", boxShadow: "0 0 8px rgba(77,184,255,0.6)" }}
+                style={{
+                  height: "100%",
+                  background: ACCENT,
+                  boxShadow: `0 0 6px rgba(139,35,35,0.5)`,
+                }}
               />
             </div>
           </motion.div>
-
-          {/* Scanlines overlay */}
-          <div className="scanlines" style={{ opacity: 0.2, zIndex: 4 }} />
         </motion.div>
       )}
     </AnimatePresence>

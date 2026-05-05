@@ -35,7 +35,8 @@ const HIGHLIGHT = "#f5d57a"; // highlighter marker
 // Helpers
 // ---------------------------------------------------------------------------
 
-function formatInt(n: number) {
+function formatInt(n: number | undefined | null) {
+  if (n == null || isNaN(n)) return "—";
   return n.toLocaleString("en-US");
 }
 
@@ -1579,7 +1580,6 @@ export function TheGlassHouse({ profile, onReset, onViewRawForensics, sourceFile
             whileInView={{ backgroundColor: "#0a0a0a" }}
             viewport={{ margin: "-20% 0px" }}
             transition={{ duration: 1.5 }}
-            className="noise"
             style={{
               borderTop: `2px solid ${INK}`,
               paddingTop: 80,
