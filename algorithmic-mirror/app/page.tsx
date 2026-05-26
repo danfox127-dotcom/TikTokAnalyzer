@@ -3,21 +3,17 @@
 import { useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Upload, Loader2 } from "lucide-react";
-import { GhostProfileHUD, GhostProfile } from "./components/GhostProfileHUD";
-import { TheGlassHouse } from "./components/TheGlassHouse";
+import { GhostProfile } from "./components/GhostProfileHUD";
+import { ForensicDashboard } from "./components/ForensicDashboard";
 import { NarrativeReportView } from "./components/NarrativeReportView";
 import { LLMAnalysisView } from "./components/LLMAnalysisView";
-import { PhaseTransition } from "./components/PhaseTransition";
-import { SurfaceDataDisplay } from "./components/SurfaceDataDisplay";
+import { supabase } from "./utils/supabase";
 import type { NarrativeBlock } from "./types/narrative";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8005";
 
-// View order for the bright→dark scroll story:
-//   upload → surface (Miami Day Art Deco) → transition → narrative (Dossier)
-// "report" / "llm" / "hud" branch off narrative; "back to surface" ribbon on
-// narrative view returns here without resetting the file.
-type View = "upload" | "surface" | "transition" | "narrative" | "hud" | "report" | "llm";
+// Direct tool-based view flow: upload → dashboard
+type View = "upload" | "dashboard" | "report" | "llm" | "hud";
 
 export default function Home() {
   const [profile, setProfile] = useState<GhostProfile | null>(null);
@@ -33,19 +29,45 @@ export default function Home() {
     setIsLoading(true);
     setError(null);
     try {
-      const fd = new FormData();
-      fd.append("file", file);
-      const res = await fetch(`${API_URL}/api/analyze`, { method: "POST", body: fd });
-      if (!res.ok) {
-        const j = await res.json().catch(() => ({ detail: `HTTP ${res.status}` }));
-        throw new Error(j.detail ?? `HTTP ${res.status}`);
+      let raw;
+      
+      // Use Supabase if configured
+      if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+        // 1. Upload to Storage
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${Math.random()}.${fileExt}`;
+        const filePath = `exports/${fileName}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from('exports')
+          .upload(filePath, file);
+
+        if (uploadError) throw uploadError;
+
+        // 2. Invoke Edge Function
+        const { data, error: functionError } = await supabase.functions.invoke('analyze', {
+          body: { filePath },
+        });
+
+        if (functionError) throw functionError;
+        raw = data;
+      } else {
+        // Fallback to local FastAPI
+        const fd = new FormData();
+        fd.append("file", file);
+        const res = await fetch(`${API_URL}/api/analyze`, { method: "POST", body: fd });
+        if (!res.ok) {
+          const j = await res.json().catch(() => ({ detail: `HTTP ${res.status}` }));
+          throw new Error(j.detail ?? `HTTP ${res.status}`);
+        }
+        raw = await res.json();
       }
-      const raw = await res.json();
+
       setProfile(raw as GhostProfile);
       setNarrativeBlocks((raw as { narrative_blocks?: NarrativeBlock[] }).narrative_blocks ?? []);
-      // Bright→dark story starts on the Surface. The Surface's scroll
-      // sentinel kicks the transition once the reader reaches the bottom.
-      setView("surface");
+      
+      // Pivot: Bypass cinematic surface/transition, go straight to tools.
+      setView("dashboard");
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Unknown error";
       const net = /fetch|NetworkError|ECONNREFUSED|Failed to fetch/i.test(msg);
@@ -73,26 +95,23 @@ export default function Home() {
     analyze(file);
   };
 
+  if (profile && view === "dashboard") {
+    return (
+      <ForensicDashboard 
+        profile={profile} 
+        onReset={handleReset} 
+        sourceFile={uploadedFile!} 
+      />
+    );
+  }
+
   if (profile && view === "report") {
     return (
       <NarrativeReportView
         narrativeBlocks={narrativeBlocks}
-        onBack={() => setView("narrative")}
+        onBack={() => setView("dashboard")}
       />
     );
-  }
-
-  if (profile && view === "surface") {
-    return (
-      <SurfaceDataDisplay
-        profile={profile}
-        onReveal={() => setView("transition")}
-      />
-    );
-  }
-
-  if (view === "transition") {
-    return <PhaseTransition onComplete={() => setView("narrative")} />;
   }
 
   if (profile && view === "llm") {
@@ -100,75 +119,8 @@ export default function Home() {
       <LLMAnalysisView
         file={uploadedFile!}
         apiUrl={API_URL}
-        onBack={() => setView("narrative")}
+        onBack={() => setView("dashboard")}
       />
-    );
-  }
-
-  if (profile && view === "narrative") {
-    return (
-      <div style={{ position: "relative" }}>
-        {/* Back-to-Surface ribbon — returns to the bright phase without
-            clearing the uploaded file. Use the Reset control inside
-            TheGlassHouse to drop the file and return to upload. */}
-        <button
-          onClick={() => setView("surface")}
-          style={{
-            position: "fixed",
-            top: 20,
-            left: 20,
-            zIndex: 50,
-            padding: "10px 16px",
-            background: "#f5efe4",
-            color: "#1a1610",
-            border: "1px solid rgba(26,22,16,0.25)",
-            fontFamily: "var(--font-mono, ui-monospace, Menlo, monospace)",
-            fontSize: 10,
-            letterSpacing: "0.28em",
-            textTransform: "uppercase",
-            cursor: "pointer",
-          }}
-        >
-          ← Back to the Surface
-        </button>
-        <TheGlassHouse
-          profile={profile}
-          onReset={handleReset}
-          onViewRawForensics={() => setView("hud")}
-          sourceFile={uploadedFile ?? undefined}
-          onOpenReport={() => setView("report")}
-          onAnalyzeWithAI={() => setView("llm")}
-        />
-      </div>
-    );
-  }
-
-  if (profile && view === "hud") {
-    return (
-      <div style={{ position: "relative" }}>
-        {/* Back-to-narrative ribbon */}
-        <button
-          onClick={() => setView("narrative")}
-          style={{
-            position: "fixed",
-            top: 20,
-            left: 20,
-            zIndex: 50,
-            padding: "10px 16px",
-            background: "#f5efe4",
-            color: "#1a1610",
-            border: "1px solid rgba(26,22,16,0.25)",
-            fontFamily: "var(--font-mono, ui-monospace, Menlo, monospace)",
-            fontSize: 10,
-            letterSpacing: "0.28em",
-            textTransform: "uppercase",
-            cursor: "pointer",
-          }}
-        >
-          ← Back to the Story
-        </button>
-        <GhostProfileHUD profile={profile} onReset={handleReset} sourceFile={uploadedFile ?? undefined} />
-      </div>
     );
   }
 
