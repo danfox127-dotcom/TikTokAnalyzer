@@ -77,17 +77,35 @@ def _keywords_from_url(url: str) -> list[str]:
     return [p.lower() for p in parts if len(p) >= 4 and p.lower() not in _URL_NOISE and not p.isdigit()]
 
 
-def _count_creators(link_set: set[str], limit: int = 15, count_key: str = "count", link_to_title: dict[str, str] = None) -> list[dict]:
-    """Extract creators and count frequencies, falling back to Video ID if handles are missing."""
+def _handle_from_link(link: str, link_handle_map: dict[str, str] | None = None) -> str | None:
+    """Creator @handle for a watch link: URL regex first, then the resolved video_id→handle map."""
+    creator = _extract_creator_from_url(link)
+    if creator:
+        return creator
+    if link_handle_map:
+        vid = oembed.extract_video_id(link)
+        h = link_handle_map.get(vid) if vid else None
+        if h:
+            return h if h.startswith("@") else f"@{h}"
+    return None
+
+
+def _count_creators(link_set: set[str], limit: int = 15, count_key: str = "count", link_to_title: dict[str, str] = None, link_handle_map: dict[str, str] | None = None) -> list[dict]:
+    """Extract creators and count frequencies, falling back to Video ID if handles are missing.
+
+    When `link_handle_map` (video_id → handle, from the durable creator map) is
+    supplied, links with no @handle in the URL are resolved through it, so counts
+    aggregate by *real creator* instead of by one-off video id.
+    """
     handle_freq: dict[str, int] = {}
     vid_freq: dict[str, int] = {}
     creator_titles: dict[str, list[str]] = defaultdict(list)
     link_to_vid: dict[str, str] = {}
-    
+
     for link in link_set:
         vid = oembed.extract_video_id(link)
-        creator = _extract_creator_from_url(link)
-        
+        creator = _handle_from_link(link, link_handle_map)
+
         if vid:
             link_to_vid[link] = vid
             if creator:
@@ -520,8 +538,13 @@ def _determine_primary_archetype(behavioral_nodes: dict, parsed: dict, sw: dict,
 # Public API
 # ---------------------------------------------------------------------------
 
-def build_ghost_profile(parsed: dict, exclude_hours: tuple[int, ...] = ()) -> dict:
-    """Derive the strictly behavioral Ghost Profile payload."""
+def build_ghost_profile(parsed: dict, exclude_hours: tuple[int, ...] = (), link_handle_map: dict[str, str] | None = None) -> dict:
+    """Derive the strictly behavioral Ghost Profile payload.
+
+    `link_handle_map` (video_id → handle, from utils.creator_map) lets every
+    handle-dependent field — vibe_cluster, graveyard, echo-chamber, social-graph
+    split, archetype — re-derive from real creators once oEmbed has resolved them.
+    """
     active_history = parsed.get("watch_history_active", [])
     sw = _run_stopwatch(active_history, exclude_hours=exclude_hours)
     
@@ -539,16 +562,16 @@ def build_ghost_profile(parsed: dict, exclude_hours: tuple[int, ...] = ()) -> di
     night_shift_pct = (sw["night_count"] / max(total_conscious, 1)) * 100
     night_linger_pct = (sw["night_lingers"] / max(sustained_and_dives, 1)) * 100
 
-    vibe_cluster = resolve_vibe_cluster(_count_creators(sw["_linger_links"], limit=20, count_key="linger_count", link_to_title=link_to_title))
-    graveyard = resolve_vibe_cluster(_count_creators(sw["_graveyard_links"], limit=20, count_key="skip_count", link_to_title=link_to_title))
+    vibe_cluster = resolve_vibe_cluster(_count_creators(sw["_linger_links"], limit=20, count_key="linger_count", link_to_title=link_to_title, link_handle_map=link_handle_map))
+    graveyard = resolve_vibe_cluster(_count_creators(sw["_graveyard_links"], limit=20, count_key="skip_count", link_to_title=link_to_title, link_handle_map=link_handle_map))
 
     following_usernames = {u.get("username", "").lower().lstrip("@") for u in parsed.get("following", [])}
     for c in vibe_cluster + graveyard:
         c["is_followed"] = c.get("handle", "").lower().lstrip("@") in following_usernames
 
     followed_videos = algorithmic_videos = 0
-    for link in (sw["_graveyard_links"] | sw["_sandbox_links"] | sw["_linger_links"]):
-        creator = _extract_creator_from_url(link)
+    for link in (set(sw["_graveyard_links"]) | set(sw["_sandbox_links"]) | set(sw["_linger_links"])):
+        creator = _handle_from_link(link, link_handle_map)
         if creator:
             if creator.lstrip("@").lower() in following_usernames: followed_videos += 1
             else: algorithmic_videos += 1
@@ -654,6 +677,8 @@ def build_ghost_profile(parsed: dict, exclude_hours: tuple[int, ...] = ()) -> di
             "off_platform_events": len(parsed.get("off_tiktok_activity", [])),
             "shop_order_count": len(parsed.get("shop_orders", [])),
             "shop_products": [p for order in parsed.get("shop_orders", []) for p in order.get("products", [])][:20],
+            "product_browsing_count": len(parsed.get("product_browsing", [])),
+            "browsed_products": [b["product"] for b in parsed.get("product_browsing", []) if b.get("product")][:25],
         },
         "comment_voice": comment_voice,
         "share_behavior": share_behavior,

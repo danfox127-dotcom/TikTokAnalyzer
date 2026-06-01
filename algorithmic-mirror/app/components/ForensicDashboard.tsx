@@ -3,16 +3,15 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
-  Activity, 
-  Network, 
-  Search, 
-  ShieldAlert, 
+  Activity,
+  Network,
+  Search,
   LayoutDashboard,
   ArrowLeft,
-  Share2,
   Lock,
   Zap
 } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import type { GhostProfile } from "./GhostProfileHUD";
 import { DownloadExportButton } from "./DownloadExportButton";
 import { CreatorGraph } from "./CreatorGraph";
@@ -121,6 +120,45 @@ function SectionTitle({ accent = ACCENT, children }: { accent?: string; children
   );
 }
 
+function SidebarItem({
+  icon: Icon,
+  label,
+  active,
+  onClick,
+}: {
+  icon: LucideIcon;
+  label: string;
+  active: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 12,
+        width: "100%",
+        padding: "12px 24px",
+        background: active ? "rgba(0, 229, 255, 0.08)" : "transparent",
+        border: "none",
+        borderLeft: `2px solid ${active ? ACCENT : "transparent"}`,
+        color: active ? ACCENT : INK_DIM,
+        fontFamily: "var(--font-mono, monospace)",
+        fontSize: 12,
+        letterSpacing: "0.08em",
+        textTransform: "uppercase",
+        textAlign: "left",
+        cursor: "pointer",
+        transition: "color 0.15s, background 0.15s",
+      }}
+    >
+      <Icon size={16} color={active ? ACCENT : INK_GHOST} />
+      {label}
+    </button>
+  );
+}
+
 // ---------------------------------------------------------------------------
 // Migrated Visualization Components
 // ---------------------------------------------------------------------------
@@ -146,7 +184,7 @@ function StopwatchFunnel({ profile }: { profile: GhostProfile }) {
             {sw.total_conscious_videos.toLocaleString()}
           </div>
           <div style={{ fontSize: 10, color: INK_GHOST, marginTop: 6, fontFamily: "var(--font-mono, monospace)" }}>
-            of {sw.total_raw_videos.toLocaleString()} raw
+            of {sw.total_videos.toLocaleString()} raw
           </div>
         </div>
         {buckets.map(b => {
@@ -261,10 +299,12 @@ export function ForensicDashboard({ profile, onReset, sourceFile }: Props) {
   const vibe = (profile.creator_entities?.vibe_cluster ?? []).map(v => ({ 
     handle: v.handle, 
     count: v.linger_count,
-    is_followed: v.is_followed 
+    is_followed: v.is_followed
   }));
-    <div style={{ 
-      background: BG, 
+
+  return (
+    <div style={{
+      background: BG,
       minHeight: "100vh", 
       display: "flex", 
       color: INK, 
@@ -458,14 +498,14 @@ export function ForensicDashboard({ profile, onReset, sourceFile }: Props) {
                   </div>
                 </DashboardPanel>
 
-                <DashboardPanel label="04 · Session Intensity" accent={VIBE_ACCENT}>
-                  <SectionTitle accent={VIBE_ACCENT}>Maximum Flow State</SectionTitle>
+                <DashboardPanel label="04 · Immersion Depth" accent={VIBE_ACCENT}>
+                  <SectionTitle accent={VIBE_ACCENT}>Deep Commitments</SectionTitle>
                   <div style={{ fontSize: 42, fontWeight: 700, color: VIBE_ACCENT, marginBottom: 12 }}>
-                    {(profile.stopwatch_metrics.max_session_duration / 60).toFixed(1)} <span style={{ fontSize: 20 }}>min</span>
+                    {profile.stopwatch_metrics.deep_dives.toLocaleString()} <span style={{ fontSize: 20 }}>videos</span>
                   </div>
                   <div style={{ fontSize: 11, color: INK_DIM, lineHeight: 1.6 }}>
-                    Longest continuous engagement session scrubbed of AFK anomalies.
-                    Represents your maximum immersion depth in the recommendation loop.
+                    Videos you watched for 180 seconds or more — sustained, repeated viewing.
+                    These are the strongest positive signals the recommendation loop receives from you.
                   </div>
                 </DashboardPanel>
               </div>
@@ -480,9 +520,29 @@ export function ForensicDashboard({ profile, onReset, sourceFile }: Props) {
                       <CreatorGraph data={profile.creator_entities?.vibe_cluster ?? []} />
                     </div>
                     <div style={{ marginTop: 24, fontSize: 11, color: INK_DIM }}>
-                      Mapping your creator network. Cyan nodes are followed accounts; 
+                      Mapping your creator network. Cyan nodes are followed accounts;
                       Magenta nodes are purely algorithmic discoveries that captured your attention.
                     </div>
+                    {profile.creator_resolution && profile.creator_resolution.total > 0 && (
+                      <div style={{ marginTop: 16, paddingTop: 16, borderTop: `1px solid ${BORDER}` }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", fontSize: 10, color: INK_GHOST, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 6 }}>
+                          <span>Creator Resolution</span>
+                          <span style={{ color: ACCENT }}>
+                            {profile.creator_resolution.resolved.toLocaleString()} / {profile.creator_resolution.total.toLocaleString()} ({profile.creator_resolution.pct}%)
+                          </span>
+                        </div>
+                        <div style={{ width: "100%", height: 3, background: "rgba(255,255,255,0.06)" }}>
+                          <div style={{ height: "100%", width: `${Math.min(profile.creator_resolution.pct, 100)}%`, background: ACCENT }} />
+                        </div>
+                        <div style={{ marginTop: 8, fontSize: 10, color: INK_GHOST, lineHeight: 1.5 }}>
+                          TikTok strips creator handles from your export, so each video must be resolved one
+                          by one against a rate-limited endpoint.
+                          {profile.creator_resolution.persistent
+                            ? ` Results are cached permanently — re-run to resolve more (${profile.creator_resolution.newly_resolved} added this run).`
+                            : " Caching is in-memory only (set REDIS_URL to persist coverage across runs)."}
+                        </div>
+                      </div>
+                    )}
                   </DashboardPanel>
                 </div>
 
@@ -514,6 +574,52 @@ export function ForensicDashboard({ profile, onReset, sourceFile }: Props) {
                   entries={graveyard}
                   countLabel="skips"
                 />
+
+                {(() => {
+                  const bridged = (profile.creator_entities?.vibe_cluster ?? []).filter(c => c.youtube);
+                  if (bridged.length === 0) return null;
+                  return (
+                    <div className="md:col-span-2">
+                      <DashboardPanel label="07 · Cross-Platform Resolution · YouTube" accent={MODULE_A}>
+                        <SectionTitle accent={MODULE_A}>The Same Creators, Tagged By Google</SectionTitle>
+                        <div style={{ fontSize: 11, color: INK_DIM, lineHeight: 1.6, marginBottom: 20 }}>
+                          A data broker doesn&rsquo;t re-analyze your videos. They match each TikTok
+                          <span style={{ color: INK }}> @handle</span> to the same handle on YouTube and read
+                          Google&rsquo;s pre-computed channel tags. Below: creators resolved off your watch
+                          history, cross-referenced to YouTube. <span style={{ color: INK_GHOST }}>Prototype — handle match, not identity proof.</span>
+                        </div>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                          {bridged.slice(0, 8).map((c, i) => (
+                            <div key={i} style={{ display: "grid", gridTemplateColumns: "180px 1fr", gap: 16, paddingBottom: 12, borderBottom: `1px solid ${BORDER}` }}>
+                              <div>
+                                <div style={{ fontSize: 12, color: INK }}>{c.handle}</div>
+                                <div style={{ fontSize: 10, color: INK_GHOST, marginTop: 2 }}>
+                                  → {c.youtube!.channel_title}
+                                  {c.youtube!.subscriber_text && ` · ${c.youtube!.subscriber_text}`}
+                                </div>
+                                <div style={{ fontSize: 8, marginTop: 4, color: c.youtube!.match === "name_verified" ? MODULE_D : INK_GHOST, textTransform: "uppercase", letterSpacing: "0.1em" }}>
+                                  {c.youtube!.match === "name_verified" ? "✓ name verified" : "handle match"}
+                                </div>
+                              </div>
+                              <div>
+                                {c.youtube!.topics.length > 0 && (
+                                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 6 }}>
+                                    {c.youtube!.topics.slice(0, 6).map((t, j) => (
+                                      <span key={j} style={{ fontSize: 9, padding: "2px 7px", background: "rgba(139,92,246,0.12)", border: `1px solid ${MODULE_A}`, color: MODULE_A }}>{t}</span>
+                                    ))}
+                                  </div>
+                                )}
+                                {c.youtube!.description && (
+                                  <div style={{ fontSize: 10, color: INK_DIM, lineHeight: 1.5 }}>{c.youtube!.description}</div>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </DashboardPanel>
+                    </div>
+                  );
+                })()}
               </div>
             )}
 
@@ -536,7 +642,39 @@ export function ForensicDashboard({ profile, onReset, sourceFile }: Props) {
                   </div>
                 </DashboardPanel>
 
-                <DashboardPanel label="08 · Transparency Gap" accent={MODULE_B}>
+                <div className="md:col-span-2">
+                  <DashboardPanel label="08 · Audience Labels Sold To Advertisers" accent={MODULE_C}>
+                    <SectionTitle accent={MODULE_C}>What Advertisers Were Told About You</SectionTitle>
+                    {(profile.ad_profile?.advertiser_categories?.length ?? 0) > 0 ? (
+                      <>
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 16 }}>
+                          {profile.ad_profile!.advertiser_categories.map((cat, i) => (
+                            <span key={i} style={{
+                              padding: "6px 12px",
+                              background: "rgba(249, 115, 22, 0.1)",
+                              border: `1px solid ${MODULE_C}`,
+                              color: MODULE_C,
+                              fontSize: 11,
+                            }}>
+                              {cat}
+                            </span>
+                          ))}
+                        </div>
+                        <div style={{ fontSize: 11, color: INK_DIM, lineHeight: 1.6 }}>
+                          You did not pick these. TikTok inferred them from your behavior and packages
+                          them as audience segments advertisers can target. This is the list you cannot
+                          see anywhere inside the app.
+                        </div>
+                      </>
+                    ) : (
+                      <div style={{ fontSize: 11, color: INK_DIM, lineHeight: 1.6 }}>
+                        No advertiser audience labels were present in this export.
+                      </div>
+                    )}
+                  </DashboardPanel>
+                </div>
+
+                <DashboardPanel label="09 · Transparency Gap" accent={MODULE_B}>
                   <SectionTitle accent={MODULE_B}>Declared vs. Inferred</SectionTitle>
                   <div className="flex items-center gap-12 mb-8">
                     <div>
@@ -554,7 +692,7 @@ export function ForensicDashboard({ profile, onReset, sourceFile }: Props) {
                   </div>
                 </DashboardPanel>
 
-                <DashboardPanel label="09 · Search Rhythm" accent={VIBE_ACCENT}>
+                <DashboardPanel label="10 · Search Rhythm" accent={VIBE_ACCENT}>
                   <SectionTitle accent={VIBE_ACCENT}>Active Intent Timeline</SectionTitle>
                   <div style={{ display: "flex", height: 60, gap: 2, alignItems: "flex-end", marginBottom: 12 }}>
                     {profile.search_rhythm?.hourly_histogram && Object.entries(profile.search_rhythm.hourly_histogram).map(([hour, count]) => {
@@ -570,7 +708,7 @@ export function ForensicDashboard({ profile, onReset, sourceFile }: Props) {
                   </div>
                 </DashboardPanel>
 
-                <DashboardPanel label="10 · Comment Analysis" accent={MODULE_A}>
+                <DashboardPanel label="11 · Comment Analysis" accent={MODULE_A}>
                   <SectionTitle accent={MODULE_A}>Recurring Phrases</SectionTitle>
                   <div className="space-y-3">
                     {profile.interest_phrases?.slice(0, 8).map((p, i) => (
@@ -600,10 +738,14 @@ export function ForensicDashboard({ profile, onReset, sourceFile }: Props) {
                     <div>
                       <div style={{ fontSize: 10, color: INK_GHOST, textTransform: "uppercase", marginBottom: 12 }}>Recent Logins</div>
                       <div className="space-y-2">
-                        {profile.digital_footprint?.recent_logins.slice(0, 5).map((l, i) => (
-                          <div key={i} style={{ fontSize: 11, display: "flex", justifyContent: "space-between", color: INK_DIM }}>
-                            <span>{l.city ?? "Unknown City"}</span>
-                            <span>{l.date.split("T")[0]}</span>
+                        {profile.digital_footprint?.recent_logins.slice(0, 6).map((l, i) => (
+                          <div key={i} style={{ fontSize: 11, display: "flex", justifyContent: "space-between", gap: 12, color: INK_DIM }}>
+                            <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                              {l.city ?? "Unknown"}
+                              {l.ip && <span style={{ color: INK_GHOST }}> · {l.ip}</span>}
+                              {l.carrier && <span style={{ color: INK_GHOST }}> · {l.carrier}</span>}
+                            </span>
+                            <span style={{ flexShrink: 0 }}>{l.date.split("T")[0]}</span>
                           </div>
                         ))}
                       </div>
@@ -611,25 +753,67 @@ export function ForensicDashboard({ profile, onReset, sourceFile }: Props) {
                   </div>
                 </DashboardPanel>
 
-                <DashboardPanel label="10 · Data Harvesting" accent={GRAVEYARD_ACCENT}>
-                  <SectionTitle accent={GRAVEYARD_ACCENT}>Silent Permissions</SectionTitle>
-                  <div className="space-y-4">
-                    {[
-                      { label: "Watch History", sub: "Retention time per frame" },
-                      { label: "Social Graph", sub: "Followed vs Surfaced ratio" },
-                      { label: "Search Rhythm", sub: "Keyword intent timeline" },
-                      { label: "Ad susceptibility", sub: "Peak vulnerability window" }
-                    ].map((p, i) => (
-                      <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingBottom: 8, borderBottom: `1px solid ${BORDER}` }}>
-                        <div>
-                          <div style={{ fontSize: 12, fontWeight: 600 }}>{p.label}</div>
-                          <div style={{ fontSize: 10, color: INK_GHOST }}>{p.sub}</div>
+                <DashboardPanel label="10 · Off-Platform Surveillance" accent={GRAVEYARD_ACCENT}>
+                  <SectionTitle accent={GRAVEYARD_ACCENT}>Activity Reported From Outside TikTok</SectionTitle>
+                  {(profile.ad_profile?.off_platform_events ?? 0) > 0 ? (
+                    <>
+                      <div style={{ display: "flex", alignItems: "baseline", gap: 12, marginBottom: 12 }}>
+                        <div style={{ fontSize: 56, fontWeight: 700, color: GRAVEYARD_ACCENT }}>
+                          {profile.ad_profile!.off_platform_events.toLocaleString()}
                         </div>
-                        <div style={{ fontSize: 9, color: GRAVEYARD_ACCENT, fontWeight: 900 }}>COLLECTED</div>
+                        <div style={{ fontSize: 11, color: INK_DIM, textTransform: "uppercase" }}>events</div>
                       </div>
-                    ))}
-                  </div>
+                      <div style={{ fontSize: 11, color: INK_DIM, lineHeight: 1.6 }}>
+                        Websites and apps <em>outside</em> TikTok that reported your activity back to
+                        ByteDance through its business tools. This is the tracking you cannot see from
+                        inside the app — it follows you across the open web.
+                      </div>
+                    </>
+                  ) : (
+                    <div style={{ fontSize: 11, color: INK_DIM, lineHeight: 1.6 }}>
+                      No off-platform activity records were found in this export. Either no third-party
+                      sites shared your behavior with TikTok, or this section was excluded from your download.
+                    </div>
+                  )}
                 </DashboardPanel>
+
+                {(profile.ad_profile?.shop_order_count ?? 0) > 0 && (
+                  <DashboardPanel label="11 · On-Platform Purchases" accent={MODULE_D}>
+                    <SectionTitle accent={MODULE_D}>What You Bought On TikTok Shop</SectionTitle>
+                    <div style={{ fontSize: 10, color: INK_GHOST, textTransform: "uppercase", marginBottom: 12 }}>
+                      {profile.ad_profile!.shop_order_count} orders on file · first-party purchase intent
+                    </div>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                      {profile.ad_profile!.shop_products.slice(0, 10).map((p, i) => (
+                        <div key={i} style={{ fontSize: 11, color: INK_DIM, display: "flex", gap: 8 }}>
+                          <span style={{ color: INK_GHOST }}>{String(i + 1).padStart(2, "0")}</span>
+                          <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                            {p.length > 60 ? p.slice(0, 60).trimEnd() + "…" : p}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </DashboardPanel>
+                )}
+
+                {(profile.ad_profile?.product_browsing_count ?? 0) > 0 && (
+                  <DashboardPanel label="12 · Shopping Intent" accent={VIBE_ACCENT}>
+                    <SectionTitle accent={VIBE_ACCENT}>Products You Considered</SectionTitle>
+                    <div style={{ fontSize: 10, color: INK_GHOST, textTransform: "uppercase", marginBottom: 12 }}>
+                      {profile.ad_profile!.product_browsing_count.toLocaleString()} products browsed · intent without purchase
+                    </div>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                      {profile.ad_profile!.browsed_products.slice(0, 10).map((p, i) => (
+                        <div key={i} style={{ fontSize: 11, color: INK_DIM, display: "flex", gap: 8 }}>
+                          <span style={{ color: INK_GHOST }}>{String(i + 1).padStart(2, "0")}</span>
+                          <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                            {p.length > 60 ? p.slice(0, 60).trimEnd() + "…" : p}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </DashboardPanel>
+                )}
               </div>
             )}
 

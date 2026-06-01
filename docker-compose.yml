@@ -3,6 +3,11 @@ version: '3.8'
 services:
   redis:
     image: redis:7-alpine
+    # appendonly + a named volume make the creator-resolution / oEmbed cache
+    # durable, so resolved handles survive restarts and coverage accumulates.
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis-data:/data
     ports:
       - "6379:6379"
     healthcheck:
@@ -37,3 +42,6 @@ services:
       - NEXT_PUBLIC_API_URL=http://localhost:8005
     depends_on:
       - backend
+
+volumes:
+  redis-data:

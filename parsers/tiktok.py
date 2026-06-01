@@ -407,7 +407,7 @@ def _extract_shop_orders(data: dict) -> list[dict]:
         if isinstance(product_list, list):
             for p in product_list:
                 if isinstance(p, dict):
-                    name = p.get("ProductName", p.get("productName", p.get("name", "")))
+                    name = p.get("ProductName", p.get("productName", p.get("product_name", p.get("name", ""))))
                     if name:
                         products.append(_safe_text(name))
                 elif isinstance(p, str):
@@ -419,6 +419,29 @@ def _extract_shop_orders(data: dict) -> list[dict]:
             "total_price": order.get("TotalPrice", order.get("totalPrice", order.get("TotalAmount", order.get("total_price", "")))),
             "products": products,
         })
+    return results
+
+
+def _extract_product_browsing(data: dict) -> list[dict]:
+    """Extract TikTok Shop product browsing history — products viewed, not bought.
+
+    The export nests these under TikTok Shop › Product Browsing History ›
+    ProductBrowsingHistories, a list of snake_case records.
+    """
+    section = _dig(data, "TikTok Shop", "Product Browsing History", "ProductBrowsingHistories", default=[])
+    results = []
+    if isinstance(section, list):
+        for entry in section:
+            if not isinstance(entry, dict):
+                continue
+            product = entry.get("product_name", entry.get("ProductName", entry.get("productName", "")))
+            if not product:
+                continue
+            results.append({
+                "date": entry.get("browsing_date", entry.get("BrowsingDate", entry.get("date", ""))),
+                "shop": _safe_text(entry.get("shop_name", entry.get("ShopName", entry.get("shopName", "")))),
+                "product": _safe_text(product),
+            })
     return results
 
 
@@ -482,6 +505,7 @@ def _parse_tiktok_data(data: dict) -> dict:
         "login_history_stats": login_stats,
         "off_tiktok_activity": _extract_off_tiktok_activity(data),
         "shop_orders": _extract_shop_orders(data),
+        "product_browsing": _extract_product_browsing(data),
         "dm_count": _count_dms(data),
     }
 
