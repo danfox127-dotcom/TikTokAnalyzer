@@ -88,6 +88,16 @@ export interface GhostProfile {
       genre?: string;
       archetype?: string;
       confidence?: number;
+      // PROTOTYPE: cross-platform entity resolution via utils/youtube_bridge.py
+      youtube?: {
+        channel_title: string;
+        channel_url: string;
+        topics: string[];
+        description: string;
+        subscriber_text: string;
+        match: "name_verified" | "handle_only" | null;
+        source: string;
+      };
     }[];
     graveyard: {
       handle: string;
@@ -114,6 +124,9 @@ export interface GhostProfile {
     explicit_actions_count: number;
     implicit_linger_count: number;
     echo_chamber_index_pct: number;
+    // # of resolved lingered videos the index is based on (0 = unmeasurable yet)
+    echo_chamber_basis?: number;
+    echo_chamber_distinct_creators?: number;
     top_creator_handles: string[];
   };
   night_shift?: {
@@ -157,6 +170,8 @@ export interface GhostProfile {
     off_platform_events: number;
     shop_order_count: number;
     shop_products: string[];
+    product_browsing_count: number;
+    browsed_products: string[];
   };
 
   digital_footprint?: {
@@ -222,6 +237,15 @@ export interface GhostProfile {
     primary_share_method: string | null;
     share_behavior_type: string; // "Private Curator" | "Public Broadcaster" | "Mixed Sharer"
     dm_share_count: number;
+  };
+
+  // Incremental creator-resolution coverage (utils/creator_map). Grows across runs.
+  creator_resolution?: {
+    resolved: number;
+    total: number;
+    pct: number;
+    newly_resolved: number;
+    persistent: boolean;
   };
 
   // Transparency gap — official ad interests vs. inferred behavioral profile.

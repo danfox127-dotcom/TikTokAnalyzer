@@ -1,0 +1,32 @@
+# Keep the Cloud Build upload context small. The backend image only needs the
+# Python app (api/, parsers/, utils/, exporters/, requirements.txt, Dockerfile).
+
+# Frontend (deployed separately to Vercel) — 585MB of node_modules etc.
+algorithmic-mirror/
+
+# Supabase edge functions (stale TS engine; not used by the Python backend)
+supabase/
+
+# VCS / Python / test cruft
+.git/
+.github/
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+venv/
+env/
+
+# Secrets and local env (never ship)
+.env
+.env.*
+!.env.example
+
+# Large local notes / sample data not needed at runtime
+_Privacy Browser Tracking Explained Pinned chat.md
+*.json.bak
+user_data_tiktok.json
+
+# Editor / OS
+.DS_Store
+.streamlit/

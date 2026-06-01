@@ -40,3 +40,7 @@ instagram-export*/
 
 # Reports
 report.json
+
+# Local secrets: ignore .env itself, but keep the committed template
+.env
+!.env.example

@@ -15,8 +15,16 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 import json
+import logging
 from datetime import date as _date
 import asyncio
+
+# Load .env before importing modules that read env vars (REDIS_URL, etc.) at
+# import time — utils.oembed / utils.creator_map create their Redis clients on
+# import, so the variables must be present beforehand.
+from dotenv import load_dotenv
+# Explicit repo-root path (robust to CWD; avoids find_dotenv frame issues).
+load_dotenv(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".env"))
 
 import anthropic
 import google.generativeai as genai
@@ -28,6 +36,8 @@ from api.narratives import build_narrative_blocks, generate_narrative_blocks_llm
 from utils.ip_geo import enrich_logins_with_geo
 from utils.creators import enrich_creators_with_llm, cluster_creators_llm
 from utils import oembed
+from utils import youtube_bridge
+from utils import creator_map
 from utils import psychographic
 from utils import pillar_categories
 
@@ -123,55 +133,81 @@ async def analyze(
         else:
             exclude_hours = tuple(range(sleep_start, 24)) + tuple(range(0, sleep_end + 1))
 
+    # 1. First pass — build to obtain the watch-link sets.
     ghost_profile = build_ghost_profile(parsed, exclude_hours=exclude_hours)
 
-    # 1. Geo Enrichment
+    # 2. Resolve a bounded, cache-backed budget of still-unresolved creators.
+    #    TikTok strips @handles + rate-limits oEmbed, so we resolve a small budget
+    #    per run and persist forever (utils/creator_map). Coverage grows across runs.
+    sw = ghost_profile.get("stopwatch_metrics", {})
+    creator_links = list(sw.get("_linger_links", [])) + list(sw.get("_graveyard_links", []))
+    creator_vids = [v for v in (oembed.extract_video_id(l) for l in creator_links) if v]
+    resolution = await creator_map.resolve_and_fill(creator_vids)
+
+    # 3. Second pass — re-derive every handle-dependent field from the resolved map
+    #    (vibe_cluster, graveyard, echo-chamber, social-graph split, archetype).
+    if resolution["resolved"]:
+        ghost_profile = build_ghost_profile(parsed, exclude_hours=exclude_hours, link_handle_map=resolution["handles"])
+    ghost_profile["creator_resolution"] = {
+        "resolved": resolution["resolved"],
+        "total": resolution["total"],
+        "pct": resolution["pct"],
+        "newly_resolved": resolution["newly_resolved"],
+        "persistent": creator_map.using_redis(),
+    }
+
+    # Attach display name + thumbnail (from the same resolved map) to the ledgers.
+    meta_by_handle = {m["handle"].lower(): m for m in resolution["meta"].values()}
+    for c in (ghost_profile.get("creator_entities", {}).get("vibe_cluster", [])
+              + ghost_profile.get("creator_entities", {}).get("graveyard", [])):
+        h = (c.get("handle") or "").lstrip("@").lower()
+        m = meta_by_handle.get(h)
+        if m:
+            if m.get("display_name"):
+                c.setdefault("display_name", m["display_name"])
+            if m.get("thumbnail"):
+                c.setdefault("thumbnail", m["thumbnail"])
+
+    # 4. Geo Enrichment (after the final build)
     raw_logins = ghost_profile.get("digital_footprint", {}).get("recent_logins", [])
     if raw_logins:
         enriched_logins = await enrich_logins_with_geo(raw_logins)
         ghost_profile["digital_footprint"]["recent_logins"] = enriched_logins
 
-    # 2. Bridge Enrichment: Resolve Unknown Handles via oEmbed.
-    # Strategy (d): deterministic — pull canonical handle from oEmbed `author_unique_id`
-    # (already mapped to data.author by utils/oembed.py), capture display_name + thumbnail
-    # for rendering, fall back to display name when handle is missing.
     vibe = ghost_profile.get("creator_entities", {}).get("vibe_cluster", [])
-    unknown_vids = [c["video_id"] for c in vibe if c.get("handle") == "Unknown" and c.get("video_id")]
 
-    if unknown_vids:
-        fetch_targets = unknown_vids[:10]  # cap fan-out
-        oembed_results = await oembed.fetch_many(fetch_targets, concurrency=5)
-        vid_to_meta: dict[str, dict] = {}
-        for r in oembed_results:
-            if r.get("status") != "ok":
-                continue
-            data = r.get("data") or {}
-            handle = (data.get("author") or "").strip()
-            display_name = (data.get("author_name") or "").strip()
-            if not handle and not display_name:
-                continue
-            vid_to_meta[r["video_id"]] = {
-                "handle": handle,           # canonical, may be empty
-                "display_name": display_name,
-                "thumbnail": data.get("thumbnail") or "",
+    # 5. PROTOTYPE — Cross-platform entity resolution: TikTok @handle -> YouTube
+    # channel topic tags. Opt-in via ENABLE_YOUTUBE_BRIDGE or YOUTUBE_API_KEY.
+    # See utils/youtube_bridge.py. Best-effort; never blocks the response.
+    if youtube_bridge.is_enabled():
+        try:
+            resolvable = [
+                c for c in vibe
+                if c.get("handle") and c["handle"] != "Unknown"
+            ][:10]  # cap fan-out, same spirit as the oEmbed cap
+            handles = [c["handle"].lstrip("@") for c in resolvable]
+            names = {
+                c["handle"].lstrip("@"): (c.get("display_name") or "")
+                for c in resolvable
             }
-
-        following_set = {
-            u.lower().lstrip("@")
-            for u in ghost_profile.get("enrichment_targets", {}).get("following_usernames", [])
-        }
-        for c in vibe:
-            meta = vid_to_meta.get(c.get("video_id"))
-            if not meta:
-                continue
-            if meta["handle"]:
-                c["handle"] = f"@{meta['handle']}"
-                c["is_followed"] = meta["handle"].lower() in following_set
-            # Always carry display name + thumbnail when we have them.
-            if meta["display_name"]:
-                c["display_name"] = meta["display_name"]
-            if meta["thumbnail"]:
-                c["thumbnail"] = meta["thumbnail"]
+            if handles:
+                yt_results = await youtube_bridge.resolve_many(handles, concurrency=4, display_names=names)
+                by_handle = {r["handle"]: r for r in yt_results}
+                for c in resolvable:
+                    r = by_handle.get(c["handle"].lstrip("@"))
+                    if r and r.get("status") == "ok":
+                        d = r["data"]
+                        c["youtube"] = {
+                            "channel_title": d.get("channel_title", ""),
+                            "channel_url": d.get("channel_url", ""),
+                            "topics": d.get("topics", []),
+                            "description": d.get("description", ""),
+                            "subscriber_text": d.get("subscriber_text", ""),
+                            "match": r.get("match"),
+                            "source": d.get("source", ""),
+                        }
+        except Exception as exc:
+            logging.warning("YouTube bridge enrichment failed: %s", exc)
 
     # 3. Automated Vibe & Narrative (if API key provided)
     if api_key:
