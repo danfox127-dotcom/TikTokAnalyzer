@@ -124,6 +124,9 @@ export interface GhostProfile {
     explicit_actions_count: number;
     implicit_linger_count: number;
     echo_chamber_index_pct: number;
+    // # of resolved lingered videos the index is based on (0 = unmeasurable yet)
+    echo_chamber_basis?: number;
+    echo_chamber_distinct_creators?: number;
     top_creator_handles: string[];
   };
   night_shift?: {

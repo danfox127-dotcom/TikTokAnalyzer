@@ -548,13 +548,28 @@ export function ForensicDashboard({ profile, onReset, sourceFile }: Props) {
 
                 <DashboardPanel label="05 · Echo Chamber Index" accent={MODULE_B}>
                   <SectionTitle accent={MODULE_B}>Creator Concentration</SectionTitle>
-                  <div style={{ fontSize: 56, fontWeight: 700, color: MODULE_B, marginBottom: 8 }}>
-                    {profile.academic_insights?.echo_chamber_index_pct.toFixed(0)}%
-                  </div>
-                  <div style={{ fontSize: 11, color: INK_DIM, lineHeight: 1.6 }}>
-                    Concentration of attention on your top 5 creators. 
-                    High percentages indicate a narrow informational feedback loop.
-                  </div>
+                  {(profile.academic_insights?.echo_chamber_basis ?? 0) > 0 ? (
+                    <>
+                      <div style={{ fontSize: 56, fontWeight: 700, color: MODULE_B, marginBottom: 8 }}>
+                        {(profile.academic_insights?.echo_chamber_index_pct ?? 0).toFixed(0)}%
+                      </div>
+                      <div style={{ fontSize: 11, color: INK_DIM, lineHeight: 1.6 }}>
+                        Share of your <em>resolved</em> lingered videos that went to your top 5 creators.
+                        High percentages indicate a narrow informational feedback loop.
+                      </div>
+                      <div style={{ marginTop: 10, fontSize: 10, color: INK_GHOST }}>
+                        Based on {profile.academic_insights?.echo_chamber_basis?.toLocaleString()} resolved videos
+                        across {profile.academic_insights?.echo_chamber_distinct_creators?.toLocaleString()} creators.
+                        Resolve more creators (Network coverage) to sharpen this figure.
+                      </div>
+                    </>
+                  ) : (
+                    <div style={{ fontSize: 11, color: INK_DIM, lineHeight: 1.6 }}>
+                      Not measurable yet — no creators have been resolved from your lingered videos.
+                      TikTok strips creator handles from the export; once enough are resolved (see the
+                      Network coverage bar), this measures how concentrated your attention is.
+                    </div>
+                  )}
                 </DashboardPanel>
 
                 <CreatorLedger

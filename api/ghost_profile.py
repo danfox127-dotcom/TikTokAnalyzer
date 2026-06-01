@@ -141,6 +141,29 @@ def _count_creators(link_set: set[str], limit: int = 15, count_key: str = "count
         return results
 
 
+def _echo_chamber_index(linger_links, link_handle_map: dict[str, str] | None = None) -> dict:
+    """Concentration of *resolved* lingered videos on the top-5 creators.
+
+    Measured across the full linger set via the resolved video_id→handle map,
+    so it reflects real creators rather than the truncated top-20 ledger. Returns
+    0 when nothing is resolved yet — honest at low coverage, unlike the prior
+    top5/top20 ratio which returned a fixed ~25% artifact from 20 singletons.
+    `basis`/`distinct_creators` let callers caveat a thin sample.
+    """
+    freq: dict[str, int] = {}
+    for link in linger_links:
+        h = _handle_from_link(link, link_handle_map)
+        if h:
+            freq[h] = freq.get(h, 0) + 1
+    total = sum(freq.values())
+    top5 = sum(sorted(freq.values(), reverse=True)[:5])
+    return {
+        "pct": round((top5 / total) * 100, 1) if total > 0 else 0.0,
+        "basis": total,
+        "distinct_creators": len(freq),
+    }
+
+
 # ---------------------------------------------------------------------------
 # Task 1: True Stopwatch & AFK Firewall
 # ---------------------------------------------------------------------------
@@ -611,8 +634,7 @@ def build_ghost_profile(parsed: dict, exclude_hours: tuple[int, ...] = (), link_
     explicit_total = len(parsed.get("likes", [])) + len(parsed.get("comments", []))
     implicit_total = sustained_and_dives
     
-    total_linger_links = sum(c.get("linger_count", 0) for c in vibe_cluster)
-    top5_linger = sum(c.get("linger_count", 0) for c in vibe_cluster[:5])
+    echo = _echo_chamber_index(sw["_linger_links"], link_handle_map)
 
     hourly_sorted = sorted(sw["hourly_heatmap"].items(), key=lambda x: x[1], reverse=True)
     top_hours = sorted([int(h) for h, v in hourly_sorted[:3] if v > 0])
@@ -641,7 +663,9 @@ def build_ghost_profile(parsed: dict, exclude_hours: tuple[int, ...] = (), link_
             "explicit_vs_implicit_ratio": round(explicit_total / implicit_total, 3) if implicit_total > 0 else 0.0,
             "explicit_actions_count": explicit_total,
             "implicit_linger_count": implicit_total,
-            "echo_chamber_index_pct": round((top5_linger / total_linger_links) * 100, 1) if total_linger_links > 0 else 0.0,
+            "echo_chamber_index_pct": echo["pct"],
+            "echo_chamber_basis": echo["basis"],
+            "echo_chamber_distinct_creators": echo["distinct_creators"],
             "top_creator_handles": [c.get("handle") for c in vibe_cluster[:5]],
         },
         "night_shift": {"percentage": round(night_shift_pct, 1), "count": sw["night_count"], "window": "23:00 – 04:00"},

@@ -2,7 +2,7 @@
 import asyncio
 import pytest
 
-from api.ghost_profile import _count_creators, _handle_from_link
+from api.ghost_profile import _count_creators, _handle_from_link, _echo_chamber_index
 from utils import creator_map
 
 
@@ -34,6 +34,30 @@ def test_count_creators_without_map_is_all_unknown():
     links = {_link("111"), _link("222")}
     result = _count_creators(links, limit=10, count_key="linger_count")
     assert all(c["handle"] == "Unknown" for c in result)   # the pre-resolution reality
+
+
+def test_echo_chamber_is_handle_based_over_full_set():
+    # 8 lingered videos: alice x4, bob x2, carol/dave x1 -> top5 = all 8 -> 100%
+    links = [_link(str(i)) for i in range(8)]
+    hmap = {"0": "alice", "1": "alice", "2": "alice", "3": "alice",
+            "4": "bob", "5": "bob", "6": "carol", "7": "dave"}
+    r = _echo_chamber_index(links, hmap)
+    assert r["basis"] == 8 and r["distinct_creators"] == 4
+    assert r["pct"] == 100.0
+    # Make alice dominate among >5 creators so top-5 < total.
+    links2 = [_link(str(i)) for i in range(10)]
+    hmap2 = {"0": "a", "1": "a", "2": "a", "3": "a", "4": "a", "5": "a",  # a=6
+             "6": "b", "7": "c", "8": "d", "9": "e"}                      # 4 singletons
+    r2 = _echo_chamber_index(links2, hmap2)        # top5 = a(6)+b+c+d+e(4) = 10 of 10
+    assert r2["basis"] == 10 and r2["distinct_creators"] == 5
+    assert r2["pct"] == 100.0
+
+
+def test_echo_chamber_unmeasurable_without_resolution():
+    # Handle-stripped links + no map -> nothing resolves -> honest 0, not an artifact.
+    links = [_link(str(i)) for i in range(20)]
+    r = _echo_chamber_index(links, None)
+    assert r == {"pct": 0.0, "basis": 0, "distinct_creators": 0}
 
 
 # --------------------------------------------------------------------------- #
