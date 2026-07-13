@@ -229,6 +229,32 @@ async def analyze(
     return {**ghost_profile, "narrative_blocks": narrative_blocks}
 
 
+class PillarsRequest(BaseModel):
+    vibe_cluster: list[dict]
+    graveyard: list[dict]
+    interest_clusters: list[dict]
+
+
+@app.post("/api/pillars")
+async def generate_pillars(
+    body: PillarsRequest,
+    api_key: str = Query(...),
+    provider: str = Query("claude", pattern="^(claude|gemini-pro|gemini-flash)$"),
+):
+    """Generate LLM-derived identity pillars from the behavioral fingerprint."""
+    from utils.pillar_categories import generate_pillars_llm
+    pillars = await generate_pillars_llm(
+        vibe_cluster=body.vibe_cluster,
+        graveyard=body.graveyard,
+        interest_clusters=body.interest_clusters,
+        api_key=api_key,
+        provider=provider,
+    )
+    if not pillars:
+        raise HTTPException(status_code=500, detail="LLM did not return valid pillars.")
+    return {"pillars": pillars}
+
+
 @app.post("/api/export/llm")
 async def export_llm(file: UploadFile = File(...)):
     """Parse a TikTok export and return a privacy-safe LLM analysis JSON."""

@@ -244,6 +244,8 @@ def _run_stopwatch(browsing_history: list[dict], exclude_hours: tuple[int, ...] 
         link = cur["link"]
         vid = oembed.extract_video_id(link) if link else None
         time_spent = min(delta, 270.0)
+        monthly_data[month_key].setdefault("time_sum", 0.0)
+        monthly_data[month_key]["time_sum"] += time_spent if delta >= 3 else 0.0
         
         if delta < 3:
             graveyard_count += 1
@@ -263,7 +265,7 @@ def _run_stopwatch(browsing_history: list[dict], exclude_hours: tuple[int, ...] 
             if 23 <= hour or hour < 4: night_lingers += 1
             if link: linger_links.add(link)
             if vid:
-                ev = {"video_id": vid, "link": link, "time_spent": time_spent, "hour": hour}
+                ev = {"video_id": vid, "link": link, "time_spent": time_spent, "hour": hour, "_month": month_key}
                 linger_events.append(ev)
                 if 23 <= hour or hour < 4: night_linger_events.append(ev)
         else:
@@ -274,7 +276,7 @@ def _run_stopwatch(browsing_history: list[dict], exclude_hours: tuple[int, ...] 
                 deep_dive_links.add(link)
                 linger_links.add(link)
             if vid:
-                ev = {"video_id": vid, "link": link, "time_spent": time_spent, "hour": hour}
+                ev = {"video_id": vid, "link": link, "time_spent": time_spent, "hour": hour, "_month": month_key}
                 deep_dive_events.append(ev)
                 linger_events.append(ev)
                 if 23 <= hour or hour < 4: night_linger_events.append(ev)
@@ -316,6 +318,58 @@ def _run_stopwatch(browsing_history: list[dict], exclude_hours: tuple[int, ...] 
         "sandbox_events": sandbox_events,
         "night_linger_events": night_linger_events,
         "deep_dive_events": deep_dive_events,
+        "data_start_month": entries[0]["dt"].strftime("%B %Y") if entries else None,
+    }
+
+
+def _parse_date_to_month(ev: dict) -> str | None:
+    return ev.get("_month")
+
+
+def _infer_sleep_window(hourly_heatmap: dict) -> str:
+    """Find the 4-hour consecutive dead zone — most likely the sleep window."""
+    hours = [hourly_heatmap.get(str(h), hourly_heatmap.get(h, 0)) for h in range(24)]
+    if not any(hours):
+        return "Unknown"
+    doubled = hours * 2
+    WINDOW = 4
+    best_start, best_sum = 0, float("inf")
+    for s in range(24):
+        w = sum(doubled[s : s + WINDOW])
+        if w < best_sum:
+            best_sum, best_start = w, s
+    def _h(h: int) -> str:
+        h = h % 24
+        if h == 0: return "12 AM"
+        if h < 12: return f"{h} AM"
+        if h == 12: return "12 PM"
+        return f"{h - 12} PM"
+    return f"{_h(best_start)} – {_h(best_start + WINDOW)}"
+
+
+def _algorithm_drift(monthly_skip_rates: dict) -> dict:
+    """Compare first-half vs second-half skip rates to detect filter-bubble tightening."""
+    months = sorted(monthly_skip_rates.keys())
+    if len(months) < 4:
+        return {"detectable": False, "direction": None, "delta_pct": None}
+    mid = len(months) // 2
+    early = [monthly_skip_rates[m] for m in months[:mid]]
+    recent = [monthly_skip_rates[m] for m in months[mid:]]
+    avg_early = sum(early) / len(early)
+    avg_recent = sum(recent) / len(recent)
+    delta = round(avg_recent - avg_early, 1)  # negative = fewer skips lately = tighter loop
+    if delta < -4:
+        direction = "tightening"
+    elif delta > 4:
+        direction = "loosening"
+    else:
+        direction = "stable"
+    return {
+        "detectable": True,
+        "direction": direction,
+        "delta_pct": delta,
+        "early_avg": round(avg_early, 1),
+        "recent_avg": round(avg_recent, 1),
     }
 
 
@@ -605,6 +659,7 @@ def build_ghost_profile(parsed: dict, exclude_hours: tuple[int, ...] = (), link_
 
     behavioral_nodes = {
         "peak_hour": _compute_peak_hour(sw["hourly_heatmap"]),
+        "inferred_sleep_window": _infer_sleep_window(sw["hourly_heatmap"]),
         "skip_rate_percentage": round((sw["graveyard_skips"] / max(total_conscious, 1)) * 100, 1),
         "linger_rate_percentage": round(linger_rate_pct, 1),
         "night_shift_ratio": round(night_shift_pct, 1),
@@ -613,6 +668,7 @@ def build_ghost_profile(parsed: dict, exclude_hours: tuple[int, ...] = (), link_
         "social_graph_algorithmic_pct": algorithmic_pct,
         "social_graph_followed_pct": followed_pct,
     }
+    algorithm_drift = _algorithm_drift(sw.get("monthly_skip_rates", {}))
 
     primary_archetype = _determine_primary_archetype(behavioral_nodes, parsed, sw, vibe_cluster)
 
@@ -635,6 +691,78 @@ def build_ghost_profile(parsed: dict, exclude_hours: tuple[int, ...] = (), link_
     implicit_total = sustained_and_dives
     
     echo = _echo_chamber_index(sw["_linger_links"], link_handle_map)
+
+    # ── Monthly creator trends ────────────────────────────────────────────────
+    monthly_creators: dict[str, dict[str, int]] = defaultdict(lambda: defaultdict(int))
+    for ev in sw["linger_events"]:
+        handle = _handle_from_link(ev["link"], link_handle_map)
+        if handle:
+            mk = _parse_date_to_month(ev)
+            if mk:
+                monthly_creators[mk][handle] += 1
+
+    monthly_creator_trends = {
+        mk: [{"handle": h, "count": c} for h, c in sorted(handles.items(), key=lambda x: -x[1])[:5]]
+        for mk, handles in sorted(monthly_creators.items())
+    }
+
+    # ── Monthly topic trends (searches + comments by date) ───────────────────
+    monthly_topics: dict[str, Counter] = defaultdict(Counter)
+    for s in searches_raw:
+        term = (s.get("term") or "").lower().strip()
+        dt = _parse_date(s.get("date", ""))
+        if term and dt and term not in _FOOTPRINT_STOP and len(term) > 2:
+            mk = dt.strftime("%Y-%m")
+            monthly_topics[mk][term] += 3  # searches weighted higher
+
+    for c in parsed.get("comments", []):
+        text = (c.get("comment") or "").lower()
+        dt = _parse_date(c.get("date", ""))
+        if text and dt:
+            mk = dt.strftime("%Y-%m")
+            for word in re.findall(r"[a-z]{3,}", text):
+                if word not in _FOOTPRINT_STOP:
+                    monthly_topics[mk][word] += 1
+
+    monthly_topic_trends = {
+        mk: [{"term": t, "count": c} for t, c in counter.most_common(8)]
+        for mk, counter in sorted(monthly_topics.items())
+    }
+
+    # ── Sandbox re-test detector ──────────────────────────────────────────────
+    sandbox_vid_counts: Counter = Counter(ev["video_id"] for ev in sw["sandbox_events"] if ev.get("video_id"))
+    sandbox_creator_counts: Counter = Counter()
+    for ev in sw["sandbox_events"]:
+        h = _handle_from_link(ev.get("link", ""), link_handle_map)
+        if h:
+            sandbox_creator_counts[h] += 1
+
+    sandbox_retests = [
+        {"handle": h, "times_served": c}
+        for h, c in sandbox_creator_counts.most_common(8)
+        if c >= 2
+    ]
+
+    # ── Skip rate anomaly detection ───────────────────────────────────────────
+    monthly_skip_rates = sw.get("monthly_skip_rates", {})
+    skip_months = sorted(monthly_skip_rates.keys())
+    anomalies = []
+    if len(skip_months) >= 3:
+        baseline_months = skip_months[:-1]
+        baseline_avg = sum(monthly_skip_rates[m] for m in baseline_months) / len(baseline_months)
+        for mk in skip_months:
+            delta = monthly_skip_rates[mk] - baseline_avg
+            if abs(delta) >= 3.0:
+                anomalies.append({
+                    "month": mk,
+                    "skip_rate": monthly_skip_rates[mk],
+                    "baseline_avg": round(baseline_avg, 1),
+                    "delta": round(delta, 1),
+                    "direction": "spike" if delta > 0 else "dip",
+                })
+
+    # ── Data cliff (start of watch history) ──────────────────────────────────
+    data_start = sw.get("data_start_month")
 
     hourly_sorted = sorted(sw["hourly_heatmap"].items(), key=lambda x: x[1], reverse=True)
     top_hours = sorted([int(h) for h, v in hourly_sorted[:3] if v > 0])
@@ -707,4 +835,10 @@ def build_ghost_profile(parsed: dict, exclude_hours: tuple[int, ...] = (), link_
         "comment_voice": comment_voice,
         "share_behavior": share_behavior,
         "transparency_gap": transparency_gap,
+        "algorithm_drift": algorithm_drift,
+        "monthly_creator_trends": monthly_creator_trends,
+        "monthly_topic_trends": monthly_topic_trends,
+        "sandbox_retests": sandbox_retests,
+        "skip_anomalies": anomalies,
+        "data_cliff": {"start_month": data_start, "window_days": 180},
     }
