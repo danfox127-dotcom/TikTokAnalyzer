@@ -1,0 +1,390 @@
+{
+  "_comment": "Golden parity fixture for the WP-1.1 text-footprint port. Regenerate only on an intentional Python change: python3 scripts/gen_footprint_parity_fixture.py",
+  "footprint_cases": [
+    {
+      "name": "comments_only",
+      "input": {
+        "parsed": {
+          "comments": [
+            {
+              "comment": "amazing sourdough baking tips baking"
+            },
+            {
+              "comment": "baking bread every weekend"
+            }
+          ]
+        }
+      },
+      "expected": {
+        "interest_clusters": [
+          {
+            "term": "baking",
+            "count": 30,
+            "dominant_source": "comment"
+          },
+          {
+            "term": "amazing",
+            "count": 10,
+            "dominant_source": "comment"
+          },
+          {
+            "term": "sourdough",
+            "count": 10,
+            "dominant_source": "comment"
+          },
+          {
+            "term": "tips",
+            "count": 10,
+            "dominant_source": "comment"
+          },
+          {
+            "term": "bread",
+            "count": 10,
+            "dominant_source": "comment"
+          },
+          {
+            "term": "every",
+            "count": 10,
+            "dominant_source": "comment"
+          },
+          {
+            "term": "weekend",
+            "count": 10,
+            "dominant_source": "comment"
+          }
+        ],
+        "top_phrases": [
+          {
+            "phrase": "amazing sourdough",
+            "count": 1
+          },
+          {
+            "phrase": "sourdough baking",
+            "count": 1
+          },
+          {
+            "phrase": "baking tips",
+            "count": 1
+          },
+          {
+            "phrase": "tips baking",
+            "count": 1
+          },
+          {
+            "phrase": "baking bread",
+            "count": 1
+          },
+          {
+            "phrase": "bread every",
+            "count": 1
+          },
+          {
+            "phrase": "every weekend",
+            "count": 1
+          }
+        ]
+      }
+    },
+    {
+      "name": "searches_weighted",
+      "input": {
+        "parsed": {
+          "searches": [
+            {
+              "term": "crypto investing guide"
+            },
+            {
+              "term": "crypto news"
+            }
+          ]
+        }
+      },
+      "expected": {
+        "interest_clusters": [
+          {
+            "term": "crypto",
+            "count": 10,
+            "dominant_source": "search"
+          },
+          {
+            "term": "investing",
+            "count": 5,
+            "dominant_source": "search"
+          },
+          {
+            "term": "guide",
+            "count": 5,
+            "dominant_source": "search"
+          },
+          {
+            "term": "news",
+            "count": 5,
+            "dominant_source": "search"
+          }
+        ],
+        "top_phrases": []
+      }
+    },
+    {
+      "name": "following_username_split",
+      "input": {
+        "parsed": {
+          "following": [
+            {
+              "username": "chelsea_fc.official"
+            },
+            {
+              "username": "nba"
+            }
+          ]
+        }
+      },
+      "expected": {
+        "interest_clusters": [
+          {
+            "term": "chelsea",
+            "count": 6,
+            "dominant_source": "follow"
+          },
+          {
+            "term": "official",
+            "count": 6,
+            "dominant_source": "follow"
+          },
+          {
+            "term": "nba",
+            "count": 6,
+            "dominant_source": "follow"
+          }
+        ],
+        "top_phrases": []
+      }
+    },
+    {
+      "name": "shares_dm_vs_public",
+      "input": {
+        "parsed": {
+          "shares": [
+            {
+              "method": "whatsapp",
+              "link": "https://www.tiktok.com/@cookingchannel/video/1"
+            },
+            {
+              "method": "copy_link",
+              "link": "https://www.tiktok.com/tag/gaming-setup/video/2"
+            }
+          ]
+        }
+      },
+      "expected": {
+        "interest_clusters": [
+          {
+            "term": "cookingchannel",
+            "count": 8,
+            "dominant_source": "share_dm"
+          },
+          {
+            "term": "gaming",
+            "count": 4,
+            "dominant_source": "share_public"
+          },
+          {
+            "term": "setup",
+            "count": 4,
+            "dominant_source": "share_public"
+          }
+        ],
+        "top_phrases": []
+      }
+    },
+    {
+      "name": "favorites_and_likes",
+      "input": {
+        "parsed": {
+          "favorites": [
+            {
+              "link": "https://www.tiktok.com/@fitnessguru/video/9"
+            }
+          ],
+          "likes": [
+            {
+              "link": "https://www.tiktok.com/tag/home-decor/video/3"
+            }
+          ]
+        }
+      },
+      "expected": {
+        "interest_clusters": [
+          {
+            "term": "fitnessguru",
+            "count": 7,
+            "dominant_source": "favorite"
+          },
+          {
+            "term": "home",
+            "count": 3,
+            "dominant_source": "like"
+          },
+          {
+            "term": "decor",
+            "count": 3,
+            "dominant_source": "like"
+          }
+        ],
+        "top_phrases": []
+      }
+    },
+    {
+      "name": "mixed_dominant_source_and_truncation",
+      "input": {
+        "parsed": {
+          "comments": [
+            {
+              "comment": "gaming gaming gaming setup"
+            }
+          ],
+          "likes": [
+            {
+              "link": "https://www.tiktok.com/tag/gaming/video/1"
+            }
+          ],
+          "searches": [
+            {
+              "term": "recipe ideas dinner"
+            }
+          ]
+        }
+      },
+      "expected": {
+        "interest_clusters": [
+          {
+            "term": "gaming",
+            "count": 33,
+            "dominant_source": "comment"
+          },
+          {
+            "term": "setup",
+            "count": 10,
+            "dominant_source": "comment"
+          },
+          {
+            "term": "recipe",
+            "count": 5,
+            "dominant_source": "search"
+          },
+          {
+            "term": "ideas",
+            "count": 5,
+            "dominant_source": "search"
+          },
+          {
+            "term": "dinner",
+            "count": 5,
+            "dominant_source": "search"
+          }
+        ],
+        "top_phrases": [
+          {
+            "phrase": "gaming gaming",
+            "count": 2
+          },
+          {
+            "phrase": "gaming setup",
+            "count": 1
+          }
+        ]
+      }
+    },
+    {
+      "name": "unicode_boundary",
+      "input": {
+        "parsed": {
+          "comments": [
+            {
+              "comment": "café ramen ramen tutorial"
+            }
+          ]
+        }
+      },
+      "expected": {
+        "interest_clusters": [
+          {
+            "term": "ramen",
+            "count": 20,
+            "dominant_source": "comment"
+          },
+          {
+            "term": "tutorial",
+            "count": 10,
+            "dominant_source": "comment"
+          }
+        ],
+        "top_phrases": [
+          {
+            "phrase": "ramen ramen",
+            "count": 1
+          },
+          {
+            "phrase": "ramen tutorial",
+            "count": 1
+          }
+        ]
+      }
+    },
+    {
+      "name": "empty",
+      "input": {
+        "parsed": {}
+      },
+      "expected": {
+        "interest_clusters": [],
+        "top_phrases": []
+      }
+    }
+  ],
+  "keywords_url_cases": [
+    {
+      "name": "https://www.tiktok.com/@chelsea_fc.official/video/123",
+      "input": {
+        "url": "https://www.tiktok.com/@chelsea_fc.official/video/123"
+      },
+      "expected": [
+        "chelsea fc official"
+      ]
+    },
+    {
+      "name": "https://www.tiktok.com/tag/cooking-recipes/food",
+      "input": {
+        "url": "https://www.tiktok.com/tag/cooking-recipes/food"
+      },
+      "expected": [
+        "cooking",
+        "recipes",
+        "food"
+      ]
+    },
+    {
+      "name": "https://www.tiktok.com/video/1234567",
+      "input": {
+        "url": "https://www.tiktok.com/video/1234567"
+      },
+      "expected": []
+    },
+    {
+      "name": "empty",
+      "input": {
+        "url": ""
+      },
+      "expected": []
+    },
+    {
+      "name": "https://www.tiktok.com/discover/HomeDecor",
+      "input": {
+        "url": "https://www.tiktok.com/discover/HomeDecor"
+      },
+      "expected": [
+        "homedecor"
+      ]
+    }
+  ]
+}
