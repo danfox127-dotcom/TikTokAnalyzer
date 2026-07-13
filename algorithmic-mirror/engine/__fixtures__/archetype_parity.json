@@ -1,0 +1,1699 @@
+{
+  "_comment": "Golden parity fixture for the WP-1.1 archetype port. Regenerate only on an intentional Python change: python3 scripts/gen_archetype_parity_fixture.py",
+  "atomic_cases": [
+    {
+      "name": "all_false",
+      "input": {
+        "sw": {
+          "max_session_duration": 0,
+          "max_consecutive_skips": 0,
+          "night_count": 0,
+          "night_lingers": 0,
+          "total_conscious_videos": 100
+        },
+        "total_conscious": 100,
+        "parsed": {
+          "shares": [],
+          "likes": [
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {}
+          ],
+          "comments": [],
+          "following": []
+        },
+        "linger_rate_pct": 0.0,
+        "night_shift_pct": 0.0,
+        "vibe_cluster": [
+          {
+            "genre": "food",
+            "linger_count": 10
+          }
+        ]
+      },
+      "expected": {
+        "trapped": false,
+        "ruthless": false,
+        "nocturnal": false,
+        "curator": false,
+        "ghost": false,
+        "optimizer": false
+      }
+    },
+    {
+      "name": "trapped_via_session",
+      "input": {
+        "sw": {
+          "max_session_duration": 3601,
+          "max_consecutive_skips": 0,
+          "night_count": 0,
+          "night_lingers": 0,
+          "total_conscious_videos": 100
+        },
+        "total_conscious": 100,
+        "parsed": {
+          "shares": [],
+          "likes": [
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {}
+          ],
+          "comments": [],
+          "following": []
+        },
+        "linger_rate_pct": 0.0,
+        "night_shift_pct": 0.0,
+        "vibe_cluster": [
+          {
+            "genre": "food",
+            "linger_count": 10
+          }
+        ]
+      },
+      "expected": {
+        "trapped": true,
+        "ruthless": false,
+        "nocturnal": false,
+        "curator": false,
+        "ghost": false,
+        "optimizer": false
+      }
+    },
+    {
+      "name": "trapped_via_linger",
+      "input": {
+        "sw": {
+          "max_session_duration": 0,
+          "max_consecutive_skips": 0,
+          "night_count": 0,
+          "night_lingers": 0,
+          "total_conscious_videos": 100
+        },
+        "total_conscious": 100,
+        "parsed": {
+          "shares": [],
+          "likes": [
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {}
+          ],
+          "comments": [],
+          "following": []
+        },
+        "linger_rate_pct": 30.1,
+        "night_shift_pct": 0.0,
+        "vibe_cluster": [
+          {
+            "genre": "food",
+            "linger_count": 10
+          }
+        ]
+      },
+      "expected": {
+        "trapped": true,
+        "ruthless": false,
+        "nocturnal": false,
+        "curator": false,
+        "ghost": false,
+        "optimizer": false
+      }
+    },
+    {
+      "name": "ruthless",
+      "input": {
+        "sw": {
+          "max_session_duration": 0,
+          "max_consecutive_skips": 10,
+          "night_count": 0,
+          "night_lingers": 0,
+          "total_conscious_videos": 100
+        },
+        "total_conscious": 100,
+        "parsed": {
+          "shares": [],
+          "likes": [
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {}
+          ],
+          "comments": [],
+          "following": []
+        },
+        "linger_rate_pct": 0.0,
+        "night_shift_pct": 0.0,
+        "vibe_cluster": [
+          {
+            "genre": "food",
+            "linger_count": 10
+          }
+        ]
+      },
+      "expected": {
+        "trapped": false,
+        "ruthless": true,
+        "nocturnal": false,
+        "curator": false,
+        "ghost": false,
+        "optimizer": false
+      }
+    },
+    {
+      "name": "nocturnal",
+      "input": {
+        "sw": {
+          "max_session_duration": 0,
+          "max_consecutive_skips": 0,
+          "night_count": 0,
+          "night_lingers": 0,
+          "total_conscious_videos": 100
+        },
+        "total_conscious": 100,
+        "parsed": {
+          "shares": [],
+          "likes": [
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {}
+          ],
+          "comments": [],
+          "following": []
+        },
+        "linger_rate_pct": 0.0,
+        "night_shift_pct": 35.1,
+        "vibe_cluster": [
+          {
+            "genre": "food",
+            "linger_count": 10
+          }
+        ]
+      },
+      "expected": {
+        "trapped": false,
+        "ruthless": false,
+        "nocturnal": true,
+        "curator": false,
+        "ghost": false,
+        "optimizer": false
+      }
+    },
+    {
+      "name": "curator",
+      "input": {
+        "sw": {
+          "max_session_duration": 0,
+          "max_consecutive_skips": 0,
+          "night_count": 0,
+          "night_lingers": 0,
+          "total_conscious_videos": 100
+        },
+        "total_conscious": 100,
+        "parsed": {
+          "shares": [
+            {},
+            {},
+            {},
+            {},
+            {},
+            {}
+          ],
+          "likes": [
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {}
+          ],
+          "comments": [],
+          "following": []
+        },
+        "linger_rate_pct": 0.0,
+        "night_shift_pct": 0.0,
+        "vibe_cluster": [
+          {
+            "genre": "food",
+            "linger_count": 10
+          }
+        ]
+      },
+      "expected": {
+        "trapped": false,
+        "ruthless": false,
+        "nocturnal": false,
+        "curator": true,
+        "ghost": false,
+        "optimizer": false
+      }
+    },
+    {
+      "name": "ghost",
+      "input": {
+        "sw": {
+          "max_session_duration": 0,
+          "max_consecutive_skips": 0,
+          "night_count": 0,
+          "night_lingers": 0,
+          "total_conscious_videos": 100
+        },
+        "total_conscious": 1000,
+        "parsed": {
+          "shares": [
+            {},
+            {}
+          ],
+          "likes": [
+            {},
+            {},
+            {}
+          ],
+          "comments": [
+            {}
+          ],
+          "following": []
+        },
+        "linger_rate_pct": 0.0,
+        "night_shift_pct": 0.0,
+        "vibe_cluster": [
+          {
+            "genre": "food",
+            "linger_count": 10
+          }
+        ]
+      },
+      "expected": {
+        "trapped": false,
+        "ruthless": false,
+        "nocturnal": false,
+        "curator": true,
+        "ghost": true,
+        "optimizer": false
+      }
+    },
+    {
+      "name": "optimizer",
+      "input": {
+        "sw": {
+          "max_session_duration": 0,
+          "max_consecutive_skips": 0,
+          "night_count": 0,
+          "night_lingers": 0,
+          "total_conscious_videos": 100
+        },
+        "total_conscious": 100,
+        "parsed": {
+          "shares": [],
+          "likes": [
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {}
+          ],
+          "comments": [],
+          "following": []
+        },
+        "linger_rate_pct": 0.0,
+        "night_shift_pct": 0.0,
+        "vibe_cluster": [
+          {
+            "genre": "tech",
+            "linger_count": 3
+          },
+          {
+            "genre": "food",
+            "linger_count": 10
+          }
+        ]
+      },
+      "expected": {
+        "trapped": false,
+        "ruthless": false,
+        "nocturnal": false,
+        "curator": false,
+        "ghost": false,
+        "optimizer": true
+      }
+    }
+  ],
+  "sub_cases": [
+    {
+      "name": "intentional_curator",
+      "input": {
+        "traits": {
+          "curator": true
+        },
+        "behavioral_nodes": {
+          "social_graph_followed_pct": 61
+        }
+      },
+      "expected": [
+        {
+          "name": "The Intentional Curator",
+          "confidence": 0.9
+        }
+      ]
+    },
+    {
+      "name": "nocturnal_seeker",
+      "input": {
+        "traits": {
+          "nocturnal": true
+        },
+        "behavioral_nodes": {
+          "linger_rate_percentage": 26
+        }
+      },
+      "expected": [
+        {
+          "name": "The Nocturnal Seeker",
+          "confidence": 0.85
+        }
+      ]
+    },
+    {
+      "name": "algorithmic_captured",
+      "input": {
+        "traits": {
+          "trapped": true
+        },
+        "behavioral_nodes": {
+          "social_graph_algorithmic_pct": 76
+        }
+      },
+      "expected": [
+        {
+          "name": "The Algorithmic Captured",
+          "confidence": 0.95
+        }
+      ]
+    },
+    {
+      "name": "passive_observer",
+      "input": {
+        "traits": {
+          "ghost": true
+        },
+        "behavioral_nodes": {
+          "linger_rate_percentage": 9
+        }
+      },
+      "expected": [
+        {
+          "name": "The Passive Observer",
+          "confidence": 0.8
+        }
+      ]
+    },
+    {
+      "name": "multiple_append_order",
+      "input": {
+        "traits": {
+          "curator": true,
+          "nocturnal": true,
+          "trapped": true
+        },
+        "behavioral_nodes": {
+          "social_graph_followed_pct": 70,
+          "linger_rate_percentage": 30,
+          "social_graph_algorithmic_pct": 80
+        }
+      },
+      "expected": [
+        {
+          "name": "The Intentional Curator",
+          "confidence": 0.9
+        },
+        {
+          "name": "The Nocturnal Seeker",
+          "confidence": 0.85
+        },
+        {
+          "name": "The Algorithmic Captured",
+          "confidence": 0.95
+        }
+      ]
+    },
+    {
+      "name": "none",
+      "input": {
+        "traits": {
+          "curator": true
+        },
+        "behavioral_nodes": {
+          "social_graph_followed_pct": 50
+        }
+      },
+      "expected": []
+    }
+  ],
+  "dissonance_cases": [
+    {
+      "name": "circadian_drift",
+      "input": {
+        "traits": {
+          "ruthless": true
+        },
+        "sw": {
+          "max_session_duration": 0,
+          "max_consecutive_skips": 0,
+          "night_count": 10,
+          "night_lingers": 4,
+          "total_conscious_videos": 100
+        },
+        "behavioral_nodes": {},
+        "parsed": {
+          "shares": [],
+          "likes": [],
+          "comments": [],
+          "following": []
+        },
+        "vibe_cluster": []
+      },
+      "expected": {
+        "detected": true,
+        "label": "Circadian Drift",
+        "note": "Your daytime curation is ruthless, but you lose control to the algorithm after midnight."
+      }
+    },
+    {
+      "name": "social_paradox",
+      "input": {
+        "traits": {},
+        "sw": {
+          "max_session_duration": 0,
+          "max_consecutive_skips": 0,
+          "night_count": 0,
+          "night_lingers": 0,
+          "total_conscious_videos": 100
+        },
+        "behavioral_nodes": {
+          "social_graph_algorithmic_pct": 91
+        },
+        "parsed": {
+          "shares": [],
+          "likes": [],
+          "comments": [],
+          "following": [
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {}
+          ]
+        },
+        "vibe_cluster": []
+      },
+      "expected": {
+        "detected": true,
+        "label": "Social Paradox",
+        "note": "You follow a village of creators but let the algorithm choose 90% of what you actually see."
+      }
+    },
+    {
+      "name": "silent_expert",
+      "input": {
+        "traits": {
+          "ghost": true
+        },
+        "sw": {
+          "max_session_duration": 0,
+          "max_consecutive_skips": 0,
+          "night_count": 0,
+          "night_lingers": 0,
+          "total_conscious_videos": 100
+        },
+        "behavioral_nodes": {},
+        "parsed": {
+          "shares": [],
+          "likes": [],
+          "comments": [],
+          "following": []
+        },
+        "vibe_cluster": [
+          {
+            "genre": "tech",
+            "linger_count": 3
+          },
+          {
+            "genre": "food",
+            "linger_count": 5
+          }
+        ]
+      },
+      "expected": {
+        "detected": true,
+        "label": "Silent Expert",
+        "note": "You consume high-fidelity knowledge at scale while leaving zero digital trace."
+      }
+    },
+    {
+      "name": "first_match_wins",
+      "input": {
+        "traits": {
+          "ruthless": true,
+          "ghost": true
+        },
+        "sw": {
+          "max_session_duration": 0,
+          "max_consecutive_skips": 0,
+          "night_count": 10,
+          "night_lingers": 4,
+          "total_conscious_videos": 100
+        },
+        "behavioral_nodes": {
+          "social_graph_algorithmic_pct": 91
+        },
+        "parsed": {
+          "shares": [],
+          "likes": [],
+          "comments": [],
+          "following": [
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {}
+          ]
+        },
+        "vibe_cluster": [
+          {
+            "genre": "tech",
+            "linger_count": 9
+          },
+          {
+            "genre": "food",
+            "linger_count": 1
+          }
+        ]
+      },
+      "expected": {
+        "detected": true,
+        "label": "Circadian Drift",
+        "note": "Your daytime curation is ruthless, but you lose control to the algorithm after midnight."
+      }
+    },
+    {
+      "name": "none",
+      "input": {
+        "traits": {},
+        "sw": {
+          "max_session_duration": 0,
+          "max_consecutive_skips": 0,
+          "night_count": 0,
+          "night_lingers": 0,
+          "total_conscious_videos": 100
+        },
+        "behavioral_nodes": {},
+        "parsed": {
+          "shares": [],
+          "likes": [],
+          "comments": [],
+          "following": []
+        },
+        "vibe_cluster": []
+      },
+      "expected": {
+        "detected": false,
+        "label": null,
+        "note": null
+      }
+    }
+  ],
+  "primary_cases": [
+    {
+      "name": "balanced_default",
+      "input": {
+        "behavioral_nodes": {
+          "linger_rate_percentage": 0,
+          "night_shift_ratio": 0
+        },
+        "parsed": {
+          "shares": [],
+          "likes": [
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {}
+          ],
+          "comments": [],
+          "following": []
+        },
+        "sw": {
+          "max_session_duration": 0,
+          "max_consecutive_skips": 0,
+          "night_count": 0,
+          "night_lingers": 0,
+          "total_conscious_videos": 100
+        },
+        "vibe_cluster": [
+          {
+            "genre": "food",
+            "linger_count": 10
+          }
+        ]
+      },
+      "expected": {
+        "name": "The Balanced Viewer",
+        "sub_archetypes": [],
+        "dissonance": {
+          "detected": false,
+          "label": null,
+          "note": null
+        },
+        "atomic_traits": {
+          "trapped": false,
+          "ruthless": false,
+          "nocturnal": false,
+          "curator": false,
+          "ghost": false,
+          "optimizer": false
+        }
+      }
+    },
+    {
+      "name": "nocturnal_seeker_primary",
+      "input": {
+        "behavioral_nodes": {
+          "linger_rate_percentage": 26,
+          "night_shift_ratio": 40,
+          "social_graph_followed_pct": 10,
+          "social_graph_algorithmic_pct": 50
+        },
+        "parsed": {
+          "shares": [],
+          "likes": [
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {}
+          ],
+          "comments": [],
+          "following": []
+        },
+        "sw": {
+          "max_session_duration": 0,
+          "max_consecutive_skips": 0,
+          "night_count": 10,
+          "night_lingers": 5,
+          "total_conscious_videos": 100
+        },
+        "vibe_cluster": [
+          {
+            "genre": "food",
+            "linger_count": 10
+          }
+        ]
+      },
+      "expected": {
+        "name": "The Nocturnal Seeker",
+        "sub_archetypes": [
+          {
+            "name": "The Nocturnal Seeker",
+            "confidence": 0.85
+          }
+        ],
+        "dissonance": {
+          "detected": false,
+          "label": null,
+          "note": null
+        },
+        "atomic_traits": {
+          "trapped": false,
+          "ruthless": false,
+          "nocturnal": true,
+          "curator": false,
+          "ghost": false,
+          "optimizer": false
+        }
+      }
+    }
+  ]
+}
