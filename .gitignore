@@ -33,7 +33,9 @@ Thumbs.db
 !tsconfig.json
 !pyrightconfig.json
 !mock-data.json
-data/
+data/*
+# Committed reference data (not user exports): the TikTok ad-targeting taxonomy
+!data/tiktok-ad-taxonomy.json
 exports/
 user_data_tiktok.json
 instagram-export*/
