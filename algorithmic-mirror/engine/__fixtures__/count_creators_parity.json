@@ -1,0 +1,347 @@
+{
+  "_comment": "Golden parity fixture for the WP-1.1 creator-counting port. Regenerate only on an intentional Python change: python3 scripts/gen_count_creators_parity_fixture.py",
+  "count_cases": [
+    {
+      "name": "handle_based_distinct",
+      "input": {
+        "links": [
+          "https://www.tiktok.com/@a/video/1",
+          "https://www.tiktok.com/@a/video/2",
+          "https://www.tiktok.com/@a/video/3",
+          "https://www.tiktok.com/@b/video/4",
+          "https://www.tiktok.com/@b/video/5",
+          "https://www.tiktok.com/@c/video/6"
+        ],
+        "limit": 15,
+        "count_key": "linger_count",
+        "link_to_title": {
+          "https://www.tiktok.com/@a/video/1": "cooking one",
+          "https://www.tiktok.com/@a/video/2": "cooking two",
+          "https://www.tiktok.com/@b/video/4": "gaming one"
+        },
+        "link_handle_map": null
+      },
+      "expected": [
+        {
+          "handle": "@a",
+          "linger_count": 3,
+          "sample_titles": [
+            "cooking one",
+            "cooking two"
+          ]
+        },
+        {
+          "handle": "@b",
+          "linger_count": 2,
+          "sample_titles": [
+            "gaming one"
+          ]
+        },
+        {
+          "handle": "@c",
+          "linger_count": 1,
+          "sample_titles": []
+        }
+      ]
+    },
+    {
+      "name": "vid_fallback_all_unresolved",
+      "input": {
+        "links": [
+          "https://www.tiktok.com/video/10",
+          "https://www.tiktok.com/video/10",
+          "https://www.tiktok.com/video/20"
+        ],
+        "limit": 15,
+        "count_key": "count",
+        "link_to_title": {
+          "https://www.tiktok.com/video/10": "mystery clip"
+        },
+        "link_handle_map": null
+      },
+      "expected": [
+        {
+          "handle": "Unknown",
+          "video_id": "10",
+          "count": 2,
+          "sample_titles": [
+            "mystery clip"
+          ]
+        },
+        {
+          "handle": "Unknown",
+          "video_id": "20",
+          "count": 1,
+          "sample_titles": []
+        }
+      ]
+    },
+    {
+      "name": "handle_first_drops_unresolved_vids",
+      "input": {
+        "links": [
+          "https://www.tiktok.com/@a/video/1",
+          "https://www.tiktok.com/@a/video/2",
+          "https://www.tiktok.com/video/99"
+        ],
+        "limit": 15,
+        "count_key": "count",
+        "link_to_title": null,
+        "link_handle_map": null
+      },
+      "expected": [
+        {
+          "handle": "@a",
+          "count": 2,
+          "sample_titles": []
+        }
+      ]
+    },
+    {
+      "name": "map_resolution",
+      "input": {
+        "links": [
+          "https://www.tiktok.com/video/500",
+          "https://www.tiktok.com/video/500",
+          "https://www.tiktok.com/video/600"
+        ],
+        "limit": 15,
+        "count_key": "count",
+        "link_to_title": null,
+        "link_handle_map": {
+          "500": "resolvedcreator",
+          "600": "@another"
+        }
+      },
+      "expected": [
+        {
+          "handle": "@resolvedcreator",
+          "count": 2,
+          "sample_titles": []
+        },
+        {
+          "handle": "@another",
+          "count": 1,
+          "sample_titles": []
+        }
+      ]
+    },
+    {
+      "name": "limit_truncates",
+      "input": {
+        "links": [
+          "https://www.tiktok.com/@a/video/1",
+          "https://www.tiktok.com/@a/video/2",
+          "https://www.tiktok.com/@a/video/3",
+          "https://www.tiktok.com/@a/video/4",
+          "https://www.tiktok.com/@b/video/5",
+          "https://www.tiktok.com/@b/video/6",
+          "https://www.tiktok.com/@b/video/7",
+          "https://www.tiktok.com/@c/video/8",
+          "https://www.tiktok.com/@c/video/9",
+          "https://www.tiktok.com/@d/video/10"
+        ],
+        "limit": 2,
+        "count_key": "count",
+        "link_to_title": null,
+        "link_handle_map": null
+      },
+      "expected": [
+        {
+          "handle": "@a",
+          "count": 4,
+          "sample_titles": []
+        },
+        {
+          "handle": "@b",
+          "count": 3,
+          "sample_titles": []
+        }
+      ]
+    },
+    {
+      "name": "no_vid_links_skipped",
+      "input": {
+        "links": [
+          "https://www.tiktok.com/@a/photo/1",
+          "https://www.tiktok.com/@b/video/2",
+          "https://www.tiktok.com/@b/video/3"
+        ],
+        "limit": 15,
+        "count_key": "count",
+        "link_to_title": null,
+        "link_handle_map": null
+      },
+      "expected": [
+        {
+          "handle": "@b",
+          "count": 2,
+          "sample_titles": []
+        }
+      ]
+    },
+    {
+      "name": "titles_dedup",
+      "input": {
+        "links": [
+          "https://www.tiktok.com/@a/video/1",
+          "https://www.tiktok.com/@a/video/2",
+          "https://www.tiktok.com/@a/video/3"
+        ],
+        "limit": 15,
+        "count_key": "count",
+        "link_to_title": {
+          "https://www.tiktok.com/@a/video/1": "same",
+          "https://www.tiktok.com/@a/video/2": "same",
+          "https://www.tiktok.com/@a/video/3": "diff"
+        },
+        "link_handle_map": null
+      },
+      "expected": [
+        {
+          "handle": "@a",
+          "count": 3,
+          "sample_titles": [
+            "diff",
+            "same"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "empty",
+      "input": {
+        "links": [],
+        "limit": 15,
+        "count_key": "count",
+        "link_to_title": null,
+        "link_handle_map": null
+      },
+      "expected": []
+    }
+  ],
+  "meta_cases": [
+    {
+      "name": "@ChelseaFC",
+      "input": {
+        "handle": "@ChelseaFC"
+      },
+      "expected": {
+        "handle": "@ChelseaFC",
+        "genre": "sports",
+        "archetype": "The Dedicated Fan",
+        "confidence": 1.0
+      }
+    },
+    {
+      "name": "khaby.lame",
+      "input": {
+        "handle": "khaby.lame"
+      },
+      "expected": {
+        "handle": "khaby.lame",
+        "genre": "humor",
+        "archetype": "The Silent Reactant",
+        "confidence": 0.9
+      }
+    },
+    {
+      "name": "NBA",
+      "input": {
+        "handle": "NBA"
+      },
+      "expected": {
+        "handle": "NBA",
+        "genre": "sports",
+        "archetype": "The Courtside Analyst",
+        "confidence": 1.0
+      }
+    },
+    {
+      "name": "brooklyn.beckham",
+      "input": {
+        "handle": "brooklyn.beckham"
+      },
+      "expected": {
+        "handle": "brooklyn.beckham",
+        "genre": "fashion",
+        "archetype": "The Lifestyle Observer",
+        "confidence": 0.5
+      }
+    },
+    {
+      "name": "unknownhandle",
+      "input": {
+        "handle": "unknownhandle"
+      },
+      "expected": null
+    },
+    {
+      "name": "empty",
+      "input": {
+        "handle": ""
+      },
+      "expected": null
+    }
+  ],
+  "vibe_cases": [
+    {
+      "name": "known_and_unknown",
+      "input": {
+        "vibe_cluster": [
+          {
+            "handle": "@chelseafc",
+            "count": 5
+          },
+          {
+            "handle": "@nobody",
+            "count": 2
+          }
+        ]
+      },
+      "expected": [
+        {
+          "handle": "@chelseafc",
+          "count": 5,
+          "genre": "sports",
+          "archetype": "The Dedicated Fan",
+          "confidence": 1.0
+        },
+        {
+          "handle": "@nobody",
+          "count": 2,
+          "genre": "unknown",
+          "archetype": "unknown",
+          "confidence": 0.0
+        }
+      ]
+    },
+    {
+      "name": "case_and_at_prefix",
+      "input": {
+        "vibe_cluster": [
+          {
+            "handle": "@Khaby.Lame",
+            "count": 3
+          }
+        ]
+      },
+      "expected": [
+        {
+          "handle": "@Khaby.Lame",
+          "count": 3,
+          "genre": "humor",
+          "archetype": "The Silent Reactant",
+          "confidence": 0.9
+        }
+      ]
+    },
+    {
+      "name": "empty",
+      "input": {
+        "vibe_cluster": []
+      },
+      "expected": []
+    }
+  ]
+}

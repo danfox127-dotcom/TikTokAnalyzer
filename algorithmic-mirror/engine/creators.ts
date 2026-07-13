@@ -81,3 +81,105 @@ export function echoChamberIndex(
     distinct_creators: values.length,
   };
 }
+
+/**
+ * Mirror of _count_creators. HANDLE-FIRST: if any link resolves to a handle, the
+ * result is handle-based and unresolved vids are dropped; only if NO handle
+ * resolves does it fall back to per-video-id "Unknown" rows.
+ *
+ * NOTE: Python's sample_titles is `list(set(titles))[:5]` — arbitrary order and,
+ * above 5 unique titles, arbitrary selection. Callers/tests compare sample_titles
+ * order-insensitively; the parity fixtures keep <=5 unique titles per creator.
+ * The input order (a set in Python) is likewise non-deterministic — feed a stable
+ * order (e.g. sorted) if reproducible output matters.
+ */
+export function countCreators(
+  linkSet: Iterable<string>,
+  limit = 15,
+  countKey = "count",
+  linkToTitle?: Record<string, string> | null,
+  linkHandleMap?: Record<string, string> | null,
+): Record<string, unknown>[] {
+  const handleFreq = new Map<string, number>();
+  const vidFreq = new Map<string, number>();
+  const creatorTitles = new Map<string, string[]>();
+  const addTitle = (key: string, title: string) => {
+    const arr = creatorTitles.get(key);
+    if (arr) arr.push(title);
+    else creatorTitles.set(key, [title]);
+  };
+  const hasTitle = (link: string) =>
+    !!linkToTitle && Object.prototype.hasOwnProperty.call(linkToTitle, link);
+
+  for (const link of linkSet) {
+    const vid = extractVideoId(link);
+    if (!vid) continue;
+    const creator = handleFromLink(link, linkHandleMap);
+    if (creator) {
+      handleFreq.set(creator, (handleFreq.get(creator) ?? 0) + 1);
+      if (hasTitle(link)) addTitle(creator, linkToTitle![link]);
+    } else {
+      vidFreq.set(vid, (vidFreq.get(vid) ?? 0) + 1);
+      if (hasTitle(link)) addTitle(`vid:${vid}`, linkToTitle![link]);
+    }
+  }
+
+  const uniq5 = (key: string) => [...new Set(creatorTitles.get(key) ?? [])].slice(0, 5);
+
+  if (handleFreq.size) {
+    return [...handleFreq.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, limit)
+      .map(([handle, count]) => ({ handle, [countKey]: count, sample_titles: uniq5(handle) }));
+  }
+  return [...vidFreq.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, limit)
+    .map(([vid, count]) => ({ handle: "Unknown", video_id: vid, [countKey]: count, sample_titles: uniq5(`vid:${vid}`) }));
+}
+
+// Handle (lowercase, no @) -> [genre, archetype, confidence]. Mirror of CREATOR_REGISTRY.
+export const CREATOR_REGISTRY: Record<string, [string, string, number]> = {
+  chelseafc: ["sports", "The Dedicated Fan", 1.0],
+  premierleague: ["sports", "The Global Spectator", 1.0],
+  nba: ["sports", "The Courtside Analyst", 1.0],
+  masonmount: ["sports", "The Player Tracker", 0.9],
+  reece_james: ["sports", "The Player Tracker", 0.9],
+  "brooklyn.beckham": ["fashion", "The Lifestyle Observer", 0.5],
+  newyorkcity: ["local_life", "The Urban Resident", 0.8],
+  timeoutnewyork: ["local_life", "The City Curator", 0.9],
+  uppababy: ["parenting", "The Gear Researcher", 1.0],
+  disney: ["parenting", "The Family Entertainer", 0.7],
+  cursor_ai: ["tech", "The AI Optimizer", 1.0],
+  firebase: ["tech", "The Backend Architect", 1.0],
+  marquesbrownlee: ["tech", "The Gadget Guru", 1.0],
+  "khaby.lame": ["humor", "The Silent Reactant", 0.9],
+};
+
+export interface CreatorMeta {
+  handle: string;
+  genre: string;
+  archetype: string;
+  confidence: number;
+}
+
+/** Mirror of get_creator_meta: registry lookup by lowercased, @-stripped handle. */
+export function getCreatorMeta(handle: string): CreatorMeta | null {
+  const clean = handle.toLowerCase().replace(/^@+/, "");
+  const entry = CREATOR_REGISTRY[clean];
+  if (!entry) return null;
+  const [genre, archetype, confidence] = entry;
+  return { handle, genre, archetype, confidence };
+}
+
+/** Mirror of resolve_vibe_cluster: enrich each entry with registry metadata. */
+export function resolveVibeCluster(
+  vibeCluster: Record<string, unknown>[],
+): Record<string, unknown>[] {
+  return vibeCluster.map((entry) => {
+    const meta = getCreatorMeta((entry.handle as string) ?? "");
+    return meta
+      ? { ...entry, ...meta }
+      : { ...entry, genre: "unknown", archetype: "unknown", confidence: 0.0 };
+  });
+}
