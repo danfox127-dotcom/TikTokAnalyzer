@@ -19,6 +19,7 @@
 
 import { parseDate } from "./parseDate";
 import { extractVideoId } from "./videoId";
+import { pyRound } from "./numeric";
 
 export interface HistoryEntry {
   date: string;
@@ -67,21 +68,6 @@ const MONTH_NAMES = [
   "January", "February", "March", "April", "May", "June",
   "July", "August", "September", "October", "November", "December",
 ];
-
-/** Python's round(): round-half-to-even (banker's rounding). */
-function pyRound(x: number, ndigits = 0): number {
-  const m = Math.pow(10, ndigits);
-  const scaled = x * m;
-  const floor = Math.floor(scaled);
-  const diff = scaled - floor;
-  let rounded: number;
-  if (Math.abs(diff - 0.5) < 1e-9) {
-    rounded = floor % 2 === 0 ? floor : floor + 1;
-  } else {
-    rounded = Math.round(scaled);
-  }
-  return rounded / m;
-}
 
 function ym(dt: Date): string {
   return `${dt.getUTCFullYear()}-${String(dt.getUTCMonth() + 1).padStart(2, "0")}`;

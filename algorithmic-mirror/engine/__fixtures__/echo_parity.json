@@ -1,0 +1,216 @@
+{
+  "_comment": "Golden parity fixture for the WP-1.1 creator/echo port. Generated from api.ghost_profile. Regenerate only on an intentional Python change: python3 scripts/gen_echo_parity_fixture.py",
+  "creator_url_cases": [
+    {
+      "name": "handle_with_slash",
+      "input": {
+        "url": "https://www.tiktok.com/@chelseafc/video/123"
+      },
+      "expected": "@chelseafc"
+    },
+    {
+      "name": "handle_dots_underscores",
+      "input": {
+        "url": "https://www.tiktok.com/@khaby.lame/video/9"
+      },
+      "expected": "@khaby.lame"
+    },
+    {
+      "name": "handle_hyphen",
+      "input": {
+        "url": "https://www.tiktok.com/@reece-james/video/9"
+      },
+      "expected": "@reece-james"
+    },
+    {
+      "name": "no_trailing_slash",
+      "input": {
+        "url": "https://www.tiktok.com/@masonmount"
+      },
+      "expected": null
+    },
+    {
+      "name": "no_handle",
+      "input": {
+        "url": "https://www.tiktok.com/video/555"
+      },
+      "expected": null
+    },
+    {
+      "name": "empty",
+      "input": {
+        "url": ""
+      },
+      "expected": null
+    }
+  ],
+  "handle_cases": [
+    {
+      "name": "url_handle_wins",
+      "input": {
+        "link": "https://www.tiktok.com/@nba/video/1",
+        "link_handle_map": {
+          "555": "newyorkcity",
+          "777": "@timeoutnewyork"
+        }
+      },
+      "expected": "@nba"
+    },
+    {
+      "name": "map_hit_bare_handle_gets_at",
+      "input": {
+        "link": "https://www.tiktok.com/video/555",
+        "link_handle_map": {
+          "555": "newyorkcity",
+          "777": "@timeoutnewyork"
+        }
+      },
+      "expected": "@newyorkcity"
+    },
+    {
+      "name": "map_hit_already_at",
+      "input": {
+        "link": "https://www.tiktok.com/video/777",
+        "link_handle_map": {
+          "555": "newyorkcity",
+          "777": "@timeoutnewyork"
+        }
+      },
+      "expected": "@timeoutnewyork"
+    },
+    {
+      "name": "map_miss",
+      "input": {
+        "link": "https://www.tiktok.com/video/999",
+        "link_handle_map": {
+          "555": "newyorkcity",
+          "777": "@timeoutnewyork"
+        }
+      },
+      "expected": null
+    },
+    {
+      "name": "no_map_no_urlhandle",
+      "input": {
+        "link": "https://www.tiktok.com/video/555",
+        "link_handle_map": null
+      },
+      "expected": null
+    },
+    {
+      "name": "empty_link",
+      "input": {
+        "link": "",
+        "link_handle_map": {
+          "555": "newyorkcity",
+          "777": "@timeoutnewyork"
+        }
+      },
+      "expected": null
+    }
+  ],
+  "echo_cases": [
+    {
+      "name": "single_creator",
+      "input": {
+        "linger_links": [
+          "https://www.tiktok.com/@a/video/1",
+          "https://www.tiktok.com/@a/video/2",
+          "https://www.tiktok.com/@a/video/3"
+        ],
+        "link_handle_map": null
+      },
+      "expected": {
+        "pct": 100.0,
+        "basis": 3,
+        "distinct_creators": 1
+      }
+    },
+    {
+      "name": "two_creators_top5_covers_all",
+      "input": {
+        "linger_links": [
+          "https://www.tiktok.com/@a/video/1",
+          "https://www.tiktok.com/@a/video/2",
+          "https://www.tiktok.com/@b/video/3"
+        ],
+        "link_handle_map": null
+      },
+      "expected": {
+        "pct": 100.0,
+        "basis": 3,
+        "distinct_creators": 2
+      }
+    },
+    {
+      "name": "six_creators_spread",
+      "input": {
+        "linger_links": [
+          "https://www.tiktok.com/@a/video/1",
+          "https://www.tiktok.com/@b/video/2",
+          "https://www.tiktok.com/@c/video/3",
+          "https://www.tiktok.com/@d/video/4",
+          "https://www.tiktok.com/@e/video/5",
+          "https://www.tiktok.com/@f/video/6"
+        ],
+        "link_handle_map": null
+      },
+      "expected": {
+        "pct": 83.3,
+        "basis": 6,
+        "distinct_creators": 6
+      }
+    },
+    {
+      "name": "map_and_url_mixed",
+      "input": {
+        "linger_links": [
+          "https://www.tiktok.com/@a/video/1",
+          "https://www.tiktok.com/video/101",
+          "https://www.tiktok.com/video/102",
+          "https://www.tiktok.com/video/999"
+        ],
+        "link_handle_map": {
+          "101": "creatora",
+          "102": "creatorb"
+        }
+      },
+      "expected": {
+        "pct": 100.0,
+        "basis": 3,
+        "distinct_creators": 3
+      }
+    },
+    {
+      "name": "ties",
+      "input": {
+        "linger_links": [
+          "https://www.tiktok.com/@a/video/1",
+          "https://www.tiktok.com/@b/video/2",
+          "https://www.tiktok.com/@c/video/3",
+          "https://www.tiktok.com/@a/video/4",
+          "https://www.tiktok.com/@b/video/5",
+          "https://www.tiktok.com/@c/video/6"
+        ],
+        "link_handle_map": null
+      },
+      "expected": {
+        "pct": 100.0,
+        "basis": 6,
+        "distinct_creators": 3
+      }
+    },
+    {
+      "name": "empty",
+      "input": {
+        "linger_links": [],
+        "link_handle_map": null
+      },
+      "expected": {
+        "pct": 0.0,
+        "basis": 0,
+        "distinct_creators": 0
+      }
+    }
+  ]
+}
