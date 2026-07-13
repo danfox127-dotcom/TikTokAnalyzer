@@ -33,6 +33,8 @@ Thumbs.db
 !tsconfig.json
 !pyrightconfig.json
 !mock-data.json
+# Committed golden fixtures for the engine parity harness (WP-1.1)
+!algorithmic-mirror/engine/__fixtures__/*.json
 data/*
 # Committed reference data (not user exports): the TikTok ad-targeting taxonomy
 !data/tiktok-ad-taxonomy.json
