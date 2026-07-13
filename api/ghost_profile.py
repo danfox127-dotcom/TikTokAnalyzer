@@ -373,6 +373,80 @@ def _algorithm_drift(monthly_skip_rates: dict) -> dict:
     }
 
 
+def _monthly_creator_trends(linger_events: list[dict], link_handle_map: dict[str, str] | None = None) -> dict:
+    """Top-5 lingered creators per month (resolved handle → count)."""
+    monthly_creators: dict[str, dict[str, int]] = defaultdict(lambda: defaultdict(int))
+    for ev in linger_events:
+        handle = _handle_from_link(ev["link"], link_handle_map)
+        if handle:
+            mk = _parse_date_to_month(ev)
+            if mk:
+                monthly_creators[mk][handle] += 1
+    return {
+        mk: [{"handle": h, "count": c} for h, c in sorted(handles.items(), key=lambda x: -x[1])[:5]]
+        for mk, handles in sorted(monthly_creators.items())
+    }
+
+
+def _monthly_topic_trends(searches_raw: list[dict], comments: list[dict]) -> dict:
+    """Top-8 topics per month: whole search terms (weight 3) + comment words."""
+    monthly_topics: dict[str, Counter] = defaultdict(Counter)
+    for s in searches_raw:
+        term = (s.get("term") or "").lower().strip()
+        dt = _parse_date(s.get("date", ""))
+        if term and dt and term not in _FOOTPRINT_STOP and len(term) > 2:
+            mk = dt.strftime("%Y-%m")
+            monthly_topics[mk][term] += 3  # searches weighted higher
+
+    for c in comments:
+        text = (c.get("comment") or "").lower()
+        dt = _parse_date(c.get("date", ""))
+        if text and dt:
+            mk = dt.strftime("%Y-%m")
+            for word in re.findall(r"[a-z]{3,}", text):
+                if word not in _FOOTPRINT_STOP:
+                    monthly_topics[mk][word] += 1
+
+    return {
+        mk: [{"term": t, "count": c} for t, c in counter.most_common(8)]
+        for mk, counter in sorted(monthly_topics.items())
+    }
+
+
+def _sandbox_retests(sandbox_events: list[dict], link_handle_map: dict[str, str] | None = None) -> list[dict]:
+    """Creators the algorithm re-served in the sandbox tier ≥2 times."""
+    sandbox_creator_counts: Counter = Counter()
+    for ev in sandbox_events:
+        h = _handle_from_link(ev.get("link", ""), link_handle_map)
+        if h:
+            sandbox_creator_counts[h] += 1
+    return [
+        {"handle": h, "times_served": c}
+        for h, c in sandbox_creator_counts.most_common(8)
+        if c >= 2
+    ]
+
+
+def _skip_anomalies(monthly_skip_rates: dict) -> list[dict]:
+    """Months whose skip rate deviates ≥3 points from the leave-one-out baseline."""
+    skip_months = sorted(monthly_skip_rates.keys())
+    anomalies: list[dict] = []
+    if len(skip_months) >= 3:
+        baseline_months = skip_months[:-1]
+        baseline_avg = sum(monthly_skip_rates[m] for m in baseline_months) / len(baseline_months)
+        for mk in skip_months:
+            delta = monthly_skip_rates[mk] - baseline_avg
+            if abs(delta) >= 3.0:
+                anomalies.append({
+                    "month": mk,
+                    "skip_rate": monthly_skip_rates[mk],
+                    "baseline_avg": round(baseline_avg, 1),
+                    "delta": round(delta, 1),
+                    "direction": "spike" if delta > 0 else "dip",
+                })
+    return anomalies
+
+
 def _compute_peak_hour(hourly_heatmap: dict) -> str:
     if not hourly_heatmap or all(v == 0 for v in hourly_heatmap.values()):
         return "Unknown"
@@ -692,74 +766,11 @@ def build_ghost_profile(parsed: dict, exclude_hours: tuple[int, ...] = (), link_
     
     echo = _echo_chamber_index(sw["_linger_links"], link_handle_map)
 
-    # ── Monthly creator trends ────────────────────────────────────────────────
-    monthly_creators: dict[str, dict[str, int]] = defaultdict(lambda: defaultdict(int))
-    for ev in sw["linger_events"]:
-        handle = _handle_from_link(ev["link"], link_handle_map)
-        if handle:
-            mk = _parse_date_to_month(ev)
-            if mk:
-                monthly_creators[mk][handle] += 1
-
-    monthly_creator_trends = {
-        mk: [{"handle": h, "count": c} for h, c in sorted(handles.items(), key=lambda x: -x[1])[:5]]
-        for mk, handles in sorted(monthly_creators.items())
-    }
-
-    # ── Monthly topic trends (searches + comments by date) ───────────────────
-    monthly_topics: dict[str, Counter] = defaultdict(Counter)
-    for s in searches_raw:
-        term = (s.get("term") or "").lower().strip()
-        dt = _parse_date(s.get("date", ""))
-        if term and dt and term not in _FOOTPRINT_STOP and len(term) > 2:
-            mk = dt.strftime("%Y-%m")
-            monthly_topics[mk][term] += 3  # searches weighted higher
-
-    for c in parsed.get("comments", []):
-        text = (c.get("comment") or "").lower()
-        dt = _parse_date(c.get("date", ""))
-        if text and dt:
-            mk = dt.strftime("%Y-%m")
-            for word in re.findall(r"[a-z]{3,}", text):
-                if word not in _FOOTPRINT_STOP:
-                    monthly_topics[mk][word] += 1
-
-    monthly_topic_trends = {
-        mk: [{"term": t, "count": c} for t, c in counter.most_common(8)]
-        for mk, counter in sorted(monthly_topics.items())
-    }
-
-    # ── Sandbox re-test detector ──────────────────────────────────────────────
-    sandbox_vid_counts: Counter = Counter(ev["video_id"] for ev in sw["sandbox_events"] if ev.get("video_id"))
-    sandbox_creator_counts: Counter = Counter()
-    for ev in sw["sandbox_events"]:
-        h = _handle_from_link(ev.get("link", ""), link_handle_map)
-        if h:
-            sandbox_creator_counts[h] += 1
-
-    sandbox_retests = [
-        {"handle": h, "times_served": c}
-        for h, c in sandbox_creator_counts.most_common(8)
-        if c >= 2
-    ]
-
-    # ── Skip rate anomaly detection ───────────────────────────────────────────
-    monthly_skip_rates = sw.get("monthly_skip_rates", {})
-    skip_months = sorted(monthly_skip_rates.keys())
-    anomalies = []
-    if len(skip_months) >= 3:
-        baseline_months = skip_months[:-1]
-        baseline_avg = sum(monthly_skip_rates[m] for m in baseline_months) / len(baseline_months)
-        for mk in skip_months:
-            delta = monthly_skip_rates[mk] - baseline_avg
-            if abs(delta) >= 3.0:
-                anomalies.append({
-                    "month": mk,
-                    "skip_rate": monthly_skip_rates[mk],
-                    "baseline_avg": round(baseline_avg, 1),
-                    "delta": round(delta, 1),
-                    "direction": "spike" if delta > 0 else "dip",
-                })
+    # ── Temporal / monthly features ──────────────────────────────────────────
+    monthly_creator_trends = _monthly_creator_trends(sw["linger_events"], link_handle_map)
+    monthly_topic_trends = _monthly_topic_trends(searches_raw, parsed.get("comments", []))
+    sandbox_retests = _sandbox_retests(sw["sandbox_events"], link_handle_map)
+    anomalies = _skip_anomalies(sw.get("monthly_skip_rates", {}))
 
     # ── Data cliff (start of watch history) ──────────────────────────────────
     data_start = sw.get("data_start_month")
