@@ -10,6 +10,7 @@
 import { parseTiktokData } from "./parser";
 import { buildGhostProfile } from "./ghostProfile";
 import { buildNarrativeBlocks } from "./narratives";
+import { computeCoverage, evaluateGates, Coverage, GateResult } from "./coverage";
 
 export interface EngineOptions {
   excludeHours?: number[];
@@ -21,6 +22,10 @@ export interface EngineResult {
   parsed: Record<string, any>;
   profile: Record<string, any>;
   narratives: any[];
+  /** Export date-span per section (WP-1.2) — coverage banner data. */
+  coverage: Coverage;
+  /** Per-insight-module sufficiency gates (WP-1.2). */
+  gates: Record<string, GateResult>;
 }
 
 /** Full pipeline from a raw export: parse → behavioral profile → narrative blocks. */
@@ -33,5 +38,9 @@ export function runEngine(rawExport: any, opts: EngineOptions = {}): EngineResul
 export function runEngineFromParsed(parsed: any, opts: EngineOptions = {}): EngineResult {
   const profile = buildGhostProfile(parsed, opts.excludeHours ?? [], opts.linkHandleMap ?? null);
   const narratives = buildNarrativeBlocks(profile, parsed);
-  return { parsed, profile, narratives };
+  const coverage = computeCoverage(parsed);
+  const gates = evaluateGates(coverage, {
+    consciousViews: Number(profile.stopwatch_metrics?.total_conscious_videos ?? 0),
+  });
+  return { parsed, profile, narratives, coverage, gates };
 }
