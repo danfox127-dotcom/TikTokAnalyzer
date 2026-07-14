@@ -1,0 +1,3376 @@
+{
+  "_comment": "Golden parity fixture for the WP-1.1 narratives port. Regenerate with PYTHONHASHSEED=0 python3 scripts/gen_narratives_parity_fixture.py",
+  "cases": [
+    {
+      "name": "high_followed",
+      "input": {
+        "ghost_profile": {
+          "behavioral_nodes": {
+            "social_graph_followed_pct": 70.0,
+            "social_graph_algorithmic_pct": 30.0,
+            "skip_rate_percentage": 15.0,
+            "linger_rate_percentage": 25.0,
+            "night_shift_ratio": 40.0,
+            "peak_hour": "11 PM"
+          },
+          "stopwatch_metrics": {
+            "total_conscious_videos": 200,
+            "deep_dives": 30,
+            "total_raw_videos": 250,
+            "hourly_heatmap": {
+              "0": 3,
+              "1": 3,
+              "2": 3,
+              "3": 3,
+              "4": 3,
+              "5": 3,
+              "6": 3,
+              "7": 3,
+              "8": 3,
+              "9": 3,
+              "10": 3,
+              "11": 3,
+              "12": 3,
+              "13": 3,
+              "14": 3,
+              "15": 3,
+              "16": 3,
+              "17": 3,
+              "18": 3,
+              "19": 3,
+              "20": 3,
+              "21": 3,
+              "22": 3,
+              "23": 20
+            }
+          },
+          "creator_entities": {
+            "vibe_cluster": [
+              {
+                "handle": "@a",
+                "linger_count": 40,
+                "is_followed": true,
+                "genre": "tech"
+              },
+              {
+                "handle": "@b",
+                "linger_count": 20,
+                "is_followed": false,
+                "genre": "sports"
+              },
+              {
+                "handle": "@c",
+                "linger_count": 10,
+                "is_followed": false,
+                "genre": "food"
+              }
+            ]
+          },
+          "declared_signals": {
+            "following_count": 120
+          },
+          "share_behavior": {
+            "total_shares": 12,
+            "share_behavior_type": "Private Curator",
+            "primary_share_method": "whatsapp",
+            "share_methods": {
+              "whatsapp": 9,
+              "copy_link": 3
+            }
+          },
+          "comment_voice": {
+            "total_comments": 8,
+            "avg_length_chars": 142.5,
+            "engagement_style_label": "Analytical Commenter"
+          },
+          "transparency_gap": {
+            "official_ad_interest_count": 0,
+            "behavioral_interest_count": 8,
+            "gap_interpretation": "gap text"
+          },
+          "digital_footprint": {
+            "login_count": 3,
+            "unique_ips": 2,
+            "recent_logins": [
+              {
+                "city": "Denver"
+              },
+              {
+                "city": "Denver"
+              },
+              {
+                "city": "Aspen"
+              }
+            ]
+          },
+          "primary_archetype": {
+            "name": "The Intentional Curator"
+          }
+        },
+        "parsed": {
+          "likes": [
+            {},
+            {},
+            {},
+            {}
+          ]
+        }
+      },
+      "expected": [
+        {
+          "id": "algorithmic_identity",
+          "title": "ALGORITHMIC IDENTITY",
+          "icon": "🎭",
+          "prose": "Your feed is primarily driven by creators you've chosen to follow — 70% of your sustained attention goes to followed accounts, putting you among the most intentional viewers on the platform. Your top creator, @a, has earned a disproportionate share of your time. TikTok's algorithm confirms your taste rather than shaping it.",
+          "accent": "#4db8ff",
+          "stats": [
+            {
+              "label": "Followed %",
+              "value": "70%"
+            },
+            {
+              "label": "Algorithmic %",
+              "value": "30%"
+            },
+            {
+              "label": "#1 Creator",
+              "value": "@a"
+            },
+            {
+              "label": "#2 Creator",
+              "value": "@b"
+            },
+            {
+              "label": "#3 Creator",
+              "value": "@c"
+            }
+          ],
+          "chart": {
+            "type": "donut",
+            "data": [
+              {
+                "name": "@a",
+                "value": 40
+              },
+              {
+                "name": "@b",
+                "value": 20
+              },
+              {
+                "name": "@c",
+                "value": 10
+              }
+            ]
+          },
+          "provenance": "Derived from watch time deltas (linger count) on identified creator handles vs discovery feed."
+        },
+        {
+          "id": "attention_signature",
+          "title": "ATTENTION SIGNATURE",
+          "icon": "👁️",
+          "prose": "You are a deep watcher. 25% of your views end in extended viewing — far above typical patterns. TikTok's engagement model treats this as a strong positive signal: creators you linger on are amplified in others' feeds. Your attention is a resource the algorithm harvests aggressively.",
+          "accent": "#ff8c42",
+          "stats": [
+            {
+              "label": "Linger Rate",
+              "value": "25.0%"
+            },
+            {
+              "label": "Skip Rate",
+              "value": "15.0%"
+            },
+            {
+              "label": "Deep Dive Rate",
+              "value": "15.0%"
+            },
+            {
+              "label": "Total Videos",
+              "value": "200"
+            }
+          ],
+          "chart": {
+            "type": "bar",
+            "data": [
+              {
+                "metric": "Linger",
+                "value": 25.0
+              },
+              {
+                "metric": "Skip",
+                "value": 15.0
+              },
+              {
+                "metric": "Deep Dive",
+                "value": 15.0
+              }
+            ]
+          },
+          "provenance": "Calculated from video interaction events (skip/linger ratios) across 200 conscious views."
+        },
+        {
+          "id": "dayparting",
+          "title": "DAILY RHYTHM",
+          "icon": "🕐",
+          "prose": "You are a night viewer — 40% of your TikTok activity occurs between 11 PM and 4 AM. Your peak engagement hour is 11 PM. Late-night usage is associated with passive consumption and higher ad susceptibility. TikTok's ad targeting systems actively exploit this window.",
+          "accent": "#a8ff78",
+          "stats": [
+            {
+              "label": "Peak Hour",
+              "value": "11 PM"
+            },
+            {
+              "label": "Night Viewing",
+              "value": "40%"
+            },
+            {
+              "label": "Active Hours",
+              "value": "24"
+            }
+          ],
+          "chart": {
+            "type": "bar",
+            "data": [
+              {
+                "hour": "0",
+                "count": 3
+              },
+              {
+                "hour": "1",
+                "count": 3
+              },
+              {
+                "hour": "2",
+                "count": 3
+              },
+              {
+                "hour": "3",
+                "count": 3
+              },
+              {
+                "hour": "4",
+                "count": 3
+              },
+              {
+                "hour": "5",
+                "count": 3
+              },
+              {
+                "hour": "6",
+                "count": 3
+              },
+              {
+                "hour": "7",
+                "count": 3
+              },
+              {
+                "hour": "8",
+                "count": 3
+              },
+              {
+                "hour": "9",
+                "count": 3
+              },
+              {
+                "hour": "10",
+                "count": 3
+              },
+              {
+                "hour": "11",
+                "count": 3
+              },
+              {
+                "hour": "12",
+                "count": 3
+              },
+              {
+                "hour": "13",
+                "count": 3
+              },
+              {
+                "hour": "14",
+                "count": 3
+              },
+              {
+                "hour": "15",
+                "count": 3
+              },
+              {
+                "hour": "16",
+                "count": 3
+              },
+              {
+                "hour": "17",
+                "count": 3
+              },
+              {
+                "hour": "18",
+                "count": 3
+              },
+              {
+                "hour": "19",
+                "count": 3
+              },
+              {
+                "hour": "20",
+                "count": 3
+              },
+              {
+                "hour": "21",
+                "count": 3
+              },
+              {
+                "hour": "22",
+                "count": 3
+              },
+              {
+                "hour": "23",
+                "count": 20
+              }
+            ]
+          },
+          "provenance": "Aggregated from hourly engagement frequency across 250 video events."
+        },
+        {
+          "id": "social_graph",
+          "title": "SOCIAL GRAPH",
+          "icon": "🕸️",
+          "prose": "You follow 120 accounts, and 70% of your sustained viewing goes to them. Your social graph is functioning as intended — you follow creators you actually watch. This is increasingly rare on TikTok, where the FYP often displaces intentional subscriptions entirely.",
+          "accent": "#ff4db8",
+          "stats": [
+            {
+              "label": "Following",
+              "value": "120"
+            },
+            {
+              "label": "Watched (Followed)",
+              "value": "70%"
+            },
+            {
+              "label": "Watched (Algorithmic)",
+              "value": "30%"
+            },
+            {
+              "label": "Top Watched",
+              "value": "@a"
+            }
+          ],
+          "chart": {
+            "type": "creator_graph",
+            "data": [
+              {
+                "name": "@a",
+                "size": 40,
+                "is_followed": true,
+                "genre": "tech"
+              },
+              {
+                "name": "@b",
+                "size": 20,
+                "is_followed": false,
+                "genre": "sports"
+              },
+              {
+                "name": "@c",
+                "size": 10,
+                "is_followed": false,
+                "genre": "food"
+              }
+            ]
+          },
+          "provenance": "Determined by comparing engagement metrics on followed accounts vs algorithmically-surfaced creators."
+        },
+        {
+          "id": "share_behavior",
+          "title": "SHARE BEHAVIOR",
+          "icon": "🔗",
+          "prose": "You are a Private Curator. The majority of your 12 shares go through direct message, primarily via Whatsapp. Your shares are high-signal recommendations, not reflexive reposting.",
+          "accent": "#ffd700",
+          "stats": [
+            {
+              "label": "Total Shares",
+              "value": "12"
+            },
+            {
+              "label": "Type",
+              "value": "Private Curator"
+            },
+            {
+              "label": "Primary Method",
+              "value": "Whatsapp"
+            },
+            {
+              "label": "Share/Like Ratio",
+              "value": "3.000"
+            }
+          ],
+          "chart": {
+            "type": "donut",
+            "data": [
+              {
+                "name": "Whatsapp",
+                "value": 9
+              },
+              {
+                "name": "Copy_Link",
+                "value": 3
+              }
+            ]
+          },
+          "provenance": "Extracted from share method metadata and correlated with like volume."
+        },
+        {
+          "id": "comment_voice",
+          "title": "COMMENT VOICE",
+          "icon": "💬",
+          "prose": "You are a Analytical Commenter. Your 8 comments average 142 characters. Your textual footprint reflects a analytical commenter mode of engagement.",
+          "accent": "#c8a2c8",
+          "stats": [
+            {
+              "label": "Total Comments",
+              "value": "8"
+            },
+            {
+              "label": "Avg Length",
+              "value": "142 chars"
+            },
+            {
+              "label": "Style",
+              "value": "Analytical Commenter"
+            }
+          ],
+          "chart": null,
+          "provenance": "Analyzed from comment length and frequency relative to viewing volume."
+        },
+        {
+          "id": "transparency_gap",
+          "title": "TRANSPARENCY GAP",
+          "icon": "🔍",
+          "prose": "Your ad interest profile is empty, yet behavioral analysis shows 8 inferred interest clusters. The algorithm sees far more than what it reports.",
+          "accent": "#ff4466",
+          "stats": [
+            {
+              "label": "Declared Interests",
+              "value": "0"
+            },
+            {
+              "label": "Behavioral Clusters",
+              "value": "8"
+            },
+            {
+              "label": "Login Events",
+              "value": "3"
+            },
+            {
+              "label": "Unique IPs",
+              "value": "2"
+            }
+          ],
+          "chart": {
+            "type": "bar",
+            "data": [
+              {
+                "category": "Ad Interests",
+                "count": 0
+              },
+              {
+                "category": "Behaviors",
+                "count": 8
+              },
+              {
+                "category": "Logins",
+                "count": 3
+              }
+            ]
+          },
+          "provenance": "Forensic gap between 'Settings Interests' and behavioral categories inferred from video metadata."
+        },
+        {
+          "id": "location_trace",
+          "title": "WHERE TIKTOK FOUND YOU",
+          "icon": "📍",
+          "prose": "Your login history covers 2 cities, with Denver as your home base. Even a single IP can reveal your ISP and approximate neighborhood.",
+          "accent": "#00e5ff",
+          "stats": [
+            {
+              "label": "Home City",
+              "value": "Denver"
+            },
+            {
+              "label": "Cities Seen",
+              "value": "2"
+            },
+            {
+              "label": "Login Events",
+              "value": "3"
+            }
+          ],
+          "chart": null,
+          "provenance": "Geolocated from IP addresses recorded in 3 distinct login events."
+        },
+        {
+          "id": "closing_synthesis",
+          "title": "CLOSING SYNTHESIS",
+          "icon": "🧠",
+          "prose": "Across your usage history, you emerge as The Intentional Curator. The algorithm characterizes you through behavior rather than stated preferences. This dossier is a partial reconstruction — TikTok's actual model is orders of magnitude more granular.",
+          "accent": "#e0e0e0",
+          "stats": [],
+          "chart": null,
+          "provenance": "Cross-dimensional behavioral synthesis mapped from all forensic blocks."
+        }
+      ]
+    },
+    {
+      "name": "low_followed",
+      "input": {
+        "ghost_profile": {
+          "behavioral_nodes": {
+            "social_graph_followed_pct": 10.0,
+            "social_graph_algorithmic_pct": 90.0,
+            "skip_rate_percentage": 60.0,
+            "linger_rate_percentage": 5.0,
+            "night_shift_ratio": 10.0,
+            "peak_hour": "3 PM"
+          },
+          "stopwatch_metrics": {
+            "total_conscious_videos": 500,
+            "deep_dives": 5,
+            "total_raw_videos": 600,
+            "hourly_heatmap": {
+              "0": 1,
+              "1": 1,
+              "2": 1,
+              "3": 1,
+              "4": 1,
+              "5": 1,
+              "6": 1,
+              "7": 1,
+              "8": 1,
+              "9": 1,
+              "10": 1,
+              "11": 1,
+              "12": 1,
+              "13": 1,
+              "14": 1,
+              "15": 10,
+              "16": 1,
+              "17": 1,
+              "18": 1,
+              "19": 1,
+              "20": 1,
+              "21": 1,
+              "22": 1,
+              "23": 1
+            }
+          },
+          "creator_entities": {
+            "vibe_cluster": [
+              {
+                "handle": "@x",
+                "linger_count": 5,
+                "is_followed": false,
+                "genre": "news"
+              }
+            ]
+          },
+          "declared_signals": {
+            "following_count": 300
+          },
+          "share_behavior": {
+            "total_shares": 0,
+            "share_behavior_type": "Mixed Sharer",
+            "primary_share_method": null,
+            "share_methods": {}
+          },
+          "comment_voice": {
+            "total_comments": 0,
+            "avg_length_chars": 0.0,
+            "engagement_style_label": "Lurker"
+          },
+          "transparency_gap": {
+            "official_ad_interest_count": 3,
+            "behavioral_interest_count": 10,
+            "gap_interpretation": "Significant gap detected."
+          },
+          "digital_footprint": {
+            "login_count": 0,
+            "unique_ips": 0,
+            "recent_logins": []
+          },
+          "primary_archetype": {
+            "name": "The Algorithmic Captured"
+          }
+        },
+        "parsed": {
+          "likes": []
+        }
+      },
+      "expected": [
+        {
+          "id": "algorithmic_identity",
+          "title": "ALGORITHMIC IDENTITY",
+          "icon": "🎭",
+          "prose": "TikTok's algorithm dominates your attention. Only 10% of your sustained viewing goes to accounts you've explicitly followed — the rest is pure machine curation. Your most-watched creator, @x, was likely surfaced algorithmically. You are largely a product of the recommendation engine.",
+          "accent": "#4db8ff",
+          "stats": [
+            {
+              "label": "Followed %",
+              "value": "10%"
+            },
+            {
+              "label": "Algorithmic %",
+              "value": "90%"
+            },
+            {
+              "label": "#1 Creator",
+              "value": "@x"
+            }
+          ],
+          "chart": {
+            "type": "donut",
+            "data": [
+              {
+                "name": "@x",
+                "value": 5
+              }
+            ]
+          },
+          "provenance": "Derived from watch time deltas (linger count) on identified creator handles vs discovery feed."
+        },
+        {
+          "id": "attention_signature",
+          "title": "ATTENTION SIGNATURE",
+          "icon": "👁️",
+          "prose": "You are a ruthless curator. You skip 60% of content quickly, training the algorithm through rejection as much as acceptance. The videos that do hold your attention — 5% of views — send disproportionately strong signals. Scarcity makes your engagement more valuable to the model.",
+          "accent": "#ff8c42",
+          "stats": [
+            {
+              "label": "Linger Rate",
+              "value": "5.0%"
+            },
+            {
+              "label": "Skip Rate",
+              "value": "60.0%"
+            },
+            {
+              "label": "Deep Dive Rate",
+              "value": "1.0%"
+            },
+            {
+              "label": "Total Videos",
+              "value": "500"
+            }
+          ],
+          "chart": {
+            "type": "bar",
+            "data": [
+              {
+                "metric": "Linger",
+                "value": 5.0
+              },
+              {
+                "metric": "Skip",
+                "value": 60.0
+              },
+              {
+                "metric": "Deep Dive",
+                "value": 1.0
+              }
+            ]
+          },
+          "provenance": "Calculated from video interaction events (skip/linger ratios) across 500 conscious views."
+        },
+        {
+          "id": "dayparting",
+          "title": "DAILY RHYTHM",
+          "icon": "🕐",
+          "prose": "Your peak viewing hour is 3 PM. 10% of your activity occurs in the late-night window (11 PM–4 AM). Your usage pattern follows a typical circadian rhythm — consistent with intentional rather than compulsive consumption.",
+          "accent": "#a8ff78",
+          "stats": [
+            {
+              "label": "Peak Hour",
+              "value": "3 PM"
+            },
+            {
+              "label": "Night Viewing",
+              "value": "10%"
+            },
+            {
+              "label": "Active Hours",
+              "value": "24"
+            }
+          ],
+          "chart": {
+            "type": "bar",
+            "data": [
+              {
+                "hour": "0",
+                "count": 1
+              },
+              {
+                "hour": "1",
+                "count": 1
+              },
+              {
+                "hour": "2",
+                "count": 1
+              },
+              {
+                "hour": "3",
+                "count": 1
+              },
+              {
+                "hour": "4",
+                "count": 1
+              },
+              {
+                "hour": "5",
+                "count": 1
+              },
+              {
+                "hour": "6",
+                "count": 1
+              },
+              {
+                "hour": "7",
+                "count": 1
+              },
+              {
+                "hour": "8",
+                "count": 1
+              },
+              {
+                "hour": "9",
+                "count": 1
+              },
+              {
+                "hour": "10",
+                "count": 1
+              },
+              {
+                "hour": "11",
+                "count": 1
+              },
+              {
+                "hour": "12",
+                "count": 1
+              },
+              {
+                "hour": "13",
+                "count": 1
+              },
+              {
+                "hour": "14",
+                "count": 1
+              },
+              {
+                "hour": "15",
+                "count": 10
+              },
+              {
+                "hour": "16",
+                "count": 1
+              },
+              {
+                "hour": "17",
+                "count": 1
+              },
+              {
+                "hour": "18",
+                "count": 1
+              },
+              {
+                "hour": "19",
+                "count": 1
+              },
+              {
+                "hour": "20",
+                "count": 1
+              },
+              {
+                "hour": "21",
+                "count": 1
+              },
+              {
+                "hour": "22",
+                "count": 1
+              },
+              {
+                "hour": "23",
+                "count": 1
+              }
+            ]
+          },
+          "provenance": "Aggregated from hourly engagement frequency across 600 video events."
+        },
+        {
+          "id": "social_graph",
+          "title": "SOCIAL GRAPH",
+          "icon": "🕸️",
+          "prose": "You follow 300 accounts, but only 10% of your sustained viewing goes to them. The algorithm has almost entirely displaced your social graph. In effect, your follower list is decorative — the machine decides what you see.",
+          "accent": "#ff4db8",
+          "stats": [
+            {
+              "label": "Following",
+              "value": "300"
+            },
+            {
+              "label": "Watched (Followed)",
+              "value": "10%"
+            },
+            {
+              "label": "Watched (Algorithmic)",
+              "value": "90%"
+            },
+            {
+              "label": "Top Watched",
+              "value": "@x"
+            }
+          ],
+          "chart": {
+            "type": "creator_graph",
+            "data": [
+              {
+                "name": "@x",
+                "size": 5,
+                "is_followed": false,
+                "genre": "news"
+              }
+            ]
+          },
+          "provenance": "Determined by comparing engagement metrics on followed accounts vs algorithmically-surfaced creators."
+        },
+        {
+          "id": "share_behavior",
+          "title": "SHARE BEHAVIOR",
+          "icon": "🔗",
+          "prose": "You have shared no content from TikTok. You leave no traceable content trail outside the platform.",
+          "accent": "#ffd700",
+          "stats": [
+            {
+              "label": "Total Shares",
+              "value": "0"
+            },
+            {
+              "label": "Type",
+              "value": "Mixed Sharer"
+            },
+            {
+              "label": "Primary Method",
+              "value": "None"
+            },
+            {
+              "label": "Share/Like Ratio",
+              "value": "0.000"
+            }
+          ],
+          "chart": null,
+          "provenance": "Extracted from share method metadata and correlated with like volume."
+        },
+        {
+          "id": "comment_voice",
+          "title": "COMMENT VOICE",
+          "icon": "💬",
+          "prose": "No comments found. You are a silent viewer, engaging through watch time rather than text.",
+          "accent": "#c8a2c8",
+          "stats": [
+            {
+              "label": "Total Comments",
+              "value": "0"
+            },
+            {
+              "label": "Avg Length",
+              "value": "0 chars"
+            },
+            {
+              "label": "Style",
+              "value": "Lurker"
+            }
+          ],
+          "chart": null,
+          "provenance": "Analyzed from comment length and frequency relative to viewing volume."
+        },
+        {
+          "id": "transparency_gap",
+          "title": "TRANSPARENCY GAP",
+          "icon": "🔍",
+          "prose": "TikTok discloses 3 declared interests — but behavioral signals reveal 10 clusters. Significant gap detected.",
+          "accent": "#ff4466",
+          "stats": [
+            {
+              "label": "Declared Interests",
+              "value": "3"
+            },
+            {
+              "label": "Behavioral Clusters",
+              "value": "10"
+            },
+            {
+              "label": "Login Events",
+              "value": "0"
+            },
+            {
+              "label": "Unique IPs",
+              "value": "0"
+            }
+          ],
+          "chart": {
+            "type": "bar",
+            "data": [
+              {
+                "category": "Ad Interests",
+                "count": 3
+              },
+              {
+                "category": "Behaviors",
+                "count": 10
+              },
+              {
+                "category": "Logins",
+                "count": 0
+              }
+            ]
+          },
+          "provenance": "Forensic gap between 'Settings Interests' and behavioral categories inferred from video metadata."
+        },
+        {
+          "id": "location_trace",
+          "title": "WHERE TIKTOK FOUND YOU",
+          "icon": "📍",
+          "prose": "Your login history covers 0 cities, with Unknown as your home base. Even a single IP can reveal your ISP and approximate neighborhood.",
+          "accent": "#00e5ff",
+          "stats": [
+            {
+              "label": "Home City",
+              "value": "Unknown"
+            },
+            {
+              "label": "Cities Seen",
+              "value": "0"
+            },
+            {
+              "label": "Login Events",
+              "value": "0"
+            }
+          ],
+          "chart": null,
+          "provenance": "Geolocated from IP addresses recorded in 0 distinct login events."
+        },
+        {
+          "id": "closing_synthesis",
+          "title": "CLOSING SYNTHESIS",
+          "icon": "🧠",
+          "prose": "Across your usage history, you emerge as The Algorithmic Captured. The algorithm characterizes you through behavior rather than stated preferences. This dossier is a partial reconstruction — TikTok's actual model is orders of magnitude more granular.",
+          "accent": "#e0e0e0",
+          "stats": [],
+          "chart": null,
+          "provenance": "Cross-dimensional behavioral synthesis mapped from all forensic blocks."
+        }
+      ]
+    },
+    {
+      "name": "mid",
+      "input": {
+        "ghost_profile": {
+          "behavioral_nodes": {
+            "social_graph_followed_pct": 45.0,
+            "social_graph_algorithmic_pct": 55.0,
+            "skip_rate_percentage": 30.0,
+            "linger_rate_percentage": 10.0,
+            "night_shift_ratio": 20.0,
+            "peak_hour": "12 PM"
+          },
+          "stopwatch_metrics": {
+            "total_conscious_videos": 100,
+            "deep_dives": 8,
+            "total_raw_videos": 120,
+            "hourly_heatmap": {
+              "0": 2,
+              "1": 2,
+              "2": 2,
+              "3": 2,
+              "4": 2,
+              "5": 2,
+              "6": 2,
+              "7": 2,
+              "8": 2,
+              "9": 2,
+              "10": 2,
+              "11": 2,
+              "12": 5,
+              "13": 2,
+              "14": 2,
+              "15": 2,
+              "16": 2,
+              "17": 2,
+              "18": 2,
+              "19": 2,
+              "20": 2,
+              "21": 2,
+              "22": 2,
+              "23": 2
+            }
+          },
+          "creator_entities": {
+            "vibe_cluster": [
+              {
+                "handle": "@m",
+                "linger_count": 6,
+                "is_followed": true,
+                "genre": "music"
+              },
+              {
+                "handle": "@n",
+                "linger_count": 4,
+                "is_followed": false,
+                "genre": "unknown"
+              }
+            ]
+          },
+          "declared_signals": {
+            "following_count": 50
+          },
+          "share_behavior": {
+            "total_shares": 20,
+            "share_behavior_type": "Public Broadcaster",
+            "primary_share_method": "copy_link",
+            "share_methods": {
+              "copy_link": 15,
+              "dm": 5
+            }
+          },
+          "comment_voice": {
+            "total_comments": 3,
+            "avg_length_chars": 25.0,
+            "engagement_style_label": "Reactive Commenter"
+          },
+          "transparency_gap": {
+            "official_ad_interest_count": 2,
+            "behavioral_interest_count": 3,
+            "gap_interpretation": "Roughly matches."
+          },
+          "digital_footprint": {
+            "login_count": 2,
+            "unique_ips": 1,
+            "recent_logins": [
+              {
+                "city": "Unknown"
+              },
+              {}
+            ]
+          },
+          "primary_archetype": {
+            "name": "The Balanced Viewer"
+          }
+        },
+        "parsed": {
+          "likes": [
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {}
+          ]
+        }
+      },
+      "expected": [
+        {
+          "id": "algorithmic_identity",
+          "title": "ALGORITHMIC IDENTITY",
+          "icon": "🎭",
+          "prose": "You split your attention between followed accounts (45%) and algorithmic discovery (55%). @m leads your sustained viewing. This balance suggests a measured relationship with the platform — curious but not fully surrendered to the feed.",
+          "accent": "#4db8ff",
+          "stats": [
+            {
+              "label": "Followed %",
+              "value": "45%"
+            },
+            {
+              "label": "Algorithmic %",
+              "value": "55%"
+            },
+            {
+              "label": "#1 Creator",
+              "value": "@m"
+            },
+            {
+              "label": "#2 Creator",
+              "value": "@n"
+            }
+          ],
+          "chart": {
+            "type": "donut",
+            "data": [
+              {
+                "name": "@m",
+                "value": 6
+              },
+              {
+                "name": "@n",
+                "value": 4
+              }
+            ]
+          },
+          "provenance": "Derived from watch time deltas (linger count) on identified creator handles vs discovery feed."
+        },
+        {
+          "id": "attention_signature",
+          "title": "ATTENTION SIGNATURE",
+          "icon": "👁️",
+          "prose": "Your viewing pattern is balanced — 30% skipped, 10% lingered. You engage moderately across a range of content rather than sending strong directional signals. The algorithm has a stable, moderate picture of your preferences.",
+          "accent": "#ff8c42",
+          "stats": [
+            {
+              "label": "Linger Rate",
+              "value": "10.0%"
+            },
+            {
+              "label": "Skip Rate",
+              "value": "30.0%"
+            },
+            {
+              "label": "Deep Dive Rate",
+              "value": "8.0%"
+            },
+            {
+              "label": "Total Videos",
+              "value": "100"
+            }
+          ],
+          "chart": {
+            "type": "bar",
+            "data": [
+              {
+                "metric": "Linger",
+                "value": 10.0
+              },
+              {
+                "metric": "Skip",
+                "value": 30.0
+              },
+              {
+                "metric": "Deep Dive",
+                "value": 8.0
+              }
+            ]
+          },
+          "provenance": "Calculated from video interaction events (skip/linger ratios) across 100 conscious views."
+        },
+        {
+          "id": "dayparting",
+          "title": "DAILY RHYTHM",
+          "icon": "🕐",
+          "prose": "Your peak viewing hour is 12 PM. 20% of your activity occurs in the late-night window (11 PM–4 AM). Your usage pattern follows a typical circadian rhythm — consistent with intentional rather than compulsive consumption.",
+          "accent": "#a8ff78",
+          "stats": [
+            {
+              "label": "Peak Hour",
+              "value": "12 PM"
+            },
+            {
+              "label": "Night Viewing",
+              "value": "20%"
+            },
+            {
+              "label": "Active Hours",
+              "value": "24"
+            }
+          ],
+          "chart": {
+            "type": "bar",
+            "data": [
+              {
+                "hour": "0",
+                "count": 2
+              },
+              {
+                "hour": "1",
+                "count": 2
+              },
+              {
+                "hour": "2",
+                "count": 2
+              },
+              {
+                "hour": "3",
+                "count": 2
+              },
+              {
+                "hour": "4",
+                "count": 2
+              },
+              {
+                "hour": "5",
+                "count": 2
+              },
+              {
+                "hour": "6",
+                "count": 2
+              },
+              {
+                "hour": "7",
+                "count": 2
+              },
+              {
+                "hour": "8",
+                "count": 2
+              },
+              {
+                "hour": "9",
+                "count": 2
+              },
+              {
+                "hour": "10",
+                "count": 2
+              },
+              {
+                "hour": "11",
+                "count": 2
+              },
+              {
+                "hour": "12",
+                "count": 5
+              },
+              {
+                "hour": "13",
+                "count": 2
+              },
+              {
+                "hour": "14",
+                "count": 2
+              },
+              {
+                "hour": "15",
+                "count": 2
+              },
+              {
+                "hour": "16",
+                "count": 2
+              },
+              {
+                "hour": "17",
+                "count": 2
+              },
+              {
+                "hour": "18",
+                "count": 2
+              },
+              {
+                "hour": "19",
+                "count": 2
+              },
+              {
+                "hour": "20",
+                "count": 2
+              },
+              {
+                "hour": "21",
+                "count": 2
+              },
+              {
+                "hour": "22",
+                "count": 2
+              },
+              {
+                "hour": "23",
+                "count": 2
+              }
+            ]
+          },
+          "provenance": "Aggregated from hourly engagement frequency across 120 video events."
+        },
+        {
+          "id": "social_graph",
+          "title": "SOCIAL GRAPH",
+          "icon": "🕸️",
+          "prose": "You follow 50 accounts, with 45% of your viewing going to followed creators and 55% to algorithmically-surfaced content. Your top watched creator is @m. The social graph still has some influence.",
+          "accent": "#ff4db8",
+          "stats": [
+            {
+              "label": "Following",
+              "value": "50"
+            },
+            {
+              "label": "Watched (Followed)",
+              "value": "45%"
+            },
+            {
+              "label": "Watched (Algorithmic)",
+              "value": "55%"
+            },
+            {
+              "label": "Top Watched",
+              "value": "@m"
+            }
+          ],
+          "chart": {
+            "type": "creator_graph",
+            "data": [
+              {
+                "name": "@m",
+                "size": 6,
+                "is_followed": true,
+                "genre": "music"
+              },
+              {
+                "name": "@n",
+                "size": 4,
+                "is_followed": false,
+                "genre": "unknown"
+              }
+            ]
+          },
+          "provenance": "Determined by comparing engagement metrics on followed accounts vs algorithmically-surfaced creators."
+        },
+        {
+          "id": "share_behavior",
+          "title": "SHARE BEHAVIOR",
+          "icon": "🔗",
+          "prose": "Your sharing behavior is public broadcaster — 20 shares, with Copy_Link as the primary method. You extend TikTok's reach beyond the platform.",
+          "accent": "#ffd700",
+          "stats": [
+            {
+              "label": "Total Shares",
+              "value": "20"
+            },
+            {
+              "label": "Type",
+              "value": "Public Broadcaster"
+            },
+            {
+              "label": "Primary Method",
+              "value": "Copy_Link"
+            },
+            {
+              "label": "Share/Like Ratio",
+              "value": "2.000"
+            }
+          ],
+          "chart": {
+            "type": "donut",
+            "data": [
+              {
+                "name": "Copy_Link",
+                "value": 15
+              },
+              {
+                "name": "Dm",
+                "value": 5
+              }
+            ]
+          },
+          "provenance": "Extracted from share method metadata and correlated with like volume."
+        },
+        {
+          "id": "comment_voice",
+          "title": "COMMENT VOICE",
+          "icon": "💬",
+          "prose": "You are a Reactive Commenter. Your 3 comments average 25 characters. Your textual footprint reflects a reactive commenter mode of engagement.",
+          "accent": "#c8a2c8",
+          "stats": [
+            {
+              "label": "Total Comments",
+              "value": "3"
+            },
+            {
+              "label": "Avg Length",
+              "value": "25 chars"
+            },
+            {
+              "label": "Style",
+              "value": "Reactive Commenter"
+            }
+          ],
+          "chart": null,
+          "provenance": "Analyzed from comment length and frequency relative to viewing volume."
+        },
+        {
+          "id": "transparency_gap",
+          "title": "TRANSPARENCY GAP",
+          "icon": "🔍",
+          "prose": "TikTok discloses 2 declared interests — but behavioral signals reveal 3 clusters. Roughly matches.",
+          "accent": "#ff4466",
+          "stats": [
+            {
+              "label": "Declared Interests",
+              "value": "2"
+            },
+            {
+              "label": "Behavioral Clusters",
+              "value": "3"
+            },
+            {
+              "label": "Login Events",
+              "value": "2"
+            },
+            {
+              "label": "Unique IPs",
+              "value": "1"
+            }
+          ],
+          "chart": {
+            "type": "bar",
+            "data": [
+              {
+                "category": "Ad Interests",
+                "count": 2
+              },
+              {
+                "category": "Behaviors",
+                "count": 3
+              },
+              {
+                "category": "Logins",
+                "count": 2
+              }
+            ]
+          },
+          "provenance": "Forensic gap between 'Settings Interests' and behavioral categories inferred from video metadata."
+        },
+        {
+          "id": "location_trace",
+          "title": "WHERE TIKTOK FOUND YOU",
+          "icon": "📍",
+          "prose": "Your login history covers 0 cities, with Unknown as your home base. Even a single IP can reveal your ISP and approximate neighborhood.",
+          "accent": "#00e5ff",
+          "stats": [
+            {
+              "label": "Home City",
+              "value": "Unknown"
+            },
+            {
+              "label": "Cities Seen",
+              "value": "0"
+            },
+            {
+              "label": "Login Events",
+              "value": "2"
+            }
+          ],
+          "chart": null,
+          "provenance": "Geolocated from IP addresses recorded in 2 distinct login events."
+        },
+        {
+          "id": "closing_synthesis",
+          "title": "CLOSING SYNTHESIS",
+          "icon": "🧠",
+          "prose": "Across your usage history, you emerge as The Balanced Viewer. The algorithm characterizes you through behavior rather than stated preferences. This dossier is a partial reconstruction — TikTok's actual model is orders of magnitude more granular.",
+          "accent": "#e0e0e0",
+          "stats": [],
+          "chart": null,
+          "provenance": "Cross-dimensional behavioral synthesis mapped from all forensic blocks."
+        }
+      ]
+    },
+    {
+      "name": "empty",
+      "input": {
+        "ghost_profile": {},
+        "parsed": {}
+      },
+      "expected": [
+        {
+          "id": "algorithmic_identity",
+          "title": "ALGORITHMIC IDENTITY",
+          "icon": "🎭",
+          "prose": "TikTok's algorithm dominates your attention. Only 0% of your sustained viewing goes to accounts you've explicitly followed — the rest is pure machine curation. Your most-watched creator, Unknown, was likely surfaced algorithmically. You are largely a product of the recommendation engine.",
+          "accent": "#4db8ff",
+          "stats": [
+            {
+              "label": "Followed %",
+              "value": "0%"
+            },
+            {
+              "label": "Algorithmic %",
+              "value": "0%"
+            }
+          ],
+          "chart": null,
+          "provenance": "Derived from watch time deltas (linger count) on identified creator handles vs discovery feed."
+        },
+        {
+          "id": "attention_signature",
+          "title": "ATTENTION SIGNATURE",
+          "icon": "👁️",
+          "prose": "Your viewing pattern is balanced — 0% skipped, 0% lingered. You engage moderately across a range of content rather than sending strong directional signals. The algorithm has a stable, moderate picture of your preferences.",
+          "accent": "#ff8c42",
+          "stats": [
+            {
+              "label": "Linger Rate",
+              "value": "0.0%"
+            },
+            {
+              "label": "Skip Rate",
+              "value": "0.0%"
+            },
+            {
+              "label": "Deep Dive Rate",
+              "value": "0.0%"
+            },
+            {
+              "label": "Total Videos",
+              "value": "0"
+            }
+          ],
+          "chart": {
+            "type": "bar",
+            "data": [
+              {
+                "metric": "Linger",
+                "value": 0.0
+              },
+              {
+                "metric": "Skip",
+                "value": 0.0
+              },
+              {
+                "metric": "Deep Dive",
+                "value": 0.0
+              }
+            ]
+          },
+          "provenance": "Calculated from video interaction events (skip/linger ratios) across 0 conscious views."
+        },
+        {
+          "id": "dayparting",
+          "title": "DAILY RHYTHM",
+          "icon": "🕐",
+          "prose": "Your peak viewing hour is Unknown. 0% of your activity occurs in the late-night window (11 PM–4 AM). Your usage pattern follows a typical circadian rhythm — consistent with intentional rather than compulsive consumption.",
+          "accent": "#a8ff78",
+          "stats": [
+            {
+              "label": "Peak Hour",
+              "value": "Unknown"
+            },
+            {
+              "label": "Night Viewing",
+              "value": "0%"
+            },
+            {
+              "label": "Active Hours",
+              "value": "0"
+            }
+          ],
+          "chart": {
+            "type": "bar",
+            "data": [
+              {
+                "hour": "0",
+                "count": 0
+              },
+              {
+                "hour": "1",
+                "count": 0
+              },
+              {
+                "hour": "2",
+                "count": 0
+              },
+              {
+                "hour": "3",
+                "count": 0
+              },
+              {
+                "hour": "4",
+                "count": 0
+              },
+              {
+                "hour": "5",
+                "count": 0
+              },
+              {
+                "hour": "6",
+                "count": 0
+              },
+              {
+                "hour": "7",
+                "count": 0
+              },
+              {
+                "hour": "8",
+                "count": 0
+              },
+              {
+                "hour": "9",
+                "count": 0
+              },
+              {
+                "hour": "10",
+                "count": 0
+              },
+              {
+                "hour": "11",
+                "count": 0
+              },
+              {
+                "hour": "12",
+                "count": 0
+              },
+              {
+                "hour": "13",
+                "count": 0
+              },
+              {
+                "hour": "14",
+                "count": 0
+              },
+              {
+                "hour": "15",
+                "count": 0
+              },
+              {
+                "hour": "16",
+                "count": 0
+              },
+              {
+                "hour": "17",
+                "count": 0
+              },
+              {
+                "hour": "18",
+                "count": 0
+              },
+              {
+                "hour": "19",
+                "count": 0
+              },
+              {
+                "hour": "20",
+                "count": 0
+              },
+              {
+                "hour": "21",
+                "count": 0
+              },
+              {
+                "hour": "22",
+                "count": 0
+              },
+              {
+                "hour": "23",
+                "count": 0
+              }
+            ]
+          },
+          "provenance": "Aggregated from hourly engagement frequency across 0 video events."
+        },
+        {
+          "id": "social_graph",
+          "title": "SOCIAL GRAPH",
+          "icon": "🕸️",
+          "prose": "You follow 0 accounts, but only 0% of your sustained viewing goes to them. The algorithm has almost entirely displaced your social graph. In effect, your follower list is decorative — the machine decides what you see.",
+          "accent": "#ff4db8",
+          "stats": [
+            {
+              "label": "Following",
+              "value": "0"
+            },
+            {
+              "label": "Watched (Followed)",
+              "value": "0%"
+            },
+            {
+              "label": "Watched (Algorithmic)",
+              "value": "0%"
+            },
+            {
+              "label": "Top Watched",
+              "value": "—"
+            }
+          ],
+          "chart": {
+            "type": "creator_graph",
+            "data": []
+          },
+          "provenance": "Determined by comparing engagement metrics on followed accounts vs algorithmically-surfaced creators."
+        },
+        {
+          "id": "share_behavior",
+          "title": "SHARE BEHAVIOR",
+          "icon": "🔗",
+          "prose": "You have shared no content from TikTok. You leave no traceable content trail outside the platform.",
+          "accent": "#ffd700",
+          "stats": [
+            {
+              "label": "Total Shares",
+              "value": "0"
+            },
+            {
+              "label": "Type",
+              "value": "Mixed Sharer"
+            },
+            {
+              "label": "Primary Method",
+              "value": "None"
+            },
+            {
+              "label": "Share/Like Ratio",
+              "value": "0.000"
+            }
+          ],
+          "chart": null,
+          "provenance": "Extracted from share method metadata and correlated with like volume."
+        },
+        {
+          "id": "comment_voice",
+          "title": "COMMENT VOICE",
+          "icon": "💬",
+          "prose": "No comments found. You are a silent viewer, engaging through watch time rather than text.",
+          "accent": "#c8a2c8",
+          "stats": [
+            {
+              "label": "Total Comments",
+              "value": "0"
+            },
+            {
+              "label": "Avg Length",
+              "value": "0 chars"
+            },
+            {
+              "label": "Style",
+              "value": "Lurker"
+            }
+          ],
+          "chart": null,
+          "provenance": "Analyzed from comment length and frequency relative to viewing volume."
+        },
+        {
+          "id": "transparency_gap",
+          "title": "TRANSPARENCY GAP",
+          "icon": "🔍",
+          "prose": "TikTok discloses 0 declared interests — but behavioral signals reveal 0 clusters. ",
+          "accent": "#ff4466",
+          "stats": [
+            {
+              "label": "Declared Interests",
+              "value": "0"
+            },
+            {
+              "label": "Behavioral Clusters",
+              "value": "0"
+            },
+            {
+              "label": "Login Events",
+              "value": "0"
+            },
+            {
+              "label": "Unique IPs",
+              "value": "0"
+            }
+          ],
+          "chart": {
+            "type": "bar",
+            "data": [
+              {
+                "category": "Ad Interests",
+                "count": 0
+              },
+              {
+                "category": "Behaviors",
+                "count": 0
+              },
+              {
+                "category": "Logins",
+                "count": 0
+              }
+            ]
+          },
+          "provenance": "Forensic gap between 'Settings Interests' and behavioral categories inferred from video metadata."
+        },
+        {
+          "id": "location_trace",
+          "title": "WHERE TIKTOK FOUND YOU",
+          "icon": "📍",
+          "prose": "Your login history covers 0 cities, with Unknown as your home base. Even a single IP can reveal your ISP and approximate neighborhood.",
+          "accent": "#00e5ff",
+          "stats": [
+            {
+              "label": "Home City",
+              "value": "Unknown"
+            },
+            {
+              "label": "Cities Seen",
+              "value": "0"
+            },
+            {
+              "label": "Login Events",
+              "value": "0"
+            }
+          ],
+          "chart": null,
+          "provenance": "Geolocated from IP addresses recorded in 0 distinct login events."
+        },
+        {
+          "id": "closing_synthesis",
+          "title": "CLOSING SYNTHESIS",
+          "icon": "🧠",
+          "prose": "Across your usage history, you emerge as The Balanced Viewer. The algorithm characterizes you through behavior rather than stated preferences. This dossier is a partial reconstruction — TikTok's actual model is orders of magnitude more granular.",
+          "accent": "#e0e0e0",
+          "stats": [],
+          "chart": null,
+          "provenance": "Cross-dimensional behavioral synthesis mapped from all forensic blocks."
+        }
+      ]
+    },
+    {
+      "name": "integration_from_orchestrator",
+      "input": {
+        "ghost_profile": {
+          "status": "success",
+          "interest_clusters": [
+            {
+              "term": "love",
+              "count": 10,
+              "dominant_source": "comment"
+            },
+            {
+              "term": "baking",
+              "count": 10,
+              "dominant_source": "comment"
+            },
+            {
+              "term": "content",
+              "count": 10,
+              "dominant_source": "comment"
+            },
+            {
+              "term": "lakers",
+              "count": 10,
+              "dominant_source": "comment"
+            },
+            {
+              "term": "unstoppable",
+              "count": 10,
+              "dominant_source": "comment"
+            },
+            {
+              "term": "somebodyelse",
+              "count": 6,
+              "dominant_source": "follow"
+            },
+            {
+              "term": "sourdough",
+              "count": 5,
+              "dominant_source": "search"
+            },
+            {
+              "term": "starter",
+              "count": 5,
+              "dominant_source": "search"
+            },
+            {
+              "term": "crypto",
+              "count": 5,
+              "dominant_source": "search"
+            },
+            {
+              "term": "crash",
+              "count": 5,
+              "dominant_source": "search"
+            },
+            {
+              "term": "gaming",
+              "count": 5,
+              "dominant_source": "search"
+            },
+            {
+              "term": "setup",
+              "count": 5,
+              "dominant_source": "search"
+            }
+          ],
+          "interest_phrases": [
+            {
+              "phrase": "baking content",
+              "count": 1
+            }
+          ],
+          "stopwatch_metrics": {
+            "total_raw_videos": 19,
+            "total_conscious_videos": 15,
+            "sleep_anomalies_scrubbed": 0,
+            "sleep_scrubbed": 3,
+            "graveyard_skips": 3,
+            "sandbox_views": 2,
+            "deep_lingers": 10,
+            "deep_dives": 0,
+            "night_count": 1,
+            "night_lingers": 1,
+            "max_consecutive_skips": 3,
+            "max_session_duration": 540.0,
+            "_graveyard_links": [
+              "https://www.tiktok.com/@d/video/21",
+              "https://www.tiktok.com/@e/video/22",
+              "https://www.tiktok.com/@d/video/20"
+            ],
+            "_sandbox_links": [
+              "https://www.tiktok.com/@f/video/31",
+              "https://www.tiktok.com/@f/video/30"
+            ],
+            "_linger_links": [
+              "https://www.tiktok.com/@a/video/2",
+              "https://www.tiktok.com/@a/video/3",
+              "https://www.tiktok.com/@b/video/6",
+              "https://www.tiktok.com/@c/video/8",
+              "https://www.tiktok.com/@a/video/4",
+              "https://www.tiktok.com/@b/video/7",
+              "https://www.tiktok.com/@g/video/40",
+              "https://www.tiktok.com/@c/video/9",
+              "https://www.tiktok.com/@b/video/5",
+              "https://www.tiktok.com/@a/video/1"
+            ],
+            "_deep_dive_links": [],
+            "hourly_heatmap": {
+              "0": 0,
+              "1": 0,
+              "2": 1,
+              "3": 0,
+              "4": 0,
+              "5": 0,
+              "6": 0,
+              "7": 0,
+              "8": 0,
+              "9": 0,
+              "10": 9,
+              "11": 3,
+              "12": 2,
+              "13": 0,
+              "14": 0,
+              "15": 0,
+              "16": 0,
+              "17": 0,
+              "18": 0,
+              "19": 0,
+              "20": 0,
+              "21": 0,
+              "22": 0,
+              "23": 0
+            },
+            "weekly_heatmap": {
+              "0": {
+                "0": 0,
+                "1": 0,
+                "2": 0,
+                "3": 0,
+                "4": 0,
+                "5": 0,
+                "6": 0,
+                "7": 0,
+                "8": 0,
+                "9": 0,
+                "10": 0,
+                "11": 0,
+                "12": 0,
+                "13": 0,
+                "14": 0,
+                "15": 0,
+                "16": 0,
+                "17": 0,
+                "18": 0,
+                "19": 0,
+                "20": 0,
+                "21": 0,
+                "22": 0,
+                "23": 0
+              },
+              "1": {
+                "0": 0,
+                "1": 0,
+                "2": 0,
+                "3": 0,
+                "4": 0,
+                "5": 0,
+                "6": 0,
+                "7": 0,
+                "8": 0,
+                "9": 0,
+                "10": 0,
+                "11": 0,
+                "12": 0,
+                "13": 0,
+                "14": 0,
+                "15": 0,
+                "16": 0,
+                "17": 0,
+                "18": 0,
+                "19": 0,
+                "20": 0,
+                "21": 0,
+                "22": 0,
+                "23": 0
+              },
+              "2": {
+                "0": 0,
+                "1": 0,
+                "2": 0,
+                "3": 0,
+                "4": 0,
+                "5": 0,
+                "6": 0,
+                "7": 0,
+                "8": 0,
+                "9": 0,
+                "10": 0,
+                "11": 0,
+                "12": 0,
+                "13": 0,
+                "14": 0,
+                "15": 0,
+                "16": 0,
+                "17": 0,
+                "18": 0,
+                "19": 0,
+                "20": 0,
+                "21": 0,
+                "22": 0,
+                "23": 0
+              },
+              "3": {
+                "0": 0,
+                "1": 0,
+                "2": 0,
+                "3": 0,
+                "4": 0,
+                "5": 0,
+                "6": 0,
+                "7": 0,
+                "8": 0,
+                "9": 0,
+                "10": 0,
+                "11": 0,
+                "12": 0,
+                "13": 0,
+                "14": 0,
+                "15": 0,
+                "16": 0,
+                "17": 0,
+                "18": 0,
+                "19": 0,
+                "20": 0,
+                "21": 0,
+                "22": 0,
+                "23": 0
+              },
+              "4": {
+                "0": 0,
+                "1": 0,
+                "2": 0,
+                "3": 0,
+                "4": 0,
+                "5": 0,
+                "6": 0,
+                "7": 0,
+                "8": 0,
+                "9": 0,
+                "10": 9,
+                "11": 3,
+                "12": 2,
+                "13": 0,
+                "14": 0,
+                "15": 0,
+                "16": 0,
+                "17": 0,
+                "18": 0,
+                "19": 0,
+                "20": 0,
+                "21": 0,
+                "22": 0,
+                "23": 0
+              },
+              "5": {
+                "0": 0,
+                "1": 0,
+                "2": 1,
+                "3": 0,
+                "4": 0,
+                "5": 0,
+                "6": 0,
+                "7": 0,
+                "8": 0,
+                "9": 0,
+                "10": 0,
+                "11": 0,
+                "12": 0,
+                "13": 0,
+                "14": 0,
+                "15": 0,
+                "16": 0,
+                "17": 0,
+                "18": 0,
+                "19": 0,
+                "20": 0,
+                "21": 0,
+                "22": 0,
+                "23": 0
+              },
+              "6": {
+                "0": 0,
+                "1": 0,
+                "2": 0,
+                "3": 0,
+                "4": 0,
+                "5": 0,
+                "6": 0,
+                "7": 0,
+                "8": 0,
+                "9": 0,
+                "10": 0,
+                "11": 0,
+                "12": 0,
+                "13": 0,
+                "14": 0,
+                "15": 0,
+                "16": 0,
+                "17": 0,
+                "18": 0,
+                "19": 0,
+                "20": 0,
+                "21": 0,
+                "22": 0,
+                "23": 0
+              }
+            },
+            "monthly_skip_rates": {
+              "2024-01": 20.0
+            },
+            "linger_events": [
+              {
+                "video_id": "1",
+                "link": "https://www.tiktok.com/@a/video/1",
+                "time_spent": 60.0,
+                "hour": 10,
+                "_month": "2024-01"
+              },
+              {
+                "video_id": "2",
+                "link": "https://www.tiktok.com/@a/video/2",
+                "time_spent": 60.0,
+                "hour": 10,
+                "_month": "2024-01"
+              },
+              {
+                "video_id": "3",
+                "link": "https://www.tiktok.com/@a/video/3",
+                "time_spent": 60.0,
+                "hour": 10,
+                "_month": "2024-01"
+              },
+              {
+                "video_id": "4",
+                "link": "https://www.tiktok.com/@a/video/4",
+                "time_spent": 60.0,
+                "hour": 10,
+                "_month": "2024-01"
+              },
+              {
+                "video_id": "5",
+                "link": "https://www.tiktok.com/@b/video/5",
+                "time_spent": 60.0,
+                "hour": 10,
+                "_month": "2024-01"
+              },
+              {
+                "video_id": "6",
+                "link": "https://www.tiktok.com/@b/video/6",
+                "time_spent": 60.0,
+                "hour": 10,
+                "_month": "2024-01"
+              },
+              {
+                "video_id": "7",
+                "link": "https://www.tiktok.com/@b/video/7",
+                "time_spent": 60.0,
+                "hour": 10,
+                "_month": "2024-01"
+              },
+              {
+                "video_id": "8",
+                "link": "https://www.tiktok.com/@c/video/8",
+                "time_spent": 60.0,
+                "hour": 10,
+                "_month": "2024-01"
+              },
+              {
+                "video_id": "9",
+                "link": "https://www.tiktok.com/@c/video/9",
+                "time_spent": 60.0,
+                "hour": 10,
+                "_month": "2024-01"
+              },
+              {
+                "video_id": "40",
+                "link": "https://www.tiktok.com/@g/video/40",
+                "time_spent": 60.0,
+                "hour": 2,
+                "_month": "2024-01"
+              }
+            ],
+            "graveyard_events": [
+              {
+                "video_id": "20",
+                "link": "https://www.tiktok.com/@d/video/20",
+                "time_spent": 1.0,
+                "hour": 11
+              },
+              {
+                "video_id": "21",
+                "link": "https://www.tiktok.com/@d/video/21",
+                "time_spent": 1.0,
+                "hour": 11
+              },
+              {
+                "video_id": "22",
+                "link": "https://www.tiktok.com/@e/video/22",
+                "time_spent": 1.0,
+                "hour": 11
+              }
+            ],
+            "sandbox_events": [
+              {
+                "video_id": "30",
+                "link": "https://www.tiktok.com/@f/video/30",
+                "time_spent": 5.0,
+                "hour": 12
+              },
+              {
+                "video_id": "31",
+                "link": "https://www.tiktok.com/@f/video/31",
+                "time_spent": 5.0,
+                "hour": 12
+              }
+            ],
+            "night_linger_events": [
+              {
+                "video_id": "40",
+                "link": "https://www.tiktok.com/@g/video/40",
+                "time_spent": 60.0,
+                "hour": 2,
+                "_month": "2024-01"
+              }
+            ],
+            "deep_dive_events": [],
+            "data_start_month": "January 2024"
+          },
+          "behavioral_nodes": {
+            "peak_hour": "10:00 AM",
+            "inferred_sleep_window": "3 AM – 7 AM",
+            "skip_rate_percentage": 20.0,
+            "linger_rate_percentage": 66.7,
+            "night_shift_ratio": 6.7,
+            "night_linger_pct": 10.0,
+            "night_lingers_count": 1,
+            "social_graph_algorithmic_pct": 73.3,
+            "social_graph_followed_pct": 26.7
+          },
+          "primary_archetype": {
+            "name": "The Balanced Viewer",
+            "sub_archetypes": [],
+            "dissonance": {
+              "detected": false,
+              "label": null,
+              "note": null
+            },
+            "atomic_traits": {
+              "trapped": true,
+              "ruthless": false,
+              "nocturnal": false,
+              "curator": true,
+              "ghost": false,
+              "optimizer": false
+            }
+          },
+          "creator_entities": {
+            "vibe_cluster": [
+              {
+                "handle": "@a",
+                "linger_count": 4,
+                "sample_titles": [
+                  "a title 1",
+                  "a title 2",
+                  "a title 3",
+                  "a title 4"
+                ],
+                "genre": "unknown",
+                "archetype": "unknown",
+                "confidence": 0.0,
+                "is_followed": true
+              },
+              {
+                "handle": "@b",
+                "linger_count": 3,
+                "sample_titles": [
+                  "b title 7",
+                  "b title 5",
+                  "b title 6"
+                ],
+                "genre": "unknown",
+                "archetype": "unknown",
+                "confidence": 0.0,
+                "is_followed": false
+              },
+              {
+                "handle": "@c",
+                "linger_count": 2,
+                "sample_titles": [
+                  "c title 9",
+                  "c title 8"
+                ],
+                "genre": "unknown",
+                "archetype": "unknown",
+                "confidence": 0.0,
+                "is_followed": false
+              },
+              {
+                "handle": "@g",
+                "linger_count": 1,
+                "sample_titles": [
+                  ""
+                ],
+                "genre": "unknown",
+                "archetype": "unknown",
+                "confidence": 0.0,
+                "is_followed": false
+              }
+            ],
+            "graveyard": [
+              {
+                "handle": "@d",
+                "skip_count": 2,
+                "sample_titles": [
+                  ""
+                ],
+                "genre": "unknown",
+                "archetype": "unknown",
+                "confidence": 0.0,
+                "is_followed": false
+              },
+              {
+                "handle": "@e",
+                "skip_count": 1,
+                "sample_titles": [
+                  ""
+                ],
+                "genre": "unknown",
+                "archetype": "unknown",
+                "confidence": 0.0,
+                "is_followed": false
+              }
+            ]
+          },
+          "academic_insights": {
+            "explicit_vs_implicit_ratio": 0.4,
+            "explicit_actions_count": 4,
+            "implicit_linger_count": 10,
+            "echo_chamber_index_pct": 100.0,
+            "echo_chamber_basis": 10,
+            "echo_chamber_distinct_creators": 4,
+            "top_creator_handles": [
+              "@a",
+              "@b",
+              "@c",
+              "@g"
+            ]
+          },
+          "night_shift": {
+            "percentage": 6.7,
+            "count": 1,
+            "window": "23:00 – 04:00"
+          },
+          "digital_footprint": {
+            "login_count": 2,
+            "unique_ips": 2,
+            "unique_devices": [
+              "iPad",
+              "iPhone"
+            ],
+            "recent_logins": [
+              {
+                "date": "2024-01-02 08:00:00",
+                "ip": "5.6.7.8",
+                "device": "iPad",
+                "system": "iPadOS",
+                "network": "5g",
+                "carrier": "Verizon"
+              },
+              {
+                "date": "2024-01-01 08:00:00",
+                "ip": "1.2.3.4",
+                "device": "iPhone",
+                "system": "iOS",
+                "network": "wifi",
+                "carrier": "ATT"
+              }
+            ]
+          },
+          "search_rhythm": {
+            "total_searches": 3,
+            "hourly_histogram": {
+              "0": 0,
+              "1": 0,
+              "2": 0,
+              "3": 0,
+              "4": 0,
+              "5": 0,
+              "6": 0,
+              "7": 0,
+              "8": 0,
+              "9": 1,
+              "10": 0,
+              "11": 0,
+              "12": 0,
+              "13": 0,
+              "14": 1,
+              "15": 0,
+              "16": 0,
+              "17": 0,
+              "18": 0,
+              "19": 0,
+              "20": 0,
+              "21": 0,
+              "22": 1,
+              "23": 0
+            },
+            "recent_searches": [
+              {
+                "term": "sourdough starter",
+                "date": "2024-01-04 09:00:00",
+                "hour": 9,
+                "dow": 3
+              },
+              {
+                "term": "crypto crash",
+                "date": "2024-01-03 22:00:00",
+                "hour": 22,
+                "dow": 2
+              },
+              {
+                "term": "gaming setup",
+                "date": "2024-01-02 14:00:00",
+                "hour": 14,
+                "dow": 1
+              }
+            ]
+          },
+          "discrepancy_gap": {
+            "declared_surface_sample": [
+              "beauty",
+              "cooking",
+              "crypto crash",
+              "gaming",
+              "gaming setup",
+              "sourdough starter",
+              "travel"
+            ],
+            "inferred_creator_handles": [
+              "@a",
+              "@b",
+              "@c",
+              "@g"
+            ],
+            "declared_count": 7,
+            "inferred_count": 4
+          },
+          "enrichment_targets": {
+            "lingered": [
+              {
+                "video_id": "1",
+                "link": "https://www.tiktok.com/@a/video/1",
+                "time_spent": 60.0,
+                "hour": 10,
+                "_month": "2024-01"
+              },
+              {
+                "video_id": "2",
+                "link": "https://www.tiktok.com/@a/video/2",
+                "time_spent": 60.0,
+                "hour": 10,
+                "_month": "2024-01"
+              },
+              {
+                "video_id": "3",
+                "link": "https://www.tiktok.com/@a/video/3",
+                "time_spent": 60.0,
+                "hour": 10,
+                "_month": "2024-01"
+              },
+              {
+                "video_id": "4",
+                "link": "https://www.tiktok.com/@a/video/4",
+                "time_spent": 60.0,
+                "hour": 10,
+                "_month": "2024-01"
+              },
+              {
+                "video_id": "5",
+                "link": "https://www.tiktok.com/@b/video/5",
+                "time_spent": 60.0,
+                "hour": 10,
+                "_month": "2024-01"
+              },
+              {
+                "video_id": "6",
+                "link": "https://www.tiktok.com/@b/video/6",
+                "time_spent": 60.0,
+                "hour": 10,
+                "_month": "2024-01"
+              },
+              {
+                "video_id": "7",
+                "link": "https://www.tiktok.com/@b/video/7",
+                "time_spent": 60.0,
+                "hour": 10,
+                "_month": "2024-01"
+              },
+              {
+                "video_id": "8",
+                "link": "https://www.tiktok.com/@c/video/8",
+                "time_spent": 60.0,
+                "hour": 10,
+                "_month": "2024-01"
+              },
+              {
+                "video_id": "9",
+                "link": "https://www.tiktok.com/@c/video/9",
+                "time_spent": 60.0,
+                "hour": 10,
+                "_month": "2024-01"
+              },
+              {
+                "video_id": "40",
+                "link": "https://www.tiktok.com/@g/video/40",
+                "time_spent": 60.0,
+                "hour": 2,
+                "_month": "2024-01"
+              }
+            ],
+            "graveyard": [
+              {
+                "video_id": "20",
+                "link": "https://www.tiktok.com/@d/video/20",
+                "time_spent": 1.0,
+                "hour": 11
+              },
+              {
+                "video_id": "21",
+                "link": "https://www.tiktok.com/@d/video/21",
+                "time_spent": 1.0,
+                "hour": 11
+              },
+              {
+                "video_id": "22",
+                "link": "https://www.tiktok.com/@e/video/22",
+                "time_spent": 1.0,
+                "hour": 11
+              }
+            ],
+            "sandbox": [
+              {
+                "video_id": "30",
+                "link": "https://www.tiktok.com/@f/video/30",
+                "time_spent": 5.0,
+                "hour": 12
+              },
+              {
+                "video_id": "31",
+                "link": "https://www.tiktok.com/@f/video/31",
+                "time_spent": 5.0,
+                "hour": 12
+              }
+            ],
+            "night_lingered": [
+              {
+                "video_id": "40",
+                "link": "https://www.tiktok.com/@g/video/40",
+                "time_spent": 60.0,
+                "hour": 2,
+                "_month": "2024-01"
+              }
+            ],
+            "deep_dives": [],
+            "following_usernames": [
+              "somebodyelse",
+              "a"
+            ]
+          },
+          "declared_signals": {
+            "settings_interests": [
+              "cooking",
+              "travel"
+            ],
+            "ad_interests": [
+              "Beauty",
+              "Gaming"
+            ],
+            "recent_searches": [
+              "sourdough starter",
+              "crypto crash",
+              "gaming setup"
+            ],
+            "following_count": 2,
+            "follower_count": 3
+          },
+          "ad_profile": {
+            "advertiser_categories": [
+              "Beauty",
+              "Gaming"
+            ],
+            "vulnerability_window": "10 AM / 11 AM / 12 PM",
+            "peak_ad_hour": "10:00 AM",
+            "night_targeting": 6.7,
+            "off_platform_tracked": true,
+            "off_platform_events": 3,
+            "shop_order_count": 1,
+            "shop_products": [
+              "Blender",
+              "Whisk"
+            ],
+            "product_browsing_count": 1,
+            "browsed_products": [
+              "Spatula"
+            ]
+          },
+          "comment_voice": {
+            "total_comments": 2,
+            "avg_length_chars": 26.0,
+            "long_comments_count": 0,
+            "long_comment_pct": 0.0,
+            "top_20_longest": [
+              "love this baking content 🔥",
+              "the lakers are unstoppable"
+            ],
+            "references_detected": {
+              "sports_teams": [
+                "lakers"
+              ]
+            },
+            "emoji_density": 0.0192,
+            "engagement_style_label": "Reactive Commenter"
+          },
+          "share_behavior": {
+            "total_shares": 2,
+            "share_methods": {
+              "whatsapp": 1,
+              "copy_link": 1
+            },
+            "primary_share_method": "whatsapp",
+            "share_behavior_type": "Mixed Sharer",
+            "dm_share_count": 1
+          },
+          "transparency_gap": {
+            "official_ad_interest_count": 2,
+            "behavioral_interest_count": 12,
+            "gap_interpretation": "Significant gap: TikTok's declared interests underrepresent actual behavioral profile by approx 83%."
+          },
+          "algorithm_drift": {
+            "detectable": false,
+            "direction": null,
+            "delta_pct": null
+          },
+          "monthly_creator_trends": {
+            "2024-01": [
+              {
+                "handle": "@a",
+                "count": 4
+              },
+              {
+                "handle": "@b",
+                "count": 3
+              },
+              {
+                "handle": "@c",
+                "count": 2
+              },
+              {
+                "handle": "@g",
+                "count": 1
+              }
+            ]
+          },
+          "monthly_topic_trends": {
+            "2024-01": [
+              {
+                "term": "sourdough starter",
+                "count": 3
+              },
+              {
+                "term": "crypto crash",
+                "count": 3
+              },
+              {
+                "term": "gaming setup",
+                "count": 3
+              },
+              {
+                "term": "love",
+                "count": 1
+              },
+              {
+                "term": "baking",
+                "count": 1
+              },
+              {
+                "term": "content",
+                "count": 1
+              },
+              {
+                "term": "lakers",
+                "count": 1
+              },
+              {
+                "term": "unstoppable",
+                "count": 1
+              }
+            ]
+          },
+          "sandbox_retests": [
+            {
+              "handle": "@f",
+              "times_served": 2
+            }
+          ],
+          "skip_anomalies": [],
+          "data_cliff": {
+            "start_month": "January 2024",
+            "window_days": 180
+          }
+        },
+        "parsed": {
+          "watch_history_active": [
+            {
+              "date": "2024-01-05 10:00:00",
+              "link": "https://www.tiktok.com/@a/video/1",
+              "title": "a title 1"
+            },
+            {
+              "date": "2024-01-05 10:01:00",
+              "link": "https://www.tiktok.com/@a/video/2",
+              "title": "a title 2"
+            },
+            {
+              "date": "2024-01-05 10:02:00",
+              "link": "https://www.tiktok.com/@a/video/3",
+              "title": "a title 3"
+            },
+            {
+              "date": "2024-01-05 10:03:00",
+              "link": "https://www.tiktok.com/@a/video/4",
+              "title": "a title 4"
+            },
+            {
+              "date": "2024-01-05 10:04:00",
+              "link": "https://www.tiktok.com/@b/video/5",
+              "title": "b title 5"
+            },
+            {
+              "date": "2024-01-05 10:05:00",
+              "link": "https://www.tiktok.com/@b/video/6",
+              "title": "b title 6"
+            },
+            {
+              "date": "2024-01-05 10:06:00",
+              "link": "https://www.tiktok.com/@b/video/7",
+              "title": "b title 7"
+            },
+            {
+              "date": "2024-01-05 10:07:00",
+              "link": "https://www.tiktok.com/@c/video/8",
+              "title": "c title 8"
+            },
+            {
+              "date": "2024-01-05 10:08:00",
+              "link": "https://www.tiktok.com/@c/video/9",
+              "title": "c title 9"
+            },
+            {
+              "date": "2024-01-05 10:09:00",
+              "link": "https://www.tiktok.com/@c/video/10",
+              "title": "c title 10"
+            },
+            {
+              "date": "2024-01-05 11:00:00",
+              "link": "https://www.tiktok.com/@d/video/20"
+            },
+            {
+              "date": "2024-01-05 11:00:01",
+              "link": "https://www.tiktok.com/@d/video/21"
+            },
+            {
+              "date": "2024-01-05 11:00:02",
+              "link": "https://www.tiktok.com/@e/video/22"
+            },
+            {
+              "date": "2024-01-05 11:00:03",
+              "link": "https://www.tiktok.com/@e/video/23"
+            },
+            {
+              "date": "2024-01-05 12:00:00",
+              "link": "https://www.tiktok.com/@f/video/30"
+            },
+            {
+              "date": "2024-01-05 12:00:05",
+              "link": "https://www.tiktok.com/@f/video/31"
+            },
+            {
+              "date": "2024-01-05 12:00:10",
+              "link": "https://www.tiktok.com/@f/video/32"
+            },
+            {
+              "date": "2024-01-06 02:00:00",
+              "link": "https://www.tiktok.com/@g/video/40"
+            },
+            {
+              "date": "2024-01-06 02:01:00",
+              "link": "https://www.tiktok.com/@g/video/41"
+            }
+          ],
+          "following": [
+            {
+              "username": "a"
+            },
+            {
+              "username": "somebodyelse"
+            }
+          ],
+          "followers": [
+            {
+              "username": "fan1"
+            },
+            {
+              "username": "fan2"
+            },
+            {
+              "username": "fan3"
+            }
+          ],
+          "likes": [
+            {
+              "date": "2024-01-05 10:00:30",
+              "link": "https://www.tiktok.com/@a/video/1"
+            },
+            {
+              "date": "2024-01-05 10:30:00",
+              "link": "https://www.tiktok.com/@b/video/4"
+            }
+          ],
+          "comments": [
+            {
+              "date": "2024-01-05 10:15:00",
+              "comment": "love this baking content 🔥"
+            },
+            {
+              "date": "2024-01-06 09:00:00",
+              "comment": "the lakers are unstoppable"
+            }
+          ],
+          "shares": [
+            {
+              "date": "2024-01-05 09:00:00",
+              "link": "https://www.tiktok.com/@a/video/1",
+              "method": "whatsapp"
+            },
+            {
+              "date": "2024-01-05 09:05:00",
+              "link": "https://www.tiktok.com/@b/video/4",
+              "method": "copy_link"
+            }
+          ],
+          "searches": [
+            {
+              "term": "sourdough starter",
+              "date": "2024-01-04 09:00:00"
+            },
+            {
+              "term": "crypto crash",
+              "date": "2024-01-03 22:00:00"
+            },
+            {
+              "term": "gaming setup",
+              "date": "2024-01-02 14:00:00"
+            }
+          ],
+          "ad_interests": [
+            "Beauty",
+            "Gaming"
+          ],
+          "settings_interests": [
+            "cooking",
+            "travel"
+          ],
+          "login_history": [
+            {
+              "date": "2024-01-01 08:00:00",
+              "ip": "1.2.3.4",
+              "device_model": "iPhone",
+              "device_system": "iOS",
+              "network_type": "wifi",
+              "carrier": "ATT"
+            },
+            {
+              "date": "2024-01-02 08:00:00",
+              "ip": "5.6.7.8",
+              "device_model": "iPad",
+              "device_system": "iPadOS",
+              "network_type": "5g",
+              "carrier": "Verizon"
+            }
+          ],
+          "login_history_stats": {
+            "unique_ips": 2,
+            "unique_devices": [
+              "iPad",
+              "iPhone"
+            ],
+            "ip_locations": [
+              "1.2.3.4",
+              "5.6.7.8"
+            ]
+          },
+          "off_tiktok_activity": [
+            {
+              "x": 1
+            },
+            {
+              "y": 2
+            },
+            {
+              "z": 3
+            }
+          ],
+          "shop_orders": [
+            {
+              "date": "2024-01-01",
+              "total_price": "19.99",
+              "products": [
+                "Blender",
+                "Whisk"
+              ]
+            }
+          ],
+          "product_browsing": [
+            {
+              "date": "2024-01-02",
+              "shop": "KitchenCo",
+              "product": "Spatula"
+            }
+          ]
+        }
+      },
+      "expected": [
+        {
+          "id": "algorithmic_identity",
+          "title": "ALGORITHMIC IDENTITY",
+          "icon": "🎭",
+          "prose": "TikTok's algorithm dominates your attention. Only 27% of your sustained viewing goes to accounts you've explicitly followed — the rest is pure machine curation. Your most-watched creator, @a, was likely surfaced algorithmically. You are largely a product of the recommendation engine.",
+          "accent": "#4db8ff",
+          "stats": [
+            {
+              "label": "Followed %",
+              "value": "27%"
+            },
+            {
+              "label": "Algorithmic %",
+              "value": "73%"
+            },
+            {
+              "label": "#1 Creator",
+              "value": "@a"
+            },
+            {
+              "label": "#2 Creator",
+              "value": "@b"
+            },
+            {
+              "label": "#3 Creator",
+              "value": "@c"
+            }
+          ],
+          "chart": {
+            "type": "donut",
+            "data": [
+              {
+                "name": "@a",
+                "value": 4
+              },
+              {
+                "name": "@b",
+                "value": 3
+              },
+              {
+                "name": "@c",
+                "value": 2
+              },
+              {
+                "name": "@g",
+                "value": 1
+              }
+            ]
+          },
+          "provenance": "Derived from watch time deltas (linger count) on identified creator handles vs discovery feed."
+        },
+        {
+          "id": "attention_signature",
+          "title": "ATTENTION SIGNATURE",
+          "icon": "👁️",
+          "prose": "You are a deep watcher. 67% of your views end in extended viewing — far above typical patterns. TikTok's engagement model treats this as a strong positive signal: creators you linger on are amplified in others' feeds. Your attention is a resource the algorithm harvests aggressively.",
+          "accent": "#ff8c42",
+          "stats": [
+            {
+              "label": "Linger Rate",
+              "value": "66.7%"
+            },
+            {
+              "label": "Skip Rate",
+              "value": "20.0%"
+            },
+            {
+              "label": "Deep Dive Rate",
+              "value": "0.0%"
+            },
+            {
+              "label": "Total Videos",
+              "value": "15"
+            }
+          ],
+          "chart": {
+            "type": "bar",
+            "data": [
+              {
+                "metric": "Linger",
+                "value": 66.7
+              },
+              {
+                "metric": "Skip",
+                "value": 20.0
+              },
+              {
+                "metric": "Deep Dive",
+                "value": 0.0
+              }
+            ]
+          },
+          "provenance": "Calculated from video interaction events (skip/linger ratios) across 15 conscious views."
+        },
+        {
+          "id": "dayparting",
+          "title": "DAILY RHYTHM",
+          "icon": "🕐",
+          "prose": "Your peak viewing hour is 10:00 AM. 7% of your activity occurs in the late-night window (11 PM–4 AM). Your usage pattern follows a typical circadian rhythm — consistent with intentional rather than compulsive consumption.",
+          "accent": "#a8ff78",
+          "stats": [
+            {
+              "label": "Peak Hour",
+              "value": "10:00 AM"
+            },
+            {
+              "label": "Night Viewing",
+              "value": "7%"
+            },
+            {
+              "label": "Active Hours",
+              "value": "4"
+            }
+          ],
+          "chart": {
+            "type": "bar",
+            "data": [
+              {
+                "hour": "0",
+                "count": 0
+              },
+              {
+                "hour": "1",
+                "count": 0
+              },
+              {
+                "hour": "2",
+                "count": 1
+              },
+              {
+                "hour": "3",
+                "count": 0
+              },
+              {
+                "hour": "4",
+                "count": 0
+              },
+              {
+                "hour": "5",
+                "count": 0
+              },
+              {
+                "hour": "6",
+                "count": 0
+              },
+              {
+                "hour": "7",
+                "count": 0
+              },
+              {
+                "hour": "8",
+                "count": 0
+              },
+              {
+                "hour": "9",
+                "count": 0
+              },
+              {
+                "hour": "10",
+                "count": 9
+              },
+              {
+                "hour": "11",
+                "count": 3
+              },
+              {
+                "hour": "12",
+                "count": 2
+              },
+              {
+                "hour": "13",
+                "count": 0
+              },
+              {
+                "hour": "14",
+                "count": 0
+              },
+              {
+                "hour": "15",
+                "count": 0
+              },
+              {
+                "hour": "16",
+                "count": 0
+              },
+              {
+                "hour": "17",
+                "count": 0
+              },
+              {
+                "hour": "18",
+                "count": 0
+              },
+              {
+                "hour": "19",
+                "count": 0
+              },
+              {
+                "hour": "20",
+                "count": 0
+              },
+              {
+                "hour": "21",
+                "count": 0
+              },
+              {
+                "hour": "22",
+                "count": 0
+              },
+              {
+                "hour": "23",
+                "count": 0
+              }
+            ]
+          },
+          "provenance": "Aggregated from hourly engagement frequency across 19 video events."
+        },
+        {
+          "id": "social_graph",
+          "title": "SOCIAL GRAPH",
+          "icon": "🕸️",
+          "prose": "You follow 2 accounts, with 27% of your viewing going to followed creators and 73% to algorithmically-surfaced content. Your top watched creator is @a. The social graph still has some influence.",
+          "accent": "#ff4db8",
+          "stats": [
+            {
+              "label": "Following",
+              "value": "2"
+            },
+            {
+              "label": "Watched (Followed)",
+              "value": "27%"
+            },
+            {
+              "label": "Watched (Algorithmic)",
+              "value": "73%"
+            },
+            {
+              "label": "Top Watched",
+              "value": "@a"
+            }
+          ],
+          "chart": {
+            "type": "creator_graph",
+            "data": [
+              {
+                "name": "@a",
+                "size": 4,
+                "is_followed": true,
+                "genre": "unknown"
+              },
+              {
+                "name": "@b",
+                "size": 3,
+                "is_followed": false,
+                "genre": "unknown"
+              },
+              {
+                "name": "@c",
+                "size": 2,
+                "is_followed": false,
+                "genre": "unknown"
+              },
+              {
+                "name": "@g",
+                "size": 1,
+                "is_followed": false,
+                "genre": "unknown"
+              }
+            ]
+          },
+          "provenance": "Determined by comparing engagement metrics on followed accounts vs algorithmically-surfaced creators."
+        },
+        {
+          "id": "share_behavior",
+          "title": "SHARE BEHAVIOR",
+          "icon": "🔗",
+          "prose": "Your sharing behavior is mixed sharer — 2 shares, with Whatsapp as the primary method. You extend TikTok's reach beyond the platform.",
+          "accent": "#ffd700",
+          "stats": [
+            {
+              "label": "Total Shares",
+              "value": "2"
+            },
+            {
+              "label": "Type",
+              "value": "Mixed Sharer"
+            },
+            {
+              "label": "Primary Method",
+              "value": "Whatsapp"
+            },
+            {
+              "label": "Share/Like Ratio",
+              "value": "1.000"
+            }
+          ],
+          "chart": {
+            "type": "donut",
+            "data": [
+              {
+                "name": "Whatsapp",
+                "value": 1
+              },
+              {
+                "name": "Copy_Link",
+                "value": 1
+              }
+            ]
+          },
+          "provenance": "Extracted from share method metadata and correlated with like volume."
+        },
+        {
+          "id": "comment_voice",
+          "title": "COMMENT VOICE",
+          "icon": "💬",
+          "prose": "You are a Reactive Commenter. Your 2 comments average 26 characters. Your textual footprint reflects a reactive commenter mode of engagement.",
+          "accent": "#c8a2c8",
+          "stats": [
+            {
+              "label": "Total Comments",
+              "value": "2"
+            },
+            {
+              "label": "Avg Length",
+              "value": "26 chars"
+            },
+            {
+              "label": "Style",
+              "value": "Reactive Commenter"
+            }
+          ],
+          "chart": null,
+          "provenance": "Analyzed from comment length and frequency relative to viewing volume."
+        },
+        {
+          "id": "transparency_gap",
+          "title": "TRANSPARENCY GAP",
+          "icon": "🔍",
+          "prose": "TikTok discloses 2 declared interests — but behavioral signals reveal 12 clusters. Significant gap: TikTok's declared interests underrepresent actual behavioral profile by approx 83%.",
+          "accent": "#ff4466",
+          "stats": [
+            {
+              "label": "Declared Interests",
+              "value": "2"
+            },
+            {
+              "label": "Behavioral Clusters",
+              "value": "12"
+            },
+            {
+              "label": "Login Events",
+              "value": "2"
+            },
+            {
+              "label": "Unique IPs",
+              "value": "2"
+            }
+          ],
+          "chart": {
+            "type": "bar",
+            "data": [
+              {
+                "category": "Ad Interests",
+                "count": 2
+              },
+              {
+                "category": "Behaviors",
+                "count": 12
+              },
+              {
+                "category": "Logins",
+                "count": 2
+              }
+            ]
+          },
+          "provenance": "Forensic gap between 'Settings Interests' and behavioral categories inferred from video metadata."
+        },
+        {
+          "id": "location_trace",
+          "title": "WHERE TIKTOK FOUND YOU",
+          "icon": "📍",
+          "prose": "Your login history covers 0 cities, with Unknown as your home base. Even a single IP can reveal your ISP and approximate neighborhood.",
+          "accent": "#00e5ff",
+          "stats": [
+            {
+              "label": "Home City",
+              "value": "Unknown"
+            },
+            {
+              "label": "Cities Seen",
+              "value": "0"
+            },
+            {
+              "label": "Login Events",
+              "value": "2"
+            }
+          ],
+          "chart": null,
+          "provenance": "Geolocated from IP addresses recorded in 2 distinct login events."
+        },
+        {
+          "id": "closing_synthesis",
+          "title": "CLOSING SYNTHESIS",
+          "icon": "🧠",
+          "prose": "Across your usage history, you emerge as The Balanced Viewer. The algorithm characterizes you through behavior rather than stated preferences. This dossier is a partial reconstruction — TikTok's actual model is orders of magnitude more granular.",
+          "accent": "#e0e0e0",
+          "stats": [],
+          "chart": null,
+          "provenance": "Cross-dimensional behavioral synthesis mapped from all forensic blocks."
+        }
+      ]
+    }
+  ]
+}
