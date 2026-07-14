@@ -26,7 +26,9 @@ interface VibeEntry {
   linger_count?: number;
 }
 type Traits = Record<string, boolean>;
-type Nodes = Record<string, number>;
+// behavioral_nodes is a mixed bag (peak_hour/sleep_window are strings); the
+// archetype logic only reads the numeric fields.
+type Nodes = Record<string, any>;
 
 const len = (a?: unknown[]): number => a?.length ?? 0;
 const sumLinger = (v: VibeEntry[]): number => v.reduce((a, c) => a + (c.linger_count ?? 0), 0);
