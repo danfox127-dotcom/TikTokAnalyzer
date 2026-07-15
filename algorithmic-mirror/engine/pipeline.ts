@@ -12,6 +12,7 @@ import { buildGhostProfile } from "./ghostProfile";
 import { buildNarrativeBlocks } from "./narratives";
 import { computeCoverage, evaluateGates, Coverage, GateResult } from "./coverage";
 import { buildClaims } from "./claims";
+import { fingerprintExport, SchemaFingerprint } from "./schemaFingerprint";
 import { Claim } from "./types";
 
 export interface EngineOptions {
@@ -30,12 +31,19 @@ export interface EngineResult {
   gates: Record<string, GateResult>;
   /** Tiered, evidence-carrying insight claims (WP-1.5). */
   claims: Claim[];
+  /**
+   * Structural fingerprint of the raw export (WP-1.6) — named layout + any
+   * unrecognized top-level sections. Only present when the pipeline was fed a
+   * RAW export (runEngine); undefined when entered from an already-parsed dict.
+   */
+  schema?: SchemaFingerprint;
 }
 
 /** Full pipeline from a raw export: parse → behavioral profile → narrative blocks. */
 export function runEngine(rawExport: any, opts: EngineOptions = {}): EngineResult {
+  const schema = fingerprintExport(rawExport);
   const parsed = parseTiktokData(rawExport);
-  return runEngineFromParsed(parsed, opts);
+  return { ...runEngineFromParsed(parsed, opts), schema };
 }
 
 /** Pipeline from an already-parsed export (skips the parse stage). */
