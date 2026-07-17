@@ -531,6 +531,37 @@ def _detect_phantom_sessions(browsing_history: list[dict], engagement_times: lis
     }
 
 
+ADAPTIVE_ANOMALY_FLOOR_S = 1200  # 20-minute floor
+
+
+def _adaptive_anomaly(browsing_history: list[dict]) -> dict:
+    """Per-user adaptive long-gap flag: count of inter-video gaps strictly beyond
+    the user's own p99 delta (nearest-rank), floored at 20 min. Additive metadata —
+    it does NOT move the fixed 1200s sleep-scrub cutoff. Sample = all non-negative
+    deltas (INCLUDING the long gaps), so a heavy-tail user gets a higher personal
+    bar and a sparse-tail user falls back to the 1200s floor.
+    """
+    dts: list = []
+    for item in browsing_history:
+        dt = _parse_date(item.get("date", ""))
+        if dt:
+            dts.append(dt)
+    dts.sort()
+    deltas = [(dts[i + 1] - dts[i]).total_seconds() for i in range(len(dts) - 1)]
+    deltas = [d for d in deltas if d >= 0]  # drop clock anomalies (negative)
+    if not deltas:
+        return {"p99_delta_s": 0.0, "adaptive_anomaly_threshold_s": float(ADAPTIVE_ANOMALY_FLOOR_S),
+                "adaptive_anomaly_count": 0}
+    ordered = sorted(deltas)
+    n = len(ordered)
+    idx = (99 * n + 99) // 100 - 1          # ceil(0.99 * n) - 1, integer nearest-rank
+    idx = max(0, min(idx, n - 1))
+    p99 = ordered[idx]
+    threshold = max(p99, float(ADAPTIVE_ANOMALY_FLOOR_S))
+    count = sum(1 for d in deltas if d > threshold)
+    return {"p99_delta_s": p99, "adaptive_anomaly_threshold_s": threshold, "adaptive_anomaly_count": count}
+
+
 def _parse_date_to_month(ev: dict) -> str | None:
     return ev.get("_month")
 
@@ -930,6 +961,7 @@ def build_ghost_profile(parsed: dict, exclude_hours: tuple[int, ...] = (), link_
                 engagement_times.append(edt)
     sw = _run_stopwatch(active_history, exclude_hours=exclude_hours, engaged_video_ids=engaged_video_ids)
     phantom = _detect_phantom_sessions(active_history, engagement_times)
+    anomaly = _adaptive_anomaly(active_history)
 
     # Pre-map links to titles for richer creator context
     link_to_title = {item.get("link", ""): item.get("title", "") for item in active_history if item.get("link")}
@@ -1091,6 +1123,9 @@ def build_ghost_profile(parsed: dict, exclude_hours: tuple[int, ...] = (), link_
             "phantom_nights": phantom["phantom_nights"],
             "phantom_video_count": phantom["phantom_video_count"],
             "excluded_hours": phantom["excluded_hours"],
+            "p99_delta_s": anomaly["p99_delta_s"],
+            "adaptive_anomaly_threshold_s": anomaly["adaptive_anomaly_threshold_s"],
+            "adaptive_anomaly_count": anomaly["adaptive_anomaly_count"],
         },
         "digital_footprint": {
             "login_count": len(parsed.get("login_history", [])),

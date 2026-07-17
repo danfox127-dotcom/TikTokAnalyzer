@@ -182,7 +182,7 @@ class TestAbandonedBucket:
 # 1c. WP-1.3 phantom-session detection (asleep-autoplay)
 # ---------------------------------------------------------------------------
 
-from api.ghost_profile import _detect_phantom_sessions, build_ghost_profile  # noqa: E402
+from api.ghost_profile import _detect_phantom_sessions, build_ghost_profile, _adaptive_anomaly  # noqa: E402
 
 NIGHT = datetime(2024, 3, 11, 1, 0, 0)  # 01:00 — night window
 
@@ -226,6 +226,35 @@ class TestPhantomSessions:
         watch = _make_history([60.0] * 12, base=NIGHT)
         profile = build_ghost_profile({"watch_history_active": watch})
         assert profile["sleep_scrub"]["phantom_video_count"] >= 10
+
+
+class TestAdaptiveAnomaly:
+    def test_floor_branch_uses_20min_floor(self):
+        # 99 normal 60s gaps + one 2000s gap → p99 is small, floor dominates.
+        out = _adaptive_anomaly(_make_history([60.0] * 99 + [2000.0]))
+        assert out["adaptive_anomaly_threshold_s"] == 1200.0
+        assert out["adaptive_anomaly_count"] == 1
+
+    def test_adaptive_branch_raises_personal_bar(self):
+        # A heavy tail pushes p99 above the floor → only extreme gaps flagged.
+        out = _adaptive_anomaly(_make_history([60.0] * 195 + [1500.0, 2000.0, 2500.0, 3000.0, 3500.0]))
+        assert out["adaptive_anomaly_threshold_s"] == 2500.0
+        assert out["adaptive_anomaly_count"] == 2
+
+    def test_negative_deltas_excluded(self):
+        hist = [
+            {"date": "2024-03-11 01:00:00", "link": "a"},
+            {"date": "2024-03-11 01:00:30", "link": "b"},
+            {"date": "2024-03-11 01:00:10", "link": "c"},  # negative delta pre-sort
+            {"date": "2024-03-11 01:00:40", "link": ""},
+        ]
+        out = _adaptive_anomaly(hist)
+        assert out["adaptive_anomaly_count"] == 0  # no gap beyond floor, no crash
+
+    def test_empty_history(self):
+        out = _adaptive_anomaly([])
+        assert out["adaptive_anomaly_count"] == 0
+        assert out["adaptive_anomaly_threshold_s"] == 1200.0
 
 
 # ---------------------------------------------------------------------------

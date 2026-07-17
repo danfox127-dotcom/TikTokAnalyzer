@@ -14,6 +14,7 @@
 import { runStopwatch, periodKey, PeriodCounts } from "./stopwatch";
 import { extractVideoId } from "./videoId";
 import { detectPhantomSessions } from "./phantomSessions";
+import { adaptiveAnomaly } from "./adaptiveAnomaly";
 import { TemporalSeries } from "./types";
 import { mineTextFootprint } from "./textFootprint";
 import { analyzeShareBehavior, analyzeCommentVoice } from "./engagement";
@@ -73,6 +74,7 @@ export function buildGhostProfile(
   }
   const sw = runStopwatch(activeHistory, excludeHours, engagedVideoIds) as any;
   const phantom = detectPhantomSessions(activeHistory, engagementTimes);
+  const anomaly = adaptiveAnomaly(activeHistory);
 
   const linkToTitle: Record<string, string> = {};
   for (const item of activeHistory) {
@@ -252,6 +254,9 @@ export function buildGhostProfile(
       phantom_nights: phantom.phantom_nights,
       phantom_video_count: phantom.phantom_video_count,
       excluded_hours: phantom.excluded_hours,
+      p99_delta_s: anomaly.p99_delta_s,
+      adaptive_anomaly_threshold_s: anomaly.adaptive_anomaly_threshold_s,
+      adaptive_anomaly_count: anomaly.adaptive_anomaly_count,
     },
     digital_footprint: {
       login_count: loginHistory.length,

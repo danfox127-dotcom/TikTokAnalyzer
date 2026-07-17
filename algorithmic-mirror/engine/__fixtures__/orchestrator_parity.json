@@ -869,7 +869,10 @@
           "phantom_sessions": [],
           "phantom_nights": 0,
           "phantom_video_count": 0,
-          "excluded_hours": 0
+          "excluded_hours": 0,
+          "p99_delta_s": 50390.0,
+          "adaptive_anomaly_threshold_s": 50390.0,
+          "adaptive_anomaly_count": 0
         },
         "digital_footprint": {
           "login_count": 2,
@@ -1570,7 +1573,10 @@
           "phantom_sessions": [],
           "phantom_nights": 0,
           "phantom_video_count": 0,
-          "excluded_hours": 0
+          "excluded_hours": 0,
+          "p99_delta_s": 0.0,
+          "adaptive_anomaly_threshold_s": 1200.0,
+          "adaptive_anomaly_count": 0
         },
         "digital_footprint": {
           "login_count": 0,
