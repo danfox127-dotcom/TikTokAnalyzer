@@ -229,6 +229,38 @@ async def analyze(
     return {**ghost_profile, "narrative_blocks": narrative_blocks}
 
 
+class ResolveRequest(BaseModel):
+    video_ids: list[str]
+
+
+_RESOLVE_MAX_IDS = 5000  # bound request size
+
+
+@app.post("/api/resolve")
+async def resolve_creators(req: ResolveRequest):
+    """Thin creator-resolution endpoint for browser-local mode.
+
+    The client runs the whole engine locally and sends ONLY opaque video ids for
+    the creators it lingered on — no titles, dates, or watch history ever leave the
+    device. We return the cache-backed video_id -> @handle map (plus display
+    name/thumbnail meta) so the client can re-run the engine with real creators.
+    """
+    vids = [v for v in dict.fromkeys(req.video_ids) if v][:_RESOLVE_MAX_IDS]
+    _metrics["enrich_requests_total"] += 1
+    _metrics["enrich_requested_videos_total"] += len(vids)
+    resolution = await creator_map.resolve_and_fill(vids)
+    _metrics["enrich_fetched_videos_total"] += resolution["newly_resolved"]
+    return {
+        "handles": resolution["handles"],
+        "meta": resolution["meta"],
+        "resolved": resolution["resolved"],
+        "total": resolution["total"],
+        "pct": resolution["pct"],
+        "newly_resolved": resolution["newly_resolved"],
+        "persistent": creator_map.using_redis(),
+    }
+
+
 class PillarsRequest(BaseModel):
     vibe_cluster: list[dict]
     graveyard: list[dict]

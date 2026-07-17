@@ -9,6 +9,7 @@ import { NarrativeReportView } from "./components/NarrativeReportView";
 import { LLMAnalysisView } from "./components/LLMAnalysisView";
 import { supabase } from "./utils/supabase";
 import { runEngine } from "../engine/pipeline";
+import { extractVideoId } from "../engine/videoId";
 import type { NarrativeBlock } from "./types/narrative";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8005";
@@ -19,14 +20,69 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8005";
 // the server path stays the default until a thin handle-resolution endpoint lands.
 const LOCAL_ENGINE = process.env.NEXT_PUBLIC_LOCAL_ENGINE === "1";
 
+/** Best-effort creator resolution: sends ONLY opaque video ids (no titles, dates,
+ *  or watch history) to the thin server endpoint and returns the video_id→@handle
+ *  map. Returns null on any failure so local mode still works fully offline. */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function resolveHandles(videoIds: string[]): Promise<any | null> {
+  try {
+    const res = await fetch(`${API_URL}/api/resolve`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ video_ids: videoIds }),
+    });
+    return res.ok ? await res.json() : null;
+  } catch {
+    return null;
+  }
+}
+
 /** Run the parity-locked TS engine on the file, entirely in the browser. Returns
  *  the same top-level shape as POST /api/analyze: the ghost profile spread with
- *  `narrative_blocks`, plus the engine's coverage/gates/claims/schema layers. */
+ *  `narrative_blocks`, plus the engine's coverage/gates/claims/schema layers.
+ *
+ *  Two passes: (1) run locally with unresolved creators; (2) if the resolve
+ *  endpoint is reachable, re-run with the cache-backed handle map so creators /
+ *  echo-chamber / vibe-cluster come back real. The raw export never leaves the
+ *  device — only opaque video ids for lingered/graveyard creators are sent. */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function analyzeLocal(file: File): Promise<any> {
   const rawExport = JSON.parse(await file.text());
-  const { profile, narratives, coverage, gates, claims, schema } = runEngine(rawExport);
-  return { ...profile, narrative_blocks: narratives, coverage, gates, claims, schema, _local_mode: true };
+  let out = runEngine(rawExport);
+
+  const sw = out.profile.stopwatch_metrics ?? {};
+  const links: string[] = [...(sw._linger_links ?? []), ...(sw._graveyard_links ?? [])];
+  const videoIds = [...new Set(links.map((l) => extractVideoId(l)).filter((v): v is string => !!v))];
+  const resolution = videoIds.length ? await resolveHandles(videoIds) : null;
+
+  if (resolution?.handles && Object.keys(resolution.handles).length) {
+    out = runEngine(rawExport, { linkHandleMap: resolution.handles });
+    // Attach display name / thumbnail to the ledgers (mirrors /api/analyze).
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const metaByHandle: Record<string, any> = {};
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    for (const m of Object.values(resolution.meta ?? {}) as any[]) {
+      if (m?.handle) metaByHandle[String(m.handle).replace(/^@/, "").toLowerCase()] = m;
+    }
+    const ce = out.profile.creator_entities ?? {};
+    for (const c of [...(ce.vibe_cluster ?? []), ...(ce.graveyard ?? [])]) {
+      const m = metaByHandle[String(c.handle ?? "").replace(/^@/, "").toLowerCase()];
+      if (m) {
+        if (m.display_name && c.display_name == null) c.display_name = m.display_name;
+        if (m.thumbnail && c.thumbnail == null) c.thumbnail = m.thumbnail;
+      }
+    }
+    out.profile.creator_resolution = {
+      resolved: resolution.resolved, total: resolution.total, pct: resolution.pct,
+      newly_resolved: resolution.newly_resolved, persistent: resolution.persistent,
+    };
+  }
+
+  return {
+    ...out.profile, narrative_blocks: out.narratives,
+    coverage: out.coverage, gates: out.gates, claims: out.claims, schema: out.schema,
+    _local_mode: true,
+  };
 }
 
 // Direct tool-based view flow: upload → dashboard
