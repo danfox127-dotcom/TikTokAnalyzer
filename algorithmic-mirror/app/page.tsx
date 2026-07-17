@@ -8,9 +8,26 @@ import { ForensicDashboard } from "./components/ForensicDashboard";
 import { NarrativeReportView } from "./components/NarrativeReportView";
 import { LLMAnalysisView } from "./components/LLMAnalysisView";
 import { supabase } from "./utils/supabase";
+import { runEngine } from "../engine/pipeline";
 import type { NarrativeBlock } from "./types/narrative";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8005";
+// Browser-local mode (Gate 0): the whole deterministic engine runs client-side —
+// nothing leaves the device. Opt-in via NEXT_PUBLIC_LOCAL_ENGINE=1, and also used
+// as an automatic fallback when the server is unreachable. NOTE: local mode has no
+// oEmbed creator resolution, so creator handles / echo-chamber come back sparse —
+// the server path stays the default until a thin handle-resolution endpoint lands.
+const LOCAL_ENGINE = process.env.NEXT_PUBLIC_LOCAL_ENGINE === "1";
+
+/** Run the parity-locked TS engine on the file, entirely in the browser. Returns
+ *  the same top-level shape as POST /api/analyze: the ghost profile spread with
+ *  `narrative_blocks`, plus the engine's coverage/gates/claims/schema layers. */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function analyzeLocal(file: File): Promise<any> {
+  const rawExport = JSON.parse(await file.text());
+  const { profile, narratives, coverage, gates, claims, schema } = runEngine(rawExport);
+  return { ...profile, narrative_blocks: narratives, coverage, gates, claims, schema, _local_mode: true };
+}
 
 // Direct tool-based view flow: upload → dashboard
 type View = "upload" | "dashboard" | "report" | "llm" | "hud";
@@ -25,12 +42,17 @@ export default function Home() {
   const [narrativeBlocks, setNarrativeBlocks] = useState<NarrativeBlock[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
 
+
   const analyze = async (file: File) => {
     setIsLoading(true);
     setError(null);
     try {
       let raw;
-      
+
+      // Browser-local mode: run the whole engine client-side, no network.
+      if (LOCAL_ENGINE) {
+        raw = await analyzeLocal(file);
+      } else
       // Use Supabase if configured
       if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
         // 1. Upload to Storage
@@ -71,6 +93,19 @@ export default function Home() {
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Unknown error";
       const net = /fetch|NetworkError|ECONNREFUSED|Failed to fetch/i.test(msg);
+      // Server unreachable → fall back to the browser-local engine so analysis
+      // still works offline (creators/echo will be sparse without oEmbed).
+      if (net && !LOCAL_ENGINE) {
+        try {
+          const raw = await analyzeLocal(file);
+          setProfile(raw as GhostProfile);
+          setNarrativeBlocks((raw as { narrative_blocks?: NarrativeBlock[] }).narrative_blocks ?? []);
+          setView("dashboard");
+          return;
+        } catch {
+          /* fall through to the original error */
+        }
+      }
       setError(net ? `Cannot reach forensics engine at ${API_URL}` : msg);
     } finally {
       setIsLoading(false);
