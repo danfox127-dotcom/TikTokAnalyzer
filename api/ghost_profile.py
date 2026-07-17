@@ -273,8 +273,17 @@ def _temporal_series(granularity: str, points: list[dict]) -> dict:
 # Task 1: True Stopwatch & AFK Firewall
 # ---------------------------------------------------------------------------
 
-def _run_stopwatch(browsing_history: list[dict], exclude_hours: tuple[int, ...] = ()) -> dict:
-    """Parse consecutive video timestamps to compute time-delta behavioral metrics."""
+def _run_stopwatch(browsing_history: list[dict], exclude_hours: tuple[int, ...] = (),
+                   engaged_video_ids: set[str] | None = None) -> dict:
+    """Parse consecutive video timestamps to compute time-delta behavioral metrics.
+
+    WP-1.3: 180–300s is `deep_dive`; 300–1200s is `abandoned` (long uncorroborated
+    gap, likely autoplay-while-away) UNLESS the video's id is in `engaged_video_ids`
+    (liked/faved/shared/commented), which promotes it back to `deep_dive`. Abandoned
+    videos stay in `total_conscious` but are excluded from engaged signals
+    (deep_dive/linger links & events, night_lingers) — and from persona inputs.
+    """
+    engaged = engaged_video_ids or set()
     entries: list[dict] = []
     for item in browsing_history:
         dt = _parse_date(item.get("date", ""))
@@ -285,7 +294,7 @@ def _run_stopwatch(browsing_history: list[dict], exclude_hours: tuple[int, ...] 
 
     # WP-1.4: separate per-period accumulator (leaves monthly_data byte-identical).
     granularity = _temporal_granularity(entries)
-    period_data = defaultdict(lambda: {"graveyard": 0, "sandbox": 0, "linger": 0, "deep_dive": 0, "total": 0, "night": 0})
+    period_data = defaultdict(lambda: {"graveyard": 0, "sandbox": 0, "linger": 0, "deep_dive": 0, "abandoned": 0, "total": 0, "night": 0})
 
     SLEEP_THRESHOLD_S = 1200
     clock_anomalies = 0
@@ -294,6 +303,8 @@ def _run_stopwatch(browsing_history: list[dict], exclude_hours: tuple[int, ...] 
     sandbox_count = 0
     linger_count = 0
     deep_dive_count = 0
+    abandoned_count = 0
+    abandoned_night_count = 0
     night_count = 0
     night_lingers = 0
 
@@ -306,6 +317,7 @@ def _run_stopwatch(browsing_history: list[dict], exclude_hours: tuple[int, ...] 
     sandbox_links: set[str] = set()
     linger_links: set[str] = set()
     deep_dive_links: set[str] = set()
+    abandoned_links: set[str] = set()
     hourly: defaultdict[int, int] = defaultdict(int)
     weekly: defaultdict[int, defaultdict[int, int]] = defaultdict(lambda: defaultdict(int))
     monthly_data = defaultdict(lambda: {"skip": 0, "total": 0})
@@ -384,7 +396,8 @@ def _run_stopwatch(browsing_history: list[dict], exclude_hours: tuple[int, ...] 
                 ev = {"video_id": vid, "link": link, "time_spent": time_spent, "hour": hour, "_month": month_key, "_day": day_key}
                 linger_events.append(ev)
                 if 23 <= hour or hour < 4: night_linger_events.append(ev)
-        else:
+        elif delta <= 300 or (vid is not None and vid in engaged):
+            # deep_dive: 180–300s, OR a longer gap the user corroborated by engaging.
             consecutive_skips = 0
             deep_dive_count += 1
             period_data[period_key]["deep_dive"] += 1
@@ -397,8 +410,16 @@ def _run_stopwatch(browsing_history: list[dict], exclude_hours: tuple[int, ...] 
                 deep_dive_events.append(ev)
                 linger_events.append(ev)
                 if 23 <= hour or hour < 4: night_linger_events.append(ev)
+        else:
+            # abandoned: 300–1200s uncorroborated. Stays in total_conscious but is
+            # NOT an engaged signal — excluded from linger/deep_dive links & events.
+            consecutive_skips = 0
+            abandoned_count += 1
+            period_data[period_key]["abandoned"] += 1
+            if 23 <= hour or hour < 4: abandoned_night_count += 1
+            if link: abandoned_links.add(link)
 
-    total_conscious = graveyard_count + sandbox_count + linger_count + deep_dive_count
+    total_conscious = graveyard_count + sandbox_count + linger_count + deep_dive_count + abandoned_count
 
     weekly_heatmap: dict[int, dict[int, int]] = {
         dow: {h: weekly[dow].get(h, 0) for h in range(24)}
@@ -419,6 +440,8 @@ def _run_stopwatch(browsing_history: list[dict], exclude_hours: tuple[int, ...] 
         "sandbox_views": sandbox_count,
         "deep_lingers": linger_count,
         "deep_dives": deep_dive_count,
+        "abandoned": abandoned_count,  # WP-1.3
+        "abandoned_night": abandoned_night_count,  # WP-1.3 (persona night adjustment)
         "night_count": night_count,
         "night_lingers": night_lingers,
         "max_consecutive_skips": max_consecutive_skips,
@@ -427,6 +450,7 @@ def _run_stopwatch(browsing_history: list[dict], exclude_hours: tuple[int, ...] 
         "_sandbox_links": sandbox_links,
         "_linger_links": linger_links,
         "_deep_dive_links": deep_dive_links,
+        "_abandoned_links": abandoned_links,  # WP-1.3
         "hourly_heatmap": {str(h): hourly.get(h, 0) for h in range(24)},
         "weekly_heatmap": weekly_heatmap,
         "monthly_skip_rates": monthly_skip_rates,
@@ -795,9 +819,18 @@ def _detect_cognitive_dissonance(traits: dict, sw: dict, behavioral_nodes: dict,
     return {"detected": False, "label": None, "note": None}
 
 
-def _determine_primary_archetype(behavioral_nodes: dict, parsed: dict, sw: dict, vibe_cluster: list[dict]) -> dict:
-    """Synthesize high-level metrics into a deterministic primary archetype."""
-    traits = _detect_atomic_traits(sw, sw["total_conscious_videos"], parsed, behavioral_nodes.get("linger_rate_percentage", 0), behavioral_nodes.get("night_shift_ratio", 0), vibe_cluster)
+def _determine_primary_archetype(behavioral_nodes: dict, parsed: dict, sw: dict, vibe_cluster: list[dict],
+                                 persona_conscious: int | None = None, persona_linger_rate: float | None = None,
+                                 persona_night_shift: float | None = None) -> dict:
+    """Synthesize high-level metrics into a deterministic primary archetype.
+
+    WP-1.3: persona_* inputs (which exclude `abandoned`/`phantom` events) override
+    the raw values when supplied; they default to the full-population metrics.
+    """
+    pc = persona_conscious if persona_conscious is not None else sw["total_conscious_videos"]
+    plr = persona_linger_rate if persona_linger_rate is not None else behavioral_nodes.get("linger_rate_percentage", 0)
+    pns = persona_night_shift if persona_night_shift is not None else behavioral_nodes.get("night_shift_ratio", 0)
+    traits = _detect_atomic_traits(sw, pc, parsed, plr, pns, vibe_cluster)
     sub_archetypes = _synthesize_sub_archetypes(traits, behavioral_nodes)
     dissonance = _detect_cognitive_dissonance(traits, sw, behavioral_nodes, parsed, vibe_cluster)
     primary_name = sub_archetypes[0]["name"] if sub_archetypes else "The Balanced Viewer"
@@ -816,8 +849,17 @@ def build_ghost_profile(parsed: dict, exclude_hours: tuple[int, ...] = (), link_
     split, archetype — re-derive from real creators once oEmbed has resolved them.
     """
     active_history = parsed.get("watch_history_active", [])
-    sw = _run_stopwatch(active_history, exclude_hours=exclude_hours)
-    
+    # WP-1.3 corroboration: video ids the user engaged with (like/fav/share/comment).
+    # A long (300–1200s) gap on one of these is a real deep-dive, not abandonment.
+    engaged_video_ids: set[str] = set()
+    for coll, key in ((parsed.get("likes", []), "link"), (parsed.get("favorites", []), "link"),
+                      (parsed.get("shares", []), "link"), (parsed.get("comments", []), "url")):
+        for item in coll:
+            evid = oembed.extract_video_id(item.get(key, "") or item.get("link", ""))
+            if evid:
+                engaged_video_ids.add(evid)
+    sw = _run_stopwatch(active_history, exclude_hours=exclude_hours, engaged_video_ids=engaged_video_ids)
+
     # Pre-map links to titles for richer creator context
     link_to_title = {item.get("link", ""): item.get("title", "") for item in active_history if item.get("link")}
 
@@ -831,6 +873,12 @@ def build_ghost_profile(parsed: dict, exclude_hours: tuple[int, ...] = (), link_
     linger_rate_pct = (sustained_and_dives / max(total_conscious, 1)) * 100
     night_shift_pct = (sw["night_count"] / max(total_conscious, 1)) * 100
     night_linger_pct = (sw["night_lingers"] / max(sustained_and_dives, 1)) * 100
+
+    # WP-1.3: persona-dimension inputs exclude `abandoned` (autoplay-while-away) —
+    # they don't reflect intent. Displayed metrics above keep the full population.
+    persona_conscious = total_conscious - sw["abandoned"]
+    persona_linger_rate = (sustained_and_dives / max(persona_conscious, 1)) * 100
+    persona_night_shift = ((sw["night_count"] - sw["abandoned_night"]) / max(persona_conscious, 1)) * 100
 
     vibe_cluster = resolve_vibe_cluster(_count_creators(sw["_linger_links"], limit=20, count_key="linger_count", link_to_title=link_to_title, link_handle_map=link_handle_map))
     graveyard = resolve_vibe_cluster(_count_creators(sw["_graveyard_links"], limit=20, count_key="skip_count", link_to_title=link_to_title, link_handle_map=link_handle_map))
@@ -863,7 +911,8 @@ def build_ghost_profile(parsed: dict, exclude_hours: tuple[int, ...] = (), link_
     }
     algorithm_drift = _algorithm_drift(sw.get("monthly_skip_rates", {}))
 
-    primary_archetype = _determine_primary_archetype(behavioral_nodes, parsed, sw, vibe_cluster)
+    primary_archetype = _determine_primary_archetype(behavioral_nodes, parsed, sw, vibe_cluster,
+                                                      persona_conscious, persona_linger_rate, persona_night_shift)
 
     searches_raw = parsed.get("searches", [])
     search_hour_hist = defaultdict(int)
@@ -890,7 +939,7 @@ def build_ghost_profile(parsed: dict, exclude_hours: tuple[int, ...] = (), link_
     gran = sw["temporal_granularity"]
     pdata = sw["period_data"]
     bucket_series = _temporal_series(gran, [
-        {"period": p, "value": {k: d[k] for k in ("graveyard", "sandbox", "linger", "deep_dive", "total")}}
+        {"period": p, "value": {k: d[k] for k in ("graveyard", "sandbox", "linger", "deep_dive", "abandoned", "total")}}
         for p, d in pdata.items()
     ])
     night_shift_series = _temporal_series(gran, [
@@ -933,6 +982,7 @@ def build_ghost_profile(parsed: dict, exclude_hours: tuple[int, ...] = (), link_
     sw["_sandbox_links"] = list(sw["_sandbox_links"])
     sw["_linger_links"] = list(sw["_linger_links"])
     sw["_deep_dive_links"] = list(sw["_deep_dive_links"])
+    sw["_abandoned_links"] = list(sw["_abandoned_links"])
 
     return {
         "status": "success",

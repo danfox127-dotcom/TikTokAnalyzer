@@ -44,6 +44,8 @@ export interface StopwatchResult {
   sandbox_views: number;
   deep_lingers: number;
   deep_dives: number;
+  abandoned: number;
+  abandoned_night: number;
   night_count: number;
   night_lingers: number;
   max_consecutive_skips: number;
@@ -52,6 +54,7 @@ export interface StopwatchResult {
   _sandbox_links: string[];
   _linger_links: string[];
   _deep_dive_links: string[];
+  _abandoned_links: string[];
   hourly_heatmap: Record<string, number>;
   weekly_heatmap: Record<string, Record<string, number>>;
   monthly_skip_rates: Record<string, number>;
@@ -72,6 +75,7 @@ export interface PeriodCounts {
   sandbox: number;
   linger: number;
   deep_dive: number;
+  abandoned: number;
   total: number;
   night: number;
 }
@@ -116,8 +120,10 @@ export function periodKey(dt: Date, granularity: "month" | "week"): string {
 export function runStopwatch(
   browsingHistory: HistoryEntry[],
   excludeHours: number[] = [],
+  engagedVideoIds?: Set<string> | null,
 ): StopwatchResult {
   const exclude = new Set(excludeHours);
+  const engaged = engagedVideoIds ?? new Set<string>();
 
   const entries: { dt: Date; link: string }[] = [];
   for (const item of browsingHistory) {
@@ -132,6 +138,8 @@ export function runStopwatch(
   let sandbox = 0;
   let linger = 0;
   let deepDive = 0;
+  let abandoned = 0;
+  let abandonedNight = 0;
   let nightCount = 0;
   let nightLingers = 0;
   let consecutiveSkips = 0;
@@ -147,12 +155,13 @@ export function runStopwatch(
   const granularity = temporalGranularity(entries);
   const periodData: Record<string, PeriodCounts> = {};
   const periodBump = (pk: string): PeriodCounts =>
-    (periodData[pk] ??= { graveyard: 0, sandbox: 0, linger: 0, deep_dive: 0, total: 0, night: 0 });
+    (periodData[pk] ??= { graveyard: 0, sandbox: 0, linger: 0, deep_dive: 0, abandoned: 0, total: 0, night: 0 });
 
   const graveyardLinks = new Set<string>();
   const sandboxLinks = new Set<string>();
   const lingerLinks = new Set<string>();
   const deepDiveLinks = new Set<string>();
+  const abandonedLinks = new Set<string>();
 
   const lingerEvents: StopwatchEvent[] = [];
   const graveyardEvents: StopwatchEvent[] = [];
@@ -227,7 +236,8 @@ export function runStopwatch(
         lingerEvents.push(ev);
         if (isNight) nightLingerEvents.push(ev);
       }
-    } else {
+    } else if (delta <= 300 || (vid != null && engaged.has(vid))) {
+      // deep_dive: 180–300s, OR a longer gap the user corroborated by engaging.
       consecutiveSkips = 0;
       deepDive++;
       pc.deep_dive += 1;
@@ -242,10 +252,18 @@ export function runStopwatch(
         lingerEvents.push(ev);
         if (isNight) nightLingerEvents.push(ev);
       }
+    } else {
+      // abandoned: 300–1200s uncorroborated. Stays in total_conscious but is NOT
+      // an engaged signal — excluded from linger/deep_dive links & events.
+      consecutiveSkips = 0;
+      abandoned++;
+      pc.abandoned += 1;
+      if (isNight) abandonedNight++;
+      if (link) abandonedLinks.add(link);
     }
   }
 
-  const totalConscious = graveyard + sandbox + linger + deepDive;
+  const totalConscious = graveyard + sandbox + linger + deepDive + abandoned;
 
   const hourlyHeatmap: Record<string, number> = {};
   for (let h = 0; h < 24; h++) hourlyHeatmap[String(h)] = hourly[h] ?? 0;
@@ -276,6 +294,8 @@ export function runStopwatch(
     sandbox_views: sandbox,
     deep_lingers: linger,
     deep_dives: deepDive,
+    abandoned,
+    abandoned_night: abandonedNight,
     night_count: nightCount,
     night_lingers: nightLingers,
     max_consecutive_skips: maxConsecutiveSkips,
@@ -284,6 +304,7 @@ export function runStopwatch(
     _sandbox_links: Array.from(sandboxLinks),
     _linger_links: Array.from(lingerLinks),
     _deep_dive_links: Array.from(deepDiveLinks),
+    _abandoned_links: Array.from(abandonedLinks),
     hourly_heatmap: hourlyHeatmap,
     weekly_heatmap: weeklyHeatmap,
     monthly_skip_rates: monthlySkipRates,

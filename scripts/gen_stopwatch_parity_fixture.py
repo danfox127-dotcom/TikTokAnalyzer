@@ -47,7 +47,7 @@ def _from_deltas(deltas, base, link=VID + "1", links=None):
 
 def build_scenarios():
     mon14 = datetime(2024, 3, 11, 14, 0, 0)  # Monday 14:00 (weekday()==0)
-    scenarios = []
+    scenarios = []  # (name, history, exclude_hours) or (name, history, exclude_hours, engaged_ids)
 
     # 1. Tier boundaries — exact edges 3/15/180/300s
     scenarios.append(("tier_boundaries", _from_deltas(
@@ -127,6 +127,18 @@ def build_scenarios():
     yb.append(_entry(datetime(2025, 1, 6, 13, 0, 0), ""))
     scenarios.append(("temporal_week_year_boundary", yb, ()))
 
+    # 14. WP-1.3 abandoned bucket boundaries: deltas at 300 (deep_dive) and 301
+    #     (abandoned) and 1199 (abandoned) and 1200 (sleep_scrub). Distinct video
+    #     ids so corroboration can target one precisely in the next scenario.
+    ab_links = [VID + "111", VID + "222", VID + "333", VID + "444"]
+    scenarios.append(("abandoned_boundaries", _from_deltas(
+        [300.0, 301.0, 1199.0, 1200.0], mon14, links=ab_links), ()))
+
+    # 15. WP-1.3 corroboration: same 301s + 1199s gaps, but the videos were engaged
+    #     (ids 222/333) → both promoted from abandoned to deep_dive.
+    scenarios.append(("abandoned_corroborated", _from_deltas(
+        [300.0, 301.0, 1199.0, 1200.0], mon14, links=ab_links), (), {"222", "333"}))
+
     return scenarios
 
 
@@ -143,11 +155,13 @@ def _jsonable(out: dict) -> dict:
 
 def main():
     cases = []
-    for name, history, exclude in build_scenarios():
-        out = _run_stopwatch(history, exclude_hours=exclude)
+    for scenario in build_scenarios():
+        name, history, exclude = scenario[0], scenario[1], scenario[2]
+        engaged = set(scenario[3]) if len(scenario) > 3 else set()
+        out = _run_stopwatch(history, exclude_hours=exclude, engaged_video_ids=engaged)
         cases.append({
             "name": name,
-            "input": {"history": history, "exclude_hours": list(exclude)},
+            "input": {"history": history, "exclude_hours": list(exclude), "engaged_video_ids": sorted(engaged)},
             "expected": _jsonable(out),
         })
 

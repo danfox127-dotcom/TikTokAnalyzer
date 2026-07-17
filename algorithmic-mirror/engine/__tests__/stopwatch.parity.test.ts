@@ -16,7 +16,7 @@ import { runStopwatch, StopwatchResult, StopwatchEvent } from "../stopwatch";
 
 interface FixtureCase {
   name: string;
-  input: { history: { date: string; link: string }[]; exclude_hours: number[] };
+  input: { history: { date: string; link: string }[]; exclude_hours: number[]; engaged_video_ids?: string[] };
   expected: Record<string, any>;
 }
 
@@ -28,10 +28,11 @@ const cases: FixtureCase[] = fixture.cases;
 const SCALAR_FIELDS: (keyof StopwatchResult)[] = [
   "total_raw_videos", "total_conscious_videos", "sleep_anomalies_scrubbed",
   "sleep_scrubbed", "graveyard_skips", "sandbox_views", "deep_lingers",
-  "deep_dives", "night_count", "night_lingers", "max_consecutive_skips",
+  "deep_dives", "abandoned", "abandoned_night", "night_count", "night_lingers",
+  "max_consecutive_skips",
 ];
 const LINK_FIELDS: (keyof StopwatchResult)[] = [
-  "_graveyard_links", "_sandbox_links", "_linger_links", "_deep_dive_links",
+  "_graveyard_links", "_sandbox_links", "_linger_links", "_deep_dive_links", "_abandoned_links",
 ];
 const EVENT_FIELDS: (keyof StopwatchResult)[] = [
   "linger_events", "graveyard_events", "sandbox_events",
@@ -45,7 +46,8 @@ function normEvents(events: StopwatchEvent[]): any[] {
 
 describe("stopwatch parity vs Python oracle", () => {
   test.each(cases.map((c) => [c.name, c] as const))("%s", (_name, c) => {
-    const got = runStopwatch(c.input.history, c.input.exclude_hours) as any;
+    const engaged = c.input.engaged_video_ids ? new Set<string>(c.input.engaged_video_ids) : undefined;
+    const got = runStopwatch(c.input.history, c.input.exclude_hours, engaged) as any;
     const exp = c.expected;
 
     for (const f of SCALAR_FIELDS) {

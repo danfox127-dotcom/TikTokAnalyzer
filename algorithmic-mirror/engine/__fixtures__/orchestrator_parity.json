@@ -304,6 +304,8 @@
           "sandbox_views": 2,
           "deep_lingers": 10,
           "deep_dives": 0,
+          "abandoned": 0,
+          "abandoned_night": 0,
           "night_count": 1,
           "night_lingers": 1,
           "max_consecutive_skips": 3,
@@ -330,6 +332,7 @@
             "https://www.tiktok.com/@g/video/40"
           ],
           "_deep_dive_links": [],
+          "_abandoned_links": [],
           "hourly_heatmap": {
             "0": 0,
             "1": 0,
@@ -550,6 +553,7 @@
               "sandbox": 2,
               "linger": 10,
               "deep_dive": 0,
+              "abandoned": 0,
               "total": 15,
               "night": 1
             }
@@ -829,6 +833,7 @@
                   "sandbox": 2,
                   "linger": 10,
                   "deep_dive": 0,
+                  "abandoned": 0,
                   "total": 15
                 }
               }
@@ -1246,6 +1251,8 @@
           "sandbox_views": 0,
           "deep_lingers": 0,
           "deep_dives": 0,
+          "abandoned": 0,
+          "abandoned_night": 0,
           "night_count": 0,
           "night_lingers": 0,
           "max_consecutive_skips": 0,
@@ -1254,6 +1261,7 @@
           "_sandbox_links": [],
           "_linger_links": [],
           "_deep_dive_links": [],
+          "_abandoned_links": [],
           "hourly_heatmap": {
             "0": 0,
             "1": 0,

@@ -12,6 +12,7 @@
  */
 
 import { runStopwatch, periodKey, PeriodCounts } from "./stopwatch";
+import { extractVideoId } from "./videoId";
 import { TemporalSeries } from "./types";
 import { mineTextFootprint } from "./textFootprint";
 import { analyzeShareBehavior, analyzeCommentVoice } from "./engagement";
@@ -55,7 +56,18 @@ export function buildGhostProfile(
   linkHandleMap: Record<string, string> | null = null,
 ): Record<string, any> {
   const activeHistory: any[] = parsed.watch_history_active ?? [];
-  const sw = runStopwatch(activeHistory, excludeHours) as any;
+  // WP-1.3 corroboration: video ids the user engaged with (like/fav/share/comment).
+  const engagedVideoIds = new Set<string>();
+  for (const [coll, key] of [
+    [parsed.likes ?? [], "link"], [parsed.favorites ?? [], "link"],
+    [parsed.shares ?? [], "link"], [parsed.comments ?? [], "url"],
+  ] as [any[], string][]) {
+    for (const item of coll) {
+      const evid = extractVideoId(item?.[key] || item?.link || "");
+      if (evid) engagedVideoIds.add(evid);
+    }
+  }
+  const sw = runStopwatch(activeHistory, excludeHours, engagedVideoIds) as any;
 
   const linkToTitle: Record<string, string> = {};
   for (const item of activeHistory) {
@@ -75,6 +87,11 @@ export function buildGhostProfile(
   const lingerRatePct = (sustainedAndDives / Math.max(totalConscious, 1)) * 100;
   const nightShiftPct = (sw.night_count / Math.max(totalConscious, 1)) * 100;
   const nightLingerPct = (sw.night_lingers / Math.max(sustainedAndDives, 1)) * 100;
+
+  // WP-1.3: persona-dimension inputs exclude `abandoned` (autoplay-while-away).
+  const personaConscious = totalConscious - sw.abandoned;
+  const personaLingerRate = (sustainedAndDives / Math.max(personaConscious, 1)) * 100;
+  const personaNightShift = ((sw.night_count - sw.abandoned_night) / Math.max(personaConscious, 1)) * 100;
 
   const vibeCluster = resolveVibeCluster(
     countCreators(sw._linger_links, 20, "linger_count", linkToTitle, linkHandleMap),
@@ -115,7 +132,8 @@ export function buildGhostProfile(
     social_graph_followed_pct: followedPct,
   };
   const drift = algorithmDrift(sw.monthly_skip_rates ?? {});
-  const primaryArchetype = determinePrimaryArchetype(behavioralNodes, parsed, sw, vibeCluster);
+  const primaryArchetype = determinePrimaryArchetype(behavioralNodes, parsed, sw, vibeCluster,
+    personaConscious, personaLingerRate, personaNightShift);
 
   const searchesRaw: any[] = parsed.searches ?? [];
   const searchHourHist: Record<number, number> = {};
@@ -152,7 +170,7 @@ export function buildGhostProfile(
   const bucketSeries = mkSeries(
     Object.entries(pdata).map(([period, d]) => ({
       period,
-      value: { graveyard: d.graveyard, sandbox: d.sandbox, linger: d.linger, deep_dive: d.deep_dive, total: d.total },
+      value: { graveyard: d.graveyard, sandbox: d.sandbox, linger: d.linger, deep_dive: d.deep_dive, abandoned: d.abandoned, total: d.total },
     })),
   );
   const nightShiftSeries = mkSeries(

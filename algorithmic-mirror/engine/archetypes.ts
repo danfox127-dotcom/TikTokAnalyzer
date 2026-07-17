@@ -125,13 +125,18 @@ export function determinePrimaryArchetype(
   parsed: Parsed,
   sw: Sw,
   vibeCluster: VibeEntry[],
+  // WP-1.3: persona_* inputs (which exclude abandoned/phantom) override the raw
+  // values when supplied; they default to the full-population metrics.
+  personaConscious?: number,
+  personaLingerRate?: number,
+  personaNightShift?: number,
 ): PrimaryArchetype {
   const traits = detectAtomicTraits(
     sw,
-    sw.total_conscious_videos ?? 0,
+    personaConscious ?? sw.total_conscious_videos ?? 0,
     parsed,
-    nodes.linger_rate_percentage ?? 0,
-    nodes.night_shift_ratio ?? 0,
+    personaLingerRate ?? nodes.linger_rate_percentage ?? 0,
+    personaNightShift ?? nodes.night_shift_ratio ?? 0,
     vibeCluster,
   );
   const subArchetypes = synthesizeSubArchetypes(traits, nodes);
