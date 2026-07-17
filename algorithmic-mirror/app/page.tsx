@@ -13,28 +13,32 @@ import { extractVideoId } from "../engine/videoId";
 import type { NarrativeBlock } from "./types/narrative";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8005";
-// Browser-local mode (Gate 0): the whole deterministic engine runs client-side —
-// nothing leaves the device. Opt-in via NEXT_PUBLIC_LOCAL_ENGINE=1, and also used
-// as an automatic fallback when the server is unreachable. NOTE: local mode has no
-// oEmbed creator resolution, so creator handles / echo-chamber come back sparse —
-// the server path stays the default until a thin handle-resolution endpoint lands.
-const LOCAL_ENGINE = process.env.NEXT_PUBLIC_LOCAL_ENGINE === "1";
+// Browser-local mode (Gate 0) is the DEFAULT: the whole deterministic engine runs
+// client-side and the raw export NEVER leaves the device. Two thin, best-effort
+// lookups still hit the server — lingered video ids → creator @handles, and login
+// IPs → city labels — each strictly less disclosure than uploading the export.
+// Set NEXT_PUBLIC_SERVER_ENGINE=1 to force the legacy server upload path (debug/parity).
+const SERVER_ENGINE = process.env.NEXT_PUBLIC_SERVER_ENGINE === "1";
 
-/** Best-effort creator resolution: sends ONLY opaque video ids (no titles, dates,
- *  or watch history) to the thin server endpoint and returns the video_id→@handle
- *  map. Returns null on any failure so local mode still works fully offline. */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function resolveHandles(videoIds: string[]): Promise<any | null> {
+/** POST JSON to a thin enrichment endpoint. Distinguishes an offline / transport
+ *  failure (expected in local mode — returns null quietly) from a reachable-but-
+ *  broken endpoint (surfaced via console.warn so a real outage isn't silently
+ *  swallowed by the graceful degradation). */
+async function postEnrich<T>(path: string, body: unknown): Promise<T | null> {
+  let res: Response;
   try {
-    const res = await fetch(`${API_URL}/api/resolve`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ video_ids: videoIds }),
+    res = await fetch(`${API_URL}${path}`, {
+      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
     });
-    return res.ok ? await res.json() : null;
   } catch {
+    return null; // offline / unreachable — expected; degrade silently
+  }
+  if (!res.ok) {
+    // eslint-disable-next-line no-console
+    console.warn(`[local-mode] ${path} → HTTP ${res.status}; degrading without this enrichment`);
     return null;
   }
+  try { return (await res.json()) as T; } catch { return null; }
 }
 
 /** Run the parity-locked TS engine on the file, entirely in the browser. Returns
@@ -53,7 +57,8 @@ async function analyzeLocal(file: File): Promise<any> {
   const sw = out.profile.stopwatch_metrics ?? {};
   const links: string[] = [...(sw._linger_links ?? []), ...(sw._graveyard_links ?? [])];
   const videoIds = [...new Set(links.map((l) => extractVideoId(l)).filter((v): v is string => !!v))];
-  const resolution = videoIds.length ? await resolveHandles(videoIds) : null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const resolution = videoIds.length ? await postEnrich<any>("/api/resolve", { video_ids: videoIds }) : null;
 
   if (resolution?.handles && Object.keys(resolution.handles).length) {
     out = await runEngineOffThread(rawExport, { linkHandleMap: resolution.handles });
@@ -76,6 +81,22 @@ async function analyzeLocal(file: File): Promise<any> {
       resolved: resolution.resolved, total: resolution.total, pct: resolution.pct,
       newly_resolved: resolution.newly_resolved, persistent: resolution.persistent,
     };
+  }
+
+  // Best-effort IP geo on the login history (city/country labels). Sends only the
+  // deduped login IPs — strictly less than the whole export the server path uploads.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const logins: any[] = out.profile.digital_footprint?.recent_logins ?? [];
+  const ips = [...new Set(logins.map((l) => l?.ip).filter((ip: string): ip is string => !!ip))];
+  if (ips.length) {
+    const geoResp = await postEnrich<{ geo: Record<string, { city: string; country_name: string }> }>(
+      "/api/geo", { ips });
+    if (geoResp?.geo) {
+      for (const l of logins) {
+        const g = geoResp.geo[l.ip];
+        if (g) { l.city = g.city; l.country_name = g.country_name; }
+      }
+    }
   }
 
   return {
@@ -105,10 +126,11 @@ export default function Home() {
     try {
       let raw;
 
-      // Browser-local mode: run the whole engine client-side, no network.
-      if (LOCAL_ENGINE) {
+      // DEFAULT: browser-local engine — the raw export never leaves the device.
+      if (!SERVER_ENGINE) {
         raw = await analyzeLocal(file);
       } else
+      // Legacy server upload path (opt-out via NEXT_PUBLIC_SERVER_ENGINE=1).
       // Use Supabase if configured
       if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
         // 1. Upload to Storage
@@ -149,20 +171,10 @@ export default function Home() {
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Unknown error";
       const net = /fetch|NetworkError|ECONNREFUSED|Failed to fetch/i.test(msg);
-      // Server unreachable → fall back to the browser-local engine so analysis
-      // still works offline (creators/echo will be sparse without oEmbed).
-      if (net && !LOCAL_ENGINE) {
-        try {
-          const raw = await analyzeLocal(file);
-          setProfile(raw as GhostProfile);
-          setNarrativeBlocks((raw as { narrative_blocks?: NarrativeBlock[] }).narrative_blocks ?? []);
-          setView("dashboard");
-          return;
-        } catch {
-          /* fall through to the original error */
-        }
-      }
-      setError(net ? `Cannot reach forensics engine at ${API_URL}` : msg);
+      // No server-file-upload fallback by design: local mode is the default and
+      // its own enrichment lookups already degrade gracefully offline. Uploading
+      // the raw export on failure would silently break "nothing leaves the device".
+      setError(net && SERVER_ENGINE ? `Cannot reach forensics engine at ${API_URL}` : msg);
     } finally {
       setIsLoading(false);
     }

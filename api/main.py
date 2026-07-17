@@ -33,7 +33,7 @@ from parsers.tiktok import parse_tiktok_export_from_bytes
 from api.ghost_profile import build_ghost_profile
 from exporters.llm_export import generate_llm_export
 from api.narratives import build_narrative_blocks, generate_narrative_blocks_llm
-from utils.ip_geo import enrich_logins_with_geo
+from utils.ip_geo import enrich_logins_with_geo, geolocate_ip
 from utils.creators import enrich_creators_with_llm, cluster_creators_llm
 from utils import oembed
 from utils import youtube_bridge
@@ -259,6 +259,24 @@ async def resolve_creators(req: ResolveRequest):
         "newly_resolved": resolution["newly_resolved"],
         "persistent": creator_map.using_redis(),
     }
+
+
+class GeoRequest(BaseModel):
+    ips: list[str]
+
+
+_GEO_MAX_IPS = 100
+
+
+@app.post("/api/geo")
+async def geolocate(req: GeoRequest):
+    """Thin IP-geo endpoint for browser-local mode. The client sends its own login
+    IPs (deduped) and gets back {ip: {city, country_name}}. This is strictly less
+    disclosure than the server path, which uploads the entire export (IPs included).
+    """
+    ips = [ip for ip in dict.fromkeys(req.ips) if ip][:_GEO_MAX_IPS]
+    geo = {ip: await geolocate_ip(ip) for ip in ips}
+    return {"geo": geo}
 
 
 class PillarsRequest(BaseModel):
