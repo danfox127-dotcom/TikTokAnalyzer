@@ -26,19 +26,33 @@ export function LocalModeBanner({ profile }: { profile: GhostProfile }) {
   const cr = profile.creator_resolution;
   const logins = profile.digital_footprint?.recent_logins ?? [];
   const geoRan = logins.some((l) => l.city !== undefined);
-  const ipsSent = new Set(logins.filter((l) => l.ip).map((l) => l.ip)).size;
+  const ips = [...new Set(logins.filter((l) => l.ip).map((l) => l.ip as string))];
 
-  // Each provenance line: what left the device, and what came back.
-  const lines: { sent: string; got: string; ok: boolean }[] = [];
+  // Show the actual IPs (the user's own data) so "what was shared" is concrete
+  // and verifiable, not a vague count. Cap the display so long lists don't sprawl.
+  const shownIps = ips.slice(0, 4);
+  const moreIps = ips.length - shownIps.length;
+  const ipList = shownIps.join(", ") + (moreIps > 0 ? `, +${moreIps} more` : "");
+
+  // Each provenance line names EXACTLY what left the device, and what came back.
+  const lines: { primary: string; detail: string; ok: boolean }[] = [];
   lines.push(
     cr
-      ? { sent: `${cr.total} creator video ID${plural(cr.total)}`, got: `${cr.resolved} creator name${plural(cr.resolved)} resolved`, ok: true }
-      : { sent: "creator video IDs", got: "not resolved — offline", ok: false },
+      ? {
+          primary: `${cr.total} TikTok video ID number${plural(cr.total)}`,
+          detail: `just the numeric IDs of creators you watched — no titles, captions, or timestamps. ${cr.resolved} creator name${plural(cr.resolved)} came back.`,
+          ok: true,
+        }
+      : { primary: "creator video IDs", detail: "not resolved — offline.", ok: false },
   );
   lines.push(
-    geoRan && ipsSent > 0
-      ? { sent: `${ipsSent} login IP${plural(ipsSent)}`, got: "city labels", ok: true }
-      : { sent: "login IPs", got: "not resolved — offline", ok: false },
+    geoRan && ips.length > 0
+      ? {
+          primary: `your login IP address${ips.length === 1 ? "" : "es"}`,
+          detail: `${ipList} — city + country came back.`,
+          ok: true,
+        }
+      : { primary: "login IP addresses", detail: "not resolved — offline.", ok: false },
   );
 
   const fullyOffline = lines.every((l) => !l.ok);
@@ -61,27 +75,31 @@ export function LocalModeBanner({ profile }: { profile: GhostProfile }) {
           Provenance · Analyzed on this device
         </div>
         <div style={{ fontSize: 12.5, color: INK, lineHeight: 1.55, marginBottom: fullyOffline ? 0 : 8 }}>
-          Your TikTok export was read and analyzed here in your browser — it was{" "}
+          Your TikTok export was analyzed here in your browser — the file was{" "}
           <span style={{ fontStyle: "italic" }}>never uploaded</span>.
           {fullyOffline
-            ? " This run was fully offline: nothing at all left this device."
-            : " The only things sent to our server:"}
+            ? " This run was fully offline: nothing at all was sent."
+            : " Exactly what was sent to our server:"}
         </div>
         {!fullyOffline && (
-          <ul style={{ margin: 0, padding: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 4 }}>
+          <ul style={{ margin: "0 0 8px", padding: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 5 }}>
             {lines.map((l, i) => (
               <li key={i} style={{ fontSize: 11.5, color: INK_DIM, lineHeight: 1.5, display: "flex", gap: 8, alignItems: "baseline" }}>
                 <span style={{ color: l.ok ? ACCENT : INK_GHOST, fontFamily: mono, fontSize: 10, flexShrink: 0 }}>
                   {l.ok ? "→" : "·"}
                 </span>
                 <span>
-                  <span style={{ color: INK }}>{l.sent}</span>
-                  <span style={{ color: INK_GHOST }}> — {l.got}</span>
+                  <span style={{ color: INK }}>{l.primary}</span>
+                  <span style={{ color: INK_GHOST }}> — {l.detail}</span>
                 </span>
               </li>
             ))}
           </ul>
         )}
+        {/* Bound the disclosure: name what specifically did NOT leave. */}
+        <div style={{ fontSize: 11.5, color: INK_DIM, lineHeight: 1.5 }}>
+          Your watch history, likes, searches, comments, and messages never left this device.
+        </div>
       </div>
     </div>
   );
