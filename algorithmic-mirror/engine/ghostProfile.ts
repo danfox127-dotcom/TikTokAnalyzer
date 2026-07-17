@@ -13,6 +13,7 @@
 
 import { runStopwatch, periodKey, PeriodCounts } from "./stopwatch";
 import { extractVideoId } from "./videoId";
+import { detectPhantomSessions } from "./phantomSessions";
 import { TemporalSeries } from "./types";
 import { mineTextFootprint } from "./textFootprint";
 import { analyzeShareBehavior, analyzeCommentVoice } from "./engagement";
@@ -58,6 +59,7 @@ export function buildGhostProfile(
   const activeHistory: any[] = parsed.watch_history_active ?? [];
   // WP-1.3 corroboration: video ids the user engaged with (like/fav/share/comment).
   const engagedVideoIds = new Set<string>();
+  const engagementTimes: Date[] = []; // WP-1.3 phantom detection
   for (const [coll, key] of [
     [parsed.likes ?? [], "link"], [parsed.favorites ?? [], "link"],
     [parsed.shares ?? [], "link"], [parsed.comments ?? [], "url"],
@@ -65,9 +67,12 @@ export function buildGhostProfile(
     for (const item of coll) {
       const evid = extractVideoId(item?.[key] || item?.link || "");
       if (evid) engagedVideoIds.add(evid);
+      const edt = parseDate(item?.date ?? "");
+      if (edt) engagementTimes.push(edt);
     }
   }
   const sw = runStopwatch(activeHistory, excludeHours, engagedVideoIds) as any;
+  const phantom = detectPhantomSessions(activeHistory, engagementTimes);
 
   const linkToTitle: Record<string, string> = {};
   for (const item of activeHistory) {
@@ -88,10 +93,14 @@ export function buildGhostProfile(
   const nightShiftPct = (sw.night_count / Math.max(totalConscious, 1)) * 100;
   const nightLingerPct = (sw.night_lingers / Math.max(sustainedAndDives, 1)) * 100;
 
-  // WP-1.3: persona-dimension inputs exclude `abandoned` (autoplay-while-away).
-  const personaConscious = totalConscious - sw.abandoned;
-  const personaLingerRate = (sustainedAndDives / Math.max(personaConscious, 1)) * 100;
-  const personaNightShift = ((sw.night_count - sw.abandoned_night) / Math.max(personaConscious, 1)) * 100;
+  // WP-1.3: persona-dimension inputs exclude `abandoned` (autoplay-while-away) and
+  // `phantom` (asleep-autoplay) videos. Phantom videos are night lingers, so they
+  // come out of the sustained (numerator) and night counts too.
+  const phantomN = phantom.phantom_video_count;
+  const personaConscious = Math.max(totalConscious - sw.abandoned - phantomN, 0);
+  const personaSustained = Math.max(sustainedAndDives - phantomN, 0);
+  const personaLingerRate = (personaSustained / Math.max(personaConscious, 1)) * 100;
+  const personaNightShift = (Math.max(sw.night_count - sw.abandoned_night - phantomN, 0) / Math.max(personaConscious, 1)) * 100;
 
   const vibeCluster = resolveVibeCluster(
     countCreators(sw._linger_links, 20, "linger_count", linkToTitle, linkHandleMap),
@@ -236,6 +245,14 @@ export function buildGhostProfile(
       explicit_vs_implicit_ratio: explicitImplicitSeries,
     },
     night_shift: { percentage: pyRound(nightShiftPct, 1), count: sw.night_count, window: "23:00 – 04:00" },
+    sleep_scrub: {
+      sleep_scrubbed: sw.sleep_scrubbed,
+      abandoned: sw.abandoned,
+      phantom_sessions: phantom.phantom_sessions,
+      phantom_nights: phantom.phantom_nights,
+      phantom_video_count: phantom.phantom_video_count,
+      excluded_hours: phantom.excluded_hours,
+    },
     digital_footprint: {
       login_count: loginHistory.length,
       unique_ips: loginStats.unique_ips ?? 0,

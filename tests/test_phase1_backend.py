@@ -179,6 +179,56 @@ class TestAbandonedBucket:
 
 
 # ---------------------------------------------------------------------------
+# 1c. WP-1.3 phantom-session detection (asleep-autoplay)
+# ---------------------------------------------------------------------------
+
+from api.ghost_profile import _detect_phantom_sessions, build_ghost_profile  # noqa: E402
+
+NIGHT = datetime(2024, 3, 11, 1, 0, 0)  # 01:00 — night window
+
+
+class TestPhantomSessions:
+    def test_synthetic_asleep_autoplay_detected(self):
+        # 10 night lingers at a steady 60s cadence, zero engagement → phantom.
+        hist = _make_history([60.0] * 10, base=NIGHT)
+        out = _detect_phantom_sessions(hist, [])
+        assert out["phantom_video_count"] == 10
+        assert len(out["phantom_sessions"]) == 1
+        assert out["phantom_nights"] == 1
+        assert out["excluded_hours"] > 0
+
+    def test_needs_at_least_10(self):
+        hist = _make_history([60.0] * 8, base=NIGHT)  # only 8 qualifying videos
+        out = _detect_phantom_sessions(hist, [])
+        assert out["phantom_video_count"] == 0
+        assert out["phantom_sessions"] == []
+
+    def test_engagement_in_window_disqualifies(self):
+        hist = _make_history([60.0] * 10, base=NIGHT)
+        eng = [NIGHT + timedelta(seconds=300)]  # a like mid-run → not asleep
+        out = _detect_phantom_sessions(hist, eng)
+        assert out["phantom_video_count"] == 0
+
+    def test_daytime_run_not_phantom(self):
+        hist = _make_history([60.0] * 10, base=datetime(2024, 3, 11, 14, 0, 0))
+        out = _detect_phantom_sessions(hist, [])
+        assert out["phantom_video_count"] == 0
+
+    def test_out_of_range_cadence_not_phantom(self):
+        # 200s deltas exceed the 180s autoplay ceiling → not a phantom cadence.
+        hist = _make_history([200.0] * 10, base=NIGHT)
+        out = _detect_phantom_sessions(hist, [])
+        assert out["phantom_video_count"] == 0
+
+    def test_phantom_excluded_from_persona(self):
+        # A full profile with a phantom run should not read as heavy night engagement
+        # in the persona — the phantom videos are pulled from persona inputs.
+        watch = _make_history([60.0] * 12, base=NIGHT)
+        profile = build_ghost_profile({"watch_history_active": watch})
+        assert profile["sleep_scrub"]["phantom_video_count"] >= 10
+
+
+# ---------------------------------------------------------------------------
 # 2. weekly_heatmap shape
 # ---------------------------------------------------------------------------
 

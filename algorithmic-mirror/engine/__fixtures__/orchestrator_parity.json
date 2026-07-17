@@ -863,6 +863,14 @@
           "count": 1,
           "window": "23:00 – 04:00"
         },
+        "sleep_scrub": {
+          "sleep_scrubbed": 3,
+          "abandoned": 0,
+          "phantom_sessions": [],
+          "phantom_nights": 0,
+          "phantom_video_count": 0,
+          "excluded_hours": 0
+        },
         "digital_footprint": {
           "login_count": 2,
           "unique_ips": 2,
@@ -1555,6 +1563,14 @@
           "percentage": 0.0,
           "count": 0,
           "window": "23:00 – 04:00"
+        },
+        "sleep_scrub": {
+          "sleep_scrubbed": 0,
+          "abandoned": 0,
+          "phantom_sessions": [],
+          "phantom_nights": 0,
+          "phantom_video_count": 0,
+          "excluded_hours": 0
         },
         "digital_footprint": {
           "login_count": 0,

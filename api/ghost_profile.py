@@ -465,6 +465,72 @@ def _run_stopwatch(browsing_history: list[dict], exclude_hours: tuple[int, ...] 
     }
 
 
+# WP-1.3 phantom-session detection (asleep-autoplay). A run of >=10 consecutive
+# night-hour videos at a steady 30-180s autoplay cadence with ZERO engagement in
+# the window is almost certainly the app playing to an empty room. Retained as an
+# artifact; the videos stay in raw buckets but are pulled from persona scoring.
+PHANTOM_MIN_RUN = 10
+PHANTOM_DELTA_MIN = 30.0
+PHANTOM_DELTA_MAX = 180.0
+
+
+def _is_night(hour: int) -> bool:
+    return hour >= 23 or hour < 4
+
+
+def _detect_phantom_sessions(browsing_history: list[dict], engagement_times: list) -> dict:
+    """Second pass over the ordered history for phantom (asleep-autoplay) runs.
+
+    `engagement_times` is a sorted list of datetimes (likes/faves/shares/comments);
+    a run is only phantom if NONE fall within its [start, end] window.
+    """
+    entries: list[dict] = []
+    for item in browsing_history:
+        dt = _parse_date(item.get("date", ""))
+        if dt:
+            entries.append({"dt": dt, "link": item.get("link", "")})
+    entries.sort(key=lambda x: x["dt"])
+    eng = sorted(engagement_times)
+
+    sessions: list[dict] = []
+    phantom_links: set[str] = set()
+    n = len(entries)
+    i = 0
+    while i < n:
+        # Extend while entry j is a night-hour view with a 30–180s onward delta —
+        # i.e. every video in [i, j-1] is a night linger in steady autoplay cadence.
+        j = i
+        while (j + 1 < n
+               and _is_night(entries[j]["dt"].hour)
+               and PHANTOM_DELTA_MIN <= (entries[j + 1]["dt"] - entries[j]["dt"]).total_seconds() <= PHANTOM_DELTA_MAX):
+            j += 1
+        run_len = j - i  # count of qualifying (night-linger) videos [i, j-1]
+        if run_len >= PHANTOM_MIN_RUN:
+            start, end = entries[i]["dt"], entries[j]["dt"]  # end = landing view
+            if not any(start <= t <= end for t in eng):
+                hours = (end - start).total_seconds() / 3600.0
+                sessions.append({
+                    "start": start.strftime("%Y-%m-%d %H:%M:%S"),
+                    "end": end.strftime("%Y-%m-%d %H:%M:%S"),
+                    "night": start.strftime("%Y-%m-%d"),
+                    "video_count": run_len,
+                    "hours": round(hours, 2),
+                })
+                for k in range(i, j):
+                    if entries[k]["link"]:
+                        phantom_links.add(entries[k]["link"])
+        i = max(j, i + 1)
+
+    phantom_video_count = sum(s["video_count"] for s in sessions)
+    return {
+        "phantom_sessions": sessions,
+        "phantom_video_count": phantom_video_count,
+        "phantom_nights": len({s["night"] for s in sessions}),
+        "excluded_hours": round(sum(s["hours"] for s in sessions), 2),
+        "_phantom_links": phantom_links,
+    }
+
+
 def _parse_date_to_month(ev: dict) -> str | None:
     return ev.get("_month")
 
@@ -852,13 +918,18 @@ def build_ghost_profile(parsed: dict, exclude_hours: tuple[int, ...] = (), link_
     # WP-1.3 corroboration: video ids the user engaged with (like/fav/share/comment).
     # A long (300–1200s) gap on one of these is a real deep-dive, not abandonment.
     engaged_video_ids: set[str] = set()
+    engagement_times: list = []  # WP-1.3 phantom detection: engagement timestamps
     for coll, key in ((parsed.get("likes", []), "link"), (parsed.get("favorites", []), "link"),
                       (parsed.get("shares", []), "link"), (parsed.get("comments", []), "url")):
         for item in coll:
             evid = oembed.extract_video_id(item.get(key, "") or item.get("link", ""))
             if evid:
                 engaged_video_ids.add(evid)
+            edt = _parse_date(item.get("date", ""))
+            if edt:
+                engagement_times.append(edt)
     sw = _run_stopwatch(active_history, exclude_hours=exclude_hours, engaged_video_ids=engaged_video_ids)
+    phantom = _detect_phantom_sessions(active_history, engagement_times)
 
     # Pre-map links to titles for richer creator context
     link_to_title = {item.get("link", ""): item.get("title", "") for item in active_history if item.get("link")}
@@ -874,11 +945,15 @@ def build_ghost_profile(parsed: dict, exclude_hours: tuple[int, ...] = (), link_
     night_shift_pct = (sw["night_count"] / max(total_conscious, 1)) * 100
     night_linger_pct = (sw["night_lingers"] / max(sustained_and_dives, 1)) * 100
 
-    # WP-1.3: persona-dimension inputs exclude `abandoned` (autoplay-while-away) —
-    # they don't reflect intent. Displayed metrics above keep the full population.
-    persona_conscious = total_conscious - sw["abandoned"]
-    persona_linger_rate = (sustained_and_dives / max(persona_conscious, 1)) * 100
-    persona_night_shift = ((sw["night_count"] - sw["abandoned_night"]) / max(persona_conscious, 1)) * 100
+    # WP-1.3: persona-dimension inputs exclude `abandoned` (autoplay-while-away) and
+    # `phantom` (asleep-autoplay) videos — they don't reflect intent. Displayed
+    # metrics above keep the full population. Phantom videos are night lingers, so
+    # they come out of the sustained (numerator) and night counts too.
+    phantom_n = phantom["phantom_video_count"]
+    persona_conscious = max(total_conscious - sw["abandoned"] - phantom_n, 0)
+    persona_sustained = max(sustained_and_dives - phantom_n, 0)
+    persona_linger_rate = (persona_sustained / max(persona_conscious, 1)) * 100
+    persona_night_shift = (max(sw["night_count"] - sw["abandoned_night"] - phantom_n, 0) / max(persona_conscious, 1)) * 100
 
     vibe_cluster = resolve_vibe_cluster(_count_creators(sw["_linger_links"], limit=20, count_key="linger_count", link_to_title=link_to_title, link_handle_map=link_handle_map))
     graveyard = resolve_vibe_cluster(_count_creators(sw["_graveyard_links"], limit=20, count_key="skip_count", link_to_title=link_to_title, link_handle_map=link_handle_map))
@@ -1009,6 +1084,14 @@ def build_ghost_profile(parsed: dict, exclude_hours: tuple[int, ...] = (), link_
             "explicit_vs_implicit_ratio": explicit_implicit_series,
         },
         "night_shift": {"percentage": round(night_shift_pct, 1), "count": sw["night_count"], "window": "23:00 – 04:00"},
+        "sleep_scrub": {  # WP-1.3 scrub summary stats
+            "sleep_scrubbed": sw["sleep_scrubbed"],
+            "abandoned": sw["abandoned"],
+            "phantom_sessions": phantom["phantom_sessions"],
+            "phantom_nights": phantom["phantom_nights"],
+            "phantom_video_count": phantom["phantom_video_count"],
+            "excluded_hours": phantom["excluded_hours"],
+        },
         "digital_footprint": {
             "login_count": len(parsed.get("login_history", [])),
             "unique_ips": parsed.get("login_history_stats", {}).get("unique_ips", 0),
