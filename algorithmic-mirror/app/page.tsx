@@ -7,7 +7,6 @@ import { GhostProfile } from "./components/GhostProfileHUD";
 import { ForensicDashboard } from "./components/ForensicDashboard";
 import { NarrativeReportView } from "./components/NarrativeReportView";
 import { LLMAnalysisView } from "./components/LLMAnalysisView";
-import { supabase } from "./utils/supabase";
 import { runEngineOffThread } from "./utils/engineWorker";
 import { extractVideoId } from "../engine/videoId";
 import type { NarrativeBlock } from "./types/narrative";
@@ -129,30 +128,9 @@ export default function Home() {
       // DEFAULT: browser-local engine — the raw export never leaves the device.
       if (!SERVER_ENGINE) {
         raw = await analyzeLocal(file);
-      } else
-      // Legacy server upload path (opt-out via NEXT_PUBLIC_SERVER_ENGINE=1).
-      // Use Supabase if configured
-      if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-        // 1. Upload to Storage
-        const fileExt = file.name.split('.').pop();
-        const fileName = `${Math.random()}.${fileExt}`;
-        const filePath = `exports/${fileName}`;
-
-        const { error: uploadError } = await supabase.storage
-          .from('exports')
-          .upload(filePath, file);
-
-        if (uploadError) throw uploadError;
-
-        // 2. Invoke Edge Function
-        const { data, error: functionError } = await supabase.functions.invoke('analyze', {
-          body: { filePath },
-        });
-
-        if (functionError) throw functionError;
-        raw = data;
       } else {
-        // Fallback to local FastAPI
+        // Legacy server upload path (opt-out via NEXT_PUBLIC_SERVER_ENGINE=1) —
+        // the live Python FastAPI backend.
         const fd = new FormData();
         fd.append("file", file);
         const res = await fetch(`${API_URL}/api/analyze`, { method: "POST", body: fd });
