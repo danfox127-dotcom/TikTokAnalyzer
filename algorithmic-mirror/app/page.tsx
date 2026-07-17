@@ -8,7 +8,7 @@ import { ForensicDashboard } from "./components/ForensicDashboard";
 import { NarrativeReportView } from "./components/NarrativeReportView";
 import { LLMAnalysisView } from "./components/LLMAnalysisView";
 import { supabase } from "./utils/supabase";
-import { runEngine } from "../engine/pipeline";
+import { runEngineOffThread } from "./utils/engineWorker";
 import { extractVideoId } from "../engine/videoId";
 import type { NarrativeBlock } from "./types/narrative";
 
@@ -48,7 +48,7 @@ async function resolveHandles(videoIds: string[]): Promise<any | null> {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function analyzeLocal(file: File): Promise<any> {
   const rawExport = JSON.parse(await file.text());
-  let out = runEngine(rawExport);
+  let out = await runEngineOffThread(rawExport);
 
   const sw = out.profile.stopwatch_metrics ?? {};
   const links: string[] = [...(sw._linger_links ?? []), ...(sw._graveyard_links ?? [])];
@@ -56,7 +56,7 @@ async function analyzeLocal(file: File): Promise<any> {
   const resolution = videoIds.length ? await resolveHandles(videoIds) : null;
 
   if (resolution?.handles && Object.keys(resolution.handles).length) {
-    out = runEngine(rawExport, { linkHandleMap: resolution.handles });
+    out = await runEngineOffThread(rawExport, { linkHandleMap: resolution.handles });
     // Attach display name / thumbnail to the ledgers (mirrors /api/analyze).
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const metaByHandle: Record<string, any> = {};
