@@ -11,7 +11,8 @@
  * (which creator ranks where) is fixed by count.
  */
 
-import { runStopwatch } from "./stopwatch";
+import { runStopwatch, periodKey, PeriodCounts } from "./stopwatch";
+import { TemporalSeries } from "./types";
 import { mineTextFootprint } from "./textFootprint";
 import { analyzeShareBehavior, analyzeCommentVoice } from "./engagement";
 import { calculateTransparencyGap } from "./transparencyGap";
@@ -141,6 +142,42 @@ export function buildGhostProfile(
   const echo = echoChamberIndex(sw._linger_links, linkHandleMap);
   const echoSplit = echoChamberSplit(sw.linger_events as any, linkHandleMap);
 
+  // ── WP-1.4: per-period temporal series (month, or week when coverage < 90d) ──
+  const gran = sw.temporal_granularity;
+  const pdata = sw.period_data as Record<string, PeriodCounts>;
+  const mkSeries = <T,>(points: { period: string; value: T }[]): TemporalSeries<T> => ({
+    granularity: gran,
+    points: [...points].sort((a, b) => (a.period < b.period ? -1 : a.period > b.period ? 1 : 0)),
+  });
+  const bucketSeries = mkSeries(
+    Object.entries(pdata).map(([period, d]) => ({
+      period,
+      value: { graveyard: d.graveyard, sandbox: d.sandbox, linger: d.linger, deep_dive: d.deep_dive, total: d.total },
+    })),
+  );
+  const nightShiftSeries = mkSeries(
+    Object.entries(pdata).map(([period, d]) => ({
+      period,
+      value: d.total > 0 ? pyRound((d.night / d.total) * 100, 1) : 0.0,
+    })),
+  );
+  const explicitByPeriod: Record<string, number> = {};
+  for (const item of [...(parsed.likes ?? []), ...(parsed.comments ?? [])]) {
+    const edt = parseDate(item?.date ?? "");
+    if (edt) {
+      const pk = periodKey(edt, gran);
+      explicitByPeriod[pk] = (explicitByPeriod[pk] ?? 0) + 1;
+    }
+  }
+  const eiPeriods = [...new Set([...Object.keys(explicitByPeriod), ...Object.keys(pdata)])].sort();
+  const explicitImplicitSeries = mkSeries(
+    eiPeriods.map((period) => {
+      const implicitP = (pdata[period]?.linger ?? 0) + (pdata[period]?.deep_dive ?? 0);
+      const value = implicitP > 0 ? pyRound((explicitByPeriod[period] ?? 0) / implicitP, 3) : 0.0;
+      return { period, value };
+    }),
+  );
+
   const monthlyCreatorTrends_ = monthlyCreatorTrends(sw.linger_events, linkHandleMap);
   const monthlyTopicTrends_ = monthlyTopicTrends(searchesRaw, parsed.comments ?? []);
   const sandboxRetests_ = sandboxRetests(sw.sandbox_events, linkHandleMap);
@@ -173,6 +210,12 @@ export function buildGhostProfile(
       echo_chamber_distinct_creators: echo.distinct_creators,
       echo_split: echoSplit,
       top_creator_handles: vibeCluster.slice(0, 5).map((c) => c.handle),
+    },
+    temporal_series: {
+      granularity: gran,
+      stopwatch_buckets: bucketSeries,
+      night_shift_ratio: nightShiftSeries,
+      explicit_vs_implicit_ratio: explicitImplicitSeries,
     },
     night_shift: { percentage: pyRound(nightShiftPct, 1), count: sw.night_count, window: "23:00 – 04:00" },
     digital_footprint: {

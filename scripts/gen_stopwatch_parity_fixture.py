@@ -106,6 +106,27 @@ def build_scenarios():
     # 11. Empty history
     scenarios.append(("empty", [], ()))
 
+    # 12. WP-1.4 temporal: >=90 day span -> MONTH granularity, distinct per-month
+    #     bucket mix (month i has 1 graveyard + (i+1) lingers). Cross-month jumps
+    #     are >1200s => sleep_scrubbed, so they don't pollute period_data.
+    ms = []
+    for i, mo in enumerate([1, 2, 3, 4, 5]):
+        base = datetime(2024, mo, 10, 12, 0, 0)
+        ms += _from_deltas([1.0] + [60.0] * (i + 1), base)[:-1]
+    ms.append(_entry(datetime(2024, 5, 20, 12, 0, 0), ""))  # span Jan10..May20 = 131d
+    scenarios.append(("temporal_month_span", ms, ()))
+
+    # 13. WP-1.4 temporal: <90 day span -> WEEK granularity, crossing the 2024->2025
+    #     year boundary. Monday-anchored week keys mean 2025-01-01 (Wed) belongs to
+    #     the week starting 2024-12-30 — the exact ISO week-year edge a naive port
+    #     would miss. Each date: 2 lingers + 1 skip.
+    yb = []
+    for base in (datetime(2024, 12, 28, 12, 0, 0), datetime(2024, 12, 30, 12, 0, 0),
+                 datetime(2025, 1, 1, 12, 0, 0), datetime(2025, 1, 6, 12, 0, 0)):
+        yb += _from_deltas([60.0, 60.0, 1.0], base)[:-1]
+    yb.append(_entry(datetime(2025, 1, 6, 13, 0, 0), ""))
+    scenarios.append(("temporal_week_year_boundary", yb, ()))
+
     return scenarios
 
 

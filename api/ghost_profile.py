@@ -15,6 +15,7 @@ Public API
 from __future__ import annotations
 
 from collections import Counter, defaultdict
+from datetime import timedelta
 import re
 
 from parsers.tiktok import _parse_date
@@ -242,6 +243,32 @@ def _echo_chamber_split(linger_events, link_handle_map: dict[str, str] | None = 
     }
 
 
+# WP-1.4 — temporal bucketing. Every overall metric also gets a per-period series.
+# Coverage < 90 days degrades from monthly to weekly. The week key is the
+# Monday-anchored date "YYYY-MM-DD" (NOT ISO %G-W%V) so the TS port is trivially
+# parity-safe — no ISO week-numbering / week-year-boundary divergence.
+TEMPORAL_MONTH_MIN_DAYS = 90
+
+
+def _temporal_granularity(entries: list[dict]) -> str:
+    if not entries:
+        return "month"
+    span_days = (entries[-1]["dt"] - entries[0]["dt"]).days
+    return "week" if span_days < TEMPORAL_MONTH_MIN_DAYS else "month"
+
+
+def _period_key(dt, granularity: str) -> str:
+    if granularity == "week":
+        monday = dt - timedelta(days=dt.weekday())
+        return monday.strftime("%Y-%m-%d")
+    return dt.strftime("%Y-%m")
+
+
+def _temporal_series(granularity: str, points: list[dict]) -> dict:
+    """Canonical TemporalSeries<T>: {granularity, points:[{period, value}]} sorted by period."""
+    return {"granularity": granularity, "points": sorted(points, key=lambda p: p["period"])}
+
+
 # ---------------------------------------------------------------------------
 # Task 1: True Stopwatch & AFK Firewall
 # ---------------------------------------------------------------------------
@@ -255,6 +282,10 @@ def _run_stopwatch(browsing_history: list[dict], exclude_hours: tuple[int, ...] 
             entries.append({"dt": dt, "link": item.get("link", "")})
 
     entries.sort(key=lambda x: x["dt"])
+
+    # WP-1.4: separate per-period accumulator (leaves monthly_data byte-identical).
+    granularity = _temporal_granularity(entries)
+    period_data = defaultdict(lambda: {"graveyard": 0, "sandbox": 0, "linger": 0, "deep_dive": 0, "total": 0, "night": 0})
 
     SLEEP_THRESHOLD_S = 1200
     clock_anomalies = 0
@@ -315,10 +346,13 @@ def _run_stopwatch(browsing_history: list[dict], exclude_hours: tuple[int, ...] 
         
         month_key = cur["dt"].strftime("%Y-%m")
         day_key = cur["dt"].strftime("%Y-%m-%d")
+        period_key = _period_key(cur["dt"], granularity)
         monthly_data[month_key]["total"] += 1
+        period_data[period_key]["total"] += 1
 
         if 23 <= hour or hour < 4:
             night_count += 1
+            period_data[period_key]["night"] += 1
 
         link = cur["link"]
         vid = oembed.extract_video_id(link) if link else None
@@ -328,6 +362,7 @@ def _run_stopwatch(browsing_history: list[dict], exclude_hours: tuple[int, ...] 
         
         if delta < 3:
             graveyard_count += 1
+            period_data[period_key]["graveyard"] += 1
             consecutive_skips += 1
             max_consecutive_skips = max(max_consecutive_skips, consecutive_skips)
             monthly_data[month_key]["skip"] += 1
@@ -336,11 +371,13 @@ def _run_stopwatch(browsing_history: list[dict], exclude_hours: tuple[int, ...] 
         elif delta <= 15:
             consecutive_skips = 0
             sandbox_count += 1
+            period_data[period_key]["sandbox"] += 1
             if link: sandbox_links.add(link)
             if vid: sandbox_events.append({"video_id": vid, "link": link, "time_spent": time_spent, "hour": hour})
         elif delta <= 180:
             consecutive_skips = 0
             linger_count += 1
+            period_data[period_key]["linger"] += 1
             if 23 <= hour or hour < 4: night_lingers += 1
             if link: linger_links.add(link)
             if vid:
@@ -350,6 +387,7 @@ def _run_stopwatch(browsing_history: list[dict], exclude_hours: tuple[int, ...] 
         else:
             consecutive_skips = 0
             deep_dive_count += 1
+            period_data[period_key]["deep_dive"] += 1
             if 23 <= hour or hour < 4: night_lingers += 1
             if link:
                 deep_dive_links.add(link)
@@ -392,6 +430,8 @@ def _run_stopwatch(browsing_history: list[dict], exclude_hours: tuple[int, ...] 
         "hourly_heatmap": {str(h): hourly.get(h, 0) for h in range(24)},
         "weekly_heatmap": weekly_heatmap,
         "monthly_skip_rates": monthly_skip_rates,
+        "temporal_granularity": granularity,  # WP-1.4
+        "period_data": {p: dict(period_data[p]) for p in sorted(period_data.keys())},  # WP-1.4
         "linger_events": linger_events,
         "graveyard_events": graveyard_events,
         "sandbox_events": sandbox_events,
@@ -846,6 +886,30 @@ def build_ghost_profile(parsed: dict, exclude_hours: tuple[int, ...] = (), link_
     echo = _echo_chamber_index(sw["_linger_links"], link_handle_map)
     echo_split = _echo_chamber_split(sw["linger_events"], link_handle_map)
 
+    # ── WP-1.4: per-period temporal series (month, or week when coverage < 90d) ──
+    gran = sw["temporal_granularity"]
+    pdata = sw["period_data"]
+    bucket_series = _temporal_series(gran, [
+        {"period": p, "value": {k: d[k] for k in ("graveyard", "sandbox", "linger", "deep_dive", "total")}}
+        for p, d in pdata.items()
+    ])
+    night_shift_series = _temporal_series(gran, [
+        {"period": p, "value": round(d["night"] / d["total"] * 100, 1) if d["total"] > 0 else 0.0}
+        for p, d in pdata.items()
+    ])
+    explicit_by_period: defaultdict[str, int] = defaultdict(int)
+    for item in list(parsed.get("likes", [])) + list(parsed.get("comments", [])):
+        edt = _parse_date(item.get("date", ""))
+        if edt:
+            explicit_by_period[_period_key(edt, gran)] += 1
+    ei_periods = sorted(set(explicit_by_period) | set(pdata.keys()))
+    ei_points = []
+    for p in ei_periods:
+        implicit_p = pdata.get(p, {}).get("linger", 0) + pdata.get(p, {}).get("deep_dive", 0)
+        ratio = round(explicit_by_period.get(p, 0) / implicit_p, 3) if implicit_p > 0 else 0.0
+        ei_points.append({"period": p, "value": ratio})
+    explicit_implicit_series = _temporal_series(gran, ei_points)
+
     # ── Temporal / monthly features ──────────────────────────────────────────
     monthly_creator_trends = _monthly_creator_trends(sw["linger_events"], link_handle_map)
     monthly_topic_trends = _monthly_topic_trends(searches_raw, parsed.get("comments", []))
@@ -887,6 +951,12 @@ def build_ghost_profile(parsed: dict, exclude_hours: tuple[int, ...] = (), link_
             "echo_chamber_distinct_creators": echo["distinct_creators"],
             "echo_split": echo_split,  # WP-1.7: daily_concentration / cluster_churn / true_bubble
             "top_creator_handles": [c.get("handle") for c in vibe_cluster[:5]],
+        },
+        "temporal_series": {  # WP-1.4: per-period series; cluster_shares deferred to WP-2.1
+            "granularity": gran,
+            "stopwatch_buckets": bucket_series,
+            "night_shift_ratio": night_shift_series,
+            "explicit_vs_implicit_ratio": explicit_implicit_series,
         },
         "night_shift": {"percentage": round(night_shift_pct, 1), "count": sw["night_count"], "window": "23:00 – 04:00"},
         "digital_footprint": {

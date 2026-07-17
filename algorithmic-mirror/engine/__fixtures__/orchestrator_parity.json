@@ -543,6 +543,17 @@
           "monthly_skip_rates": {
             "2024-01": 20.0
           },
+          "temporal_granularity": "week",
+          "period_data": {
+            "2024-01-01": {
+              "graveyard": 3,
+              "sandbox": 2,
+              "linger": 10,
+              "deep_dive": 0,
+              "total": 15,
+              "night": 1
+            }
+          },
           "linger_events": [
             {
               "video_id": "1",
@@ -805,6 +816,42 @@
             "@c",
             "@g"
           ]
+        },
+        "temporal_series": {
+          "granularity": "week",
+          "stopwatch_buckets": {
+            "granularity": "week",
+            "points": [
+              {
+                "period": "2024-01-01",
+                "value": {
+                  "graveyard": 3,
+                  "sandbox": 2,
+                  "linger": 10,
+                  "deep_dive": 0,
+                  "total": 15
+                }
+              }
+            ]
+          },
+          "night_shift_ratio": {
+            "granularity": "week",
+            "points": [
+              {
+                "period": "2024-01-01",
+                "value": 6.7
+              }
+            ]
+          },
+          "explicit_vs_implicit_ratio": {
+            "granularity": "week",
+            "points": [
+              {
+                "period": "2024-01-01",
+                "value": 0.4
+              }
+            ]
+          }
         },
         "night_shift": {
           "percentage": 6.7,
@@ -1418,6 +1465,8 @@
             }
           },
           "monthly_skip_rates": {},
+          "temporal_granularity": "month",
+          "period_data": {},
           "linger_events": [],
           "graveyard_events": [],
           "sandbox_events": [],
@@ -1478,6 +1527,21 @@
             "per_month": {}
           },
           "top_creator_handles": []
+        },
+        "temporal_series": {
+          "granularity": "month",
+          "stopwatch_buckets": {
+            "granularity": "month",
+            "points": []
+          },
+          "night_shift_ratio": {
+            "granularity": "month",
+            "points": []
+          },
+          "explicit_vs_implicit_ratio": {
+            "granularity": "month",
+            "points": []
+          }
         },
         "night_shift": {
           "percentage": 0.0,

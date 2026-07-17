@@ -61,9 +61,23 @@ export interface StopwatchResult {
   night_linger_events: StopwatchEvent[];
   deep_dive_events: StopwatchEvent[];
   data_start_month: string | null;
+  /** WP-1.4: "month" (coverage ≥ 90d) or "week" (Monday-anchored, < 90d). */
+  temporal_granularity: "month" | "week";
+  /** WP-1.4: per-period bucket + night counts, keyed by period (sorted). */
+  period_data: Record<string, PeriodCounts>;
+}
+
+export interface PeriodCounts {
+  graveyard: number;
+  sandbox: number;
+  linger: number;
+  deep_dive: number;
+  total: number;
+  night: number;
 }
 
 const SLEEP_THRESHOLD_S = 1200;
+const TEMPORAL_MONTH_MIN_DAYS = 90;
 
 const MONTH_NAMES = [
   "January", "February", "March", "April", "May", "June",
@@ -77,6 +91,26 @@ function ym(dt: Date): string {
 /** "YYYY-MM-DD" mirror of Python's cur["dt"].strftime("%Y-%m-%d"). */
 function ymd(dt: Date): string {
   return `${ym(dt)}-${String(dt.getUTCDate()).padStart(2, "0")}`;
+}
+
+/** WP-1.4 granularity from the watch-history span (entries pre-sorted). */
+function temporalGranularity(entries: { dt: Date }[]): "month" | "week" {
+  if (!entries.length) return "month";
+  const spanDays = Math.floor(
+    (entries[entries.length - 1].dt.getTime() - entries[0].dt.getTime()) / 86_400_000,
+  );
+  return spanDays < TEMPORAL_MONTH_MIN_DAYS ? "week" : "month";
+}
+
+/** WP-1.4 period key. Week = Monday-anchored "YYYY-MM-DD" (mirrors the Python
+ *  Monday-anchor; deliberately NOT ISO %G-W%V, so year boundaries are parity-safe). */
+export function periodKey(dt: Date, granularity: "month" | "week"): string {
+  if (granularity === "week") {
+    const mondayOffset = (dt.getUTCDay() + 6) % 7; // Python weekday(): Mon=0
+    const monday = new Date(dt.getTime() - mondayOffset * 86_400_000);
+    return ymd(monday);
+  }
+  return ym(dt);
 }
 
 export function runStopwatch(
@@ -108,6 +142,12 @@ export function runStopwatch(
   const hourly: Record<number, number> = {};
   const weekly: Record<number, Record<number, number>> = {};
   const monthly: Record<string, { skip: number; total: number }> = {};
+
+  // WP-1.4: separate per-period accumulator (leaves `monthly` byte-identical).
+  const granularity = temporalGranularity(entries);
+  const periodData: Record<string, PeriodCounts> = {};
+  const periodBump = (pk: string): PeriodCounts =>
+    (periodData[pk] ??= { graveyard: 0, sandbox: 0, linger: 0, deep_dive: 0, total: 0, night: 0 });
 
   const graveyardLinks = new Set<string>();
   const sandboxLinks = new Set<string>();
@@ -150,10 +190,13 @@ export function runStopwatch(
 
     const monthKey = ym(cur.dt);
     const dayKey = ymd(cur.dt);
+    const pk = periodKey(cur.dt, granularity);
+    const pc = periodBump(pk);
     (monthly[monthKey] ??= { skip: 0, total: 0 }).total += 1;
+    pc.total += 1;
 
     const isNight = hour >= 23 || hour < 4;
-    if (isNight) nightCount++;
+    if (isNight) { nightCount++; pc.night += 1; }
 
     const link = cur.link;
     const vid = link ? extractVideoId(link) : null;
@@ -161,6 +204,7 @@ export function runStopwatch(
 
     if (delta < 3) {
       graveyard++;
+      pc.graveyard += 1;
       consecutiveSkips++;
       maxConsecutiveSkips = Math.max(maxConsecutiveSkips, consecutiveSkips);
       monthly[monthKey].skip += 1;
@@ -169,11 +213,13 @@ export function runStopwatch(
     } else if (delta <= 15) {
       consecutiveSkips = 0;
       sandbox++;
+      pc.sandbox += 1;
       if (link) sandboxLinks.add(link);
       if (vid) sandboxEvents.push({ video_id: vid, link, time_spent: timeSpent, hour });
     } else if (delta <= 180) {
       consecutiveSkips = 0;
       linger++;
+      pc.linger += 1;
       if (isNight) nightLingers++;
       if (link) lingerLinks.add(link);
       if (vid) {
@@ -184,6 +230,7 @@ export function runStopwatch(
     } else {
       consecutiveSkips = 0;
       deepDive++;
+      pc.deep_dive += 1;
       if (isNight) nightLingers++;
       if (link) {
         deepDiveLinks.add(link);
@@ -246,5 +293,7 @@ export function runStopwatch(
     night_linger_events: nightLingerEvents,
     deep_dive_events: deepDiveEvents,
     data_start_month: dataStartMonth,
+    temporal_granularity: granularity,
+    period_data: Object.fromEntries(Object.keys(periodData).sort().map((p) => [p, periodData[p]])),
   };
 }

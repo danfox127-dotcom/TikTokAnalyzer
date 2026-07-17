@@ -20,6 +20,15 @@ export interface EvidenceRef {
   citation?: string;
 }
 
+/**
+ * WP-1.4 — a metric bucketed over time. `granularity` is "month" (coverage ≥ 90d)
+ * or "week" (Monday-anchored period keys, < 90d). Points are sorted by period.
+ */
+export interface TemporalSeries<T = unknown> {
+  granularity: "month" | "week";
+  points: { period: string; value: T }[];
+}
+
 export interface Claim<T = unknown> {
   id: string; // stable key, e.g. "attention.skip_rate_pct"
   tier: Tier;

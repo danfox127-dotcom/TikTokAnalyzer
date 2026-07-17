@@ -66,6 +66,10 @@ describe("stopwatch parity vs Python oracle", () => {
     for (const f of EVENT_FIELDS) {
       expect(normEvents(got[f])).toEqual(normEvents(exp[f as string]));
     }
+
+    // WP-1.4 temporal bucketing: granularity + per-period bucket/night counts.
+    expect(got.temporal_granularity).toBe(exp.temporal_granularity);
+    expect(got.period_data).toEqual(exp.period_data);
   });
 
   test("fixture actually loaded", () => {
