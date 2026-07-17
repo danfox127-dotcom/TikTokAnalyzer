@@ -15,7 +15,7 @@ import { runStopwatch } from "./stopwatch";
 import { mineTextFootprint } from "./textFootprint";
 import { analyzeShareBehavior, analyzeCommentVoice } from "./engagement";
 import { calculateTransparencyGap } from "./transparencyGap";
-import { countCreators, resolveVibeCluster, handleFromLink, echoChamberIndex } from "./creators";
+import { countCreators, resolveVibeCluster, handleFromLink, echoChamberIndex, echoChamberSplit } from "./creators";
 import { determinePrimaryArchetype } from "./archetypes";
 import {
   algorithmDrift, inferSleepWindow, monthlyCreatorTrends,
@@ -139,6 +139,7 @@ export function buildGhostProfile(
   const explicitTotal = (parsed.likes?.length ?? 0) + (parsed.comments?.length ?? 0);
   const implicitTotal = sustainedAndDives;
   const echo = echoChamberIndex(sw._linger_links, linkHandleMap);
+  const echoSplit = echoChamberSplit(sw.linger_events as any, linkHandleMap);
 
   const monthlyCreatorTrends_ = monthlyCreatorTrends(sw.linger_events, linkHandleMap);
   const monthlyTopicTrends_ = monthlyTopicTrends(searchesRaw, parsed.comments ?? []);
@@ -170,6 +171,7 @@ export function buildGhostProfile(
       echo_chamber_index_pct: echo.pct,
       echo_chamber_basis: echo.basis,
       echo_chamber_distinct_creators: echo.distinct_creators,
+      echo_split: echoSplit,
       top_creator_handles: vibeCluster.slice(0, 5).map((c) => c.handle),
     },
     night_shift: { percentage: pyRound(nightShiftPct, 1), count: sw.night_count, window: "23:00 – 04:00" },

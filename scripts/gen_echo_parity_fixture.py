@@ -25,6 +25,7 @@ from api.ghost_profile import (  # noqa: E402
     _extract_creator_from_url,
     _handle_from_link,
     _echo_chamber_index,
+    _echo_chamber_split,
 )
 
 V = "https://www.tiktok.com/@"        # + "<handle>/video/<id>"
@@ -83,6 +84,88 @@ def echo_cases():
     ]
 
 
+def _ev(day, handle, time):
+    # Resolution is by @handle in the URL, so the video id is irrelevant.
+    return {"link": V + handle + "/video/1", "time_spent": float(time), "_day": day}
+
+
+def echo_split_cases():
+    """WP-1.7 daily_concentration / cluster_churn scenarios.
+
+    Small cases are hand-verifiable (distinct times, no boundary ties between the
+    5th and 6th cluster, so the top-5 SET is unambiguous). The benchmark case is
+    engineered to reproduce the published ≈0.5 concentration / ≈0.8 churn so the
+    formula is pinned to its intended meaning, not just to itself.
+    """
+    cases = []
+
+    # 2 clusters, 1 day: top5 covers all -> conc 1.0; 1 active day -> churn 0.0;
+    # bubble True (conc>0.6, churn<0.4). per_month mirrors overall.
+    cases.append(("two_clusters_one_day", [
+        _ev("2024-01-01", "a", 30), _ev("2024-01-01", "b", 10),
+    ], None))
+
+    # 6 clusters, 1 day: top5 = 20/21 of time.
+    cases.append(("six_clusters_one_day", [
+        _ev("2024-01-02", "a", 6), _ev("2024-01-02", "b", 5), _ev("2024-01-02", "c", 4),
+        _ev("2024-01-02", "d", 3), _ev("2024-01-02", "e", 2), _ev("2024-01-02", "f", 1),
+    ], None))
+
+    # 2 days, top5 fully rotates -> churn 1.0; bubble False.
+    cases.append(("two_days_full_churn", [
+        _ev("2024-01-01", "a", 10), _ev("2024-01-01", "b", 9), _ev("2024-01-01", "c", 8),
+        _ev("2024-01-01", "d", 7), _ev("2024-01-01", "e", 6), _ev("2024-01-01", "f", 5),
+        _ev("2024-01-02", "g", 10), _ev("2024-01-02", "h", 9), _ev("2024-01-02", "i", 8),
+        _ev("2024-01-02", "j", 7), _ev("2024-01-02", "k", 6), _ev("2024-01-02", "l", 5),
+    ], None))
+
+    # 2 days, identical top5 -> churn 0.0; conc 0.889; bubble True.
+    cases.append(("two_days_no_churn", [
+        _ev("2024-01-01", "a", 10), _ev("2024-01-01", "b", 9), _ev("2024-01-01", "c", 8),
+        _ev("2024-01-01", "d", 7), _ev("2024-01-01", "e", 6), _ev("2024-01-01", "f", 5),
+        _ev("2024-01-02", "a", 10), _ev("2024-01-02", "b", 9), _ev("2024-01-02", "c", 8),
+        _ev("2024-01-02", "d", 7), _ev("2024-01-02", "e", 6), _ev("2024-01-02", "f", 5),
+    ], None))
+
+    # 2 days, 2 of top5 replaced -> churn 0.4 (exactly the bubble boundary, so NOT <0.4).
+    cases.append(("two_days_partial_churn", [
+        _ev("2024-01-01", "a", 10), _ev("2024-01-01", "b", 9), _ev("2024-01-01", "c", 8),
+        _ev("2024-01-01", "d", 7), _ev("2024-01-01", "e", 6), _ev("2024-01-01", "f", 5),
+        _ev("2024-01-02", "a", 10), _ev("2024-01-02", "b", 9), _ev("2024-01-02", "c", 8),
+        _ev("2024-01-02", "x", 7), _ev("2024-01-02", "y", 6), _ev("2024-01-02", "f", 5),
+    ], None))
+
+    # Two months -> per_month has two keys, each computed independently.
+    cases.append(("two_months", [
+        _ev("2024-01-10", "a", 10), _ev("2024-01-10", "b", 5),
+        _ev("2024-02-11", "c", 8), _ev("2024-02-11", "d", 8), _ev("2024-02-11", "e", 3),
+    ], None))
+
+    # Unresolved links (no @handle, no map) are dropped -> empty result.
+    cases.append(("all_unresolved", [
+        {"link": VID_ONLY + "999", "time_spent": 20.0, "_day": "2024-01-01"},
+    ], None))
+
+    # Empty.
+    cases.append(("empty", [], None))
+
+    # Benchmark-scale: 6 days, each with a top-5 (times 10/9/8/7/6 = 40) plus a
+    # 40-creator tail (time 1 each = 40) -> daily conc = 40/80 = 0.5. The top-5
+    # rotates by 4 each day (carrying exactly one), so each day replaces 4/5 ->
+    # churn 0.8. Reproduces the published ≈0.5 / ≈0.79 benchmark.
+    bench = []
+    for d in range(6):
+        day = f"2024-03-0{d + 1}"
+        top = [f"t{d * 4 + k}" for k in range(5)]
+        for handle, t in zip(top, (10, 9, 8, 7, 6)):
+            bench.append(_ev(day, handle, t))
+        for j in range(40):
+            bench.append(_ev(day, f"tail{j}", 1))
+    cases.append(("benchmark_scale", bench, None))
+
+    return cases
+
+
 def main():
     payload = {
         "_comment": "Golden parity fixture for the WP-1.1 creator/echo port. "
@@ -102,6 +185,11 @@ def main():
              "expected": _echo_chamber_index(lks, hm)}
             for n, lks, hm in echo_cases()
         ],
+        "echo_split_cases": [
+            {"name": n, "input": {"linger_events": evs, "link_handle_map": hm},
+             "expected": _echo_chamber_split(evs, hm)}
+            for n, evs, hm in echo_split_cases()
+        ],
     }
 
     out_path = os.path.join(
@@ -111,7 +199,7 @@ def main():
     os.makedirs(os.path.dirname(out_path), exist_ok=True)
     with open(out_path, "w") as f:
         json.dump(payload, f, indent=2, ensure_ascii=False)
-    n = sum(len(payload[k]) for k in ("creator_url_cases", "handle_cases", "echo_cases"))
+    n = sum(len(payload[k]) for k in ("creator_url_cases", "handle_cases", "echo_cases", "echo_split_cases"))
     print(f"wrote {n} cases → {out_path}")
 
 

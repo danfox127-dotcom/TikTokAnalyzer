@@ -32,6 +32,7 @@ export interface StopwatchEvent {
   time_spent: number;
   hour: number;
   _month?: string;
+  _day?: string;
 }
 
 export interface StopwatchResult {
@@ -71,6 +72,11 @@ const MONTH_NAMES = [
 
 function ym(dt: Date): string {
   return `${dt.getUTCFullYear()}-${String(dt.getUTCMonth() + 1).padStart(2, "0")}`;
+}
+
+/** "YYYY-MM-DD" mirror of Python's cur["dt"].strftime("%Y-%m-%d"). */
+function ymd(dt: Date): string {
+  return `${ym(dt)}-${String(dt.getUTCDate()).padStart(2, "0")}`;
 }
 
 export function runStopwatch(
@@ -143,6 +149,7 @@ export function runStopwatch(
     (weekly[dow] ??= {})[hour] = (weekly[dow][hour] ?? 0) + 1;
 
     const monthKey = ym(cur.dt);
+    const dayKey = ymd(cur.dt);
     (monthly[monthKey] ??= { skip: 0, total: 0 }).total += 1;
 
     const isNight = hour >= 23 || hour < 4;
@@ -170,7 +177,7 @@ export function runStopwatch(
       if (isNight) nightLingers++;
       if (link) lingerLinks.add(link);
       if (vid) {
-        const ev: StopwatchEvent = { video_id: vid, link, time_spent: timeSpent, hour, _month: monthKey };
+        const ev: StopwatchEvent = { video_id: vid, link, time_spent: timeSpent, hour, _month: monthKey, _day: dayKey };
         lingerEvents.push(ev);
         if (isNight) nightLingerEvents.push(ev);
       }
@@ -183,7 +190,7 @@ export function runStopwatch(
         lingerLinks.add(link);
       }
       if (vid) {
-        const ev: StopwatchEvent = { video_id: vid, link, time_spent: timeSpent, hour, _month: monthKey };
+        const ev: StopwatchEvent = { video_id: vid, link, time_spent: timeSpent, hour, _month: monthKey, _day: dayKey };
         deepDiveEvents.push(ev);
         lingerEvents.push(ev);
         if (isNight) nightLingerEvents.push(ev);

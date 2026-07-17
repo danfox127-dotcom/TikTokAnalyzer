@@ -4,7 +4,7 @@
  */
 import * as fs from "fs";
 import * as path from "path";
-import { extractCreatorFromUrl, handleFromLink, echoChamberIndex } from "../creators";
+import { extractCreatorFromUrl, handleFromLink, echoChamberIndex, echoChamberSplit } from "../creators";
 
 interface Row {
   name: string;
@@ -18,6 +18,7 @@ const fx = JSON.parse(
 const creatorRows: Row[] = fx.creator_url_cases;
 const handleRows: Row[] = fx.handle_cases;
 const echoRows: Row[] = fx.echo_cases;
+const echoSplitRows: Row[] = fx.echo_split_cases;
 
 describe("extractCreatorFromUrl parity", () => {
   test.each(creatorRows.map((c) => [c.name, c] as const))("%s", (_n, c) => {
@@ -37,5 +38,33 @@ describe("echoChamberIndex parity", () => {
     expect(got.pct).toBeCloseTo(c.expected.pct, 6);
     expect(got.basis).toBe(c.expected.basis);
     expect(got.distinct_creators).toBe(c.expected.distinct_creators);
+  });
+});
+
+describe("echoChamberSplit parity (WP-1.7)", () => {
+  test.each(echoSplitRows.map((c) => [c.name, c] as const))("%s", (_n, c) => {
+    const got = echoChamberSplit(c.input.linger_events, c.input.link_handle_map);
+    const exp = c.expected;
+    expect(got.daily_concentration).toBeCloseTo(exp.daily_concentration, 6);
+    expect(got.cluster_churn).toBeCloseTo(exp.cluster_churn, 6);
+    expect(got.true_bubble).toBe(exp.true_bubble);
+    expect(got.benchmark_concentration).toBe(exp.benchmark_concentration);
+    expect(got.benchmark_churn).toBe(exp.benchmark_churn);
+    // per_month: same keys, same per-month metrics.
+    expect(Object.keys(got.per_month).sort()).toEqual(Object.keys(exp.per_month).sort());
+    for (const mk of Object.keys(exp.per_month)) {
+      expect(got.per_month[mk].daily_concentration).toBeCloseTo(exp.per_month[mk].daily_concentration, 6);
+      expect(got.per_month[mk].cluster_churn).toBeCloseTo(exp.per_month[mk].cluster_churn, 6);
+      expect(got.per_month[mk].true_bubble).toBe(exp.per_month[mk].true_bubble);
+    }
+  });
+
+  // Benchmark reproduction: the engineered scenario lands on the published ≈0.5
+  // concentration / ≈0.79 churn, pinning the formula to its intended meaning.
+  test("benchmark_scale reproduces the published ≈0.5 / ≈0.79 benchmark", () => {
+    const c = echoSplitRows.find((r) => r.name === "benchmark_scale")!;
+    const got = echoChamberSplit(c.input.linger_events, c.input.link_handle_map);
+    expect(got.daily_concentration).toBeCloseTo(0.5, 6);
+    expect(got.cluster_churn).toBeCloseTo(0.8, 6);
   });
 });

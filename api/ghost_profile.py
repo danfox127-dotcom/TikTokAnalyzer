@@ -164,6 +164,84 @@ def _echo_chamber_index(linger_links, link_handle_map: dict[str, str] | None = N
     }
 
 
+# WP-1.7 — split echo-chamber signal. Published benchmarks (research-integration
+# §2): a typical feed sits near ≈0.5 daily concentration and ≈0.79 cluster churn.
+# A "true bubble" is the rarer high-concentration + low-churn corner.
+ECHO_BENCHMARK_CONCENTRATION = 0.5
+ECHO_BENCHMARK_CHURN = 0.79
+BUBBLE_CONCENTRATION_MIN = 0.6
+BUBBLE_CHURN_MAX = 0.4
+
+
+def _echo_top5(cluster_times: dict[str, float]) -> list[str]:
+    """Top-5 clusters by watch time. Stable: ties keep first-seen (insertion) order,
+    so the result is deterministic regardless of dict/Counter iteration quirks."""
+    return [h for h, _ in sorted(cluster_times.items(), key=lambda kv: -kv[1])[:5]]
+
+
+def _echo_day_cluster_times(linger_events, link_handle_map) -> dict[str, dict[str, float]]:
+    """{day → {resolved handle → summed linger watch time}}, first-seen order preserved.
+
+    Only lingers with a *resolved* creator contribute — matching _echo_chamber_index,
+    so both signals share one honest basis at low resolution coverage.
+    """
+    days: dict[str, dict[str, float]] = {}
+    for ev in linger_events:
+        h = _handle_from_link(ev.get("link", ""), link_handle_map)
+        if not h:
+            continue
+        day = ev.get("_day")
+        if not day:
+            continue
+        d = days.setdefault(day, {})
+        d[h] = d.get(h, 0.0) + float(ev.get("time_spent", 0.0))
+    return days
+
+
+def _echo_split_over_days(day_times: dict[str, dict[str, float]]) -> dict:
+    active_days = [d for d in sorted(day_times.keys()) if sum(day_times[d].values()) > 0]
+
+    concentrations: list[float] = []
+    for day in active_days:
+        ct = day_times[day]
+        total = sum(ct.values())
+        top5_time = sum(ct[h] for h in _echo_top5(ct))
+        concentrations.append(top5_time / total)
+    daily_concentration = round(sum(concentrations) / len(concentrations), 3) if concentrations else 0.0
+
+    churns: list[float] = []
+    for i in range(1, len(active_days)):
+        prev = set(_echo_top5(day_times[active_days[i - 1]]))
+        curr = _echo_top5(day_times[active_days[i]])
+        if not curr:
+            continue
+        churns.append(len(set(curr) - prev) / len(curr))
+    cluster_churn = round(sum(churns) / len(churns), 3) if churns else 0.0
+
+    return {
+        "daily_concentration": daily_concentration,
+        "cluster_churn": cluster_churn,
+        "true_bubble": daily_concentration > BUBBLE_CONCENTRATION_MIN and cluster_churn < BUBBLE_CHURN_MAX,
+    }
+
+
+def _echo_chamber_split(linger_events, link_handle_map: dict[str, str] | None = None) -> dict:
+    """WP-1.7: daily_concentration + cluster_churn (overall and per-month), plus a
+    true_bubble flag and the published benchmarks. Additive to _echo_chamber_index,
+    which stays as the deprecated single-number alias for one release."""
+    day_times = _echo_day_cluster_times(linger_events, link_handle_map)
+    overall = _echo_split_over_days(day_times)
+    per_month: dict[str, dict] = {}
+    for mk in sorted({d[:7] for d in day_times}):
+        per_month[mk] = _echo_split_over_days({d: v for d, v in day_times.items() if d[:7] == mk})
+    return {
+        **overall,
+        "benchmark_concentration": ECHO_BENCHMARK_CONCENTRATION,
+        "benchmark_churn": ECHO_BENCHMARK_CHURN,
+        "per_month": per_month,
+    }
+
+
 # ---------------------------------------------------------------------------
 # Task 1: True Stopwatch & AFK Firewall
 # ---------------------------------------------------------------------------
@@ -236,6 +314,7 @@ def _run_stopwatch(browsing_history: list[dict], exclude_hours: tuple[int, ...] 
         weekly[dow][hour] += 1
         
         month_key = cur["dt"].strftime("%Y-%m")
+        day_key = cur["dt"].strftime("%Y-%m-%d")
         monthly_data[month_key]["total"] += 1
 
         if 23 <= hour or hour < 4:
@@ -265,7 +344,7 @@ def _run_stopwatch(browsing_history: list[dict], exclude_hours: tuple[int, ...] 
             if 23 <= hour or hour < 4: night_lingers += 1
             if link: linger_links.add(link)
             if vid:
-                ev = {"video_id": vid, "link": link, "time_spent": time_spent, "hour": hour, "_month": month_key}
+                ev = {"video_id": vid, "link": link, "time_spent": time_spent, "hour": hour, "_month": month_key, "_day": day_key}
                 linger_events.append(ev)
                 if 23 <= hour or hour < 4: night_linger_events.append(ev)
         else:
@@ -276,7 +355,7 @@ def _run_stopwatch(browsing_history: list[dict], exclude_hours: tuple[int, ...] 
                 deep_dive_links.add(link)
                 linger_links.add(link)
             if vid:
-                ev = {"video_id": vid, "link": link, "time_spent": time_spent, "hour": hour, "_month": month_key}
+                ev = {"video_id": vid, "link": link, "time_spent": time_spent, "hour": hour, "_month": month_key, "_day": day_key}
                 deep_dive_events.append(ev)
                 linger_events.append(ev)
                 if 23 <= hour or hour < 4: night_linger_events.append(ev)
@@ -765,6 +844,7 @@ def build_ghost_profile(parsed: dict, exclude_hours: tuple[int, ...] = (), link_
     implicit_total = sustained_and_dives
     
     echo = _echo_chamber_index(sw["_linger_links"], link_handle_map)
+    echo_split = _echo_chamber_split(sw["linger_events"], link_handle_map)
 
     # ── Temporal / monthly features ──────────────────────────────────────────
     monthly_creator_trends = _monthly_creator_trends(sw["linger_events"], link_handle_map)
@@ -802,9 +882,10 @@ def build_ghost_profile(parsed: dict, exclude_hours: tuple[int, ...] = (), link_
             "explicit_vs_implicit_ratio": round(explicit_total / implicit_total, 3) if implicit_total > 0 else 0.0,
             "explicit_actions_count": explicit_total,
             "implicit_linger_count": implicit_total,
-            "echo_chamber_index_pct": echo["pct"],
+            "echo_chamber_index_pct": echo["pct"],  # WP-1.7: deprecated alias, kept one release
             "echo_chamber_basis": echo["basis"],
             "echo_chamber_distinct_creators": echo["distinct_creators"],
+            "echo_split": echo_split,  # WP-1.7: daily_concentration / cluster_churn / true_bubble
             "top_creator_handles": [c.get("handle") for c in vibe_cluster[:5]],
         },
         "night_shift": {"percentage": round(night_shift_pct, 1), "count": sw["night_count"], "window": "23:00 – 04:00"},

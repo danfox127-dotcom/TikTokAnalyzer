@@ -82,6 +82,126 @@ export function echoChamberIndex(
   };
 }
 
+// ── WP-1.7: split echo-chamber signal ────────────────────────────────────────
+// Mirror of _echo_chamber_split. Additive to echoChamberIndex (the deprecated
+// single-number alias). Published benchmarks (research-integration §2):
+export const ECHO_BENCHMARK_CONCENTRATION = 0.5;
+export const ECHO_BENCHMARK_CHURN = 0.79;
+const BUBBLE_CONCENTRATION_MIN = 0.6;
+const BUBBLE_CHURN_MAX = 0.4;
+
+export interface LingerEvent {
+  link: string;
+  time_spent: number;
+  _day: string; // "YYYY-MM-DD"
+}
+
+export interface EchoSplitDays {
+  daily_concentration: number;
+  cluster_churn: number;
+  true_bubble: boolean;
+}
+
+export interface EchoChamberSplit extends EchoSplitDays {
+  benchmark_concentration: number;
+  benchmark_churn: number;
+  per_month: Record<string, EchoSplitDays>;
+}
+
+/** Top-5 clusters by watch time. Stable: ties keep first-seen (Map insertion)
+ *  order — Array.sort is stable — matching Python's stable sorted() on a dict. */
+function echoTop5(clusterTimes: Map<string, number>): string[] {
+  return [...clusterTimes.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5)
+    .map(([h]) => h);
+}
+
+/** {day → Map(resolved handle → summed linger watch time)}, first-seen order kept.
+ *  Only lingers with a resolved creator contribute (matches echoChamberIndex). */
+function echoDayClusterTimes(
+  lingerEvents: LingerEvent[],
+  linkHandleMap?: Record<string, string> | null,
+): Map<string, Map<string, number>> {
+  const days = new Map<string, Map<string, number>>();
+  for (const ev of lingerEvents) {
+    const h = handleFromLink(ev.link ?? "", linkHandleMap);
+    if (!h) continue;
+    const day = ev._day;
+    if (!day) continue;
+    let d = days.get(day);
+    if (!d) { d = new Map(); days.set(day, d); }
+    d.set(h, (d.get(h) ?? 0) + Number(ev.time_spent ?? 0));
+  }
+  return days;
+}
+
+function sumValues(m: Map<string, number>): number {
+  let s = 0;
+  for (const v of m.values()) s += v;
+  return s;
+}
+
+function echoSplitOverDays(dayTimes: Map<string, Map<string, number>>): EchoSplitDays {
+  const activeDays = [...dayTimes.keys()]
+    .sort()
+    .filter((d) => sumValues(dayTimes.get(d)!) > 0);
+
+  const concentrations: number[] = [];
+  for (const day of activeDays) {
+    const ct = dayTimes.get(day)!;
+    const total = sumValues(ct);
+    const top5Time = echoTop5(ct).reduce((s, h) => s + (ct.get(h) ?? 0), 0);
+    concentrations.push(top5Time / total);
+  }
+  const daily_concentration = concentrations.length
+    ? pyRound(concentrations.reduce((a, b) => a + b, 0) / concentrations.length, 3)
+    : 0.0;
+
+  const churns: number[] = [];
+  for (let i = 1; i < activeDays.length; i++) {
+    const prev = new Set(echoTop5(dayTimes.get(activeDays[i - 1])!));
+    const curr = echoTop5(dayTimes.get(activeDays[i])!);
+    if (!curr.length) continue;
+    const replaced = curr.filter((h) => !prev.has(h)).length;
+    churns.push(replaced / curr.length);
+  }
+  const cluster_churn = churns.length
+    ? pyRound(churns.reduce((a, b) => a + b, 0) / churns.length, 3)
+    : 0.0;
+
+  return {
+    daily_concentration,
+    cluster_churn,
+    true_bubble: daily_concentration > BUBBLE_CONCENTRATION_MIN && cluster_churn < BUBBLE_CHURN_MAX,
+  };
+}
+
+/** Mirror of _echo_chamber_split (WP-1.7): daily_concentration + cluster_churn
+ *  (overall and per-month), true_bubble flag, and the published benchmarks. */
+export function echoChamberSplit(
+  lingerEvents: LingerEvent[],
+  linkHandleMap?: Record<string, string> | null,
+): EchoChamberSplit {
+  const dayTimes = echoDayClusterTimes(lingerEvents, linkHandleMap);
+  const overall = echoSplitOverDays(dayTimes);
+
+  const months = [...new Set([...dayTimes.keys()].map((d) => d.slice(0, 7)))].sort();
+  const per_month: Record<string, EchoSplitDays> = {};
+  for (const mk of months) {
+    const sub = new Map<string, Map<string, number>>();
+    for (const [d, v] of dayTimes) if (d.slice(0, 7) === mk) sub.set(d, v);
+    per_month[mk] = echoSplitOverDays(sub);
+  }
+
+  return {
+    ...overall,
+    benchmark_concentration: ECHO_BENCHMARK_CONCENTRATION,
+    benchmark_churn: ECHO_BENCHMARK_CHURN,
+    per_month,
+  };
+}
+
 /**
  * Mirror of _count_creators. HANDLE-FIRST: if any link resolves to a handle, the
  * result is handle-based and unresolved vids are dropped; only if NO handle
