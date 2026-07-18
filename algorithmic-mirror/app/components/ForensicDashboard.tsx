@@ -2,24 +2,27 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { 
+import {
   Activity,
   Network,
   Search,
   LayoutDashboard,
   ArrowLeft,
   Lock,
-  Zap
+  Zap,
+  TrendingUp
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import type { GhostProfile } from "./GhostProfileHUD";
 import { DownloadExportButton } from "./DownloadExportButton";
 import { CreatorGraph } from "./CreatorGraph";
 import { LLMAnalysisView } from "./LLMAnalysisView";
+import { FourPillarsPanel } from "./FourPillarsPanel";
+import { LocalModeBanner } from "./LocalModeBanner";
 
 // We'll import existing visualizations or build new ones inside these tabs.
 // For now, let's define the tab types.
-type Tab = "overview" | "behavior" | "network" | "interests" | "privacy" | "ai";
+type Tab = "overview" | "behavior" | "timeline" | "network" | "interests" | "privacy" | "ai";
 
 interface Props {
   profile: GhostProfile;
@@ -28,24 +31,25 @@ interface Props {
 }
 
 // ---------------------------------------------------------------------------
-// Design Tokens (Dark Deco / Dashboard Noir)
+// Design Tokens (Editorial / Warm-Paper Dossier — matches the landing page)
 // ---------------------------------------------------------------------------
 
-const BG = "#050505";
-const SIDEBAR = "#0a0a0a";
-const PANEL = "#0f0f0f";
-const BORDER = "rgba(255, 255, 255, 0.08)";
-const ACCENT = "#00e5ff"; // Forensic Cyan
-const INK = "#ffffff";
-const INK_DIM = "rgba(255, 255, 255, 0.6)";
-const INK_GHOST = "rgba(255, 255, 255, 0.25)";
+const BG = "#f5efe4";          // warm cream (landing background)
+const SIDEBAR = "#efe7d8";     // slightly deeper paper
+const PANEL = "#efe8da";       // panel paper, subtly off the BG
+const BORDER = "rgba(26, 22, 16, 0.16)"; // ink hairline
+const ACCENT = "#8b2323";      // oxblood (landing accent)
+const INK = "#1a1610";         // near-black brown
+const INK_DIM = "rgba(26, 22, 16, 0.62)";
+const INK_GHOST = "rgba(26, 22, 16, 0.4)";
 
-const MODULE_A = "#8b5cf6"; // Illusion of Choice — purple
-const MODULE_B = "#ef4444"; // Echo Chamber — red
-const MODULE_C = "#f97316"; // Personalization Trap — orange
-const MODULE_D = "#10b981"; // Monolith Adaptation — emerald
-const GRAVEYARD_ACCENT = "#ec4899"; // pink
-const VIBE_ACCENT = "#06b6d4"; // cyan
+// Muted earth accents — readable on cream, no neon. (names kept for stable refs)
+const MODULE_A = "#5b4a8a"; // muted aubergine
+const MODULE_B = "#8b2323"; // oxblood (concentration / "danger")
+const MODULE_C = "#9c6b2e"; // ochre
+const MODULE_D = "#3d6b4f"; // forest
+const GRAVEYARD_ACCENT = "#a14a5a"; // dusty rose
+const VIBE_ACCENT = "#2f6b6e"; // deep teal
 
 // ---------------------------------------------------------------------------
 // Primitives
@@ -184,7 +188,7 @@ function StopwatchFunnel({ profile }: { profile: GhostProfile }) {
             {sw.total_conscious_videos.toLocaleString()}
           </div>
           <div style={{ fontSize: 10, color: INK_GHOST, marginTop: 6, fontFamily: "var(--font-mono, monospace)" }}>
-            of {sw.total_videos.toLocaleString()} raw
+            of {(sw.total_raw_videos ?? sw.total_videos ?? 0).toLocaleString()} raw
           </div>
         </div>
         {buckets.map(b => {
@@ -305,10 +309,10 @@ export function ForensicDashboard({ profile, onReset, sourceFile }: Props) {
   return (
     <div style={{
       background: BG,
-      minHeight: "100vh", 
-      display: "flex", 
-      color: INK, 
-      fontFamily: "var(--font-mono, monospace)" 
+      minHeight: "100vh",
+      display: "flex",
+      color: INK,
+      fontFamily: "var(--font-body, 'Iowan Old Style', Georgia, serif)"
     }}>
       {/* Sidebar */}
       <aside style={{
@@ -323,11 +327,11 @@ export function ForensicDashboard({ profile, onReset, sourceFile }: Props) {
         top: 0
       }}>
         <div style={{ padding: "32px 24px", borderBottom: `1px solid ${BORDER}` }}>
-          <div style={{ fontSize: 10, letterSpacing: "0.3em", color: ACCENT, marginBottom: 8 }}>
-            // SYS.TEARDOWN
+          <div style={{ fontFamily: "var(--font-mono, monospace)", fontSize: 9, letterSpacing: "0.32em", color: INK_GHOST, textTransform: "uppercase", marginBottom: 10 }}>
+            The Glass House · Dossier
           </div>
-          <h1 style={{ fontSize: 18, fontWeight: 900, letterSpacing: "-0.02em", margin: 0 }}>
-            FORENSIC <span style={{ color: ACCENT }}>DASHBOARD</span>
+          <h1 style={{ fontFamily: "var(--font-display, 'Fraunces', Georgia, serif)", fontSize: 26, fontWeight: 800, letterSpacing: "-0.02em", lineHeight: 1.0, margin: 0, color: INK }}>
+            The <span style={{ fontStyle: "italic", color: ACCENT }}>Findings</span>
           </h1>
         </div>
 
@@ -338,14 +342,20 @@ export function ForensicDashboard({ profile, onReset, sourceFile }: Props) {
             active={activeTab === "overview"} 
             onClick={() => setActiveTab("overview")} 
           />
-          <SidebarItem 
-            icon={Activity} 
-            label="Behavioral Signature" 
-            active={activeTab === "behavior"} 
-            onClick={() => setActiveTab("behavior")} 
+          <SidebarItem
+            icon={Activity}
+            label="Behavioral Signature"
+            active={activeTab === "behavior"}
+            onClick={() => setActiveTab("behavior")}
           />
-          <SidebarItem 
-            icon={Network} 
+          <SidebarItem
+            icon={TrendingUp}
+            label="Timeline"
+            active={activeTab === "timeline"}
+            onClick={() => setActiveTab("timeline")}
+          />
+          <SidebarItem
+            icon={Network}
             label="Network & Influence" 
             active={activeTab === "network"} 
             onClick={() => setActiveTab("network")} 
@@ -400,6 +410,7 @@ export function ForensicDashboard({ profile, onReset, sourceFile }: Props) {
 
       {/* Main Content */}
       <main style={{ flex: 1, overflowY: "auto", padding: "48px" }}>
+        <LocalModeBanner profile={profile} />
         <AnimatePresence mode="wait">
           <motion.div
             key={activeTab}
@@ -410,14 +421,23 @@ export function ForensicDashboard({ profile, onReset, sourceFile }: Props) {
           >
             {activeTab === "overview" && (
               <div>
-                <header style={{ marginBottom: 48 }}>
-                  <div style={{ fontSize: 11, letterSpacing: "0.2em", color: ACCENT, marginBottom: 12 }}>
-                    // USER_ARCHETYPE_IDENTIFIED
+                {profile.data_cliff?.start_month && (
+                  <div style={{ marginBottom: 32, padding: "12px 16px", border: `1px solid ${BORDER}`, background: `${MODULE_B}0a`, display: "flex", gap: 12, alignItems: "flex-start" }}>
+                    <span style={{ color: MODULE_B, fontFamily: "var(--font-mono, monospace)", fontSize: 11, flexShrink: 0 }}>!</span>
+                    <div style={{ fontSize: 12, color: INK_DIM, lineHeight: 1.6 }}>
+                      <span style={{ color: INK }}>Your watch history starts in {profile.data_cliff.start_month}.</span>{" "}
+                      TikTok automatically deletes your viewing history every 6 months. What you're reading is all that survived — everything before that is gone.
+                    </div>
                   </div>
-                  <h2 style={{ fontSize: 48, fontWeight: 900, margin: 0 }}>
+                )}
+                <header style={{ marginBottom: 48, borderBottom: `2px solid ${INK}`, paddingBottom: 28 }}>
+                  <div style={{ fontFamily: "var(--font-mono, monospace)", fontSize: 10, letterSpacing: "0.32em", color: ACCENT, textTransform: "uppercase", marginBottom: 16 }}>
+                    The Verdict · Who TikTok Thinks You Are
+                  </div>
+                  <h2 style={{ fontFamily: "var(--font-display, 'Fraunces', Georgia, serif)", fontSize: "clamp(40px, 6vw, 72px)", fontWeight: 800, letterSpacing: "-0.03em", lineHeight: 0.96, margin: 0, color: INK }}>
                     {profile.primary_archetype?.name ?? "The Balanced Viewer"}
                   </h2>
-                  <div style={{ marginTop: 12, fontSize: 14, color: INK_DIM, maxWidth: 600, lineHeight: 1.6 }}>
+                  <div style={{ marginTop: 18, fontSize: 17, color: INK_DIM, maxWidth: "58ch", lineHeight: 1.6 }}>
                     {profile.primary_archetype?.name === "The Algorithmic Captured" && (
                       "Your attention signature indicates high immersion. The recommendation engine has identified a loop that keeps you engaged for extended periods, suggesting your feed is highly optimized for your current psychological state."
                     )}
@@ -450,18 +470,65 @@ export function ForensicDashboard({ profile, onReset, sourceFile }: Props) {
                 </div>
                 
                 <div style={{ marginTop: 48 }}>
-                  <h3 style={{ fontSize: 12, textTransform: "uppercase", color: INK_DIM, marginBottom: 24 }}>// Behavioral Atomic Traits</h3>
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
+                  <FourPillarsPanel
+                    profile={profile}
+                    apiUrl={process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8005"}
+                  />
+                </div>
+
+                <div style={{ marginTop: 32, display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 16 }}>
+                  {profile.behavioral_nodes.inferred_sleep_window && profile.behavioral_nodes.inferred_sleep_window !== "Unknown" && (
+                    <div style={{ background: PANEL, border: `1px solid ${BORDER}`, padding: "20px 24px" }}>
+                      <div style={{ fontSize: 10, color: INK_DIM, textTransform: "uppercase", marginBottom: 8 }}>Inferred Sleep Window</div>
+                      <div style={{ fontSize: 22, fontWeight: 700, color: MODULE_A }}>{profile.behavioral_nodes.inferred_sleep_window}</div>
+                      <div style={{ fontSize: 10, color: INK_GHOST, marginTop: 6, lineHeight: 1.5 }}>Lowest-activity 4h window in your history</div>
+                    </div>
+                  )}
+                  {(() => {
+                    const sw = profile.stopwatch_metrics;
+                    const est = Math.round((sw.graveyard_skips * 1.5 + sw.sandbox_views * 9 + sw.deep_lingers * 90 + sw.deep_dives * 240) / 3600);
+                    if (est < 1) return null;
+                    return (
+                      <div style={{ background: PANEL, border: `1px solid ${BORDER}`, padding: "20px 24px" }}>
+                        <div style={{ fontSize: 10, color: INK_DIM, textTransform: "uppercase", marginBottom: 8 }}>Est. Watch Time</div>
+                        <div style={{ fontSize: 22, fontWeight: 700, color: MODULE_B }}>{est.toLocaleString()} hrs</div>
+                        <div style={{ fontSize: 10, color: INK_GHOST, marginTop: 6, lineHeight: 1.5 }}>Across your full export history</div>
+                      </div>
+                    );
+                  })()}
+                  {profile.algorithm_drift?.detectable && (
+                    <div style={{ background: PANEL, border: `1px solid ${BORDER}`, padding: "20px 24px" }}>
+                      <div style={{ fontSize: 10, color: INK_DIM, textTransform: "uppercase", marginBottom: 8 }}>Algorithm Capture</div>
+                      <div style={{ fontSize: 22, fontWeight: 700, color: profile.algorithm_drift.direction === "tightening" ? MODULE_B : MODULE_D }}>
+                        {profile.algorithm_drift.direction === "tightening" ? "Tightening" : profile.algorithm_drift.direction === "loosening" ? "Loosening" : "Stable"}
+                      </div>
+                      <div style={{ fontSize: 10, color: INK_GHOST, marginTop: 6, lineHeight: 1.5 }}>
+                        Skip rate {profile.algorithm_drift.direction === "tightening" ? "↓" : profile.algorithm_drift.direction === "loosening" ? "↑" : "→"} {Math.abs(profile.algorithm_drift.delta_pct ?? 0)}pp early→recent
+                      </div>
+                    </div>
+                  )}
+                  <div style={{ background: PANEL, border: `1px solid ${BORDER}`, padding: "20px 24px" }}>
+                    <div style={{ fontSize: 10, color: INK_DIM, textTransform: "uppercase", marginBottom: 8 }}>Peak Hour</div>
+                    <div style={{ fontSize: 22, fontWeight: 700, color: MODULE_C }}>{profile.behavioral_nodes.peak_hour}</div>
+                    <div style={{ fontSize: 10, color: INK_GHOST, marginTop: 6, lineHeight: 1.5 }}>Highest-volume viewing hour</div>
+                  </div>
+                </div>
+
+                <div style={{ marginTop: 32 }}>
+                  <h3 style={{ fontSize: 12, textTransform: "uppercase", color: INK_DIM, marginBottom: 16, fontFamily: "var(--font-mono, monospace)", letterSpacing: "0.1em" }}>// Behavioral Atomic Traits</h3>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
                     {profile.primary_archetype?.atomic_traits && Object.entries(profile.primary_archetype.atomic_traits).map(([trait, active]) => (
-                      <div key={trait} style={{ 
-                        padding: "8px 16px", 
-                        background: active ? "rgba(0, 229, 255, 0.15)" : "rgba(255,255,255,0.05)",
+                      <div key={trait} style={{
+                        padding: "7px 14px",
+                        background: active ? `${ACCENT}18` : "transparent",
                         border: `1px solid ${active ? ACCENT : BORDER}`,
-                        color: active ? ACCENT : INK_DIM,
-                        fontSize: 11,
+                        color: active ? ACCENT : INK_GHOST,
+                        fontSize: 10,
+                        fontFamily: "var(--font-mono, monospace)",
+                        letterSpacing: "0.12em",
                         textTransform: "uppercase"
                       }}>
-                        {trait}
+                        {active ? "✓ " : ""}{trait}
                       </div>
                     ))}
                   </div>
@@ -477,7 +544,7 @@ export function ForensicDashboard({ profile, onReset, sourceFile }: Props) {
                   <SectionTitle accent={MODULE_A}>Explicit vs Implicit Engagement</SectionTitle>
                   <div style={{ display: "flex", alignItems: "baseline", gap: 16, marginBottom: 24 }}>
                     <div style={{ fontSize: 56, fontWeight: 700, color: MODULE_A }}>
-                      {profile.academic_insights?.explicit_vs_implicit_ratio.toFixed(2)}
+                      {(profile.academic_insights?.explicit_vs_implicit_ratio ?? 0).toFixed(2)}
                     </div>
                     <div style={{ fontSize: 11, color: INK_DIM, textTransform: "uppercase" }}>Ratio</div>
                   </div>
@@ -503,11 +570,91 @@ export function ForensicDashboard({ profile, onReset, sourceFile }: Props) {
                   <div style={{ fontSize: 42, fontWeight: 700, color: VIBE_ACCENT, marginBottom: 12 }}>
                     {profile.stopwatch_metrics.deep_dives.toLocaleString()} <span style={{ fontSize: 20 }}>videos</span>
                   </div>
-                  <div style={{ fontSize: 11, color: INK_DIM, lineHeight: 1.6 }}>
-                    Videos you watched for 180 seconds or more — sustained, repeated viewing.
-                    These are the strongest positive signals the recommendation loop receives from you.
+                  {(profile.stopwatch_metrics.max_session_duration ?? 0) > 0 && (
+                    <div style={{ marginTop: 12, paddingTop: 12, borderTop: `1px solid ${BORDER}` }}>
+                      <div style={{ fontSize: 10, color: INK_GHOST, textTransform: "uppercase", marginBottom: 4 }}>Longest single binge</div>
+                      <div style={{ fontSize: 24, fontWeight: 700, color: VIBE_ACCENT }}>
+                        {Math.floor(profile.stopwatch_metrics.max_session_duration! / 60)}m{" "}
+                        <span style={{ fontSize: 14, color: INK_DIM }}>{profile.stopwatch_metrics.max_session_duration! % 60}s</span>
+                      </div>
+                    </div>
+                  )}
+                  <div style={{ fontSize: 11, color: INK_DIM, lineHeight: 1.6, marginTop: 12 }}>
+                    Videos you watched for 3 minutes or more. These are the strongest positive
+                    signals the recommendation loop receives from you.
                   </div>
                 </DashboardPanel>
+
+                <DashboardPanel label="05 · Daily Rhythm" accent={MODULE_C} className="col-span-full">
+                  <SectionTitle accent={MODULE_C}>When You Watch · Hour of Day</SectionTitle>
+                  <div style={{ display: "flex", height: 72, gap: 3, alignItems: "flex-end", marginBottom: 8 }}>
+                    {Array.from({ length: 24 }, (_, h) => {
+                      const v = profile.stopwatch_metrics.hourly_heatmap[String(h)] ?? 0;
+                      const peak = Math.max(...Object.values(profile.stopwatch_metrics.hourly_heatmap).map(Number), 1);
+                      const pct = (v / peak) * 100;
+                      const isNight = h >= 23 || h < 4;
+                      const isMorning = h >= 6 && h < 12;
+                      const color = isNight ? MODULE_B : isMorning ? MODULE_C : VIBE_ACCENT;
+                      return (
+                        <div key={h} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
+                          <div style={{ width: "100%", height: `${Math.max(pct, 2)}%`, background: color, opacity: 0.75 }} title={`${h}:00 — ${v} videos`} />
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 9, color: INK_GHOST, fontFamily: "var(--font-mono, monospace)" }}>
+                    {["12A","","","","","","6A","","","","","","12P","","","","","","6P","","","","","11P"].map((l, i) => (
+                      <span key={i}>{l}</span>
+                    ))}
+                  </div>
+                  <div style={{ marginTop: 10, display: "flex", gap: 16, fontSize: 10, color: INK_GHOST, fontFamily: "var(--font-mono, monospace)" }}>
+                    <span style={{ color: MODULE_B }}>■</span> Night (11P–4A)
+                    <span style={{ color: MODULE_C }}>■</span> Morning (6A–12P)
+                    <span style={{ color: VIBE_ACCENT }}>■</span> Day/Evening
+                  </div>
+                </DashboardPanel>
+
+                {(profile.algorithm_drift?.detectable && (profile.stopwatch_metrics.monthly_skip_rates != null)) && (() => {
+                  const months = Object.entries(profile.stopwatch_metrics.monthly_skip_rates!).sort(([a], [b]) => a.localeCompare(b));
+                  const maxRate = Math.max(...months.map(([,v]) => v), 1);
+                  const drift = profile.algorithm_drift!;
+                  const driftColor = drift.direction === "tightening" ? MODULE_D : drift.direction === "loosening" ? GRAVEYARD_ACCENT : INK_DIM;
+                  return (
+                    <DashboardPanel label="06 · Algorithm Capture Trajectory" accent={driftColor} className="col-span-full">
+                      <SectionTitle accent={driftColor}>Skip Rate Over Time · Filter Bubble Direction</SectionTitle>
+                      <div style={{ display: "flex", height: 64, gap: 2, alignItems: "flex-end", marginBottom: 8 }}>
+                        {months.map(([month, rate]) => (
+                          <div key={month} style={{ flex: 1, height: `${Math.max((rate / maxRate) * 100, 2)}%`, background: driftColor, opacity: 0.65 }} title={`${month}: ${rate}% skip rate`} />
+                        ))}
+                      </div>
+                      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 9, color: INK_GHOST, fontFamily: "var(--font-mono, monospace)", marginBottom: 12 }}>
+                        <span>{months[0]?.[0]}</span>
+                        <span>{months[months.length - 1]?.[0]}</span>
+                      </div>
+                      <div style={{ display: "flex", gap: 32, fontSize: 11, color: INK_DIM }}>
+                        <div>
+                          <div style={{ fontSize: 9, textTransform: "uppercase", color: INK_GHOST, marginBottom: 2 }}>Early avg skip rate</div>
+                          <div style={{ fontSize: 20, fontWeight: 700, color: INK }}>{drift.early_avg}%</div>
+                        </div>
+                        <div style={{ fontSize: 20, color: INK_GHOST, alignSelf: "flex-end", paddingBottom: 2 }}>→</div>
+                        <div>
+                          <div style={{ fontSize: 9, textTransform: "uppercase", color: INK_GHOST, marginBottom: 2 }}>Recent avg skip rate</div>
+                          <div style={{ fontSize: 20, fontWeight: 700, color: driftColor }}>{drift.recent_avg}%</div>
+                        </div>
+                        <div style={{ marginLeft: "auto", textAlign: "right" }}>
+                          <div style={{ fontSize: 9, textTransform: "uppercase", color: INK_GHOST, marginBottom: 2 }}>Verdict</div>
+                          <div style={{ fontSize: 13, fontWeight: 700, color: driftColor, textTransform: "uppercase" }}>
+                            {drift.direction === "tightening"
+                              ? "Filter bubble tightening — you reject less, the algorithm has learned you"
+                              : drift.direction === "loosening"
+                              ? "You're rejecting more over time — algorithm losing its grip"
+                              : "Skip rate stable — no meaningful drift detected"}
+                          </div>
+                        </div>
+                      </div>
+                    </DashboardPanel>
+                  );
+                })()}
               </div>
             )}
 
@@ -519,9 +666,16 @@ export function ForensicDashboard({ profile, onReset, sourceFile }: Props) {
                     <div style={{ marginTop: 16 }}>
                       <CreatorGraph data={profile.creator_entities?.vibe_cluster ?? []} />
                     </div>
-                    <div style={{ marginTop: 24, fontSize: 11, color: INK_DIM }}>
-                      Mapping your creator network. Cyan nodes are followed accounts;
-                      Magenta nodes are purely algorithmic discoveries that captured your attention.
+                    <div style={{ marginTop: 24, fontSize: 13, color: INK_DIM, lineHeight: 1.7 }}>
+                      {(() => {
+                        const followed = profile.declared_signals?.following_count ?? 0;
+                        const followedPct = profile.behavioral_nodes.social_graph_followed_pct;
+                        const algoPct = profile.behavioral_nodes.social_graph_algorithmic_pct;
+                        if (followed > 0 && algoPct > 0) {
+                          return <>You follow <strong style={{ color: INK }}>{followed} accounts</strong>. TikTok chose to show you their content <strong style={{ color: INK }}>{followedPct}%</strong> of the time. The other <strong style={{ color: MODULE_B }}>{algoPct}%</strong> was chosen entirely by the algorithm — creators you never asked to see.</>;
+                        }
+                        return "Mapping your creator network. Highlighted nodes are accounts you follow; the rest are algorithmic discoveries.";
+                      })()}
                     </div>
                     {profile.creator_resolution && profile.creator_resolution.total > 0 && (
                       <div style={{ marginTop: 16, paddingTop: 16, borderTop: `1px solid ${BORDER}` }}>
@@ -590,6 +744,23 @@ export function ForensicDashboard({ profile, onReset, sourceFile }: Props) {
                   countLabel="skips"
                 />
 
+                {(profile.sandbox_retests ?? []).length > 0 && (
+                  <DashboardPanel label="· Hypothesis Re-Tests" accent={MODULE_C}>
+                    <SectionTitle accent={MODULE_C}>Creators TikTok Kept Trying On You</SectionTitle>
+                    <div style={{ fontSize: 12, color: INK_DIM, lineHeight: 1.6, marginBottom: 16 }}>
+                      These creators were served to you in the 3–15 second window multiple times. You didn't bite — but the algorithm kept re-queuing them, testing whether you'd eventually engage.
+                    </div>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                      {(profile.sandbox_retests ?? []).slice(0, 6).map((r, i) => (
+                        <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingBottom: 8, borderBottom: `1px solid ${BORDER}` }}>
+                          <span style={{ fontFamily: "var(--font-mono, monospace)", fontSize: 12, color: INK }}>{r.handle}</span>
+                          <span style={{ fontSize: 11, color: MODULE_C, fontFamily: "var(--font-mono, monospace)" }}>served {r.times_served}×</span>
+                        </div>
+                      ))}
+                    </div>
+                  </DashboardPanel>
+                )}
+
                 {(() => {
                   const bridged = (profile.creator_entities?.vibe_cluster ?? []).filter(c => c.youtube);
                   if (bridged.length === 0) return null;
@@ -633,6 +804,122 @@ export function ForensicDashboard({ profile, onReset, sourceFile }: Props) {
                         </div>
                       </DashboardPanel>
                     </div>
+                  );
+                })()}
+              </div>
+            )}
+
+            {activeTab === "timeline" && (
+              <div className="grid grid-cols-1 gap-8">
+                {/* Algorithm efficiency + anomaly flags */}
+                {(() => {
+                  const rates = profile.stopwatch_metrics.monthly_skip_rates;
+                  const anomalies = profile.skip_anomalies ?? [];
+                  if (!rates || Object.keys(rates).length < 2) return null;
+                  const months = Object.entries(rates).sort(([a], [b]) => a.localeCompare(b));
+                  const maxRate = Math.max(...months.map(([, v]) => v), 1);
+                  const anomalyMonths = new Set(anomalies.map(a => a.month));
+                  return (
+                    <DashboardPanel label="· Algorithm Efficiency Timeline" accent={ACCENT}>
+                      <SectionTitle>Skip Rate Over Time</SectionTitle>
+                      <div style={{ fontSize: 12, color: INK_DIM, lineHeight: 1.6, marginBottom: 20 }}>
+                        When the skip rate goes down, the algorithm has a better read on you — it's serving content you actually want. When it spikes, something changed: your tastes shifted, the algorithm lost its calibration, or the platform started pushing content you didn't ask for.
+                      </div>
+                      <div style={{ display: "flex", gap: 4, alignItems: "flex-end", height: 80, marginBottom: 8 }}>
+                        {months.map(([month, rate]) => {
+                          const isAnomaly = anomalyMonths.has(month);
+                          const color = isAnomaly ? MODULE_B : VIBE_ACCENT;
+                          return (
+                            <div key={month} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+                              {isAnomaly && <div style={{ width: 6, height: 6, borderRadius: "50%", background: MODULE_B, flexShrink: 0 }} title="Anomaly detected" />}
+                              <div style={{ width: "100%", height: `${Math.max((rate / maxRate) * 72, 4)}px`, background: color, opacity: isAnomaly ? 1 : 0.65 }} title={`${month}: ${rate}% skip`} />
+                            </div>
+                          );
+                        })}
+                      </div>
+                      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 9, color: INK_GHOST, fontFamily: "var(--font-mono, monospace)", marginBottom: 16 }}>
+                        <span>{months[0]?.[0]}</span>
+                        <span>{months[months.length - 1]?.[0]}</span>
+                      </div>
+                      {anomalies.length > 0 && (
+                        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                          {anomalies.map((a, i) => (
+                            <div key={i} style={{ padding: "12px 16px", border: `1px solid ${MODULE_B}40`, background: `${MODULE_B}08` }}>
+                              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+                                <span style={{ fontFamily: "var(--font-mono, monospace)", fontSize: 11, color: MODULE_B }}>{a.month} · anomaly</span>
+                                <span style={{ fontFamily: "var(--font-mono, monospace)", fontSize: 11, color: INK }}>{a.skip_rate}% <span style={{ color: INK_GHOST }}>vs {a.baseline_avg}% baseline</span></span>
+                              </div>
+                              <div style={{ fontSize: 12, color: INK_DIM, lineHeight: 1.6 }}>
+                                Skip rate {a.direction === "spike" ? "spiked" : "dipped"} {Math.abs(a.delta)}pp from your baseline. This could mean the algorithm lost its read on you, your tastes shifted, the platform changed what it was pushing, or a data purge disrupted the recommendation model. The data alone can't say which.
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </DashboardPanel>
+                  );
+                })()}
+
+                {/* Monthly creator dominance */}
+                {(() => {
+                  const trends = profile.monthly_creator_trends;
+                  if (!trends || Object.keys(trends).length === 0) return null;
+                  const months = Object.entries(trends).sort(([a], [b]) => a.localeCompare(b));
+                  return (
+                    <DashboardPanel label="· Creator Dominance by Month" accent={VIBE_ACCENT}>
+                      <SectionTitle accent={VIBE_ACCENT}>Who You Were Watching</SectionTitle>
+                      <div style={{ fontSize: 12, color: INK_DIM, lineHeight: 1.6, marginBottom: 20 }}>
+                        The creators you lingered on most, month by month. Shifts here show the algorithm changing what it thinks you want — or you actively seeking something new.
+                      </div>
+                      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 16 }}>
+                        {months.map(([month, creators]) => (
+                          <div key={month} style={{ border: `1px solid ${BORDER}`, padding: 16 }}>
+                            <div style={{ fontFamily: "var(--font-mono, monospace)", fontSize: 10, letterSpacing: "0.2em", color: INK_GHOST, textTransform: "uppercase", marginBottom: 12 }}>{month}</div>
+                            {creators.length === 0 ? (
+                              <div style={{ fontSize: 11, color: INK_GHOST }}>No resolved creators</div>
+                            ) : (
+                              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                                {creators.map((c, i) => (
+                                  <div key={i} style={{ display: "flex", justifyContent: "space-between", fontSize: 11 }}>
+                                    <span style={{ color: i === 0 ? VIBE_ACCENT : INK_DIM, fontFamily: "var(--font-mono, monospace)" }}>{c.handle}</span>
+                                    <span style={{ color: INK_GHOST }}>{c.count}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </DashboardPanel>
+                  );
+                })()}
+
+                {/* Monthly topic trends */}
+                {(() => {
+                  const trends = profile.monthly_topic_trends;
+                  if (!trends || Object.keys(trends).length === 0) return null;
+                  const months = Object.entries(trends).sort(([a], [b]) => a.localeCompare(b));
+                  return (
+                    <DashboardPanel label="· Topic Trends by Month" accent={MODULE_A}>
+                      <SectionTitle accent={MODULE_A}>What You Were Into</SectionTitle>
+                      <div style={{ fontSize: 12, color: INK_DIM, lineHeight: 1.6, marginBottom: 20 }}>
+                        Top keywords from your searches and comments each month. A snapshot of what was on your mind.
+                      </div>
+                      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 16 }}>
+                        {months.map(([month, topics]) => (
+                          <div key={month} style={{ border: `1px solid ${BORDER}`, padding: 16 }}>
+                            <div style={{ fontFamily: "var(--font-mono, monospace)", fontSize: 10, letterSpacing: "0.2em", color: INK_GHOST, textTransform: "uppercase", marginBottom: 12 }}>{month}</div>
+                            <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
+                              {topics.map((t, i) => (
+                                <span key={i} style={{ fontSize: 10, padding: "3px 8px", background: i === 0 ? `${MODULE_A}20` : "transparent", border: `1px solid ${i === 0 ? MODULE_A : BORDER}`, color: i === 0 ? MODULE_A : INK_DIM }}>
+                                  {t.term}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </DashboardPanel>
                   );
                 })()}
               </div>

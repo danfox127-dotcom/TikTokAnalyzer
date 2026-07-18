@@ -37,10 +37,13 @@ jest.mock('framer-motion', () => {
 });
 
 const FIXTURE = '/tmp/ttk_profile.json';
-const maybe = fs.existsSync(FIXTURE) ? describe : describe.skip;
+const hasFixture = fs.existsSync(FIXTURE);
+const maybe = hasFixture ? describe : describe.skip;
 
 maybe('ForensicDashboard · real export', () => {
-  const profile = JSON.parse(fs.readFileSync(FIXTURE, 'utf-8')) as GhostProfile;
+  // describe.skip still runs the body — only read the fixture when it exists,
+  // otherwise the suite errors at collection instead of skipping cleanly.
+  const profile = (hasFixture ? JSON.parse(fs.readFileSync(FIXTURE, 'utf-8')) : {}) as GhostProfile;
   const sourceFile = new File(['{}'], 'user_data_tiktok.json', { type: 'application/json' });
 
   function mount() {
@@ -52,7 +55,16 @@ maybe('ForensicDashboard · real export', () => {
   it('renders the overview without throwing', () => {
     mount();
     // archetype headline proves the component returned JSX (the bug we fixed)
-    expect(screen.getByText(/USER_ARCHETYPE_IDENTIFIED/i)).toBeInTheDocument();
+    expect(screen.getByText(/Who TikTok Thinks You Are/i)).toBeInTheDocument();
+  });
+
+  it('Behavior tab renders without crashing (backend sends total_raw_videos, not total_videos)', () => {
+    mount();
+    fireEvent.click(screen.getByText(/Behavioral Signature/i));
+    // StopwatchFunnel reads the raw-video count; backend field is total_raw_videos.
+    // Reading the (absent) total_videos used to throw on .toLocaleString().
+    expect(screen.getByText(/True Stopwatch Funnel/i)).toBeInTheDocument();
+    expect(screen.getByText(/Engagement Authenticity/i)).toBeInTheDocument();
   });
 
   it('Privacy tab shows real footprint + off-platform + shop purchases', () => {
