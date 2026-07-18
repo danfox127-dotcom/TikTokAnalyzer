@@ -42,7 +42,7 @@ const twoBlocks: NarrativeBlock[] = [
 describe('NarrativeReportView', () => {
   test('renders DOSSIER header', () => {
     render(<NarrativeReportView narrativeBlocks={twoBlocks} onBack={jest.fn()} />);
-    expect(screen.getByText('DOSSIER')).toBeInTheDocument();
+    expect(screen.getByText('The Dossier')).toBeInTheDocument();
   });
 
   test('renders all blocks', () => {
@@ -66,6 +66,6 @@ describe('NarrativeReportView', () => {
 
   test('renders empty state gracefully with no blocks', () => {
     render(<NarrativeReportView narrativeBlocks={[]} onBack={jest.fn()} />);
-    expect(screen.getByText('DOSSIER')).toBeInTheDocument();
+    expect(screen.getByText('The Dossier')).toBeInTheDocument();
   });
 });
