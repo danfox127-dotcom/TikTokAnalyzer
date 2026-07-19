@@ -77,18 +77,21 @@ _CACHE_TTL_S = 60 * 60 * 24 * 30  # 30 days; results are content-hash keyed
 # Our keys start with "topics:" so there is no collision with creator entries.
 
 
-def _build_prompt(weighted_titles: list[tuple[str, float]]) -> str:
-    lines = "\n".join(f"- ({w:.0f}) {t}" for t, w in weighted_titles)
+def _build_prompt(weighted_titles: list[tuple[str, str, float]]) -> str:
+    lines = "\n".join(f"- [{vid}] ({w:.0f}) {t}" for vid, t, w in weighted_titles)
     cats = ", ".join(taxonomy_names())
     return f"""You are grouping someone's watched TikTok video titles into topics.
-Each title has a watch-weight in parentheses — higher means they watched it longer.
+Each title is prefixed with its id in [brackets], followed by a watch-weight in
+parentheses — higher means they watched it longer.
 
 TITLES:
 {lines}
 
 Cluster these into 3-8 topics. For each cluster give a short plain-English name,
-the exact video positions is NOT needed — instead return the titles' ids. Also
-pick the SINGLE closest category from this advertiser taxonomy (or null if none fit):
+and return the exact [id] values (as strings) of the titles belonging to that
+cluster in its "video_ids" array — copy the ids verbatim from the brackets above,
+do not invent or renumber them. Also pick the SINGLE closest category from this
+advertiser taxonomy (or null if none fit):
 {cats}
 
 Respond with a JSON array only, no markdown:
@@ -104,12 +107,20 @@ async def _call_llm(prompt: str, api_key: str, provider: str) -> tuple[str, dict
             messages=[{"role": "user", "content": prompt}],
         )
         usage = {"input_tokens": resp.usage.input_tokens, "output_tokens": resp.usage.output_tokens}
-        return resp.content[0].text, usage
+        try:
+            text = resp.content[0].text
+        except (IndexError, AttributeError) as e:
+            raise ValueError(f"empty or blocked LLM response: {e}")
+        return text, usage
     if provider.startswith("gemini"):
         genai.configure(api_key=api_key)
         model = genai.GenerativeModel("gemini-3-flash" if "flash" in provider else "gemini-3-pro")
         resp = await model.generate_content_async(prompt)
-        return resp.text, {"input_tokens": 0, "output_tokens": 0}
+        try:
+            text = resp.text
+        except (IndexError, AttributeError) as e:
+            raise ValueError(f"empty or blocked LLM response: {e}")
+        return text, {"input_tokens": 0, "output_tokens": 0}
     raise ValueError(f"unknown provider: {provider}")
 
 
@@ -137,7 +148,7 @@ async def cluster_topics(videos: list[dict], api_key: str, provider: str,
 
     fetched = await oembed.fetch_many([v["video_id"] for v in deduped])
     title_by_id = {r["video_id"]: (r.get("data") or {}).get("title", "") for r in fetched if r.get("video_id")}
-    weighted = [(title_by_id[v["video_id"]], v["weight"])
+    weighted = [(v["video_id"], title_by_id[v["video_id"]], v["weight"])
                 for v in deduped if title_by_id.get(v["video_id"])]
 
     if not weighted:

@@ -102,3 +102,46 @@ def test_validate_rejects_non_list():
     import pytest
     with pytest.raises(ValueError):
         topic_engine.validate_clusters({"not": "a list"}, {"1"})
+
+
+def test_build_prompt_carries_real_video_ids():
+    # Regression for WP-2.1 final review finding: the prompt used to drop the
+    # video_id entirely, so the LLM could never echo back a real id and
+    # validate_clusters would always filter video_ids down to [].
+    prompt = topic_engine._build_prompt([("111", "gym leg day", 3.0), ("222", "pasta", 1.0)])
+    assert "111" in prompt
+    assert "222" in prompt
+    assert "gym leg day" in prompt
+    assert "pasta" in prompt
+
+
+def test_cluster_topics_round_trips_real_large_ids(monkeypatch):
+    # Uses realistic large numeric TikTok ids (not the toy "1"/"2" ids used
+    # elsewhere) to prove video_ids survive prompt -> LLM -> validate_clusters
+    # without being masked by a mock that fabricates matching ids.
+    real_ids = ["7311111111111111111", "7322222222222222222"]
+
+    async def fake_fetch_many(video_ids, concurrency=8):
+        titles = {real_ids[0]: "gym leg day", real_ids[1]: "pasta recipe"}
+        return [{"video_id": v, "status": "ok", "data": {"title": titles.get(v, "")}} for v in video_ids]
+    monkeypatch.setattr(topic_engine.oembed, "fetch_many", fake_fetch_many)
+    monkeypatch.setattr(topic_engine.creator_map, "_redis", None)
+    topic_engine.creator_map._local.clear()
+
+    captured_prompt = {}
+
+    async def fake_call_llm(prompt, api_key, provider):
+        captured_prompt["text"] = prompt
+        # Simulate a real LLM echoing back the ids it actually saw in the prompt.
+        assert real_ids[0] in prompt and real_ids[1] in prompt
+        raw = (
+            '[{"name":"Fitness","video_ids":["%s"],"taxonomy_hint":"Fitness & Workout"}]'
+            % real_ids[0]
+        )
+        return raw, {"input_tokens": 10, "output_tokens": 20}
+    monkeypatch.setattr(topic_engine, "_call_llm", fake_call_llm)
+
+    videos = [{"video_id": real_ids[0], "weight": 3.0}, {"video_id": real_ids[1], "weight": 1.0}]
+    res = asyncio.run(topic_engine.cluster_topics(videos, "sk-test", "claude"))
+    assert res["clusters"][0]["video_ids"] == [real_ids[0]]
+    assert res["clusters"][0]["video_ids"] != []

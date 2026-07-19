@@ -326,8 +326,10 @@ async def topics(
     try:
         result = await topic_engine.cluster_topics(videos, api_key, provider)
     except Exception as exc:
-        raise HTTPException(status_code=502, detail=f"Topic clustering failed: {exc}")
-    _metrics["topics_tokens_total"] += (result.get("usage") or {}).get("output_tokens", 0)
+        logging.exception("Topic clustering failed: %s", exc)
+        raise HTTPException(status_code=502, detail="Topic clustering failed.")
+    if not result.get("cached"):
+        _metrics["topics_tokens_total"] += (result.get("usage") or {}).get("output_tokens", 0)
     return result
 
 
