@@ -12,6 +12,12 @@ import hashlib
 import json
 import os
 
+import anthropic
+import google.generativeai as genai
+
+from utils import oembed
+from utils import creator_map
+
 PROMPT_VERSION = "topics-v1"
 LLM_CONFIDENCE = 0.7
 
@@ -62,3 +68,98 @@ def validate_clusters(raw: object, input_ids: set[str]) -> list[dict]:
             "evidence_kind": "video",
         })
     return out
+
+
+_CACHE_TTL_S = 60 * 60 * 24 * 30  # 30 days; results are content-hash keyed
+
+# Reuse creator_map's async cache helpers — they already handle Redis (namespaced,
+# decode_responses) AND the process-local (expiry, value)-tuple fallback correctly.
+# Our keys start with "topics:" so there is no collision with creator entries.
+
+
+def _build_prompt(weighted_titles: list[tuple[str, float]]) -> str:
+    lines = "\n".join(f"- ({w:.0f}) {t}" for t, w in weighted_titles)
+    cats = ", ".join(taxonomy_names())
+    return f"""You are grouping someone's watched TikTok video titles into topics.
+Each title has a watch-weight in parentheses — higher means they watched it longer.
+
+TITLES:
+{lines}
+
+Cluster these into 3-8 topics. For each cluster give a short plain-English name,
+the exact video positions is NOT needed — instead return the titles' ids. Also
+pick the SINGLE closest category from this advertiser taxonomy (or null if none fit):
+{cats}
+
+Respond with a JSON array only, no markdown:
+[{{"name":"...","video_ids":["..."],"taxonomy_hint":"exact category name or null"}}]"""
+
+
+async def _call_llm(prompt: str, api_key: str, provider: str) -> tuple[str, dict]:
+    """Relay to the user's own LLM. Returns (raw_text, usage)."""
+    if provider == "claude":
+        client = anthropic.AsyncAnthropic(api_key=api_key)
+        resp = await client.messages.create(
+            max_tokens=2048, model="claude-haiku-4-5",
+            messages=[{"role": "user", "content": prompt}],
+        )
+        usage = {"input_tokens": resp.usage.input_tokens, "output_tokens": resp.usage.output_tokens}
+        return resp.content[0].text, usage
+    if provider.startswith("gemini"):
+        genai.configure(api_key=api_key)
+        model = genai.GenerativeModel("gemini-3-flash" if "flash" in provider else "gemini-3-pro")
+        resp = await model.generate_content_async(prompt)
+        return resp.text, {"input_tokens": 0, "output_tokens": 0}
+    raise ValueError(f"unknown provider: {provider}")
+
+
+def _extract_json_array(raw_text: str) -> object:
+    start, end = raw_text.find("["), raw_text.rfind("]") + 1
+    if start == -1 or end <= start:
+        raise ValueError("no JSON array in LLM response")
+    return json.loads(raw_text[start:end])
+
+
+async def cluster_topics(videos: list[dict], api_key: str, provider: str,
+                         prompt_version: str = PROMPT_VERSION) -> dict:
+    # Dedup by video_id, cap at 800.
+    seen: dict[str, dict] = {}
+    for v in videos:
+        vid = str(v["video_id"])
+        if vid not in seen:
+            seen[vid] = {"video_id": vid, "weight": float(v.get("weight", 0.0))}
+    deduped = list(seen.values())[:800]
+
+    key = cache_key(deduped, prompt_version)
+    hit = await creator_map._get(key)
+    if hit is not None:
+        return {**hit, "cached": True}
+
+    fetched = await oembed.fetch_many([v["video_id"] for v in deduped])
+    title_by_id = {r["video_id"]: (r.get("data") or {}).get("title", "") for r in fetched if r.get("video_id")}
+    weighted = [(title_by_id[v["video_id"]], v["weight"])
+                for v in deduped if title_by_id.get(v["video_id"])]
+
+    if not weighted:
+        result = {"source": "llm", "clusters": [], "prompt_version": prompt_version,
+                  "cached": False, "usage": {"input_tokens": 0, "output_tokens": 0}}
+        return result
+
+    input_ids = {v["video_id"] for v in deduped}
+    prompt = _build_prompt(weighted)
+    last_err: Exception | None = None
+    for _ in range(2):  # one retry
+        raw_text, usage = await _call_llm(prompt, api_key, provider)
+        try:
+            clusters = validate_clusters(_extract_json_array(raw_text), input_ids)
+            break
+        except (ValueError, json.JSONDecodeError) as e:
+            last_err = e
+            clusters = None
+    if clusters is None:
+        raise ValueError(f"LLM returned unparseable clusters: {last_err}")
+
+    result = {"source": "llm", "clusters": clusters, "prompt_version": prompt_version,
+              "cached": False, "usage": usage}
+    await creator_map._set(key, result, _CACHE_TTL_S)
+    return result
