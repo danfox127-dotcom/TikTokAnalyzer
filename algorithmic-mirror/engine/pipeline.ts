@@ -14,6 +14,7 @@ import { computeCoverage, evaluateGates, Coverage, GateResult } from "./coverage
 import { buildClaims } from "./claims";
 import { fingerprintExport, SchemaFingerprint } from "./schemaFingerprint";
 import { Claim } from "./types";
+import { selectTopicCandidates, TopicCandidate } from "./topicCandidates";
 
 export interface EngineOptions {
   excludeHours?: number[];
@@ -31,6 +32,8 @@ export interface EngineResult {
   gates: Record<string, GateResult>;
   /** Tiered, evidence-carrying insight claims (WP-1.5). */
   claims: Claim[];
+  /** WP-2.1 topic candidates: top-N watch-weighted video ids (no titles). */
+  topicCandidates: TopicCandidate[];
   /**
    * Structural fingerprint of the raw export (WP-1.6) — named layout + any
    * unrecognized top-level sections. Only present when the pipeline was fed a
@@ -55,5 +58,6 @@ export function runEngineFromParsed(parsed: any, opts: EngineOptions = {}): Engi
     consciousViews: Number(profile.stopwatch_metrics?.total_conscious_videos ?? 0),
   });
   const claims = buildClaims(profile);
-  return { parsed, profile, narratives, coverage, gates, claims };
+  const topicCandidates = selectTopicCandidates(profile);
+  return { parsed, profile, narratives, coverage, gates, claims, topicCandidates };
 }
