@@ -101,4 +101,23 @@ describe("buildTargetingCard", () => {
     const res = buildTargetingCard({} as any, profile());
     expect(res.status).toBe("error");
   });
+
+  test("a declared interest that is only a SUBSTRING of the cluster name does NOT confirm", () => {
+    // declared "art" ⊂ cluster name "martial arts training", but "art" is not the
+    // category ("Education") nor an exact cluster-name match → must stay unconfirmed.
+    const res = buildTargetingCard(
+      llm([cluster("martial arts training", "Education", ["1", "2", "3"])]),
+      profile(["art"])
+    );
+    expect((res.claims[0].value as any).tiktok_confirmed).toBe(false);
+  });
+
+  test("an EXACT cluster-name match still confirms, even for an uncategorized segment", () => {
+    const res = buildTargetingCard(
+      llm([cluster("yoga", null, ["1", "2", "3"])]),
+      profile(["yoga"])
+    );
+    expect((res.claims[0].value as any).category).toBe("Uncategorized interest");
+    expect((res.claims[0].value as any).tiktok_confirmed).toBe(true);
+  });
 });

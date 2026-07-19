@@ -70,9 +70,17 @@ export function buildTargetingCard(topicResult: TopicResult, profile: any): Targ
     }
   }
 
-  const isConfirmed = (candidates: string[]): boolean => {
-    const cn = candidates.map(norm).filter(Boolean);
-    return declaredNorm.some((d) => cn.some((x) => x === d || x.includes(d) || d.includes(x)));
+  // Confirm when a declared interest matches the taxonomy CATEGORY (exact or
+  // substring either direction — category is controlled vocabulary, safe) OR
+  // EXACTLY equals the cluster name. cluster_name is free LLM text, so only an
+  // exact match counts there: a substring like declared "art" ⊂ "martial arts"
+  // must NOT falsely confirm (honesty — over-claiming confirmation is worse).
+  const isConfirmed = (category: string, clusterName: string): boolean => {
+    const cat = norm(category);
+    const cn = norm(clusterName);
+    return declaredNorm.some(
+      (d) => (!!cat && (cat === d || cat.includes(d) || d.includes(cat))) || (!!cn && cn === d)
+    );
   };
   const makeSegment = (
     id: string, category: string, cluster_name: string, matchedFlag: boolean,
@@ -80,7 +88,7 @@ export function buildTargetingCard(topicResult: TopicResult, profile: any): Targ
   ): TargetingSegment | null => {
     const uniq = [...new Set(videos)];
     if (uniq.length < MIN_VIDEOS) return null;
-    const tiktok_confirmed = isConfirmed([category, cluster_name]);
+    const tiktok_confirmed = isConfirmed(category, cluster_name);
     const evidence: EvidenceRef[] = uniq.map((v) => ({ kind: "video", id: v }));
     const method =
       `Matched watched-video topics to TikTok ad taxonomy ${TAXONOMY_VERSION}; ` +
