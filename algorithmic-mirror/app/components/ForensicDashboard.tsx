@@ -984,7 +984,7 @@ export function ForensicDashboard({ profile, onReset, sourceFile }: Props) {
                   </DashboardPanel>
                 </div>
 
-                <DashboardPanel label="09 · Transparency Gap" accent={MODULE_B}>
+                <DashboardPanel label="10 · Transparency Gap" accent={MODULE_B}>
                   <SectionTitle accent={MODULE_B}>Declared vs. Inferred</SectionTitle>
                   <div className="flex items-center gap-12 mb-8">
                     <div>
@@ -1002,7 +1002,7 @@ export function ForensicDashboard({ profile, onReset, sourceFile }: Props) {
                   </div>
                 </DashboardPanel>
 
-                <DashboardPanel label="10 · Search Rhythm" accent={VIBE_ACCENT}>
+                <DashboardPanel label="11 · Search Rhythm" accent={VIBE_ACCENT}>
                   <SectionTitle accent={VIBE_ACCENT}>Active Intent Timeline</SectionTitle>
                   <div style={{ display: "flex", height: 60, gap: 2, alignItems: "flex-end", marginBottom: 12 }}>
                     {profile.search_rhythm?.hourly_histogram && Object.entries(profile.search_rhythm.hourly_histogram).map(([hour, count]) => {
@@ -1018,7 +1018,7 @@ export function ForensicDashboard({ profile, onReset, sourceFile }: Props) {
                   </div>
                 </DashboardPanel>
 
-                <DashboardPanel label="11 · Comment Analysis" accent={MODULE_A}>
+                <DashboardPanel label="12 · Comment Analysis" accent={MODULE_A}>
                   <SectionTitle accent={MODULE_A}>Recurring Phrases</SectionTitle>
                   <div className="space-y-3">
                     {profile.interest_phrases?.slice(0, 8).map((p, i) => (
