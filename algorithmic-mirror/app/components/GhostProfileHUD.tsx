@@ -130,7 +130,7 @@ export interface GhostProfile {
     }[];
   };
   // Optional LLM-derived "Shadow Clusters" — cross-creator thematic groupings.
-  // Populated only when /api/analyze is called with ?api_key=...
+  // Populated only when /api/analyze is called with an X-API-Key header.
   shadow_clusters?: {
     label: string;
     description: string;

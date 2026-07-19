@@ -42,9 +42,9 @@ export function FourPillarsPanel({ profile, apiUrl }: Props) {
     setError(null);
     try {
       localStorage.setItem("llm_api_key_claude", apiKey);
-      const res = await fetch(`${apiUrl}/api/pillars?api_key=${encodeURIComponent(apiKey)}&provider=claude`, {
+      const res = await fetch(`${apiUrl}/api/pillars?provider=claude`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "X-API-Key": apiKey },
         body: JSON.stringify({
           vibe_cluster: profile.creator_entities.vibe_cluster,
           graveyard: profile.creator_entities.graveyard,

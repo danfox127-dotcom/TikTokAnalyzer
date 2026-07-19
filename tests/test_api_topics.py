@@ -16,8 +16,9 @@ def client(monkeypatch):
 
 
 def test_topics_endpoint_returns_clusters(client):
-    resp = client.post("/api/topics?api_key=sk-test&provider=claude",
-                       json={"videos": [{"video_id": "1", "weight": 3.0}]})
+    resp = client.post("/api/topics?provider=claude",
+                       json={"videos": [{"video_id": "1", "weight": 3.0}]},
+                       headers={"X-API-Key": "sk-test"})
     assert resp.status_code == 200
     body = resp.json()
     assert body["source"] == "llm"
@@ -30,6 +31,7 @@ def test_topics_endpoint_surfaces_llm_error_as_502(monkeypatch):
         raise ValueError("bad key")
     monkeypatch.setattr(topic_engine, "cluster_topics", boom)
     from api.main import app
-    resp = TestClient(app).post("/api/topics?api_key=x&provider=claude",
-                                json={"videos": [{"video_id": "1", "weight": 1.0}]})
+    resp = TestClient(app).post("/api/topics?provider=claude",
+                                json={"videos": [{"video_id": "1", "weight": 1.0}]},
+                                headers={"X-API-Key": "x"})
     assert resp.status_code == 502

@@ -8,7 +8,7 @@ import os
 # Ensure repo root is on the path when running from any working directory.
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from fastapi import FastAPI, UploadFile, File, HTTPException, Query
+from fastapi import FastAPI, UploadFile, File, HTTPException, Query, Header
 from typing import Optional
 from fastapi.responses import PlainTextResponse, Response, StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -114,7 +114,7 @@ async def analyze(
     file: UploadFile = File(...),
     sleep_start: Optional[int] = Query(None, ge=0, le=23),
     sleep_end: Optional[int] = Query(None, ge=0, le=23),
-    api_key: Optional[str] = Query(None),
+    api_key: Optional[str] = Header(None, alias="X-API-Key"),
     provider: str = Query("claude", pattern="^(claude|gemini-pro|gemini-flash)$"),
 ):
     if not file.filename or not file.filename.endswith(".json"):
@@ -290,7 +290,7 @@ class PillarsRequest(BaseModel):
 @app.post("/api/pillars")
 async def generate_pillars(
     body: PillarsRequest,
-    api_key: str = Query(...),
+    api_key: str = Header(..., alias="X-API-Key"),
     provider: str = Query("claude", pattern="^(claude|gemini-pro|gemini-flash)$"),
 ):
     """Generate LLM-derived identity pillars from the behavioral fingerprint."""
@@ -314,7 +314,7 @@ class TopicsRequest(BaseModel):
 @app.post("/api/topics")
 async def topics(
     body: TopicsRequest,
-    api_key: str = Query(...),
+    api_key: str = Header(..., alias="X-API-Key"),
     provider: str = Query("claude", pattern="^(claude|gemini-pro|gemini-flash)$"),
 ):
     """WP-2.1 Semantic Topic Engine (BYOK). Client sends {video_id, weight} pairs;
@@ -360,7 +360,7 @@ async def export_llm(file: UploadFile = File(...)):
 async def analyze_llm(
     file: UploadFile = File(...),
     provider: str = Query(..., pattern="^(claude|gemini-pro|gemini-flash)$"),
-    api_key: str = Query(...),
+    api_key: str = Header(..., alias="X-API-Key"),
 ):
     """Stream an LLM analysis using the user's API key. Key lives in memory only."""
     if not file.filename or not file.filename.endswith(".json"):

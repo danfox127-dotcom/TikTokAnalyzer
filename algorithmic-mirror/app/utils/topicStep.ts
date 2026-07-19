@@ -25,14 +25,19 @@ export async function resolveTopicResult(opts: {
   topicCandidates: TopicCandidate[];
   profile: any;
   getKey: () => { provider: string; apiKey: string } | null;
-  post: <T>(path: string, body: unknown) => Promise<T | null>;
+  post: <T>(path: string, body: unknown, headers?: Record<string, string>) => Promise<T | null>;
 }): Promise<TopicResult> {
   const key = opts.getKey();
   if (key && opts.topicCandidates.length) {
-    const q = new URLSearchParams({ api_key: key.apiKey, provider: key.provider });
-    const res = await opts.post<TopicResult>(`/api/topics?${q.toString()}`, {
-      videos: opts.topicCandidates,
-    });
+    // Secret key travels in the X-API-Key header, never the URL query (query
+    // strings get captured in proxy / Cloud Run access logs). Only the
+    // non-sensitive provider goes in the query.
+    const q = new URLSearchParams({ provider: key.provider });
+    const res = await opts.post<TopicResult>(
+      `/api/topics?${q.toString()}`,
+      { videos: opts.topicCandidates },
+      { "X-API-Key": key.apiKey },
+    );
     if (res) return res;
   }
   return keywordClusters(opts.profile);

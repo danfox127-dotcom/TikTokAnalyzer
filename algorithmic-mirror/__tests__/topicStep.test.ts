@@ -13,10 +13,10 @@ describe("readSavedKey", () => {
 describe("resolveTopicResult", () => {
   const candidates = [{ video_id: "1", weight: 3 }, { video_id: "2", weight: 1 }];
 
-  test("with a key: POSTs to /api/topics with provider+key query and returns the server TopicResult", async () => {
-    const calls: string[] = [];
-    const post = async <T>(path: string): Promise<T | null> => {
-      calls.push(path);
+  test("with a key: POSTs to /api/topics with the key in the X-API-Key header (never the query) and returns the server TopicResult", async () => {
+    const calls: { path: string; headers?: Record<string, string> }[] = [];
+    const post = async <T>(path: string, _body: unknown, headers?: Record<string, string>): Promise<T | null> => {
+      calls.push({ path, headers });
       return { source: "llm", clusters: [], prompt_version: "topics-v1", cached: false } as unknown as T;
     };
     const res = await resolveTopicResult({
@@ -24,9 +24,11 @@ describe("resolveTopicResult", () => {
       getKey: () => ({ provider: "claude", apiKey: "sk-ant-1" }), post,
     });
     expect(res.source).toBe("llm");
-    expect(calls[0]).toContain("/api/topics?");
-    expect(calls[0]).toContain("provider=claude");
-    expect(calls[0]).toContain("api_key=sk-ant-1");
+    expect(calls[0].path).toContain("/api/topics?");
+    expect(calls[0].path).toContain("provider=claude");
+    expect(calls[0].path).not.toContain("api_key");       // secret never in the URL
+    expect(calls[0].path).not.toContain("sk-ant-1");
+    expect(calls[0].headers).toEqual({ "X-API-Key": "sk-ant-1" });
   });
 
   test("no key: falls back to keywordClusters (source keyword), no POST", async () => {

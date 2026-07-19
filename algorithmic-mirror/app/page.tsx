@@ -25,11 +25,15 @@ const SERVER_ENGINE = process.env.NEXT_PUBLIC_SERVER_ENGINE === "1";
  *  failure (expected in local mode — returns null quietly) from a reachable-but-
  *  broken endpoint (surfaced via console.warn so a real outage isn't silently
  *  swallowed by the graceful degradation). */
-async function postEnrich<T>(path: string, body: unknown): Promise<T | null> {
+async function postEnrich<T>(
+  path: string, body: unknown, headers?: Record<string, string>,
+): Promise<T | null> {
   let res: Response;
   try {
     res = await fetch(`${API_URL}${path}`, {
-      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...(headers ?? {}) },
+      body: JSON.stringify(body),
     });
   } catch {
     return null; // offline / unreachable — expected; degrade silently
