@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { ArrowLeft } from "lucide-react";
 import { DownloadExportButton } from "./DownloadExportButton";
 import { CreatorGraph } from "./CreatorGraph";
+import type { TargetingCardResult } from "../../engine/targetingCard";
 
 export interface EnrichmentTarget {
   video_id: string;
@@ -51,6 +52,11 @@ export interface EnrichmentResult {
 
 export interface GhostProfile {
   status: "success";
+  // Set when the profile was produced by the browser-local engine (page.tsx
+  // analyzeLocal). Drives the LocalModeBanner provenance strip.
+  _local_mode?: boolean;
+  // WP-2.2 — advertiser targeting segments (present in browser-local payloads).
+  targeting_card?: TargetingCardResult;
   stopwatch_metrics: {
     total_conscious_videos: number;
     sleep_anomalies_scrubbed: number;
@@ -59,13 +65,17 @@ export interface GhostProfile {
     sandbox_views: number;
     deep_lingers: number;
     deep_dives: number;
-    total_videos: number;
+    total_raw_videos: number;
+    total_videos?: number;
+    max_session_duration?: number;
+    max_consecutive_skips?: number;
     hourly_heatmap: Record<string, number>;
     weekly_heatmap?: Record<number, Record<number, number>>;
     monthly_skip_rates?: Record<string, number>;
   };
   behavioral_nodes: {
     peak_hour: string;
+    inferred_sleep_window?: string;
     skip_rate_percentage: number;
     linger_rate_percentage: number;
     night_shift_ratio: number;
@@ -73,6 +83,13 @@ export interface GhostProfile {
     night_lingers_count: number;
     social_graph_algorithmic_pct: number;
     social_graph_followed_pct: number;
+  };
+  algorithm_drift?: {
+    detectable: boolean;
+    direction: "tightening" | "loosening" | "stable" | null;
+    delta_pct: number | null;
+    early_avg?: number;
+    recent_avg?: number;
   };
   creator_entities: {
     vibe_cluster: {
@@ -113,7 +130,7 @@ export interface GhostProfile {
     }[];
   };
   // Optional LLM-derived "Shadow Clusters" — cross-creator thematic groupings.
-  // Populated only when /api/analyze is called with ?api_key=...
+  // Populated only when /api/analyze is called with an X-API-Key header.
   shadow_clusters?: {
     label: string;
     description: string;
@@ -259,6 +276,12 @@ export interface GhostProfile {
   // Map of claim-id (chapter / section / metric) -> opaque payload rendered as JSON
   // by EvidencePanel. See TheGlassHouse <Claim payload={ev[…]} />.
   _evidence?: Record<string, unknown>;
+
+  monthly_creator_trends?: Record<string, { handle: string; count: number }[]>;
+  monthly_topic_trends?: Record<string, { term: string; count: number }[]>;
+  sandbox_retests?: { handle: string; times_served: number }[];
+  skip_anomalies?: { month: string; skip_rate: number; baseline_avg: number; delta: number; direction: "spike" | "dip" }[];
+  data_cliff?: { start_month: string; window_days: number };
 }
 
 interface Props {
@@ -406,7 +429,7 @@ function StopwatchFunnel({ profile }: { profile: GhostProfile }) {
             {sw.total_conscious_videos.toLocaleString()}
           </div>
           <div style={{ fontSize: 10, color: INK_GHOST, marginTop: 6, fontFamily: "var(--font-mono, monospace)" }}>
-            of {sw.total_videos.toLocaleString()} raw · {sw.sleep_scrubbed} AFK scrubbed
+            of {(sw.total_raw_videos ?? sw.total_videos ?? 0).toLocaleString()} raw · {sw.sleep_scrubbed} AFK scrubbed
           </div>
         </div>
         {buckets.map(b => {

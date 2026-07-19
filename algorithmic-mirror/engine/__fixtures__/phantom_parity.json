@@ -1,0 +1,569 @@
+{
+  "_comment": "Golden parity fixture for WP-1.3 _detect_phantom_sessions. Regenerate only on an intentional Python change: python3 scripts/gen_phantom_parity_fixture.py",
+  "cases": [
+    {
+      "name": "synthetic_asleep",
+      "input": {
+        "history": [
+          {
+            "date": "2024-03-11 01:00:00",
+            "link": "https://www.tiktok.com/@creator/video/0"
+          },
+          {
+            "date": "2024-03-11 01:01:00",
+            "link": "https://www.tiktok.com/@creator/video/1"
+          },
+          {
+            "date": "2024-03-11 01:02:00",
+            "link": "https://www.tiktok.com/@creator/video/2"
+          },
+          {
+            "date": "2024-03-11 01:03:00",
+            "link": "https://www.tiktok.com/@creator/video/3"
+          },
+          {
+            "date": "2024-03-11 01:04:00",
+            "link": "https://www.tiktok.com/@creator/video/4"
+          },
+          {
+            "date": "2024-03-11 01:05:00",
+            "link": "https://www.tiktok.com/@creator/video/5"
+          },
+          {
+            "date": "2024-03-11 01:06:00",
+            "link": "https://www.tiktok.com/@creator/video/6"
+          },
+          {
+            "date": "2024-03-11 01:07:00",
+            "link": "https://www.tiktok.com/@creator/video/7"
+          },
+          {
+            "date": "2024-03-11 01:08:00",
+            "link": "https://www.tiktok.com/@creator/video/8"
+          },
+          {
+            "date": "2024-03-11 01:09:00",
+            "link": "https://www.tiktok.com/@creator/video/9"
+          },
+          {
+            "date": "2024-03-11 01:10:00",
+            "link": ""
+          }
+        ],
+        "engagement": []
+      },
+      "expected": {
+        "phantom_sessions": [
+          {
+            "start": "2024-03-11 01:00:00",
+            "end": "2024-03-11 01:10:00",
+            "night": "2024-03-11",
+            "video_count": 10,
+            "hours": 0.17
+          }
+        ],
+        "phantom_video_count": 10,
+        "phantom_nights": 1,
+        "excluded_hours": 0.17
+      }
+    },
+    {
+      "name": "engaged_disqualifies",
+      "input": {
+        "history": [
+          {
+            "date": "2024-03-11 01:00:00",
+            "link": "https://www.tiktok.com/@creator/video/0"
+          },
+          {
+            "date": "2024-03-11 01:01:00",
+            "link": "https://www.tiktok.com/@creator/video/1"
+          },
+          {
+            "date": "2024-03-11 01:02:00",
+            "link": "https://www.tiktok.com/@creator/video/2"
+          },
+          {
+            "date": "2024-03-11 01:03:00",
+            "link": "https://www.tiktok.com/@creator/video/3"
+          },
+          {
+            "date": "2024-03-11 01:04:00",
+            "link": "https://www.tiktok.com/@creator/video/4"
+          },
+          {
+            "date": "2024-03-11 01:05:00",
+            "link": "https://www.tiktok.com/@creator/video/5"
+          },
+          {
+            "date": "2024-03-11 01:06:00",
+            "link": "https://www.tiktok.com/@creator/video/6"
+          },
+          {
+            "date": "2024-03-11 01:07:00",
+            "link": "https://www.tiktok.com/@creator/video/7"
+          },
+          {
+            "date": "2024-03-11 01:08:00",
+            "link": "https://www.tiktok.com/@creator/video/8"
+          },
+          {
+            "date": "2024-03-11 01:09:00",
+            "link": "https://www.tiktok.com/@creator/video/9"
+          },
+          {
+            "date": "2024-03-11 01:10:00",
+            "link": ""
+          }
+        ],
+        "engagement": [
+          "2024-03-11 01:05:00"
+        ]
+      },
+      "expected": {
+        "phantom_sessions": [],
+        "phantom_video_count": 0,
+        "phantom_nights": 0,
+        "excluded_hours": 0
+      }
+    },
+    {
+      "name": "engaged_outside_window",
+      "input": {
+        "history": [
+          {
+            "date": "2024-03-11 01:00:00",
+            "link": "https://www.tiktok.com/@creator/video/0"
+          },
+          {
+            "date": "2024-03-11 01:01:00",
+            "link": "https://www.tiktok.com/@creator/video/1"
+          },
+          {
+            "date": "2024-03-11 01:02:00",
+            "link": "https://www.tiktok.com/@creator/video/2"
+          },
+          {
+            "date": "2024-03-11 01:03:00",
+            "link": "https://www.tiktok.com/@creator/video/3"
+          },
+          {
+            "date": "2024-03-11 01:04:00",
+            "link": "https://www.tiktok.com/@creator/video/4"
+          },
+          {
+            "date": "2024-03-11 01:05:00",
+            "link": "https://www.tiktok.com/@creator/video/5"
+          },
+          {
+            "date": "2024-03-11 01:06:00",
+            "link": "https://www.tiktok.com/@creator/video/6"
+          },
+          {
+            "date": "2024-03-11 01:07:00",
+            "link": "https://www.tiktok.com/@creator/video/7"
+          },
+          {
+            "date": "2024-03-11 01:08:00",
+            "link": "https://www.tiktok.com/@creator/video/8"
+          },
+          {
+            "date": "2024-03-11 01:09:00",
+            "link": "https://www.tiktok.com/@creator/video/9"
+          },
+          {
+            "date": "2024-03-11 01:10:00",
+            "link": ""
+          }
+        ],
+        "engagement": [
+          "2024-03-11 07:00:00"
+        ]
+      },
+      "expected": {
+        "phantom_sessions": [
+          {
+            "start": "2024-03-11 01:00:00",
+            "end": "2024-03-11 01:10:00",
+            "night": "2024-03-11",
+            "video_count": 10,
+            "hours": 0.17
+          }
+        ],
+        "phantom_video_count": 10,
+        "phantom_nights": 1,
+        "excluded_hours": 0.17
+      }
+    },
+    {
+      "name": "too_short",
+      "input": {
+        "history": [
+          {
+            "date": "2024-03-11 01:00:00",
+            "link": "https://www.tiktok.com/@creator/video/0"
+          },
+          {
+            "date": "2024-03-11 01:01:00",
+            "link": "https://www.tiktok.com/@creator/video/1"
+          },
+          {
+            "date": "2024-03-11 01:02:00",
+            "link": "https://www.tiktok.com/@creator/video/2"
+          },
+          {
+            "date": "2024-03-11 01:03:00",
+            "link": "https://www.tiktok.com/@creator/video/3"
+          },
+          {
+            "date": "2024-03-11 01:04:00",
+            "link": "https://www.tiktok.com/@creator/video/4"
+          },
+          {
+            "date": "2024-03-11 01:05:00",
+            "link": "https://www.tiktok.com/@creator/video/5"
+          },
+          {
+            "date": "2024-03-11 01:06:00",
+            "link": "https://www.tiktok.com/@creator/video/6"
+          },
+          {
+            "date": "2024-03-11 01:07:00",
+            "link": "https://www.tiktok.com/@creator/video/7"
+          },
+          {
+            "date": "2024-03-11 01:08:00",
+            "link": ""
+          }
+        ],
+        "engagement": []
+      },
+      "expected": {
+        "phantom_sessions": [],
+        "phantom_video_count": 0,
+        "phantom_nights": 0,
+        "excluded_hours": 0
+      }
+    },
+    {
+      "name": "daytime",
+      "input": {
+        "history": [
+          {
+            "date": "2024-03-11 14:00:00",
+            "link": "https://www.tiktok.com/@creator/video/0"
+          },
+          {
+            "date": "2024-03-11 14:01:00",
+            "link": "https://www.tiktok.com/@creator/video/1"
+          },
+          {
+            "date": "2024-03-11 14:02:00",
+            "link": "https://www.tiktok.com/@creator/video/2"
+          },
+          {
+            "date": "2024-03-11 14:03:00",
+            "link": "https://www.tiktok.com/@creator/video/3"
+          },
+          {
+            "date": "2024-03-11 14:04:00",
+            "link": "https://www.tiktok.com/@creator/video/4"
+          },
+          {
+            "date": "2024-03-11 14:05:00",
+            "link": "https://www.tiktok.com/@creator/video/5"
+          },
+          {
+            "date": "2024-03-11 14:06:00",
+            "link": "https://www.tiktok.com/@creator/video/6"
+          },
+          {
+            "date": "2024-03-11 14:07:00",
+            "link": "https://www.tiktok.com/@creator/video/7"
+          },
+          {
+            "date": "2024-03-11 14:08:00",
+            "link": "https://www.tiktok.com/@creator/video/8"
+          },
+          {
+            "date": "2024-03-11 14:09:00",
+            "link": "https://www.tiktok.com/@creator/video/9"
+          },
+          {
+            "date": "2024-03-11 14:10:00",
+            "link": ""
+          }
+        ],
+        "engagement": []
+      },
+      "expected": {
+        "phantom_sessions": [],
+        "phantom_video_count": 0,
+        "phantom_nights": 0,
+        "excluded_hours": 0
+      }
+    },
+    {
+      "name": "cadence_too_slow",
+      "input": {
+        "history": [
+          {
+            "date": "2024-03-11 01:00:00",
+            "link": "https://www.tiktok.com/@creator/video/0"
+          },
+          {
+            "date": "2024-03-11 01:03:20",
+            "link": "https://www.tiktok.com/@creator/video/1"
+          },
+          {
+            "date": "2024-03-11 01:06:40",
+            "link": "https://www.tiktok.com/@creator/video/2"
+          },
+          {
+            "date": "2024-03-11 01:10:00",
+            "link": "https://www.tiktok.com/@creator/video/3"
+          },
+          {
+            "date": "2024-03-11 01:13:20",
+            "link": "https://www.tiktok.com/@creator/video/4"
+          },
+          {
+            "date": "2024-03-11 01:16:40",
+            "link": "https://www.tiktok.com/@creator/video/5"
+          },
+          {
+            "date": "2024-03-11 01:20:00",
+            "link": "https://www.tiktok.com/@creator/video/6"
+          },
+          {
+            "date": "2024-03-11 01:23:20",
+            "link": "https://www.tiktok.com/@creator/video/7"
+          },
+          {
+            "date": "2024-03-11 01:26:40",
+            "link": "https://www.tiktok.com/@creator/video/8"
+          },
+          {
+            "date": "2024-03-11 01:30:00",
+            "link": "https://www.tiktok.com/@creator/video/9"
+          },
+          {
+            "date": "2024-03-11 01:33:20",
+            "link": ""
+          }
+        ],
+        "engagement": []
+      },
+      "expected": {
+        "phantom_sessions": [],
+        "phantom_video_count": 0,
+        "phantom_nights": 0,
+        "excluded_hours": 0
+      }
+    },
+    {
+      "name": "cadence_boundaries",
+      "input": {
+        "history": [
+          {
+            "date": "2024-03-11 01:00:00",
+            "link": "https://www.tiktok.com/@creator/video/0"
+          },
+          {
+            "date": "2024-03-11 01:00:30",
+            "link": "https://www.tiktok.com/@creator/video/1"
+          },
+          {
+            "date": "2024-03-11 01:03:30",
+            "link": "https://www.tiktok.com/@creator/video/2"
+          },
+          {
+            "date": "2024-03-11 01:04:00",
+            "link": "https://www.tiktok.com/@creator/video/3"
+          },
+          {
+            "date": "2024-03-11 01:07:00",
+            "link": "https://www.tiktok.com/@creator/video/4"
+          },
+          {
+            "date": "2024-03-11 01:07:30",
+            "link": "https://www.tiktok.com/@creator/video/5"
+          },
+          {
+            "date": "2024-03-11 01:10:30",
+            "link": "https://www.tiktok.com/@creator/video/6"
+          },
+          {
+            "date": "2024-03-11 01:11:00",
+            "link": "https://www.tiktok.com/@creator/video/7"
+          },
+          {
+            "date": "2024-03-11 01:14:00",
+            "link": "https://www.tiktok.com/@creator/video/8"
+          },
+          {
+            "date": "2024-03-11 01:14:30",
+            "link": "https://www.tiktok.com/@creator/video/9"
+          },
+          {
+            "date": "2024-03-11 01:17:30",
+            "link": "https://www.tiktok.com/@creator/video/10"
+          },
+          {
+            "date": "2024-03-11 01:18:00",
+            "link": "https://www.tiktok.com/@creator/video/11"
+          },
+          {
+            "date": "2024-03-11 01:21:00",
+            "link": ""
+          }
+        ],
+        "engagement": []
+      },
+      "expected": {
+        "phantom_sessions": [
+          {
+            "start": "2024-03-11 01:00:00",
+            "end": "2024-03-11 01:21:00",
+            "night": "2024-03-11",
+            "video_count": 12,
+            "hours": 0.35
+          }
+        ],
+        "phantom_video_count": 12,
+        "phantom_nights": 1,
+        "excluded_hours": 0.35
+      }
+    },
+    {
+      "name": "two_nights",
+      "input": {
+        "history": [
+          {
+            "date": "2024-03-11 01:00:00",
+            "link": "https://www.tiktok.com/@creator/video/0"
+          },
+          {
+            "date": "2024-03-11 01:01:00",
+            "link": "https://www.tiktok.com/@creator/video/1"
+          },
+          {
+            "date": "2024-03-11 01:02:00",
+            "link": "https://www.tiktok.com/@creator/video/2"
+          },
+          {
+            "date": "2024-03-11 01:03:00",
+            "link": "https://www.tiktok.com/@creator/video/3"
+          },
+          {
+            "date": "2024-03-11 01:04:00",
+            "link": "https://www.tiktok.com/@creator/video/4"
+          },
+          {
+            "date": "2024-03-11 01:05:00",
+            "link": "https://www.tiktok.com/@creator/video/5"
+          },
+          {
+            "date": "2024-03-11 01:06:00",
+            "link": "https://www.tiktok.com/@creator/video/6"
+          },
+          {
+            "date": "2024-03-11 01:07:00",
+            "link": "https://www.tiktok.com/@creator/video/7"
+          },
+          {
+            "date": "2024-03-11 01:08:00",
+            "link": "https://www.tiktok.com/@creator/video/8"
+          },
+          {
+            "date": "2024-03-11 01:09:00",
+            "link": "https://www.tiktok.com/@creator/video/9"
+          },
+          {
+            "date": "2024-03-11 01:10:00",
+            "link": ""
+          },
+          {
+            "date": "2024-03-13 01:00:00",
+            "link": "https://www.tiktok.com/@creator/video/0"
+          },
+          {
+            "date": "2024-03-13 01:01:00",
+            "link": "https://www.tiktok.com/@creator/video/1"
+          },
+          {
+            "date": "2024-03-13 01:02:00",
+            "link": "https://www.tiktok.com/@creator/video/2"
+          },
+          {
+            "date": "2024-03-13 01:03:00",
+            "link": "https://www.tiktok.com/@creator/video/3"
+          },
+          {
+            "date": "2024-03-13 01:04:00",
+            "link": "https://www.tiktok.com/@creator/video/4"
+          },
+          {
+            "date": "2024-03-13 01:05:00",
+            "link": "https://www.tiktok.com/@creator/video/5"
+          },
+          {
+            "date": "2024-03-13 01:06:00",
+            "link": "https://www.tiktok.com/@creator/video/6"
+          },
+          {
+            "date": "2024-03-13 01:07:00",
+            "link": "https://www.tiktok.com/@creator/video/7"
+          },
+          {
+            "date": "2024-03-13 01:08:00",
+            "link": "https://www.tiktok.com/@creator/video/8"
+          },
+          {
+            "date": "2024-03-13 01:09:00",
+            "link": "https://www.tiktok.com/@creator/video/9"
+          },
+          {
+            "date": "2024-03-13 01:10:00",
+            "link": ""
+          }
+        ],
+        "engagement": []
+      },
+      "expected": {
+        "phantom_sessions": [
+          {
+            "start": "2024-03-11 01:00:00",
+            "end": "2024-03-11 01:10:00",
+            "night": "2024-03-11",
+            "video_count": 10,
+            "hours": 0.17
+          },
+          {
+            "start": "2024-03-13 01:00:00",
+            "end": "2024-03-13 01:10:00",
+            "night": "2024-03-13",
+            "video_count": 10,
+            "hours": 0.17
+          }
+        ],
+        "phantom_video_count": 20,
+        "phantom_nights": 2,
+        "excluded_hours": 0.34
+      }
+    },
+    {
+      "name": "empty",
+      "input": {
+        "history": [],
+        "engagement": []
+      },
+      "expected": {
+        "phantom_sessions": [],
+        "phantom_video_count": 0,
+        "phantom_nights": 0,
+        "excluded_hours": 0
+      }
+    }
+  ]
+}

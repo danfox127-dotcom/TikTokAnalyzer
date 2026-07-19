@@ -1,0 +1,7554 @@
+{
+  "version": "2026.03-1",
+  "retrieved_date": "2026-07-13",
+  "taxonomy": "TikTok Ads Manager — Interest & Behavior Targeting",
+  "sub_targeting_type": "GENERAL_INTEREST",
+  "interest_category_version": 2,
+  "provenance": {
+    "schema_authority": "TikTok API for Business, GET /open_api/v1.3/targeting/search/ (doc_id 1796638342793218) and /v1.3/tool/interest_category/ (doc_id 1737174348712961)",
+    "data_source": "API response dump committed 2026-03-22 in github.com/hschwed/PDSAI (data/raw/interest.json), exact official response schema",
+    "cross_validation": "Diffed against independent Sept-2024 dump (github.com/OxfordDemSci/mySocialWatcher): 716/717 IDs identical; 24 name changes consistent with TikTok renames (gaming label clarifications); one 2024 category removed ('Casino or Gambling', 25998004)",
+    "known_gaps": "Covers GENERAL_INTEREST only. The other sub-targeting types (ADDITIONAL_INTEREST, PURCHASE_INTENTION, VIDEO_INTERACTION, CREATOR_INTERACTION, HASHTAG_INTERACTION) require an authenticated ad-account call to /targeting/search/ and have no public dump; extend this file if/when an ad account is available."
+  },
+  "stats": {
+    "total_categories": 716,
+    "by_level": {
+      "1": 20,
+      "2": 171,
+      "3": 308,
+      "4": 217
+    }
+  },
+  "categories": [
+    {
+      "id": "10",
+      "name": "Education",
+      "level": 1,
+      "parent_id": null,
+      "children_ids": [
+        "10100",
+        "10101",
+        "10102",
+        "10103",
+        "10104",
+        "10105",
+        "10106"
+      ],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "11",
+      "name": "Vehicles & Transportation",
+      "level": 1,
+      "parent_id": null,
+      "children_ids": [
+        "11100",
+        "11101",
+        "11102",
+        "11103",
+        "11104",
+        "11105",
+        "11106",
+        "11107",
+        "11108",
+        "11109",
+        "11111",
+        "11112"
+      ],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "12",
+      "name": "Baby & Kids Products",
+      "level": 1,
+      "parent_id": null,
+      "children_ids": [
+        "12101",
+        "12102",
+        "12103",
+        "12104",
+        "12105",
+        "12106",
+        "12107",
+        "12108",
+        "12109"
+      ],
+      "special_industries": []
+    },
+    {
+      "id": "13",
+      "name": "Financial Services",
+      "level": 1,
+      "parent_id": null,
+      "children_ids": [
+        "13101",
+        "13102",
+        "13108",
+        "13112",
+        "13114"
+      ],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "14",
+      "name": "Beauty & Personal Care",
+      "level": 1,
+      "parent_id": null,
+      "children_ids": [
+        "14100",
+        "14101",
+        "14102",
+        "14103",
+        "14104",
+        "14106",
+        "14107"
+      ],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "15",
+      "name": "Tech & Electronics",
+      "level": 1,
+      "parent_id": null,
+      "children_ids": [
+        "15100",
+        "15101",
+        "15102",
+        "15104",
+        "15105",
+        "15106",
+        "15107"
+      ],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "16",
+      "name": "Appliances",
+      "level": 1,
+      "parent_id": null,
+      "children_ids": [
+        "16100",
+        "16101",
+        "16102",
+        "16104",
+        "16105"
+      ],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "17",
+      "name": "Travel",
+      "level": 1,
+      "parent_id": null,
+      "children_ids": [
+        "17103",
+        "17105",
+        "17106"
+      ],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "18",
+      "name": "Household Products",
+      "level": 1,
+      "parent_id": null,
+      "children_ids": [
+        "18100",
+        "18102",
+        "18104",
+        "18105",
+        "18106",
+        "18107",
+        "18108",
+        "18109",
+        "18110",
+        "18111",
+        "18112"
+      ],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "19",
+      "name": "Pets",
+      "level": 1,
+      "parent_id": null,
+      "children_ids": [
+        "19100",
+        "19101",
+        "19102",
+        "19103",
+        "19105",
+        "19106"
+      ],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "20",
+      "name": "Apps",
+      "level": 1,
+      "parent_id": null,
+      "children_ids": [
+        "20100",
+        "20101",
+        "20102",
+        "20103",
+        "20104",
+        "20105",
+        "20106",
+        "20107",
+        "20108",
+        "20109",
+        "20110",
+        "20111",
+        "20112"
+      ],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "21",
+      "name": "Home Improvement",
+      "level": 1,
+      "parent_id": null,
+      "children_ids": [
+        "21100",
+        "21101",
+        "21102",
+        "21103",
+        "21104"
+      ],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "22",
+      "name": "Apparel & Accessories",
+      "level": 1,
+      "parent_id": null,
+      "children_ids": [
+        "22101",
+        "22102",
+        "22105",
+        "22106",
+        "22107",
+        "22108",
+        "22109",
+        "22110",
+        "22111",
+        "22112",
+        "22113"
+      ],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "23",
+      "name": "News & Entertainment",
+      "level": 1,
+      "parent_id": null,
+      "children_ids": [
+        "20107105",
+        "23102",
+        "23103",
+        "23104",
+        "23105",
+        "23106",
+        "23107",
+        "23108",
+        "23109",
+        "23110",
+        "23111",
+        "23112",
+        "23113",
+        "23114",
+        "23116",
+        "23117",
+        "23118",
+        "23119",
+        "23122",
+        "23123",
+        "23124",
+        "23126",
+        "23129",
+        "23131",
+        "23133",
+        "23999",
+        "29101"
+      ],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "24",
+      "name": "Business Services",
+      "level": 1,
+      "parent_id": null,
+      "children_ids": [
+        "24100",
+        "24101",
+        "24102",
+        "24103",
+        "24104",
+        "24106",
+        "24107",
+        "24108",
+        "24109",
+        "24110",
+        "24111",
+        "24112",
+        "24113",
+        "24114",
+        "24116",
+        "24117",
+        "24118",
+        "24119",
+        "24120"
+      ],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "25",
+      "name": "Games",
+      "level": 1,
+      "parent_id": null,
+      "children_ids": [
+        "25100",
+        "25992",
+        "25993",
+        "25996",
+        "25998",
+        "25999"
+      ],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "26",
+      "name": "Life Services",
+      "level": 1,
+      "parent_id": null,
+      "children_ids": [
+        "26100",
+        "26101",
+        "26104",
+        "26105",
+        "26106",
+        "26107",
+        "26108",
+        "26111",
+        "26112",
+        "26113",
+        "26114"
+      ],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "27",
+      "name": "Food & Beverage",
+      "level": 1,
+      "parent_id": null,
+      "children_ids": [
+        "27100",
+        "27101",
+        "27102",
+        "27104"
+      ],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "28",
+      "name": "Sports & Outdoors",
+      "level": 1,
+      "parent_id": null,
+      "children_ids": [
+        "28100",
+        "28101"
+      ],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "30",
+      "name": "E-Commerce (Non-app)",
+      "level": 1,
+      "parent_id": null,
+      "children_ids": [
+        "30100"
+      ],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "10100",
+      "name": "Early Childhood & Preschool Education",
+      "level": 2,
+      "parent_id": "10",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "10101",
+      "name": "Primary & Secondary Education & K-12",
+      "level": 2,
+      "parent_id": "10",
+      "children_ids": [
+        "10101102"
+      ],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "10102",
+      "name": "Higher Education",
+      "level": 2,
+      "parent_id": "10",
+      "children_ids": [
+        "10102100",
+        "10102101"
+      ],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "10103",
+      "name": "Overseas Education",
+      "level": 2,
+      "parent_id": "10",
+      "children_ids": [
+        "10103101",
+        "10103103"
+      ],
+      "special_industries": []
+    },
+    {
+      "id": "10104",
+      "name": "Vocational Training",
+      "level": 2,
+      "parent_id": "10",
+      "children_ids": [
+        "10104100",
+        "10104101",
+        "10104103",
+        "10104104",
+        "10104105",
+        "10104108",
+        "10104109",
+        "10104112"
+      ],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "10105",
+      "name": "Language Training",
+      "level": 2,
+      "parent_id": "10",
+      "children_ids": [
+        "10105101",
+        "10105104"
+      ],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "10106",
+      "name": "Non-academic Training (Hobbies)",
+      "level": 2,
+      "parent_id": "10",
+      "children_ids": [
+        "10106100",
+        "10106101",
+        "10106103"
+      ],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "11100",
+      "name": "Automobiles",
+      "level": 2,
+      "parent_id": "11",
+      "children_ids": [
+        "11100100",
+        "11100101"
+      ],
+      "special_industries": []
+    },
+    {
+      "id": "11101",
+      "name": "Auto Accessories",
+      "level": 2,
+      "parent_id": "11",
+      "children_ids": [
+        "11101100",
+        "11101101",
+        "11101102",
+        "11101103"
+      ],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "11102",
+      "name": "Auto Services",
+      "level": 2,
+      "parent_id": "11",
+      "children_ids": [
+        "11102100",
+        "11102101"
+      ],
+      "special_industries": []
+    },
+    {
+      "id": "11103",
+      "name": "Auto Parts",
+      "level": 2,
+      "parent_id": "11",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "11104",
+      "name": "Car Rentals",
+      "level": 2,
+      "parent_id": "11",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "11105",
+      "name": "Used Cars",
+      "level": 2,
+      "parent_id": "11",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "11106",
+      "name": "Motorcycles",
+      "level": 2,
+      "parent_id": "11",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "11107",
+      "name": "Bicycles",
+      "level": 2,
+      "parent_id": "11",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "11108",
+      "name": "Electric Scooters",
+      "level": 2,
+      "parent_id": "11",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "11109",
+      "name": "Water Vehicles",
+      "level": 2,
+      "parent_id": "11",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "11111",
+      "name": "Accessories for 2/3-Wheeled Vehicles",
+      "level": 2,
+      "parent_id": "11",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "11112",
+      "name": "Car Dealerships",
+      "level": 2,
+      "parent_id": "11",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "12101",
+      "name": "Strollers & Cribs",
+      "level": 2,
+      "parent_id": "12",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "12102",
+      "name": "Baby Formula",
+      "level": 2,
+      "parent_id": "12",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "12103",
+      "name": "Diapers & Baby Wipes",
+      "level": 2,
+      "parent_id": "12",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "12104",
+      "name": "Baby Bedding",
+      "level": 2,
+      "parent_id": "12",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "12105",
+      "name": "Baby Shoes",
+      "level": 2,
+      "parent_id": "12",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "12106",
+      "name": "Toys for Kids",
+      "level": 2,
+      "parent_id": "12",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "12107",
+      "name": "Child Car Seats",
+      "level": 2,
+      "parent_id": "12",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "12108",
+      "name": "Baby Feeding Supplies",
+      "level": 2,
+      "parent_id": "12",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "12109",
+      "name": "Children's Apparel",
+      "level": 2,
+      "parent_id": "12",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "13101",
+      "name": "Securities",
+      "level": 2,
+      "parent_id": "13",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "13102",
+      "name": "Insurance",
+      "level": 2,
+      "parent_id": "13",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "13108",
+      "name": "Credit Bureaus",
+      "level": 2,
+      "parent_id": "13",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "13112",
+      "name": "Foreign Exchange Transactions",
+      "level": 2,
+      "parent_id": "13",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "13114",
+      "name": "Third-Party Payments",
+      "level": 2,
+      "parent_id": "13",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "14100",
+      "name": "Oral Care",
+      "level": 2,
+      "parent_id": "14",
+      "children_ids": [
+        "14100100",
+        "14100101",
+        "14100102",
+        "14100103"
+      ],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "14101",
+      "name": "Haircare",
+      "level": 2,
+      "parent_id": "14",
+      "children_ids": [
+        "14101100",
+        "14101101",
+        "14101102",
+        "14101103"
+      ],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "14102",
+      "name": "Wig & Hair Styling",
+      "level": 2,
+      "parent_id": "14",
+      "children_ids": [
+        "14102100",
+        "14102102",
+        "14102103",
+        "14102104"
+      ],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "14103",
+      "name": "Skin Care",
+      "level": 2,
+      "parent_id": "14",
+      "children_ids": [
+        "14103100",
+        "14103101",
+        "14103102",
+        "14103103",
+        "14103105"
+      ],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "14104",
+      "name": "Cosmetics",
+      "level": 2,
+      "parent_id": "14",
+      "children_ids": [
+        "14104100",
+        "14104101",
+        "14104102",
+        "14104103",
+        "14104104",
+        "14104105",
+        "14104107",
+        "14104108"
+      ],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "14106",
+      "name": "Fragrances & Perfumes",
+      "level": 2,
+      "parent_id": "14",
+      "children_ids": [
+        "14106100",
+        "14106101"
+      ],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "14107",
+      "name": "Feminine Care",
+      "level": 2,
+      "parent_id": "14",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "15100",
+      "name": "Cell Phones",
+      "level": 2,
+      "parent_id": "15",
+      "children_ids": [
+        "15100100"
+      ],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "15101",
+      "name": "Computers",
+      "level": 2,
+      "parent_id": "15",
+      "children_ids": [
+        "15101102",
+        "15101103",
+        "15101104"
+      ],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "15102",
+      "name": "Computer Components",
+      "level": 2,
+      "parent_id": "15",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "15104",
+      "name": "Gaming Devices",
+      "level": 2,
+      "parent_id": "15",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "15105",
+      "name": "Computer Accessories",
+      "level": 2,
+      "parent_id": "15",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "15106",
+      "name": "Network Products",
+      "level": 2,
+      "parent_id": "15",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "15107",
+      "name": "Office Equipment",
+      "level": 2,
+      "parent_id": "15",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "16100",
+      "name": "Personal Care Appliances",
+      "level": 2,
+      "parent_id": "16",
+      "children_ids": [
+        "16100100",
+        "16100101",
+        "16100108",
+        "16100110",
+        "16100111",
+        "16100113",
+        "16100114",
+        "16100115"
+      ],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "16101",
+      "name": "Kitchen & Bathroom Appliances",
+      "level": 2,
+      "parent_id": "16",
+      "children_ids": [
+        "16101100",
+        "16101112",
+        "16101113",
+        "16101115",
+        "16101118",
+        "16101119",
+        "16101123",
+        "16101125",
+        "16101129"
+      ],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "16102",
+      "name": "Large Appliances",
+      "level": 2,
+      "parent_id": "16",
+      "children_ids": [
+        "16102100",
+        "16102101",
+        "16102102"
+      ],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "16104",
+      "name": "Home Appliances",
+      "level": 2,
+      "parent_id": "16",
+      "children_ids": [
+        "16104100",
+        "16104102",
+        "16104104",
+        "16104105",
+        "16104106",
+        "16104107",
+        "16104108",
+        "16104112",
+        "16104113",
+        "16104114",
+        "16104117",
+        "16104118",
+        "16104119"
+      ],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "16105",
+      "name": "Digital Devices",
+      "level": 2,
+      "parent_id": "16",
+      "children_ids": [
+        "16105100",
+        "16105101",
+        "16105102"
+      ],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "17103",
+      "name": "Hotels & Accommodation",
+      "level": 2,
+      "parent_id": "17",
+      "children_ids": [
+        "17103100",
+        "17103101",
+        "17103104"
+      ],
+      "special_industries": []
+    },
+    {
+      "id": "17105",
+      "name": "Tours & Attractions",
+      "level": 2,
+      "parent_id": "17",
+      "children_ids": [
+        "17105105",
+        "17105107"
+      ],
+      "special_industries": []
+    },
+    {
+      "id": "17106",
+      "name": "Travel Agencies & Services",
+      "level": 2,
+      "parent_id": "17",
+      "children_ids": [
+        "17106100"
+      ],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "18100",
+      "name": "Storage Products",
+      "level": 2,
+      "parent_id": "18",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "18102",
+      "name": "Glasses & Drinkware",
+      "level": 2,
+      "parent_id": "18",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "18104",
+      "name": "Coffee Accessories",
+      "level": 2,
+      "parent_id": "18",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "18105",
+      "name": "Kitchen Accessories",
+      "level": 2,
+      "parent_id": "18",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "18106",
+      "name": "Cleaning Appliances",
+      "level": 2,
+      "parent_id": "18",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "18107",
+      "name": "Tissues & Wet Wipes",
+      "level": 2,
+      "parent_id": "18",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "18108",
+      "name": "Laundry",
+      "level": 2,
+      "parent_id": "18",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "18109",
+      "name": "Leather Care",
+      "level": 2,
+      "parent_id": "18",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "18110",
+      "name": "Cleaning Supplies",
+      "level": 2,
+      "parent_id": "18",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "18111",
+      "name": "Toys",
+      "level": 2,
+      "parent_id": "18",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "18112",
+      "name": "Pest Control",
+      "level": 2,
+      "parent_id": "18",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "19100",
+      "name": "Petfood",
+      "level": 2,
+      "parent_id": "19",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "19101",
+      "name": "Pet Healthcare",
+      "level": 2,
+      "parent_id": "19",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "19102",
+      "name": "Pet Household Products",
+      "level": 2,
+      "parent_id": "19",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "19103",
+      "name": "Pet Grooming",
+      "level": 2,
+      "parent_id": "19",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "19105",
+      "name": "Pet Toys",
+      "level": 2,
+      "parent_id": "19",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "19106",
+      "name": "Pet Travel Accessories",
+      "level": 2,
+      "parent_id": "19",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "20100",
+      "name": "Social",
+      "level": 2,
+      "parent_id": "20",
+      "children_ids": [
+        "20100100",
+        "20100101",
+        "20100103"
+      ],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "20101",
+      "name": "Audio & Video Players",
+      "level": 2,
+      "parent_id": "20",
+      "children_ids": [
+        "20101101",
+        "20101102"
+      ],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "20102",
+      "name": "News & Reading",
+      "level": 2,
+      "parent_id": "20",
+      "children_ids": [
+        "20102101",
+        "20102102"
+      ],
+      "special_industries": []
+    },
+    {
+      "id": "20103",
+      "name": "Photography",
+      "level": 2,
+      "parent_id": "20",
+      "children_ids": [
+        "20103100",
+        "20103101"
+      ],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "20104",
+      "name": "Education",
+      "level": 2,
+      "parent_id": "20",
+      "children_ids": [
+        "20104100",
+        "20104101",
+        "20104102",
+        "20104103"
+      ],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "20105",
+      "name": "Online Shopping",
+      "level": 2,
+      "parent_id": "20",
+      "children_ids": [
+        "20105101",
+        "20105103"
+      ],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "20106",
+      "name": "Financial Services",
+      "level": 2,
+      "parent_id": "20",
+      "children_ids": [
+        "20106100",
+        "20106102",
+        "20106103"
+      ],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "20107",
+      "name": "Life & Leisure",
+      "level": 2,
+      "parent_id": "20",
+      "children_ids": [
+        "20107102",
+        "20107103",
+        "20107107"
+      ],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "20108",
+      "name": "Travel",
+      "level": 2,
+      "parent_id": "20",
+      "children_ids": [
+        "20108100",
+        "20108101"
+      ],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "20109",
+      "name": "Health & Fitness",
+      "level": 2,
+      "parent_id": "20",
+      "children_ids": [
+        "20109100",
+        "20109101",
+        "20109102"
+      ],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "20110",
+      "name": "Business & Productivity",
+      "level": 2,
+      "parent_id": "20",
+      "children_ids": [
+        "20110100",
+        "20110104"
+      ],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "20111",
+      "name": "Parenting",
+      "level": 2,
+      "parent_id": "20",
+      "children_ids": [
+        "20111100"
+      ],
+      "special_industries": []
+    },
+    {
+      "id": "20112",
+      "name": "Tools",
+      "level": 2,
+      "parent_id": "20",
+      "children_ids": [
+        "20112101",
+        "20112102",
+        "20112103",
+        "20112105",
+        "20112109",
+        "20112110"
+      ],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "21100",
+      "name": "Interior Design & Decorating Services",
+      "level": 2,
+      "parent_id": "21",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "21101",
+      "name": "Furniture",
+      "level": 2,
+      "parent_id": "21",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "21102",
+      "name": "Construction Materials & Lighting",
+      "level": 2,
+      "parent_id": "21",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "21103",
+      "name": "Hardware & Electrical",
+      "level": 2,
+      "parent_id": "21",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "21104",
+      "name": "Home Decor",
+      "level": 2,
+      "parent_id": "21",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "22101",
+      "name": "Clothing Accessories",
+      "level": 2,
+      "parent_id": "22",
+      "children_ids": [
+        "22101100",
+        "22101101",
+        "22101102",
+        "22101103",
+        "22101104",
+        "22101105",
+        "22101106"
+      ],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "22102",
+      "name": "Bags",
+      "level": 2,
+      "parent_id": "22",
+      "children_ids": [
+        "22102100",
+        "22102101",
+        "22102102",
+        "22102103",
+        "22102105",
+        "22102106",
+        "22102107",
+        "22102108"
+      ],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "22105",
+      "name": "Watches",
+      "level": 2,
+      "parent_id": "22",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "22106",
+      "name": "Ordinary Jewelry",
+      "level": 2,
+      "parent_id": "22",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "22107",
+      "name": "High-end Jewelry",
+      "level": 2,
+      "parent_id": "22",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "22108",
+      "name": "Men's Clothing",
+      "level": 2,
+      "parent_id": "22",
+      "children_ids": [
+        "22108100",
+        "22108101",
+        "22108102",
+        "22108103",
+        "22108104",
+        "22108105",
+        "22108106",
+        "22108107",
+        "22108108",
+        "22108109",
+        "22108110",
+        "22108112"
+      ],
+      "special_industries": []
+    },
+    {
+      "id": "22109",
+      "name": "Men's Shoes",
+      "level": 2,
+      "parent_id": "22",
+      "children_ids": [
+        "22109100",
+        "22109101",
+        "22109102",
+        "22109103",
+        "22109104"
+      ],
+      "special_industries": []
+    },
+    {
+      "id": "22110",
+      "name": "Women's Clothing",
+      "level": 2,
+      "parent_id": "22",
+      "children_ids": [
+        "22110100",
+        "22110101",
+        "22110102",
+        "22110103",
+        "22110104",
+        "22110105",
+        "22110106",
+        "22110107",
+        "22110108",
+        "22110109",
+        "22110110",
+        "22110111",
+        "22110112",
+        "22110113",
+        "22110114",
+        "22110115"
+      ],
+      "special_industries": []
+    },
+    {
+      "id": "22111",
+      "name": "Women's Shoes",
+      "level": 2,
+      "parent_id": "22",
+      "children_ids": [
+        "22111100",
+        "22111101",
+        "22111102",
+        "22111103",
+        "22111104"
+      ],
+      "special_industries": []
+    },
+    {
+      "id": "22112",
+      "name": "Traditional & Ceremonial Clothing",
+      "level": 2,
+      "parent_id": "22",
+      "children_ids": [
+        "22112109",
+        "22112110"
+      ],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "22113",
+      "name": "Wearable Tech Devices",
+      "level": 2,
+      "parent_id": "22",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "23102",
+      "name": "Business & Economy",
+      "level": 2,
+      "parent_id": "23",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "23103",
+      "name": "Science & Technology",
+      "level": 2,
+      "parent_id": "23",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "23104",
+      "name": "Culture & History",
+      "level": 2,
+      "parent_id": "23",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "23105",
+      "name": "Charity",
+      "level": 2,
+      "parent_id": "23",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "23106",
+      "name": "Law",
+      "level": 2,
+      "parent_id": "23",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "23107",
+      "name": "Sustainability",
+      "level": 2,
+      "parent_id": "23",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "23108",
+      "name": "Celebrity",
+      "level": 2,
+      "parent_id": "23",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "23109",
+      "name": "Lifestyle News",
+      "level": 2,
+      "parent_id": "23",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "23110",
+      "name": "Live Events",
+      "level": 2,
+      "parent_id": "23",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "23111",
+      "name": "Collectables & Antiques",
+      "level": 2,
+      "parent_id": "23",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "23112",
+      "name": "TV Drama / TV Series",
+      "level": 2,
+      "parent_id": "23",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "23113",
+      "name": "Anime",
+      "level": 2,
+      "parent_id": "23",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "23114",
+      "name": "Astrology",
+      "level": 2,
+      "parent_id": "23",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "23116",
+      "name": "Culture & Art",
+      "level": 2,
+      "parent_id": "23",
+      "children_ids": [
+        "10106102",
+        "23116100",
+        "23116101",
+        "23116107",
+        "23116999"
+      ],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "23117",
+      "name": "Variety Shows",
+      "level": 2,
+      "parent_id": "23",
+      "children_ids": [
+        "23117100",
+        "23117101",
+        "23117104",
+        "23117105",
+        "23117999"
+      ],
+      "special_industries": []
+    },
+    {
+      "id": "23118",
+      "name": "Reading",
+      "level": 2,
+      "parent_id": "23",
+      "children_ids": [
+        "23118100",
+        "23118103",
+        "23118106"
+      ],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "23119",
+      "name": "Movie",
+      "level": 2,
+      "parent_id": "23",
+      "children_ids": [
+        "23119100",
+        "23119101",
+        "23119102",
+        "23119103",
+        "23119104",
+        "23119107",
+        "23119109",
+        "23119110",
+        "23119111",
+        "23119113",
+        "23119114",
+        "23119115"
+      ],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "23122",
+      "name": "Beauty & Personal Care",
+      "level": 2,
+      "parent_id": "23",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "23123",
+      "name": "Sports & Fitness",
+      "level": 2,
+      "parent_id": "23",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "23124",
+      "name": "Food & Cooking",
+      "level": 2,
+      "parent_id": "23",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "23126",
+      "name": "Cars",
+      "level": 2,
+      "parent_id": "23",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "23129",
+      "name": "Pets",
+      "level": 2,
+      "parent_id": "23",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "23131",
+      "name": "Relationships",
+      "level": 2,
+      "parent_id": "23",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "23133",
+      "name": "Tourism",
+      "level": 2,
+      "parent_id": "23",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "23999",
+      "name": "Other News",
+      "level": 2,
+      "parent_id": "23",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "24100",
+      "name": "Real Estate & Home Rentals",
+      "level": 2,
+      "parent_id": "24",
+      "children_ids": [
+        "24100100",
+        "24100101"
+      ],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "24101",
+      "name": "Office Equipment & Supplies",
+      "level": 2,
+      "parent_id": "24",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "24102",
+      "name": "Recruitment & Job Searching",
+      "level": 2,
+      "parent_id": "24",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "24103",
+      "name": "Construction Engineering",
+      "level": 2,
+      "parent_id": "24",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "24104",
+      "name": "Electronics & Electrical",
+      "level": 2,
+      "parent_id": "24",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "24106",
+      "name": "Machinery & Equipment",
+      "level": 2,
+      "parent_id": "24",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "24107",
+      "name": "Franchising",
+      "level": 2,
+      "parent_id": "24",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "24108",
+      "name": "Agriculture, Forestry, Animal Husbandry & Fishing",
+      "level": 2,
+      "parent_id": "24",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "24109",
+      "name": "Energy Conservation & Sustainability",
+      "level": 2,
+      "parent_id": "24",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "24110",
+      "name": "Safety & Security",
+      "level": 2,
+      "parent_id": "24",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "24111",
+      "name": "Logistics",
+      "level": 2,
+      "parent_id": "24",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "24112",
+      "name": "Marketing & Advertising",
+      "level": 2,
+      "parent_id": "24",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "24113",
+      "name": "Professional Consultation",
+      "level": 2,
+      "parent_id": "24",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "24114",
+      "name": "Exhibition Services",
+      "level": 2,
+      "parent_id": "24",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "24116",
+      "name": "IT Services",
+      "level": 2,
+      "parent_id": "24",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "24117",
+      "name": "Legal Services",
+      "level": 2,
+      "parent_id": "24",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "24118",
+      "name": "Business Auction Services",
+      "level": 2,
+      "parent_id": "24",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "24119",
+      "name": "Investment Planning & Management",
+      "level": 2,
+      "parent_id": "24",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "24120",
+      "name": "Individual Entrepreneurship",
+      "level": 2,
+      "parent_id": "24",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25100",
+      "name": "Games (By Type)",
+      "level": 2,
+      "parent_id": "25",
+      "children_ids": [
+        "25100100",
+        "25100101",
+        "25100102",
+        "25100103",
+        "25100104",
+        "25100105",
+        "25100106",
+        "25100107",
+        "25100108",
+        "25100109",
+        "25100110",
+        "25100111",
+        "25100112",
+        "25100115",
+        "25100116"
+      ],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "25992",
+      "name": "Monetization",
+      "level": 2,
+      "parent_id": "25",
+      "children_ids": [
+        "25992001",
+        "25992002"
+      ],
+      "special_industries": []
+    },
+    {
+      "id": "25993",
+      "name": "Platform",
+      "level": 2,
+      "parent_id": "25",
+      "children_ids": [
+        "25993001",
+        "25993002"
+      ],
+      "special_industries": []
+    },
+    {
+      "id": "25996",
+      "name": "Dimension",
+      "level": 2,
+      "parent_id": "25",
+      "children_ids": [
+        "25996001",
+        "25996002"
+      ],
+      "special_industries": []
+    },
+    {
+      "id": "25998",
+      "name": "Theme",
+      "level": 2,
+      "parent_id": "25",
+      "children_ids": [
+        "25998001",
+        "25998002",
+        "25998003",
+        "25998005",
+        "25998006",
+        "25998007",
+        "25998008",
+        "25998009",
+        "25998010",
+        "25998011",
+        "25998012",
+        "25998013",
+        "25998014",
+        "25998015",
+        "25998016",
+        "25998017",
+        "25998018",
+        "25998019",
+        "25998020",
+        "25998021"
+      ],
+      "special_industries": []
+    },
+    {
+      "id": "25999",
+      "name": "Genre",
+      "level": 2,
+      "parent_id": "25",
+      "children_ids": [
+        "25999001",
+        "25999002",
+        "25999003",
+        "25999004",
+        "25999005",
+        "25999006",
+        "25999007",
+        "25999008",
+        "25999009",
+        "25999010",
+        "25999011",
+        "25999012",
+        "25999013",
+        "25999014",
+        "25999015"
+      ],
+      "special_industries": []
+    },
+    {
+      "id": "26100",
+      "name": "Wedding Photography",
+      "level": 2,
+      "parent_id": "26",
+      "children_ids": [
+        "26100101"
+      ],
+      "special_industries": []
+    },
+    {
+      "id": "26101",
+      "name": "Photography",
+      "level": 2,
+      "parent_id": "26",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "26104",
+      "name": "Gifts & Flowers",
+      "level": 2,
+      "parent_id": "26",
+      "children_ids": [
+        "26104100",
+        "26104101"
+      ],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "26105",
+      "name": "Housekeeping",
+      "level": 2,
+      "parent_id": "26",
+      "children_ids": [
+        "26105101",
+        "26105104",
+        "26105107"
+      ],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "26106",
+      "name": "Shopping Services",
+      "level": 2,
+      "parent_id": "26",
+      "children_ids": [
+        "26106100",
+        "26106101"
+      ],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "26107",
+      "name": "Used Good Sales Platforms",
+      "level": 2,
+      "parent_id": "26",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "26108",
+      "name": "Gardening",
+      "level": 2,
+      "parent_id": "26",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "26111",
+      "name": "Internet Services",
+      "level": 2,
+      "parent_id": "26",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "26112",
+      "name": "Consumer Services",
+      "level": 2,
+      "parent_id": "26",
+      "children_ids": [
+        "26112101"
+      ],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "26113",
+      "name": "Exercise & Fitness",
+      "level": 2,
+      "parent_id": "26",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "26114",
+      "name": "Beauty & Personal Care",
+      "level": 2,
+      "parent_id": "26",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "27100",
+      "name": "Food",
+      "level": 2,
+      "parent_id": "27",
+      "children_ids": [
+        "27100103",
+        "27100106",
+        "27100111",
+        "27100114",
+        "27100122"
+      ],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "27101",
+      "name": "Food & Fresh Produce",
+      "level": 2,
+      "parent_id": "27",
+      "children_ids": [
+        "27101100",
+        "27101102",
+        "27101103",
+        "27101104",
+        "27101106",
+        "27101107"
+      ],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "27102",
+      "name": "Beverage",
+      "level": 2,
+      "parent_id": "27",
+      "children_ids": [
+        "27102100",
+        "27102101",
+        "27102102",
+        "27102103",
+        "27102104",
+        "27102105"
+      ],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "27104",
+      "name": "Cooking & Recipes",
+      "level": 2,
+      "parent_id": "27",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "28100",
+      "name": "Outdoor Equipment",
+      "level": 2,
+      "parent_id": "28",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "28101",
+      "name": "Sports Equipment",
+      "level": 2,
+      "parent_id": "28",
+      "children_ids": [
+        "28101100",
+        "28101106",
+        "28101107",
+        "28101111",
+        "28101114",
+        "28101115",
+        "28101116",
+        "28101117",
+        "28101123",
+        "28101124"
+      ],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "29101",
+      "name": "Health & Wellness",
+      "level": 2,
+      "parent_id": "23",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "30100",
+      "name": "Big Box Retailers",
+      "level": 2,
+      "parent_id": "30",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "10101102",
+      "name": "High School Tutoring",
+      "level": 3,
+      "parent_id": "10101",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "10102100",
+      "name": "Adult Education",
+      "level": 3,
+      "parent_id": "10102",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "10102101",
+      "name": "College Education",
+      "level": 3,
+      "parent_id": "10102",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "10103101",
+      "name": "Overseas Study for Undergraduate Education",
+      "level": 3,
+      "parent_id": "10103",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "10103103",
+      "name": "ESL Testing",
+      "level": 3,
+      "parent_id": "10103",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "10104100",
+      "name": "IT Training & Examinations",
+      "level": 3,
+      "parent_id": "10104",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "10104101",
+      "name": "Design Training & Education",
+      "level": 3,
+      "parent_id": "10104",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "10104103",
+      "name": "Chef Training & Examinations",
+      "level": 3,
+      "parent_id": "10104",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "10104104",
+      "name": "Enterprise Management Training",
+      "level": 3,
+      "parent_id": "10104",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "10104105",
+      "name": "Medical Licensing Training & Examinations",
+      "level": 3,
+      "parent_id": "10104",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "10104108",
+      "name": "Beauty Education",
+      "level": 3,
+      "parent_id": "10104",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "10104109",
+      "name": "Driving Schools & Pilot Training",
+      "level": 3,
+      "parent_id": "10104",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "10104112",
+      "name": "Marketing Management Education",
+      "level": 3,
+      "parent_id": "10104",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "10105101",
+      "name": "English Language Training",
+      "level": 3,
+      "parent_id": "10105",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "10105104",
+      "name": "Spanish Language Training",
+      "level": 3,
+      "parent_id": "10105",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "10106100",
+      "name": "Music & Instruments",
+      "level": 3,
+      "parent_id": "10106",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "10106101",
+      "name": "Calligraphy & Art",
+      "level": 3,
+      "parent_id": "10106",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "10106102",
+      "name": "Dance",
+      "level": 3,
+      "parent_id": "23116",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "10106103",
+      "name": "Sports",
+      "level": 3,
+      "parent_id": "10106",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "11100100",
+      "name": "Sedans",
+      "level": 3,
+      "parent_id": "11100",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "11100101",
+      "name": "SUVs",
+      "level": 3,
+      "parent_id": "11100",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "11101100",
+      "name": "Auto Decor",
+      "level": 3,
+      "parent_id": "11101",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "11101101",
+      "name": "Car Interior Accessories",
+      "level": 3,
+      "parent_id": "11101",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "11101102",
+      "name": "Car Seat Organizers",
+      "level": 3,
+      "parent_id": "11101",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "11101103",
+      "name": "Windshield Repair",
+      "level": 3,
+      "parent_id": "11101",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "11102100",
+      "name": "Car Modification",
+      "level": 3,
+      "parent_id": "11102",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "11102101",
+      "name": "Car Maintenance",
+      "level": 3,
+      "parent_id": "11102",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "14100100",
+      "name": "Teeth Cleaning",
+      "level": 3,
+      "parent_id": "14100",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "14100101",
+      "name": "Teeth Whitening",
+      "level": 3,
+      "parent_id": "14100",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "14100102",
+      "name": "Oral Care Kits",
+      "level": 3,
+      "parent_id": "14100",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "14100103",
+      "name": "Toothbrushes & Tools",
+      "level": 3,
+      "parent_id": "14100",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "14101100",
+      "name": "Shampoos",
+      "level": 3,
+      "parent_id": "14101",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "14101101",
+      "name": "Haircare Products",
+      "level": 3,
+      "parent_id": "14101",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "14101102",
+      "name": "Hair Growth Products",
+      "level": 3,
+      "parent_id": "14101",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "14101103",
+      "name": "Shampoo-Conditioning Sets",
+      "level": 3,
+      "parent_id": "14101",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "14102100",
+      "name": "Hair Dye Products",
+      "level": 3,
+      "parent_id": "14102",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "14102102",
+      "name": "Styling Products",
+      "level": 3,
+      "parent_id": "14102",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "14102103",
+      "name": "Hairstyling Tools",
+      "level": 3,
+      "parent_id": "14102",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "14102104",
+      "name": "Wigs & Accessories",
+      "level": 3,
+      "parent_id": "14102",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "14103100",
+      "name": "Body Care",
+      "level": 3,
+      "parent_id": "14103",
+      "children_ids": [
+        "14103100100",
+        "14103100101",
+        "14103100102",
+        "14103100103",
+        "14103100104",
+        "14103100105"
+      ],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "14103101",
+      "name": "Facial Care",
+      "level": 3,
+      "parent_id": "14103",
+      "children_ids": [
+        "14103101100",
+        "14103101101",
+        "14103101102",
+        "14103101103",
+        "14103101104",
+        "14103101105",
+        "14103101106",
+        "14103101107"
+      ],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "14103102",
+      "name": "Eye Care",
+      "level": 3,
+      "parent_id": "14103",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "14103103",
+      "name": "Lip Care",
+      "level": 3,
+      "parent_id": "14103",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "14103105",
+      "name": "Hand & Foot Care",
+      "level": 3,
+      "parent_id": "14103",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "14104100",
+      "name": "Face Makeup",
+      "level": 3,
+      "parent_id": "14104",
+      "children_ids": [
+        "14104100100",
+        "14104100101",
+        "14104100102",
+        "14104100103"
+      ],
+      "special_industries": []
+    },
+    {
+      "id": "14104101",
+      "name": "Eyebrow Makeup",
+      "level": 3,
+      "parent_id": "14104",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "14104102",
+      "name": "Lip Makeup",
+      "level": 3,
+      "parent_id": "14104",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "14104103",
+      "name": "Eye Makeup",
+      "level": 3,
+      "parent_id": "14104",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "14104104",
+      "name": "Makeup Tools",
+      "level": 3,
+      "parent_id": "14104",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "14104105",
+      "name": "Tattoos",
+      "level": 3,
+      "parent_id": "14104",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "14104107",
+      "name": "Nail Art Products",
+      "level": 3,
+      "parent_id": "14104",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "14104108",
+      "name": "Makeup Sets",
+      "level": 3,
+      "parent_id": "14104",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "14106100",
+      "name": "Men's Fragrances & Perfumes",
+      "level": 3,
+      "parent_id": "14106",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "14106101",
+      "name": "Women's Fragrances & Perfumes",
+      "level": 3,
+      "parent_id": "14106",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "15100100",
+      "name": "Cell Phone Accessories",
+      "level": 3,
+      "parent_id": "15100",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "15101102",
+      "name": "Tablets",
+      "level": 3,
+      "parent_id": "15101",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "15101103",
+      "name": "Desktops",
+      "level": 3,
+      "parent_id": "15101",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "15101104",
+      "name": "Laptops",
+      "level": 3,
+      "parent_id": "15101",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "16100100",
+      "name": "Hair Dryers",
+      "level": 3,
+      "parent_id": "16100",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "16100101",
+      "name": "Curling Irons & Straighteners",
+      "level": 3,
+      "parent_id": "16100",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "16100108",
+      "name": "Electronic Scales",
+      "level": 3,
+      "parent_id": "16100",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "16100110",
+      "name": "Massagers",
+      "level": 3,
+      "parent_id": "16100",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "16100111",
+      "name": "Hair Clippers",
+      "level": 3,
+      "parent_id": "16100",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "16100113",
+      "name": "Electric Combs",
+      "level": 3,
+      "parent_id": "16100",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "16100114",
+      "name": "Electric Ear Cleaners",
+      "level": 3,
+      "parent_id": "16100",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "16100115",
+      "name": "Pedicure Tools",
+      "level": 3,
+      "parent_id": "16100",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "16101100",
+      "name": "Freezers & Ice Makers",
+      "level": 3,
+      "parent_id": "16101",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "16101112",
+      "name": "Heated Lunch Boxes",
+      "level": 3,
+      "parent_id": "16101",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "16101113",
+      "name": "Slow Cookers",
+      "level": 3,
+      "parent_id": "16101",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "16101115",
+      "name": "Egg Cookers",
+      "level": 3,
+      "parent_id": "16101",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "16101118",
+      "name": "Multi-purpose Pots",
+      "level": 3,
+      "parent_id": "16101",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "16101119",
+      "name": "Electric Grills",
+      "level": 3,
+      "parent_id": "16101",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "16101123",
+      "name": "Blenders",
+      "level": 3,
+      "parent_id": "16101",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "16101125",
+      "name": "Coffee Makers",
+      "level": 3,
+      "parent_id": "16101",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "16101129",
+      "name": "Food Processors",
+      "level": 3,
+      "parent_id": "16101",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "16102100",
+      "name": "Refrigerators",
+      "level": 3,
+      "parent_id": "16102",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "16102101",
+      "name": "Air Conditioning",
+      "level": 3,
+      "parent_id": "16102",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "16102102",
+      "name": "TVs & Home Theaters",
+      "level": 3,
+      "parent_id": "16102",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "16104100",
+      "name": "Vacuums",
+      "level": 3,
+      "parent_id": "16104",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "16104102",
+      "name": "Air Purifiers",
+      "level": 3,
+      "parent_id": "16104",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "16104104",
+      "name": "Electric Irons",
+      "level": 3,
+      "parent_id": "16104",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "16104105",
+      "name": "Water Purifiers",
+      "level": 3,
+      "parent_id": "16104",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "16104106",
+      "name": "Humidifiers",
+      "level": 3,
+      "parent_id": "16104",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "16104107",
+      "name": "Steam Cleaners",
+      "level": 3,
+      "parent_id": "16104",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "16104108",
+      "name": "Robotic Vacuums",
+      "level": 3,
+      "parent_id": "16104",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "16104112",
+      "name": "Garment Steamers & Irons",
+      "level": 3,
+      "parent_id": "16104",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "16104113",
+      "name": "Electric Fans",
+      "level": 3,
+      "parent_id": "16104",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "16104114",
+      "name": "Vacuums & Dust Mite Controllers",
+      "level": 3,
+      "parent_id": "16104",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "16104117",
+      "name": "Electric Heating Appliances",
+      "level": 3,
+      "parent_id": "16104",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "16104118",
+      "name": "Household Appliance Accessories",
+      "level": 3,
+      "parent_id": "16104",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "16104119",
+      "name": "Washers & Dryers",
+      "level": 3,
+      "parent_id": "16104",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "16105100",
+      "name": "Cameras & Video Cameras",
+      "level": 3,
+      "parent_id": "16105",
+      "children_ids": [
+        "16105100100",
+        "16105100101",
+        "16105100102"
+      ],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "16105101",
+      "name": "Speakers & Audio",
+      "level": 3,
+      "parent_id": "16105",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "16105102",
+      "name": "Drones",
+      "level": 3,
+      "parent_id": "16105",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "17103100",
+      "name": "Luxury Hotels",
+      "level": 3,
+      "parent_id": "17103",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "17103101",
+      "name": "Economy Hotels",
+      "level": 3,
+      "parent_id": "17103",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "17103104",
+      "name": "Villas",
+      "level": 3,
+      "parent_id": "17103",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "17105105",
+      "name": "Museum Exhibits",
+      "level": 3,
+      "parent_id": "17105",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "17105107",
+      "name": "Scenic Viewpoints",
+      "level": 3,
+      "parent_id": "17105",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "17106100",
+      "name": "Vacation Packages",
+      "level": 3,
+      "parent_id": "17106",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "20100100",
+      "name": "Chatting",
+      "level": 3,
+      "parent_id": "20100",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "20100101",
+      "name": "Marriage",
+      "level": 3,
+      "parent_id": "20100",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "20100103",
+      "name": "Messaging",
+      "level": 3,
+      "parent_id": "20100",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "20101101",
+      "name": "Music",
+      "level": 3,
+      "parent_id": "20101",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "20101102",
+      "name": "Audio players",
+      "level": 3,
+      "parent_id": "20101",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "20102101",
+      "name": "News",
+      "level": 3,
+      "parent_id": "20102",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "20102102",
+      "name": "E-books",
+      "level": 3,
+      "parent_id": "20102",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "20103100",
+      "name": "Image Editing",
+      "level": 3,
+      "parent_id": "20103",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "20103101",
+      "name": "Cameras",
+      "level": 3,
+      "parent_id": "20103",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "20104100",
+      "name": "Learning Tools",
+      "level": 3,
+      "parent_id": "20104",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "20104101",
+      "name": "Exam Preparation",
+      "level": 3,
+      "parent_id": "20104",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "20104102",
+      "name": "Foreign Language Learning",
+      "level": 3,
+      "parent_id": "20104",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "20104103",
+      "name": "Dictionaries & Translation Tools",
+      "level": 3,
+      "parent_id": "20104",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "20105101",
+      "name": "Group Buying & Discounts",
+      "level": 3,
+      "parent_id": "20105",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "20105103",
+      "name": "Express Deliveries",
+      "level": 3,
+      "parent_id": "20105",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "20106100",
+      "name": "Payment",
+      "level": 3,
+      "parent_id": "20106",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "20106102",
+      "name": "Money Management & Bookkeeping",
+      "level": 3,
+      "parent_id": "20106",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "20106103",
+      "name": "Investment",
+      "level": 3,
+      "parent_id": "20106",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "20107102",
+      "name": "Job Hunting",
+      "level": 3,
+      "parent_id": "20107",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "20107103",
+      "name": "Entertainment",
+      "level": 3,
+      "parent_id": "20107",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "20107105",
+      "name": "Car News",
+      "level": 2,
+      "parent_id": "23",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "20107107",
+      "name": "Ride Sharing",
+      "level": 3,
+      "parent_id": "20107",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "20108100",
+      "name": "Maps & Navigation",
+      "level": 3,
+      "parent_id": "20108",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "20108101",
+      "name": "Bus & Metro",
+      "level": 3,
+      "parent_id": "20108",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "20109100",
+      "name": "Physical Fitness",
+      "level": 3,
+      "parent_id": "20109",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "20109101",
+      "name": "Medical Care",
+      "level": 3,
+      "parent_id": "20109",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "20109102",
+      "name": "Healthy Lifestyle",
+      "level": 3,
+      "parent_id": "20109",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "20110100",
+      "name": "Office Software",
+      "level": 3,
+      "parent_id": "20110",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "20110104",
+      "name": "Email",
+      "level": 3,
+      "parent_id": "20110",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "20111100",
+      "name": "Parenting",
+      "level": 3,
+      "parent_id": "20111",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "20112101",
+      "name": "System Cleanup Software",
+      "level": 3,
+      "parent_id": "20112",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "20112102",
+      "name": "VPNs",
+      "level": 3,
+      "parent_id": "20112",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "20112103",
+      "name": "Keyboard Apps & Tools",
+      "level": 3,
+      "parent_id": "20112",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "20112105",
+      "name": "Document Management",
+      "level": 3,
+      "parent_id": "20112",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "20112109",
+      "name": "Social App Analytics",
+      "level": 3,
+      "parent_id": "20112",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "20112110",
+      "name": "Wallpapers",
+      "level": 3,
+      "parent_id": "20112",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "22101100",
+      "name": "Hats",
+      "level": 3,
+      "parent_id": "22101",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "22101101",
+      "name": "Scarves",
+      "level": 3,
+      "parent_id": "22101",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "22101102",
+      "name": "Gloves",
+      "level": 3,
+      "parent_id": "22101",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "22101103",
+      "name": "Belts",
+      "level": 3,
+      "parent_id": "22101",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "22101104",
+      "name": "Glasses & Lenses",
+      "level": 3,
+      "parent_id": "22101",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "22101105",
+      "name": "Ties, Bowties & Tie Clips",
+      "level": 3,
+      "parent_id": "22101",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "22101106",
+      "name": "Face Masks",
+      "level": 3,
+      "parent_id": "22101",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "22102100",
+      "name": "Handbags",
+      "level": 3,
+      "parent_id": "22102",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "22102101",
+      "name": "Wallets",
+      "level": 3,
+      "parent_id": "22102",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "22102102",
+      "name": "Shoulder Bags",
+      "level": 3,
+      "parent_id": "22102",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "22102103",
+      "name": "Backpacks",
+      "level": 3,
+      "parent_id": "22102",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "22102105",
+      "name": "Travel Bags",
+      "level": 3,
+      "parent_id": "22102",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "22102106",
+      "name": "Makeup Bags",
+      "level": 3,
+      "parent_id": "22102",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "22102107",
+      "name": "Key Pouches",
+      "level": 3,
+      "parent_id": "22102",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "22102108",
+      "name": "Wallets, Coin Purses & Business Card Holders",
+      "level": 3,
+      "parent_id": "22102",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "22108100",
+      "name": "T-shirts",
+      "level": 3,
+      "parent_id": "22108",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "22108101",
+      "name": "Shirts",
+      "level": 3,
+      "parent_id": "22108",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "22108102",
+      "name": "Polo Shirts",
+      "level": 3,
+      "parent_id": "22108",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "22108103",
+      "name": "Jackets",
+      "level": 3,
+      "parent_id": "22108",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "22108104",
+      "name": "Coats",
+      "level": 3,
+      "parent_id": "22108",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "22108105",
+      "name": "Pants & Jeans",
+      "level": 3,
+      "parent_id": "22108",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "22108106",
+      "name": "Shorts",
+      "level": 3,
+      "parent_id": "22108",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "22108107",
+      "name": "Underwear",
+      "level": 3,
+      "parent_id": "22108",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "22108108",
+      "name": "Socks",
+      "level": 3,
+      "parent_id": "22108",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "22108109",
+      "name": "Vests",
+      "level": 3,
+      "parent_id": "22108",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "22108110",
+      "name": "Sweatshirts & Hoodies",
+      "level": 3,
+      "parent_id": "22108",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "22108112",
+      "name": "Suits",
+      "level": 3,
+      "parent_id": "22108",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "22109100",
+      "name": "Sneakers",
+      "level": 3,
+      "parent_id": "22109",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "22109101",
+      "name": "Boots",
+      "level": 3,
+      "parent_id": "22109",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "22109102",
+      "name": "Sandals & Slippers",
+      "level": 3,
+      "parent_id": "22109",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "22109103",
+      "name": "Casual Shoes",
+      "level": 3,
+      "parent_id": "22109",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "22109104",
+      "name": "Loafers & Moccasins",
+      "level": 3,
+      "parent_id": "22109",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "22110100",
+      "name": "Coats",
+      "level": 3,
+      "parent_id": "22110",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "22110101",
+      "name": "Jackets",
+      "level": 3,
+      "parent_id": "22110",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "22110102",
+      "name": "Dresses",
+      "level": 3,
+      "parent_id": "22110",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "22110103",
+      "name": "Athleisure",
+      "level": 3,
+      "parent_id": "22110",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "22110104",
+      "name": "Shirts & Tops",
+      "level": 3,
+      "parent_id": "22110",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "22110105",
+      "name": "T-Shirts",
+      "level": 3,
+      "parent_id": "22110",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "22110106",
+      "name": "Pants",
+      "level": 3,
+      "parent_id": "22110",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "22110107",
+      "name": "Jeans",
+      "level": 3,
+      "parent_id": "22110",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "22110108",
+      "name": "Shorts",
+      "level": 3,
+      "parent_id": "22110",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "22110109",
+      "name": "Skirts",
+      "level": 3,
+      "parent_id": "22110",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "22110110",
+      "name": "Suits",
+      "level": 3,
+      "parent_id": "22110",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "22110111",
+      "name": "Bras",
+      "level": 3,
+      "parent_id": "22110",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "22110112",
+      "name": "Underwear",
+      "level": 3,
+      "parent_id": "22110",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "22110113",
+      "name": "Socks",
+      "level": 3,
+      "parent_id": "22110",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "22110114",
+      "name": "Pajamas",
+      "level": 3,
+      "parent_id": "22110",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "22110115",
+      "name": "Tights",
+      "level": 3,
+      "parent_id": "22110",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "22111100",
+      "name": "Sandals",
+      "level": 3,
+      "parent_id": "22111",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "22111101",
+      "name": "Boots",
+      "level": 3,
+      "parent_id": "22111",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "22111102",
+      "name": "High Heels",
+      "level": 3,
+      "parent_id": "22111",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "22111103",
+      "name": "Sneakers",
+      "level": 3,
+      "parent_id": "22111",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "22111104",
+      "name": "Flats",
+      "level": 3,
+      "parent_id": "22111",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "22112109",
+      "name": "Cosplay",
+      "level": 3,
+      "parent_id": "22112",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "22112110",
+      "name": "Wedding Dresses",
+      "level": 3,
+      "parent_id": "22112",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "23116100",
+      "name": "Music & Instruments",
+      "level": 3,
+      "parent_id": "23116",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "23116101",
+      "name": "Painting",
+      "level": 3,
+      "parent_id": "23116",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "23116107",
+      "name": "Music",
+      "level": 3,
+      "parent_id": "23116",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "23116999",
+      "name": "Other Culture & Art",
+      "level": 3,
+      "parent_id": "23116",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "23117100",
+      "name": "Reality Shows",
+      "level": 3,
+      "parent_id": "23117",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "23117101",
+      "name": "Singing & Music Competitions",
+      "level": 3,
+      "parent_id": "23117",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "23117104",
+      "name": "Talk Shows",
+      "level": 3,
+      "parent_id": "23117",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "23117105",
+      "name": "Comedy",
+      "level": 3,
+      "parent_id": "23117",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "23117999",
+      "name": "Other Variety Shows",
+      "level": 3,
+      "parent_id": "23117",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "23118100",
+      "name": "Romantic Fiction",
+      "level": 3,
+      "parent_id": "23118",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "23118103",
+      "name": "Comics",
+      "level": 3,
+      "parent_id": "23118",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "23118106",
+      "name": "Children's Books",
+      "level": 3,
+      "parent_id": "23118",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "23119100",
+      "name": "Drama",
+      "level": 3,
+      "parent_id": "23119",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "23119101",
+      "name": "Comedy",
+      "level": 3,
+      "parent_id": "23119",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "23119102",
+      "name": "Action",
+      "level": 3,
+      "parent_id": "23119",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "23119103",
+      "name": "Romance",
+      "level": 3,
+      "parent_id": "23119",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "23119104",
+      "name": "Crime",
+      "level": 3,
+      "parent_id": "23119",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "23119107",
+      "name": "Thrillers",
+      "level": 3,
+      "parent_id": "23119",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "23119109",
+      "name": "Horror",
+      "level": 3,
+      "parent_id": "23119",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "23119110",
+      "name": "Sci-Fi",
+      "level": 3,
+      "parent_id": "23119",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "23119111",
+      "name": "Fantasy",
+      "level": 3,
+      "parent_id": "23119",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "23119113",
+      "name": "Animation",
+      "level": 3,
+      "parent_id": "23119",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "23119114",
+      "name": "Musical",
+      "level": 3,
+      "parent_id": "23119",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "23119115",
+      "name": "Dance",
+      "level": 3,
+      "parent_id": "23119",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "24100100",
+      "name": "Real Estate Sales",
+      "level": 3,
+      "parent_id": "24100",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "24100101",
+      "name": "Home Rentals",
+      "level": 3,
+      "parent_id": "24100",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "25100100",
+      "name": "Roleplaying Games",
+      "level": 3,
+      "parent_id": "25100",
+      "children_ids": [
+        "25100100100"
+      ],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "25100101",
+      "name": "Simulation Games",
+      "level": 3,
+      "parent_id": "25100",
+      "children_ids": [
+        "25100101100",
+        "25100101101",
+        "25100101102"
+      ],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "25100102",
+      "name": "Strategy Games",
+      "level": 3,
+      "parent_id": "25100",
+      "children_ids": [
+        "25100102100",
+        "25100102102",
+        "25100102103"
+      ],
+      "special_industries": []
+    },
+    {
+      "id": "25100103",
+      "name": "Shooting",
+      "level": 3,
+      "parent_id": "25100",
+      "children_ids": [
+        "25100103100",
+        "25100103101",
+        "25100103102"
+      ],
+      "special_industries": []
+    },
+    {
+      "id": "25100104",
+      "name": "Sports",
+      "level": 3,
+      "parent_id": "25100",
+      "children_ids": [
+        "25100104100",
+        "25100104102",
+        "25100104103",
+        "25100104104",
+        "25100104105",
+        "25100104106",
+        "25100104999"
+      ],
+      "special_industries": []
+    },
+    {
+      "id": "25100105",
+      "name": "Action Games",
+      "level": 3,
+      "parent_id": "25100",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25100106",
+      "name": "Adventure Games",
+      "level": 3,
+      "parent_id": "25100",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25100107",
+      "name": "Racing Games",
+      "level": 3,
+      "parent_id": "25100",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25100108",
+      "name": "Music Games",
+      "level": 3,
+      "parent_id": "25100",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "25100109",
+      "name": "Action-adventure Games",
+      "level": 3,
+      "parent_id": "25100",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25100110",
+      "name": "Puzzle Games",
+      "level": 3,
+      "parent_id": "25100",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25100111",
+      "name": "Match-three",
+      "level": 3,
+      "parent_id": "25100",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25100112",
+      "name": "Educational Games",
+      "level": 3,
+      "parent_id": "25100",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25100115",
+      "name": "Board Games",
+      "level": 3,
+      "parent_id": "25100",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25100116",
+      "name": "Combat Games",
+      "level": 3,
+      "parent_id": "25100",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "25992001",
+      "name": "IAA",
+      "level": 3,
+      "parent_id": "25992",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25992002",
+      "name": "IAP",
+      "level": 3,
+      "parent_id": "25992",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25993001",
+      "name": "Mobile",
+      "level": 3,
+      "parent_id": "25993",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25993002",
+      "name": "PC",
+      "level": 3,
+      "parent_id": "25993",
+      "children_ids": [
+        "25993002001"
+      ],
+      "special_industries": []
+    },
+    {
+      "id": "25996001",
+      "name": "2D",
+      "level": 3,
+      "parent_id": "25996",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25996002",
+      "name": "3D",
+      "level": 3,
+      "parent_id": "25996",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25998001",
+      "name": "Asian Cultural",
+      "level": 3,
+      "parent_id": "25998",
+      "children_ids": [
+        "25998001001"
+      ],
+      "special_industries": []
+    },
+    {
+      "id": "25998002",
+      "name": "Asian Fantasy",
+      "level": 3,
+      "parent_id": "25998",
+      "children_ids": [
+        "25998002001"
+      ],
+      "special_industries": []
+    },
+    {
+      "id": "25998003",
+      "name": "Asian History",
+      "level": 3,
+      "parent_id": "25998",
+      "children_ids": [
+        "25998003001",
+        "25998003002",
+        "25998003003"
+      ],
+      "special_industries": []
+    },
+    {
+      "id": "25998005",
+      "name": "Cover Fire",
+      "level": 3,
+      "parent_id": "25998",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25998006",
+      "name": "Detective",
+      "level": 3,
+      "parent_id": "25998",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25998007",
+      "name": "Fantasy",
+      "level": 3,
+      "parent_id": "25998",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25998008",
+      "name": "Games for Women",
+      "level": 3,
+      "parent_id": "25998",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25998009",
+      "name": "Home Design",
+      "level": 3,
+      "parent_id": "25998",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25998010",
+      "name": "Horror",
+      "level": 3,
+      "parent_id": "25998",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25998011",
+      "name": "Idol Raising",
+      "level": 3,
+      "parent_id": "25998",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25998012",
+      "name": "Lifestyle",
+      "level": 3,
+      "parent_id": "25998",
+      "children_ids": [
+        "25998012001",
+        "25998012002",
+        "25998012003"
+      ],
+      "special_industries": []
+    },
+    {
+      "id": "25998013",
+      "name": "Mob/Crime Games",
+      "level": 3,
+      "parent_id": "25998",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25998014",
+      "name": "Palace",
+      "level": 3,
+      "parent_id": "25998",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25998015",
+      "name": "Sci-Fi",
+      "level": 3,
+      "parent_id": "25998",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25998016",
+      "name": "Sniper Games",
+      "level": 3,
+      "parent_id": "25998",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25998017",
+      "name": "Space",
+      "level": 3,
+      "parent_id": "25998",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25998018",
+      "name": "Sports",
+      "level": 3,
+      "parent_id": "25998",
+      "children_ids": [
+        "25998018001",
+        "25998018002",
+        "25998018003",
+        "25998018004",
+        "25998018005",
+        "25998018006",
+        "25998018007",
+        "25998018008",
+        "25998018009",
+        "25998018010",
+        "25998018011",
+        "25998018012",
+        "25998018013",
+        "25998018014",
+        "25998018015",
+        "25998018016",
+        "25998018017",
+        "25998018018",
+        "25998018019"
+      ],
+      "special_industries": []
+    },
+    {
+      "id": "25998019",
+      "name": "War Games",
+      "level": 3,
+      "parent_id": "25998",
+      "children_ids": [
+        "25998019001",
+        "25998019002"
+      ],
+      "special_industries": []
+    },
+    {
+      "id": "25998020",
+      "name": "Western Fantasy",
+      "level": 3,
+      "parent_id": "25998",
+      "children_ids": [
+        "25998020001"
+      ],
+      "special_industries": []
+    },
+    {
+      "id": "25998021",
+      "name": "Western Historical",
+      "level": 3,
+      "parent_id": "25998",
+      "children_ids": [
+        "25998021001",
+        "25998021002"
+      ],
+      "special_industries": []
+    },
+    {
+      "id": "25999001",
+      "name": "Hyper-Casual",
+      "level": 3,
+      "parent_id": "25999",
+      "children_ids": [
+        "25999001001",
+        "25999001002",
+        "25999001003",
+        "25999001004",
+        "25999001005",
+        "25999001006",
+        "25999001007",
+        "25999001008",
+        "25999001009",
+        "25999001010",
+        "25999001011"
+      ],
+      "special_industries": []
+    },
+    {
+      "id": "25999002",
+      "name": "Action",
+      "level": 3,
+      "parent_id": "25999",
+      "children_ids": [
+        "25999002001",
+        "25999002002",
+        "25999002003",
+        "25999002004",
+        "25999002005",
+        "25999002006",
+        "25999002007",
+        "25999002008",
+        "25999002009",
+        "25999002010",
+        "25999002011",
+        "25999002012",
+        "25999002013",
+        "25999002014",
+        "25999002015",
+        "25999002016",
+        "25999002017"
+      ],
+      "special_industries": []
+    },
+    {
+      "id": "25999003",
+      "name": "Casino",
+      "level": 3,
+      "parent_id": "25999",
+      "children_ids": [
+        "25999003001",
+        "25999003002",
+        "25999003003",
+        "25999003004",
+        "25999003005",
+        "25999003006",
+        "25999003007",
+        "25999003008",
+        "25999003009",
+        "25999003010",
+        "25999003011",
+        "25999003012",
+        "25999003013"
+      ],
+      "special_industries": []
+    },
+    {
+      "id": "25999004",
+      "name": "Match",
+      "level": 3,
+      "parent_id": "25999",
+      "children_ids": [
+        "25999004001",
+        "25999004002",
+        "25999004003",
+        "25999004004",
+        "25999004005",
+        "25999004006",
+        "25999004007",
+        "25999004008",
+        "25999004009",
+        "25999004010"
+      ],
+      "special_industries": []
+    },
+    {
+      "id": "25999005",
+      "name": "Puzzle",
+      "level": 3,
+      "parent_id": "25999",
+      "children_ids": [
+        "25999005001",
+        "25999005002",
+        "25999005003",
+        "25999005004",
+        "25999005005",
+        "25999005006",
+        "25999005007",
+        "25999005008",
+        "25999005009",
+        "25999005010",
+        "25999005011",
+        "25999005012",
+        "25999005013",
+        "25999005014",
+        "25999005015",
+        "25999005016",
+        "25999005017",
+        "25999005018"
+      ],
+      "special_industries": []
+    },
+    {
+      "id": "25999006",
+      "name": "Racing",
+      "level": 3,
+      "parent_id": "25999",
+      "children_ids": [
+        "25999006001",
+        "25999006002",
+        "25999006003"
+      ],
+      "special_industries": []
+    },
+    {
+      "id": "25999007",
+      "name": "RPG",
+      "level": 3,
+      "parent_id": "25999",
+      "children_ids": [
+        "25999007001",
+        "25999007002",
+        "25999007003",
+        "25999007004",
+        "25999007005",
+        "25999007006",
+        "25999007007",
+        "25999007008",
+        "25999007009",
+        "25999007010",
+        "25999007011",
+        "25999007012",
+        "25999007013"
+      ],
+      "special_industries": []
+    },
+    {
+      "id": "25999008",
+      "name": "Shooting Games",
+      "level": 3,
+      "parent_id": "25999",
+      "children_ids": [
+        "25999008001",
+        "25999008002",
+        "25999008003",
+        "25999008004",
+        "25999008005"
+      ],
+      "special_industries": []
+    },
+    {
+      "id": "25999009",
+      "name": "Simulation",
+      "level": 3,
+      "parent_id": "25999",
+      "children_ids": [
+        "25999009001",
+        "25999009002",
+        "25999009003",
+        "25999009004",
+        "25999009005",
+        "25999009006",
+        "25999009007",
+        "25999009008",
+        "25999009009",
+        "25999009010",
+        "25999009011",
+        "25999009012",
+        "25999009013",
+        "25999009014",
+        "25999009015",
+        "25999009016",
+        "25999009017",
+        "25999009018"
+      ],
+      "special_industries": []
+    },
+    {
+      "id": "25999010",
+      "name": "Sports",
+      "level": 3,
+      "parent_id": "25999",
+      "children_ids": [
+        "25999010001",
+        "25999010002",
+        "25999010003",
+        "25999010004"
+      ],
+      "special_industries": []
+    },
+    {
+      "id": "25999011",
+      "name": "Strategy",
+      "level": 3,
+      "parent_id": "25999",
+      "children_ids": [
+        "25999011001",
+        "25999011002",
+        "25999011003",
+        "25999011004",
+        "25999011005",
+        "25999011006",
+        "25999011007",
+        "25999011008",
+        "25999011009",
+        "25999011010"
+      ],
+      "special_industries": []
+    },
+    {
+      "id": "25999012",
+      "name": "Party",
+      "level": 3,
+      "parent_id": "25999",
+      "children_ids": [
+        "25999012001",
+        "25999012002",
+        "25999012003",
+        "25999012004",
+        "25999012005",
+        "25999012006",
+        "25999012007",
+        "25999012008",
+        "25999012009",
+        "25999012010"
+      ],
+      "special_industries": []
+    },
+    {
+      "id": "25999013",
+      "name": "Tabletop",
+      "level": 3,
+      "parent_id": "25999",
+      "children_ids": [
+        "25999013001",
+        "25999013002",
+        "25999013003",
+        "25999013004",
+        "25999013005",
+        "25999013006",
+        "25999013007",
+        "25999013008",
+        "25999013009",
+        "25999013010",
+        "25999013011"
+      ],
+      "special_industries": []
+    },
+    {
+      "id": "25999014",
+      "name": "Kids Games",
+      "level": 3,
+      "parent_id": "25999",
+      "children_ids": [
+        "25999014001",
+        "25999014002"
+      ],
+      "special_industries": []
+    },
+    {
+      "id": "25999015",
+      "name": "Other",
+      "level": 3,
+      "parent_id": "25999",
+      "children_ids": [
+        "25999015001"
+      ],
+      "special_industries": []
+    },
+    {
+      "id": "26100101",
+      "name": "Local Photography",
+      "level": 3,
+      "parent_id": "26100",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "26104100",
+      "name": "Gifts",
+      "level": 3,
+      "parent_id": "26104",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "26104101",
+      "name": "Flower Delivery",
+      "level": 3,
+      "parent_id": "26104",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "26105101",
+      "name": "House Cleaning Services",
+      "level": 3,
+      "parent_id": "26105",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "26105104",
+      "name": "Home Moving Services",
+      "level": 3,
+      "parent_id": "26105",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "26105107",
+      "name": "Home Repair",
+      "level": 3,
+      "parent_id": "26105",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "26106100",
+      "name": "Shopping Malls",
+      "level": 3,
+      "parent_id": "26106",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "26106101",
+      "name": "Supermarkets",
+      "level": 3,
+      "parent_id": "26106",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "26112101",
+      "name": "Household Appliances Cleaning & Repair",
+      "level": 3,
+      "parent_id": "26112",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "27100103",
+      "name": "Fast Food",
+      "level": 3,
+      "parent_id": "27100",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "27100106",
+      "name": "Desserts",
+      "level": 3,
+      "parent_id": "27100",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "27100111",
+      "name": "Japanese Cuisine",
+      "level": 3,
+      "parent_id": "27100",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "27100114",
+      "name": "Chinese Cuisine",
+      "level": 3,
+      "parent_id": "27100",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "27100122",
+      "name": "Middle Eastern Cuisine",
+      "level": 3,
+      "parent_id": "27100",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "27101100",
+      "name": "Seafood",
+      "level": 3,
+      "parent_id": "27101",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "27101102",
+      "name": "Vegetables",
+      "level": 3,
+      "parent_id": "27101",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "27101103",
+      "name": "Poultry, Eggs & Meat",
+      "level": 3,
+      "parent_id": "27101",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "27101104",
+      "name": "Frozen Food",
+      "level": 3,
+      "parent_id": "27101",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "27101106",
+      "name": "Instant Food",
+      "level": 3,
+      "parent_id": "27101",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "27101107",
+      "name": "Rice, Wheat, Cooking Oil, Spices & Seasonings",
+      "level": 3,
+      "parent_id": "27101",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "27102100",
+      "name": "Instant Drinks",
+      "level": 3,
+      "parent_id": "27102",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "27102101",
+      "name": "Dairy Products",
+      "level": 3,
+      "parent_id": "27102",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "27102102",
+      "name": "Tea",
+      "level": 3,
+      "parent_id": "27102",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "27102103",
+      "name": "Water",
+      "level": 3,
+      "parent_id": "27102",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "27102104",
+      "name": "Juice",
+      "level": 3,
+      "parent_id": "27102",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "27102105",
+      "name": "Coffee",
+      "level": 3,
+      "parent_id": "27102",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "28101100",
+      "name": "Fitness Training Supplies",
+      "level": 3,
+      "parent_id": "28101",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "28101106",
+      "name": "Golf",
+      "level": 3,
+      "parent_id": "28101",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "28101107",
+      "name": "Tennis",
+      "level": 3,
+      "parent_id": "28101",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "28101111",
+      "name": "Soccer",
+      "level": 3,
+      "parent_id": "28101",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "28101114",
+      "name": "Chess, Cards & Mahjong",
+      "level": 3,
+      "parent_id": "28101",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "28101115",
+      "name": "Fishing",
+      "level": 3,
+      "parent_id": "28101",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "28101116",
+      "name": "Swimming",
+      "level": 3,
+      "parent_id": "28101",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "28101117",
+      "name": "Yoga & Dance",
+      "level": 3,
+      "parent_id": "28101",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "28101123",
+      "name": "Knee Protectors",
+      "level": 3,
+      "parent_id": "28101",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "28101124",
+      "name": "Sports Underwear",
+      "level": 3,
+      "parent_id": "28101",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "14103100100",
+      "name": "Body Cleansing",
+      "level": 4,
+      "parent_id": "14103100",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "14103100101",
+      "name": "Skin Moisturizer",
+      "level": 4,
+      "parent_id": "14103100",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "14103100102",
+      "name": "Scrubs & Body Exfoliation",
+      "level": 4,
+      "parent_id": "14103100",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "14103100103",
+      "name": "Deodorants & Antiperspirants",
+      "level": 4,
+      "parent_id": "14103100",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "14103100104",
+      "name": "Body Care Sets",
+      "level": 4,
+      "parent_id": "14103100",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "14103100105",
+      "name": "Shaving & Body Hair Removal",
+      "level": 4,
+      "parent_id": "14103100",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "14103101100",
+      "name": "Sunscreens",
+      "level": 4,
+      "parent_id": "14103101",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "14103101101",
+      "name": "Toners",
+      "level": 4,
+      "parent_id": "14103101",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "14103101102",
+      "name": "Face Lotions & Moisturizers",
+      "level": 4,
+      "parent_id": "14103101",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "14103101103",
+      "name": "Facial Essence",
+      "level": 4,
+      "parent_id": "14103101",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "14103101104",
+      "name": "Facial Cleansers & Make-up Remover",
+      "level": 4,
+      "parent_id": "14103101",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "14103101105",
+      "name": "Facial Masks",
+      "level": 4,
+      "parent_id": "14103101",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "14103101106",
+      "name": "Facial Care Sets",
+      "level": 4,
+      "parent_id": "14103101",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "14103101107",
+      "name": "Beauty Tools",
+      "level": 4,
+      "parent_id": "14103101",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "14104100100",
+      "name": "Foundation",
+      "level": 4,
+      "parent_id": "14104100",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "14104100101",
+      "name": "Face Powders",
+      "level": 4,
+      "parent_id": "14104100",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "14104100102",
+      "name": "Makeup Bases & Primers",
+      "level": 4,
+      "parent_id": "14104100",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "14104100103",
+      "name": "Blush, Highlighters & Contouring",
+      "level": 4,
+      "parent_id": "14104100",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "16105100100",
+      "name": "Instant Cameras",
+      "level": 4,
+      "parent_id": "16105100",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "16105100101",
+      "name": "Action Camera",
+      "level": 4,
+      "parent_id": "16105100",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "16105100102",
+      "name": "Digital Cameras",
+      "level": 4,
+      "parent_id": "16105100",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "25100100100",
+      "name": "ARPGs",
+      "level": 4,
+      "parent_id": "25100100",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25100101100",
+      "name": "Business Simulation Games",
+      "level": 4,
+      "parent_id": "25100101",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25100101101",
+      "name": "Care Simulation Games",
+      "level": 4,
+      "parent_id": "25100101",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "25100101102",
+      "name": "Life Simulation Games",
+      "level": 4,
+      "parent_id": "25100101",
+      "children_ids": [],
+      "special_industries": [
+        "HOUSING",
+        "EMPLOYMENT",
+        "CREDIT"
+      ]
+    },
+    {
+      "id": "25100102100",
+      "name": "Turn-based Strategy Games",
+      "level": 4,
+      "parent_id": "25100102",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25100102102",
+      "name": "MOBAs",
+      "level": 4,
+      "parent_id": "25100102",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25100102103",
+      "name": "Tower Defense Games",
+      "level": 4,
+      "parent_id": "25100102",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25100103100",
+      "name": "First-person Shooter Games",
+      "level": 4,
+      "parent_id": "25100103",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25100103101",
+      "name": "Third-person Shooter Games",
+      "level": 4,
+      "parent_id": "25100103",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25100103102",
+      "name": "Air Combat Games",
+      "level": 4,
+      "parent_id": "25100103",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25100104100",
+      "name": "Basketball",
+      "level": 4,
+      "parent_id": "25100104",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25100104102",
+      "name": "Tennis",
+      "level": 4,
+      "parent_id": "25100104",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25100104103",
+      "name": "Golf",
+      "level": 4,
+      "parent_id": "25100104",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25100104104",
+      "name": "Baseball",
+      "level": 4,
+      "parent_id": "25100104",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25100104105",
+      "name": "American Football",
+      "level": 4,
+      "parent_id": "25100104",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25100104106",
+      "name": "Other Ball Games",
+      "level": 4,
+      "parent_id": "25100104",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25100104999",
+      "name": "Other Sports Games",
+      "level": 4,
+      "parent_id": "25100104",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25993002001",
+      "name": "PC",
+      "level": 4,
+      "parent_id": "25993002",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25998001001",
+      "name": "Nijigen",
+      "level": 4,
+      "parent_id": "25998001",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25998002001",
+      "name": "Wuxia or Xian Xia",
+      "level": 4,
+      "parent_id": "25998002",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25998003001",
+      "name": "Chinese History",
+      "level": 4,
+      "parent_id": "25998003",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25998003002",
+      "name": "Three Kingdoms",
+      "level": 4,
+      "parent_id": "25998003",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25998003003",
+      "name": "Japanese History",
+      "level": 4,
+      "parent_id": "25998003",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25998012001",
+      "name": "Farming",
+      "level": 4,
+      "parent_id": "25998012",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25998012002",
+      "name": "Hunting",
+      "level": 4,
+      "parent_id": "25998012",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25998012003",
+      "name": "Romance",
+      "level": 4,
+      "parent_id": "25998012",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25998018001",
+      "name": "Football (American)",
+      "level": 4,
+      "parent_id": "25998018",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25998018002",
+      "name": "Soccer",
+      "level": 4,
+      "parent_id": "25998018",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25998018003",
+      "name": "Baseball",
+      "level": 4,
+      "parent_id": "25998018",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25998018004",
+      "name": "Basketball",
+      "level": 4,
+      "parent_id": "25998018",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25998018005",
+      "name": "Pool or Billiards",
+      "level": 4,
+      "parent_id": "25998018",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25998018006",
+      "name": "Darts",
+      "level": 4,
+      "parent_id": "25998018",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25998018007",
+      "name": "Archery",
+      "level": 4,
+      "parent_id": "25998018",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25998018008",
+      "name": "Boxing",
+      "level": 4,
+      "parent_id": "25998018",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25998018009",
+      "name": "Fishing",
+      "level": 4,
+      "parent_id": "25998018",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25998018010",
+      "name": "Skateboarding",
+      "level": 4,
+      "parent_id": "25998018",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25998018011",
+      "name": "Snow Sports",
+      "level": 4,
+      "parent_id": "25998018",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25998018012",
+      "name": "Bowling",
+      "level": 4,
+      "parent_id": "25998018",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25998018013",
+      "name": "Motocross",
+      "level": 4,
+      "parent_id": "25998018",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25998018014",
+      "name": "Wrestling",
+      "level": 4,
+      "parent_id": "25998018",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25998018015",
+      "name": "Hockey",
+      "level": 4,
+      "parent_id": "25998018",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25998018016",
+      "name": "Golf",
+      "level": 4,
+      "parent_id": "25998018",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25998018017",
+      "name": "Tennis",
+      "level": 4,
+      "parent_id": "25998018",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25998018018",
+      "name": "Other Sport",
+      "level": 4,
+      "parent_id": "25998018",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25998018019",
+      "name": "Car",
+      "level": 4,
+      "parent_id": "25998018",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25998019001",
+      "name": "Modern Military Games",
+      "level": 4,
+      "parent_id": "25998019",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25998019002",
+      "name": "Maritime",
+      "level": 4,
+      "parent_id": "25998019",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25998020001",
+      "name": "Dystopian or Post-Apocalyptic",
+      "level": 4,
+      "parent_id": "25998020",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25998021001",
+      "name": "Medieval",
+      "level": 4,
+      "parent_id": "25998021",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25998021002",
+      "name": "Western American Games",
+      "level": 4,
+      "parent_id": "25998021",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25999001001",
+      "name": ".io",
+      "level": 4,
+      "parent_id": "25999001",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25999001002",
+      "name": "Action",
+      "level": 4,
+      "parent_id": "25999001",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25999001003",
+      "name": "Ball",
+      "level": 4,
+      "parent_id": "25999001",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25999001004",
+      "name": "Escape",
+      "level": 4,
+      "parent_id": "25999001",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25999001005",
+      "name": "Music",
+      "level": 4,
+      "parent_id": "25999001",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25999001006",
+      "name": "Other Hyper-Casual",
+      "level": 4,
+      "parent_id": "25999001",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25999001007",
+      "name": "Puzzle",
+      "level": 4,
+      "parent_id": "25999001",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25999001008",
+      "name": "Racing",
+      "level": 4,
+      "parent_id": "25999001",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25999001009",
+      "name": "Shooting Games",
+      "level": 4,
+      "parent_id": "25999001",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25999001010",
+      "name": "Simulation",
+      "level": 4,
+      "parent_id": "25999001",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25999001011",
+      "name": "Sports",
+      "level": 4,
+      "parent_id": "25999001",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25999002001",
+      "name": "Artillery Shooter Games",
+      "level": 4,
+      "parent_id": "25999002",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25999002002",
+      "name": "Asymmetric",
+      "level": 4,
+      "parent_id": "25999002",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25999002003",
+      "name": "Brawl Games",
+      "level": 4,
+      "parent_id": "25999002",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25999002004",
+      "name": "Fighting Games",
+      "level": 4,
+      "parent_id": "25999002",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25999002005",
+      "name": "MOBA",
+      "level": 4,
+      "parent_id": "25999002",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25999002006",
+      "name": "Music or Rhythm",
+      "level": 4,
+      "parent_id": "25999002",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25999002007",
+      "name": "Open World",
+      "level": 4,
+      "parent_id": "25999002",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25999002008",
+      "name": "Other Action",
+      "level": 4,
+      "parent_id": "25999002",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25999002009",
+      "name": "Platformer",
+      "level": 4,
+      "parent_id": "25999002",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25999002010",
+      "name": "Battle Royale",
+      "level": 4,
+      "parent_id": "25999002",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25999002011",
+      "name": "Run & Gun",
+      "level": 4,
+      "parent_id": "25999002",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25999002012",
+      "name": "Runner",
+      "level": 4,
+      "parent_id": "25999002",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25999002013",
+      "name": "Shark",
+      "level": 4,
+      "parent_id": "25999002",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25999002014",
+      "name": "Shoot'em Up Games",
+      "level": 4,
+      "parent_id": "25999002",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25999002015",
+      "name": "Slasher Games",
+      "level": 4,
+      "parent_id": "25999002",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25999002016",
+      "name": "Stealth",
+      "level": 4,
+      "parent_id": "25999002",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25999002017",
+      "name": "Adventure",
+      "level": 4,
+      "parent_id": "25999002",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25999003001",
+      "name": "Bingo",
+      "level": 4,
+      "parent_id": "25999003",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25999003002",
+      "name": "Chinese Card or Board",
+      "level": 4,
+      "parent_id": "25999003",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25999003003",
+      "name": "Claw Machine",
+      "level": 4,
+      "parent_id": "25999003",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25999003004",
+      "name": "Coin Pusher",
+      "level": 4,
+      "parent_id": "25999003",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25999003005",
+      "name": "Dominoes",
+      "level": 4,
+      "parent_id": "25999003",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25999003006",
+      "name": "Fishing",
+      "level": 4,
+      "parent_id": "25999003",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25999003007",
+      "name": "Lottery or Scratchers",
+      "level": 4,
+      "parent_id": "25999003",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25999003008",
+      "name": "Mahjong",
+      "level": 4,
+      "parent_id": "25999003",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25999003009",
+      "name": "Okey",
+      "level": 4,
+      "parent_id": "25999003",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25999003010",
+      "name": "Other Casino",
+      "level": 4,
+      "parent_id": "25999003",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25999003011",
+      "name": "Pachinko",
+      "level": 4,
+      "parent_id": "25999003",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25999003012",
+      "name": "Poker or Card",
+      "level": 4,
+      "parent_id": "25999003",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25999003013",
+      "name": "Slots",
+      "level": 4,
+      "parent_id": "25999003",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25999004001",
+      "name": "Blast-Meta",
+      "level": 4,
+      "parent_id": "25999004",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25999004002",
+      "name": "Blast-Saga",
+      "level": 4,
+      "parent_id": "25999004",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25999004003",
+      "name": "Bubble Shooter",
+      "level": 4,
+      "parent_id": "25999004",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25999004004",
+      "name": "Connect Tiles",
+      "level": 4,
+      "parent_id": "25999004",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25999004005",
+      "name": "Line-Saga",
+      "level": 4,
+      "parent_id": "25999004",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25999004006",
+      "name": "M3-Meta",
+      "level": 4,
+      "parent_id": "25999004",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25999004007",
+      "name": "M3-Saga",
+      "level": 4,
+      "parent_id": "25999004",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25999004008",
+      "name": "Merge-Saga",
+      "level": 4,
+      "parent_id": "25999004",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25999004009",
+      "name": "Other Match",
+      "level": 4,
+      "parent_id": "25999004",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25999004010",
+      "name": "Other-Meta",
+      "level": 4,
+      "parent_id": "25999004",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25999005001",
+      "name": "Block",
+      "level": 4,
+      "parent_id": "25999005",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25999005002",
+      "name": "Brain",
+      "level": 4,
+      "parent_id": "25999005",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25999005003",
+      "name": "Brick Breaker",
+      "level": 4,
+      "parent_id": "25999005",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25999005004",
+      "name": "Detective",
+      "level": 4,
+      "parent_id": "25999005",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25999005005",
+      "name": "Hidden Object",
+      "level": 4,
+      "parent_id": "25999005",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25999005006",
+      "name": "Hybrid",
+      "level": 4,
+      "parent_id": "25999005",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25999005007",
+      "name": "Jigsaw",
+      "level": 4,
+      "parent_id": "25999005",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25999005008",
+      "name": "Klotski",
+      "level": 4,
+      "parent_id": "25999005",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25999005009",
+      "name": "Maze",
+      "level": 4,
+      "parent_id": "25999005",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25999005010",
+      "name": "Minesweeper",
+      "level": 4,
+      "parent_id": "25999005",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25999005011",
+      "name": "Nonogram",
+      "level": 4,
+      "parent_id": "25999005",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25999005012",
+      "name": "Other Puzzle",
+      "level": 4,
+      "parent_id": "25999005",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25999005013",
+      "name": "Physics",
+      "level": 4,
+      "parent_id": "25999005",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25999005014",
+      "name": "Escape Room",
+      "level": 4,
+      "parent_id": "25999005",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25999005015",
+      "name": "Spot the Difference",
+      "level": 4,
+      "parent_id": "25999005",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25999005016",
+      "name": "Sudoku",
+      "level": 4,
+      "parent_id": "25999005",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25999005017",
+      "name": "Tile-Matching",
+      "level": 4,
+      "parent_id": "25999005",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25999005018",
+      "name": "Word",
+      "level": 4,
+      "parent_id": "25999005",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25999006001",
+      "name": "Arcade Racing",
+      "level": 4,
+      "parent_id": "25999006",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25999006002",
+      "name": "Competitive Racing",
+      "level": 4,
+      "parent_id": "25999006",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25999006003",
+      "name": "Simulation Racing",
+      "level": 4,
+      "parent_id": "25999006",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25999007001",
+      "name": "Action RPG",
+      "level": 4,
+      "parent_id": "25999007",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25999007002",
+      "name": "Empire Building RPG",
+      "level": 4,
+      "parent_id": "25999007",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25999007003",
+      "name": "Idle RPG",
+      "level": 4,
+      "parent_id": "25999007",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25999007004",
+      "name": "Location RPG",
+      "level": 4,
+      "parent_id": "25999007",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25999007005",
+      "name": "MMORPG",
+      "level": 4,
+      "parent_id": "25999007",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25999007006",
+      "name": "Open World RPG",
+      "level": 4,
+      "parent_id": "25999007",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25999007007",
+      "name": "Other RPG",
+      "level": 4,
+      "parent_id": "25999007",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25999007008",
+      "name": "Puzzle RPG",
+      "level": 4,
+      "parent_id": "25999007",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25999007009",
+      "name": "Roguelike ARPG",
+      "level": 4,
+      "parent_id": "25999007",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25999007010",
+      "name": "Survival",
+      "level": 4,
+      "parent_id": "25999007",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25999007011",
+      "name": "Tactics",
+      "level": 4,
+      "parent_id": "25999007",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25999007012",
+      "name": "Team Battle",
+      "level": 4,
+      "parent_id": "25999007",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25999007013",
+      "name": "Tower Defense RPG",
+      "level": 4,
+      "parent_id": "25999007",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25999008001",
+      "name": "Battle Royale",
+      "level": 4,
+      "parent_id": "25999008",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25999008002",
+      "name": "Cover Fire",
+      "level": 4,
+      "parent_id": "25999008",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25999008003",
+      "name": "PvE Shooting Games",
+      "level": 4,
+      "parent_id": "25999008",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25999008004",
+      "name": "Sniper Games",
+      "level": 4,
+      "parent_id": "25999008",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25999008005",
+      "name": "Team Deathmatch",
+      "level": 4,
+      "parent_id": "25999008",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25999009001",
+      "name": "Animal Avatar",
+      "level": 4,
+      "parent_id": "25999009",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25999009002",
+      "name": "Avatar Life",
+      "level": 4,
+      "parent_id": "25999009",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25999009003",
+      "name": "Breeding",
+      "level": 4,
+      "parent_id": "25999009",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25999009004",
+      "name": "Building",
+      "level": 4,
+      "parent_id": "25999009",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25999009005",
+      "name": "Sandbox",
+      "level": 4,
+      "parent_id": "25999009",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25999009006",
+      "name": "Dating",
+      "level": 4,
+      "parent_id": "25999009",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25999009007",
+      "name": "Dress Up & Lifestyle",
+      "level": 4,
+      "parent_id": "25999009",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25999009008",
+      "name": "Driving",
+      "level": 4,
+      "parent_id": "25999009",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25999009009",
+      "name": "Farming",
+      "level": 4,
+      "parent_id": "25999009",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25999009010",
+      "name": "Home Design",
+      "level": 4,
+      "parent_id": "25999009",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25999009011",
+      "name": "Idle",
+      "level": 4,
+      "parent_id": "25999009",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25999009012",
+      "name": "Idol Training",
+      "level": 4,
+      "parent_id": "25999009",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25999009013",
+      "name": "Interactive Story",
+      "level": 4,
+      "parent_id": "25999009",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25999009014",
+      "name": "Life Simulator",
+      "level": 4,
+      "parent_id": "25999009",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25999009015",
+      "name": "Manager",
+      "level": 4,
+      "parent_id": "25999009",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25999009016",
+      "name": "Other Simulation",
+      "level": 4,
+      "parent_id": "25999009",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25999009017",
+      "name": "Pet",
+      "level": 4,
+      "parent_id": "25999009",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25999009018",
+      "name": "Time Management",
+      "level": 4,
+      "parent_id": "25999009",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25999010001",
+      "name": "Arcade Sports",
+      "level": 4,
+      "parent_id": "25999010",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25999010002",
+      "name": "Other Sports",
+      "level": 4,
+      "parent_id": "25999010",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25999010003",
+      "name": "Simulation Sports",
+      "level": 4,
+      "parent_id": "25999010",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25999010004",
+      "name": "Team Manager",
+      "level": 4,
+      "parent_id": "25999010",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25999011001",
+      "name": "4X",
+      "level": 4,
+      "parent_id": "25999011",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25999011002",
+      "name": "Auto Chess",
+      "level": 4,
+      "parent_id": "25999011",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25999011003",
+      "name": "Build and Battle",
+      "level": 4,
+      "parent_id": "25999011",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25999011004",
+      "name": "CCG",
+      "level": 4,
+      "parent_id": "25999011",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25999011005",
+      "name": "Lane",
+      "level": 4,
+      "parent_id": "25999011",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25999011006",
+      "name": "Legion",
+      "level": 4,
+      "parent_id": "25999011",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25999011007",
+      "name": "Other Strategy",
+      "level": 4,
+      "parent_id": "25999011",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25999011008",
+      "name": "Summoning",
+      "level": 4,
+      "parent_id": "25999011",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25999011009",
+      "name": "Tower Defense",
+      "level": 4,
+      "parent_id": "25999011",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25999011010",
+      "name": "RTS",
+      "level": 4,
+      "parent_id": "25999011",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25999012001",
+      "name": "Guessing",
+      "level": 4,
+      "parent_id": "25999012",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25999012002",
+      "name": "Karaoke",
+      "level": 4,
+      "parent_id": "25999012",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25999012003",
+      "name": "Dance",
+      "level": 4,
+      "parent_id": "25999012",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25999012004",
+      "name": "Luck Battle",
+      "level": 4,
+      "parent_id": "25999012",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25999012005",
+      "name": "Mafia/Betrayal Games",
+      "level": 4,
+      "parent_id": "25999012",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25999012006",
+      "name": "Minigames",
+      "level": 4,
+      "parent_id": "25999012",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25999012007",
+      "name": "Other Party",
+      "level": 4,
+      "parent_id": "25999012",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25999012008",
+      "name": "Party Royale",
+      "level": 4,
+      "parent_id": "25999012",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25999012009",
+      "name": "Quiz",
+      "level": 4,
+      "parent_id": "25999012",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25999012010",
+      "name": "Truth or Dare",
+      "level": 4,
+      "parent_id": "25999012",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25999013001",
+      "name": "Board Game",
+      "level": 4,
+      "parent_id": "25999013",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25999013002",
+      "name": "Card Games",
+      "level": 4,
+      "parent_id": "25999013",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25999013003",
+      "name": "Chess",
+      "level": 4,
+      "parent_id": "25999013",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25999013004",
+      "name": "Coloring",
+      "level": 4,
+      "parent_id": "25999013",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25999013005",
+      "name": "Dice",
+      "level": 4,
+      "parent_id": "25999013",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25999013006",
+      "name": "Go-Stop",
+      "level": 4,
+      "parent_id": "25999013",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25999013007",
+      "name": "Hanafuda",
+      "level": 4,
+      "parent_id": "25999013",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25999013008",
+      "name": "Mahjong Solitaire",
+      "level": 4,
+      "parent_id": "25999013",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25999013009",
+      "name": "Othello",
+      "level": 4,
+      "parent_id": "25999013",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25999013010",
+      "name": "Other Tabletop",
+      "level": 4,
+      "parent_id": "25999013",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25999013011",
+      "name": "Solitaire",
+      "level": 4,
+      "parent_id": "25999013",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25999014001",
+      "name": "Educational Games",
+      "level": 4,
+      "parent_id": "25999014",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25999014002",
+      "name": "Other Kids Games",
+      "level": 4,
+      "parent_id": "25999014",
+      "children_ids": [],
+      "special_industries": []
+    },
+    {
+      "id": "25999015001",
+      "name": "Other",
+      "level": 4,
+      "parent_id": "25999015",
+      "children_ids": [],
+      "special_industries": []
+    }
+  ]
+}

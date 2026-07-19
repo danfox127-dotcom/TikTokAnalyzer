@@ -116,8 +116,145 @@ class TestTierClassification:
         history = _make_history([1.0, 5.0, 60.0, 200.0])
         result = _run_stopwatch(history)
         expected = (result["graveyard_skips"] + result["sandbox_views"]
-                    + result["deep_lingers"] + result["deep_dives"])
+                    + result["deep_lingers"] + result["deep_dives"]
+                    + result["abandoned"])
         assert result["total_conscious_videos"] == expected
+
+
+# ---------------------------------------------------------------------------
+# 1b. WP-1.3 abandoned bucket (300–1200s) + corroboration
+# ---------------------------------------------------------------------------
+
+def _hist_links(deltas: list[float], links: list[str]) -> list[dict]:
+    base = datetime(2024, 3, 11, 14, 0, 0)
+    entries, current = [], base
+    for delta, link in zip(deltas, links):
+        entries.append({"date": current.strftime("%Y-%m-%d %H:%M:%S"), "link": link})
+        current += timedelta(seconds=delta)
+    entries.append({"date": current.strftime("%Y-%m-%d %H:%M:%S"), "link": ""})
+    return entries
+
+
+class TestAbandonedBucket:
+    V = "https://www.tiktok.com/@creator/video/"
+
+    def test_boundary_300s_is_deep_dive(self):
+        result = _run_stopwatch(_make_history([300.0]))
+        assert result["deep_dives"] == 1
+        assert result["abandoned"] == 0
+
+    def test_boundary_301s_is_abandoned(self):
+        result = _run_stopwatch(_make_history([301.0]))
+        assert result["abandoned"] == 1
+        assert result["deep_dives"] == 0
+
+    def test_upper_1199s_is_abandoned_1200s_is_scrub(self):
+        result = _run_stopwatch(_hist_links([1199.0, 1200.0], [self.V + "1", self.V + "2"]))
+        assert result["abandoned"] == 1
+        assert result["sleep_scrubbed"] == 1
+
+    def test_abandoned_counts_in_total_conscious(self):
+        result = _run_stopwatch(_make_history([301.0]))
+        assert result["total_conscious_videos"] == 1  # abandoned still conscious
+
+    def test_abandoned_excluded_from_engaged_signals(self):
+        result = _run_stopwatch(_hist_links([301.0], [self.V + "9"]))
+        assert result["abandoned"] == 1
+        assert self.V + "9" in result["_abandoned_links"]
+        assert self.V + "9" not in result["_linger_links"]
+        assert self.V + "9" not in result["_deep_dive_links"]
+
+    def test_corroboration_promotes_to_deep_dive(self):
+        # Same 301s gap, but the video was engaged → promoted to deep_dive.
+        hist = _hist_links([301.0], [self.V + "42"])
+        result = _run_stopwatch(hist, engaged_video_ids={"42"})
+        assert result["deep_dives"] == 1
+        assert result["abandoned"] == 0
+
+    def test_corroboration_only_targets_engaged_video(self):
+        hist = _hist_links([301.0, 301.0], [self.V + "42", self.V + "99"])
+        result = _run_stopwatch(hist, engaged_video_ids={"42"})
+        assert result["deep_dives"] == 1   # 42 promoted
+        assert result["abandoned"] == 1    # 99 stays abandoned
+
+
+# ---------------------------------------------------------------------------
+# 1c. WP-1.3 phantom-session detection (asleep-autoplay)
+# ---------------------------------------------------------------------------
+
+from api.ghost_profile import _detect_phantom_sessions, build_ghost_profile, _adaptive_anomaly  # noqa: E402
+
+NIGHT = datetime(2024, 3, 11, 1, 0, 0)  # 01:00 — night window
+
+
+class TestPhantomSessions:
+    def test_synthetic_asleep_autoplay_detected(self):
+        # 10 night lingers at a steady 60s cadence, zero engagement → phantom.
+        hist = _make_history([60.0] * 10, base=NIGHT)
+        out = _detect_phantom_sessions(hist, [])
+        assert out["phantom_video_count"] == 10
+        assert len(out["phantom_sessions"]) == 1
+        assert out["phantom_nights"] == 1
+        assert out["excluded_hours"] > 0
+
+    def test_needs_at_least_10(self):
+        hist = _make_history([60.0] * 8, base=NIGHT)  # only 8 qualifying videos
+        out = _detect_phantom_sessions(hist, [])
+        assert out["phantom_video_count"] == 0
+        assert out["phantom_sessions"] == []
+
+    def test_engagement_in_window_disqualifies(self):
+        hist = _make_history([60.0] * 10, base=NIGHT)
+        eng = [NIGHT + timedelta(seconds=300)]  # a like mid-run → not asleep
+        out = _detect_phantom_sessions(hist, eng)
+        assert out["phantom_video_count"] == 0
+
+    def test_daytime_run_not_phantom(self):
+        hist = _make_history([60.0] * 10, base=datetime(2024, 3, 11, 14, 0, 0))
+        out = _detect_phantom_sessions(hist, [])
+        assert out["phantom_video_count"] == 0
+
+    def test_out_of_range_cadence_not_phantom(self):
+        # 200s deltas exceed the 180s autoplay ceiling → not a phantom cadence.
+        hist = _make_history([200.0] * 10, base=NIGHT)
+        out = _detect_phantom_sessions(hist, [])
+        assert out["phantom_video_count"] == 0
+
+    def test_phantom_excluded_from_persona(self):
+        # A full profile with a phantom run should not read as heavy night engagement
+        # in the persona — the phantom videos are pulled from persona inputs.
+        watch = _make_history([60.0] * 12, base=NIGHT)
+        profile = build_ghost_profile({"watch_history_active": watch})
+        assert profile["sleep_scrub"]["phantom_video_count"] >= 10
+
+
+class TestAdaptiveAnomaly:
+    def test_floor_branch_uses_20min_floor(self):
+        # 99 normal 60s gaps + one 2000s gap → p99 is small, floor dominates.
+        out = _adaptive_anomaly(_make_history([60.0] * 99 + [2000.0]))
+        assert out["adaptive_anomaly_threshold_s"] == 1200.0
+        assert out["adaptive_anomaly_count"] == 1
+
+    def test_adaptive_branch_raises_personal_bar(self):
+        # A heavy tail pushes p99 above the floor → only extreme gaps flagged.
+        out = _adaptive_anomaly(_make_history([60.0] * 195 + [1500.0, 2000.0, 2500.0, 3000.0, 3500.0]))
+        assert out["adaptive_anomaly_threshold_s"] == 2500.0
+        assert out["adaptive_anomaly_count"] == 2
+
+    def test_negative_deltas_excluded(self):
+        hist = [
+            {"date": "2024-03-11 01:00:00", "link": "a"},
+            {"date": "2024-03-11 01:00:30", "link": "b"},
+            {"date": "2024-03-11 01:00:10", "link": "c"},  # negative delta pre-sort
+            {"date": "2024-03-11 01:00:40", "link": ""},
+        ]
+        out = _adaptive_anomaly(hist)
+        assert out["adaptive_anomaly_count"] == 0  # no gap beyond floor, no crash
+
+    def test_empty_history(self):
+        out = _adaptive_anomaly([])
+        assert out["adaptive_anomaly_count"] == 0
+        assert out["adaptive_anomaly_threshold_s"] == 1200.0
 
 
 # ---------------------------------------------------------------------------

@@ -1,0 +1,911 @@
+{
+  "_comment": "Golden parity fixture for the WP-1.1 psychographic port. Regenerate only on an intentional Python change: python3 scripts/gen_psychographic_parity_fixture.py",
+  "theme_cases": [
+    {
+      "name": "hashtags_and_words",
+      "input": {
+        "titles": [
+          "Minecraft speedrun world record #gaming #minecraft",
+          "Another minecraft tutorial for beginners"
+        ]
+      },
+      "expected": {
+        "top_keywords": [
+          {
+            "term": "minecraft",
+            "count": 4
+          },
+          {
+            "term": "gaming",
+            "count": 2
+          },
+          {
+            "term": "speedrun",
+            "count": 1
+          },
+          {
+            "term": "world",
+            "count": 1
+          },
+          {
+            "term": "record",
+            "count": 1
+          },
+          {
+            "term": "another",
+            "count": 1
+          },
+          {
+            "term": "tutorial",
+            "count": 1
+          },
+          {
+            "term": "beginners",
+            "count": 1
+          }
+        ],
+        "top_phrases": [
+          {
+            "phrase": "minecraft speedrun",
+            "count": 1
+          },
+          {
+            "phrase": "speedrun world",
+            "count": 1
+          },
+          {
+            "phrase": "world record",
+            "count": 1
+          },
+          {
+            "phrase": "record gaming",
+            "count": 1
+          },
+          {
+            "phrase": "gaming minecraft",
+            "count": 1
+          },
+          {
+            "phrase": "another minecraft",
+            "count": 1
+          },
+          {
+            "phrase": "minecraft tutorial",
+            "count": 1
+          }
+        ],
+        "top_emojis": []
+      }
+    },
+    {
+      "name": "bigrams_distinct",
+      "input": {
+        "titles": [
+          "sourdough starter recipe tips",
+          "sourdough starter recipe tips",
+          "sourdough starter guide"
+        ]
+      },
+      "expected": {
+        "top_keywords": [
+          {
+            "term": "sourdough",
+            "count": 3
+          },
+          {
+            "term": "starter",
+            "count": 3
+          },
+          {
+            "term": "recipe",
+            "count": 2
+          },
+          {
+            "term": "tips",
+            "count": 2
+          },
+          {
+            "term": "guide",
+            "count": 1
+          }
+        ],
+        "top_phrases": [
+          {
+            "phrase": "sourdough starter",
+            "count": 3
+          },
+          {
+            "phrase": "starter recipe",
+            "count": 2
+          },
+          {
+            "phrase": "recipe tips",
+            "count": 2
+          },
+          {
+            "phrase": "starter guide",
+            "count": 1
+          }
+        ],
+        "top_emojis": []
+      }
+    },
+    {
+      "name": "emojis",
+      "input": {
+        "titles": [
+          "love this dance 🔥🔥 so good 🎯",
+          "another one 🔥 vibes 🧿"
+        ]
+      },
+      "expected": {
+        "top_keywords": [
+          {
+            "term": "love",
+            "count": 1
+          },
+          {
+            "term": "dance",
+            "count": 1
+          },
+          {
+            "term": "good",
+            "count": 1
+          },
+          {
+            "term": "another",
+            "count": 1
+          },
+          {
+            "term": "vibes",
+            "count": 1
+          }
+        ],
+        "top_phrases": [],
+        "top_emojis": [
+          {
+            "emoji": "🔥",
+            "count": 3
+          },
+          {
+            "emoji": "🎯",
+            "count": 1
+          },
+          {
+            "emoji": "🧿",
+            "count": 1
+          }
+        ]
+      }
+    },
+    {
+      "name": "stopword_and_shortword_filter",
+      "input": {
+        "titles": [
+          "the cat is on the mat go",
+          "a big red fox runs fast"
+        ]
+      },
+      "expected": {
+        "top_keywords": [
+          {
+            "term": "cat",
+            "count": 1
+          },
+          {
+            "term": "mat",
+            "count": 1
+          },
+          {
+            "term": "big",
+            "count": 1
+          },
+          {
+            "term": "red",
+            "count": 1
+          },
+          {
+            "term": "fox",
+            "count": 1
+          },
+          {
+            "term": "runs",
+            "count": 1
+          },
+          {
+            "term": "fast",
+            "count": 1
+          }
+        ],
+        "top_phrases": [
+          {
+            "phrase": "mat go",
+            "count": 1
+          },
+          {
+            "phrase": "big red",
+            "count": 1
+          },
+          {
+            "phrase": "red fox",
+            "count": 1
+          },
+          {
+            "phrase": "fox runs",
+            "count": 1
+          },
+          {
+            "phrase": "runs fast",
+            "count": 1
+          }
+        ],
+        "top_emojis": []
+      }
+    },
+    {
+      "name": "skipped_titles",
+      "input": {
+        "titles": [
+          "",
+          "Title Hidden",
+          "No Caption (Just Hashtags)",
+          "real content here about baking"
+        ]
+      },
+      "expected": {
+        "top_keywords": [
+          {
+            "term": "real",
+            "count": 1
+          },
+          {
+            "term": "content",
+            "count": 1
+          },
+          {
+            "term": "here",
+            "count": 1
+          },
+          {
+            "term": "baking",
+            "count": 1
+          }
+        ],
+        "top_phrases": [
+          {
+            "phrase": "real content",
+            "count": 1
+          },
+          {
+            "phrase": "content here",
+            "count": 1
+          }
+        ],
+        "top_emojis": []
+      }
+    },
+    {
+      "name": "unicode_word_chars",
+      "input": {
+        "titles": [
+          "café résumé naïve baking",
+          "日本 ramen tutorial ramen"
+        ]
+      },
+      "expected": {
+        "top_keywords": [
+          {
+            "term": "ramen",
+            "count": 2
+          },
+          {
+            "term": "café",
+            "count": 1
+          },
+          {
+            "term": "résumé",
+            "count": 1
+          },
+          {
+            "term": "naïve",
+            "count": 1
+          },
+          {
+            "term": "baking",
+            "count": 1
+          },
+          {
+            "term": "tutorial",
+            "count": 1
+          }
+        ],
+        "top_phrases": [
+          {
+            "phrase": "café résumé",
+            "count": 1
+          },
+          {
+            "phrase": "résumé naïve",
+            "count": 1
+          },
+          {
+            "phrase": "naïve baking",
+            "count": 1
+          },
+          {
+            "phrase": "日本 ramen",
+            "count": 1
+          },
+          {
+            "phrase": "ramen tutorial",
+            "count": 1
+          },
+          {
+            "phrase": "tutorial ramen",
+            "count": 1
+          }
+        ],
+        "top_emojis": []
+      }
+    },
+    {
+      "name": "hashtag_punctuation",
+      "input": {
+        "titles": [
+          "check this #fyp! #foryou content creator"
+        ]
+      },
+      "expected": {
+        "top_keywords": [
+          {
+            "term": "foryou",
+            "count": 2
+          },
+          {
+            "term": "fyp!",
+            "count": 1
+          },
+          {
+            "term": "check",
+            "count": 1
+          },
+          {
+            "term": "fyp",
+            "count": 1
+          },
+          {
+            "term": "content",
+            "count": 1
+          },
+          {
+            "term": "creator",
+            "count": 1
+          }
+        ],
+        "top_phrases": [
+          {
+            "phrase": "fyp foryou",
+            "count": 1
+          },
+          {
+            "phrase": "foryou content",
+            "count": 1
+          },
+          {
+            "phrase": "content creator",
+            "count": 1
+          }
+        ],
+        "top_emojis": []
+      }
+    },
+    {
+      "name": "ties_order_insensitive",
+      "input": {
+        "titles": [
+          "apple mango banana banana"
+        ]
+      },
+      "expected": {
+        "top_keywords": [
+          {
+            "term": "banana",
+            "count": 2
+          },
+          {
+            "term": "apple",
+            "count": 1
+          },
+          {
+            "term": "mango",
+            "count": 1
+          }
+        ],
+        "top_phrases": [
+          {
+            "phrase": "apple mango",
+            "count": 1
+          },
+          {
+            "phrase": "mango banana",
+            "count": 1
+          },
+          {
+            "phrase": "banana banana",
+            "count": 1
+          }
+        ],
+        "top_emojis": []
+      }
+    },
+    {
+      "name": "truncation_distinct",
+      "input": {
+        "titles": [
+          "word00",
+          "word00",
+          "word00",
+          "word00",
+          "word00",
+          "word00",
+          "word00",
+          "word00",
+          "word00",
+          "word00",
+          "word00",
+          "word00",
+          "word00",
+          "word00",
+          "word00",
+          "word00",
+          "word00",
+          "word00",
+          "word00",
+          "word00",
+          "word01",
+          "word01",
+          "word01",
+          "word01",
+          "word01",
+          "word01",
+          "word01",
+          "word01",
+          "word01",
+          "word01",
+          "word01",
+          "word01",
+          "word01",
+          "word01",
+          "word01",
+          "word01",
+          "word01",
+          "word01",
+          "word01",
+          "word02",
+          "word02",
+          "word02",
+          "word02",
+          "word02",
+          "word02",
+          "word02",
+          "word02",
+          "word02",
+          "word02",
+          "word02",
+          "word02",
+          "word02",
+          "word02",
+          "word02",
+          "word02",
+          "word02",
+          "word02",
+          "word03",
+          "word03",
+          "word03",
+          "word03",
+          "word03",
+          "word03",
+          "word03",
+          "word03",
+          "word03",
+          "word03",
+          "word03",
+          "word03",
+          "word03",
+          "word03",
+          "word03",
+          "word03",
+          "word03",
+          "word04",
+          "word04",
+          "word04",
+          "word04",
+          "word04",
+          "word04",
+          "word04",
+          "word04",
+          "word04",
+          "word04",
+          "word04",
+          "word04",
+          "word04",
+          "word04",
+          "word04",
+          "word04",
+          "word05",
+          "word05",
+          "word05",
+          "word05",
+          "word05",
+          "word05",
+          "word05",
+          "word05",
+          "word05",
+          "word05",
+          "word05",
+          "word05",
+          "word05",
+          "word05",
+          "word05",
+          "word06",
+          "word06",
+          "word06",
+          "word06",
+          "word06",
+          "word06",
+          "word06",
+          "word06",
+          "word06",
+          "word06",
+          "word06",
+          "word06",
+          "word06",
+          "word06",
+          "word07",
+          "word07",
+          "word07",
+          "word07",
+          "word07",
+          "word07",
+          "word07",
+          "word07",
+          "word07",
+          "word07",
+          "word07",
+          "word07",
+          "word07",
+          "word08",
+          "word08",
+          "word08",
+          "word08",
+          "word08",
+          "word08",
+          "word08",
+          "word08",
+          "word08",
+          "word08",
+          "word08",
+          "word08",
+          "word09",
+          "word09",
+          "word09",
+          "word09",
+          "word09",
+          "word09",
+          "word09",
+          "word09",
+          "word09",
+          "word09",
+          "word09",
+          "word10",
+          "word10",
+          "word10",
+          "word10",
+          "word10",
+          "word10",
+          "word10",
+          "word10",
+          "word10",
+          "word10",
+          "word11",
+          "word11",
+          "word11",
+          "word11",
+          "word11",
+          "word11",
+          "word11",
+          "word11",
+          "word11",
+          "word12",
+          "word12",
+          "word12",
+          "word12",
+          "word12",
+          "word12",
+          "word12",
+          "word12",
+          "word13",
+          "word13",
+          "word13",
+          "word13",
+          "word13",
+          "word13",
+          "word13",
+          "word14",
+          "word14",
+          "word14",
+          "word14",
+          "word14",
+          "word14",
+          "word15",
+          "word15",
+          "word15",
+          "word15",
+          "word15",
+          "word16",
+          "word16",
+          "word16",
+          "word16",
+          "word17",
+          "word17",
+          "word17",
+          "word18",
+          "word18",
+          "word19"
+        ]
+      },
+      "expected": {
+        "top_keywords": [
+          {
+            "term": "word00",
+            "count": 20
+          },
+          {
+            "term": "word01",
+            "count": 19
+          },
+          {
+            "term": "word02",
+            "count": 18
+          },
+          {
+            "term": "word03",
+            "count": 17
+          },
+          {
+            "term": "word04",
+            "count": 16
+          },
+          {
+            "term": "word05",
+            "count": 15
+          },
+          {
+            "term": "word06",
+            "count": 14
+          },
+          {
+            "term": "word07",
+            "count": 13
+          },
+          {
+            "term": "word08",
+            "count": 12
+          },
+          {
+            "term": "word09",
+            "count": 11
+          },
+          {
+            "term": "word10",
+            "count": 10
+          },
+          {
+            "term": "word11",
+            "count": 9
+          },
+          {
+            "term": "word12",
+            "count": 8
+          },
+          {
+            "term": "word13",
+            "count": 7
+          },
+          {
+            "term": "word14",
+            "count": 6
+          },
+          {
+            "term": "word15",
+            "count": 5
+          },
+          {
+            "term": "word16",
+            "count": 4
+          },
+          {
+            "term": "word17",
+            "count": 3
+          }
+        ],
+        "top_phrases": [],
+        "top_emojis": []
+      }
+    },
+    {
+      "name": "empty_list",
+      "input": {
+        "titles": []
+      },
+      "expected": {
+        "top_keywords": [],
+        "top_phrases": [],
+        "top_emojis": []
+      }
+    }
+  ],
+  "categorize_cases": [
+    {
+      "name": "gaming",
+      "input": {
+        "keyword": "gaming"
+      },
+      "expected": "gaming"
+    },
+    {
+      "name": "minecraft",
+      "input": {
+        "keyword": "minecraft"
+      },
+      "expected": "gaming"
+    },
+    {
+      "name": "GAMING",
+      "input": {
+        "keyword": "GAMING"
+      },
+      "expected": "gaming"
+    },
+    {
+      "name": "  gaming  ",
+      "input": {
+        "keyword": "  gaming  "
+      },
+      "expected": "gaming"
+    },
+    {
+      "name": "videogame",
+      "input": {
+        "keyword": "videogame"
+      },
+      "expected": "gaming"
+    },
+    {
+      "name": "workouts",
+      "input": {
+        "keyword": "workouts"
+      },
+      "expected": "labor"
+    },
+    {
+      "name": "myjobsearch",
+      "input": {
+        "keyword": "myjobsearch"
+      },
+      "expected": "labor"
+    },
+    {
+      "name": "cryptocurrency",
+      "input": {
+        "keyword": "cryptocurrency"
+      },
+      "expected": "finance"
+    },
+    {
+      "name": "xyzzy",
+      "input": {
+        "keyword": "xyzzy"
+      },
+      "expected": null
+    },
+    {
+      "name": "empty_string",
+      "input": {
+        "keyword": ""
+      },
+      "expected": null
+    }
+  ],
+  "top_category_cases": [
+    {
+      "name": "dominant_gaming",
+      "input": {
+        "keywords": [
+          {
+            "term": "minecraft",
+            "count": 10
+          },
+          {
+            "term": "gaming",
+            "count": 5
+          },
+          {
+            "term": "recipe",
+            "count": 2
+          }
+        ]
+      },
+      "expected": [
+        "gaming",
+        0.882
+      ]
+    },
+    {
+      "name": "no_category_returns_humor_default",
+      "input": {
+        "keywords": [
+          {
+            "term": "xyzzy",
+            "count": 3
+          },
+          {
+            "term": "qwerty",
+            "count": 1
+          }
+        ]
+      },
+      "expected": [
+        "humor",
+        0.0
+      ]
+    },
+    {
+      "name": "empty",
+      "input": {
+        "keywords": []
+      },
+      "expected": [
+        "humor",
+        0.0
+      ]
+    },
+    {
+      "name": "tie_first_inserted_wins",
+      "input": {
+        "keywords": [
+          {
+            "term": "work",
+            "count": 4
+          },
+          {
+            "term": "money",
+            "count": 4
+          }
+        ]
+      },
+      "expected": [
+        "labor",
+        0.5
+      ]
+    },
+    {
+      "name": "count_defaults_to_1_when_missing",
+      "input": {
+        "keywords": [
+          {
+            "term": "gaming"
+          },
+          {
+            "term": "game",
+            "count": 3
+          }
+        ]
+      },
+      "expected": [
+        "gaming",
+        1.0
+      ]
+    }
+  ]
+}

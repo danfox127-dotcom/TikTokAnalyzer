@@ -105,3 +105,18 @@ async def test_enrich_logins_with_geo():
     assert result[1]["city"] == "Paris"   # same IP reused from cache
     assert result[2]["city"] == "Berlin"
     assert all("country_name" in r for r in result)
+
+
+def test_geo_endpoint_returns_map():
+    """POST /api/geo — thin endpoint for browser-local mode: deduped IPs -> geo."""
+    import respx
+    from fastapi.testclient import TestClient
+    from api.main import app
+    with respx.mock:
+        respx.get("http://ip-api.com/json/1.2.3.4").mock(
+            return_value=httpx.Response(
+                200, json={"status": "success", "city": "Paris", "country": "France"}))
+        client = TestClient(app)
+        resp = client.post("/api/geo", json={"ips": ["1.2.3.4", "1.2.3.4", ""]})
+    assert resp.status_code == 200
+    assert resp.json()["geo"]["1.2.3.4"] == {"city": "Paris", "country_name": "France"}

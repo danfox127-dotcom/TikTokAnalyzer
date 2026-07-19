@@ -7,10 +7,126 @@ import { GhostProfile } from "./components/GhostProfileHUD";
 import { ForensicDashboard } from "./components/ForensicDashboard";
 import { NarrativeReportView } from "./components/NarrativeReportView";
 import { LLMAnalysisView } from "./components/LLMAnalysisView";
-import { supabase } from "./utils/supabase";
+import { runEngineOffThread } from "./utils/engineWorker";
+import { extractVideoId } from "../engine/videoId";
 import type { NarrativeBlock } from "./types/narrative";
+import { resolveTopicResult, readSavedKey } from "./utils/topicStep";
+import { buildTargetingCard } from "../engine/targetingCard";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8005";
+// Browser-local mode (Gate 0) is the DEFAULT: the whole deterministic engine runs
+// client-side and the raw export NEVER leaves the device. Two thin, best-effort
+// lookups still hit the server — lingered video ids → creator @handles, and login
+// IPs → city labels — each strictly less disclosure than uploading the export.
+// Set NEXT_PUBLIC_SERVER_ENGINE=1 to force the legacy server upload path (debug/parity).
+const SERVER_ENGINE = process.env.NEXT_PUBLIC_SERVER_ENGINE === "1";
+
+/** POST JSON to a thin enrichment endpoint. Distinguishes an offline / transport
+ *  failure (expected in local mode — returns null quietly) from a reachable-but-
+ *  broken endpoint (surfaced via console.warn so a real outage isn't silently
+ *  swallowed by the graceful degradation). */
+async function postEnrich<T>(
+  path: string, body: unknown, headers?: Record<string, string>,
+): Promise<T | null> {
+  let res: Response;
+  try {
+    res = await fetch(`${API_URL}${path}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...(headers ?? {}) },
+      body: JSON.stringify(body),
+    });
+  } catch {
+    return null; // offline / unreachable — expected; degrade silently
+  }
+  if (!res.ok) {
+    // eslint-disable-next-line no-console
+    console.warn(`[local-mode] ${path} → HTTP ${res.status}; degrading without this enrichment`);
+    return null;
+  }
+  try { return (await res.json()) as T; } catch { return null; }
+}
+
+/** Run the parity-locked TS engine on the file, entirely in the browser. Returns
+ *  the same top-level shape as POST /api/analyze: the ghost profile spread with
+ *  `narrative_blocks`, plus the engine's coverage/gates/claims/schema layers.
+ *
+ *  Two passes: (1) run locally with unresolved creators; (2) if the resolve
+ *  endpoint is reachable, re-run with the cache-backed handle map so creators /
+ *  echo-chamber / vibe-cluster come back real. The raw export never leaves the
+ *  device — only opaque video ids for lingered/graveyard creators are sent. */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function analyzeLocal(file: File): Promise<any> {
+  const rawExport = JSON.parse(await file.text());
+  let out = await runEngineOffThread(rawExport);
+
+  const sw = out.profile.stopwatch_metrics ?? {};
+  const links: string[] = [...(sw._linger_links ?? []), ...(sw._graveyard_links ?? [])];
+  const videoIds = [...new Set(links.map((l) => extractVideoId(l)).filter((v): v is string => !!v))];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const resolution = videoIds.length ? await postEnrich<any>("/api/resolve", { video_ids: videoIds }) : null;
+
+  if (resolution?.handles && Object.keys(resolution.handles).length) {
+    out = await runEngineOffThread(rawExport, { linkHandleMap: resolution.handles });
+    // Attach display name / thumbnail to the ledgers (mirrors /api/analyze).
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const metaByHandle: Record<string, any> = {};
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    for (const m of Object.values(resolution.meta ?? {}) as any[]) {
+      if (m?.handle) metaByHandle[String(m.handle).replace(/^@/, "").toLowerCase()] = m;
+    }
+    const ce = out.profile.creator_entities ?? {};
+    for (const c of [...(ce.vibe_cluster ?? []), ...(ce.graveyard ?? [])]) {
+      const m = metaByHandle[String(c.handle ?? "").replace(/^@/, "").toLowerCase()];
+      if (m) {
+        if (m.display_name && c.display_name == null) c.display_name = m.display_name;
+        if (m.thumbnail && c.thumbnail == null) c.thumbnail = m.thumbnail;
+      }
+    }
+    out.profile.creator_resolution = {
+      resolved: resolution.resolved, total: resolution.total, pct: resolution.pct,
+      newly_resolved: resolution.newly_resolved, persistent: resolution.persistent,
+    };
+  }
+
+  // Best-effort IP geo on the login history (city/country labels). Sends only the
+  // deduped login IPs — strictly less than the whole export the server path uploads.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const logins: any[] = out.profile.digital_footprint?.recent_logins ?? [];
+  const ips = [...new Set(logins.map((l) => l?.ip).filter((ip: string): ip is string => !!ip))];
+  if (ips.length) {
+    const geoResp = await postEnrich<{ geo: Record<string, { city: string; country_name: string }> }>(
+      "/api/geo", { ips });
+    if (geoResp?.geo) {
+      for (const l of logins) {
+        const g = geoResp.geo[l.ip];
+        if (g) { l.city = g.city; l.country_name = g.country_name; }
+      }
+    }
+  }
+
+  // WP-2.2 — topics step + Targeting Card. BYOK → /api/topics; else keyword
+  // fallback (which gates the card to insufficient_evidence). Best-effort: any
+  // failure leaves the card gated, never blocks the dossier.
+  let targeting_card;
+  try {
+    const topicResult = await resolveTopicResult({
+      topicCandidates: out.topicCandidates ?? [],
+      profile: out.profile,
+      getKey: () => readSavedKey((k) => localStorage.getItem(k)),
+      post: postEnrich,
+    });
+    targeting_card = buildTargetingCard(topicResult, out.profile);
+  } catch {
+    targeting_card = undefined;
+  }
+
+  return {
+    ...out.profile, narrative_blocks: out.narratives,
+    coverage: out.coverage, gates: out.gates, claims: out.claims, schema: out.schema,
+    targeting_card,
+    _local_mode: true,
+  };
+}
 
 // Direct tool-based view flow: upload → dashboard
 type View = "upload" | "dashboard" | "report" | "llm" | "hud";
@@ -25,34 +141,19 @@ export default function Home() {
   const [narrativeBlocks, setNarrativeBlocks] = useState<NarrativeBlock[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
 
+
   const analyze = async (file: File) => {
     setIsLoading(true);
     setError(null);
     try {
       let raw;
-      
-      // Use Supabase if configured
-      if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-        // 1. Upload to Storage
-        const fileExt = file.name.split('.').pop();
-        const fileName = `${Math.random()}.${fileExt}`;
-        const filePath = `exports/${fileName}`;
 
-        const { error: uploadError } = await supabase.storage
-          .from('exports')
-          .upload(filePath, file);
-
-        if (uploadError) throw uploadError;
-
-        // 2. Invoke Edge Function
-        const { data, error: functionError } = await supabase.functions.invoke('analyze', {
-          body: { filePath },
-        });
-
-        if (functionError) throw functionError;
-        raw = data;
+      // DEFAULT: browser-local engine — the raw export never leaves the device.
+      if (!SERVER_ENGINE) {
+        raw = await analyzeLocal(file);
       } else {
-        // Fallback to local FastAPI
+        // Legacy server upload path (opt-out via NEXT_PUBLIC_SERVER_ENGINE=1) —
+        // the live Python FastAPI backend.
         const fd = new FormData();
         fd.append("file", file);
         const res = await fetch(`${API_URL}/api/analyze`, { method: "POST", body: fd });
@@ -71,7 +172,10 @@ export default function Home() {
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Unknown error";
       const net = /fetch|NetworkError|ECONNREFUSED|Failed to fetch/i.test(msg);
-      setError(net ? `Cannot reach forensics engine at ${API_URL}` : msg);
+      // No server-file-upload fallback by design: local mode is the default and
+      // its own enrichment lookups already degrade gracefully offline. Uploading
+      // the raw export on failure would silently break "nothing leaves the device".
+      setError(net && SERVER_ENGINE ? `Cannot reach forensics engine at ${API_URL}` : msg);
     } finally {
       setIsLoading(false);
     }

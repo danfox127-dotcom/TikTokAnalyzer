@@ -8,7 +8,7 @@ import os
 # Ensure repo root is on the path when running from any working directory.
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from fastapi import FastAPI, UploadFile, File, HTTPException, Query
+from fastapi import FastAPI, UploadFile, File, HTTPException, Query, Header
 from typing import Optional
 from fastapi.responses import PlainTextResponse, Response, StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -33,7 +33,7 @@ from parsers.tiktok import parse_tiktok_export_from_bytes
 from api.ghost_profile import build_ghost_profile
 from exporters.llm_export import generate_llm_export
 from api.narratives import build_narrative_blocks, generate_narrative_blocks_llm
-from utils.ip_geo import enrich_logins_with_geo
+from utils.ip_geo import enrich_logins_with_geo, geolocate_ip
 from utils.creators import enrich_creators_with_llm, cluster_creators_llm
 from utils import oembed
 from utils import youtube_bridge
@@ -72,6 +72,8 @@ _metrics = {
     "enrich_requests_total": 0,
     "enrich_requested_videos_total": 0,
     "enrich_fetched_videos_total": 0,
+    "topics_requests_total": 0,
+    "topics_tokens_total": 0,
 }
 
 @app.get("/health")
@@ -112,7 +114,7 @@ async def analyze(
     file: UploadFile = File(...),
     sleep_start: Optional[int] = Query(None, ge=0, le=23),
     sleep_end: Optional[int] = Query(None, ge=0, le=23),
-    api_key: Optional[str] = Query(None),
+    api_key: Optional[str] = Header(None, alias="X-API-Key"),
     provider: str = Query("claude", pattern="^(claude|gemini-pro|gemini-flash)$"),
 ):
     if not file.filename or not file.filename.endswith(".json"):
@@ -229,6 +231,108 @@ async def analyze(
     return {**ghost_profile, "narrative_blocks": narrative_blocks}
 
 
+class ResolveRequest(BaseModel):
+    video_ids: list[str]
+
+
+_RESOLVE_MAX_IDS = 5000  # bound request size
+
+
+@app.post("/api/resolve")
+async def resolve_creators(req: ResolveRequest):
+    """Thin creator-resolution endpoint for browser-local mode.
+
+    The client runs the whole engine locally and sends ONLY opaque video ids for
+    the creators it lingered on — no titles, dates, or watch history ever leave the
+    device. We return the cache-backed video_id -> @handle map (plus display
+    name/thumbnail meta) so the client can re-run the engine with real creators.
+    """
+    vids = [v for v in dict.fromkeys(req.video_ids) if v][:_RESOLVE_MAX_IDS]
+    _metrics["enrich_requests_total"] += 1
+    _metrics["enrich_requested_videos_total"] += len(vids)
+    resolution = await creator_map.resolve_and_fill(vids)
+    _metrics["enrich_fetched_videos_total"] += resolution["newly_resolved"]
+    return {
+        "handles": resolution["handles"],
+        "meta": resolution["meta"],
+        "resolved": resolution["resolved"],
+        "total": resolution["total"],
+        "pct": resolution["pct"],
+        "newly_resolved": resolution["newly_resolved"],
+        "persistent": creator_map.using_redis(),
+    }
+
+
+class GeoRequest(BaseModel):
+    ips: list[str]
+
+
+_GEO_MAX_IPS = 100
+
+
+@app.post("/api/geo")
+async def geolocate(req: GeoRequest):
+    """Thin IP-geo endpoint for browser-local mode. The client sends its own login
+    IPs (deduped) and gets back {ip: {city, country_name}}. This is strictly less
+    disclosure than the server path, which uploads the entire export (IPs included).
+    """
+    ips = [ip for ip in dict.fromkeys(req.ips) if ip][:_GEO_MAX_IPS]
+    geo = {ip: await geolocate_ip(ip) for ip in ips}
+    return {"geo": geo}
+
+
+class PillarsRequest(BaseModel):
+    vibe_cluster: list[dict]
+    graveyard: list[dict]
+    interest_clusters: list[dict]
+
+
+@app.post("/api/pillars")
+async def generate_pillars(
+    body: PillarsRequest,
+    api_key: str = Header(..., alias="X-API-Key"),
+    provider: str = Query("claude", pattern="^(claude|gemini-pro|gemini-flash)$"),
+):
+    """Generate LLM-derived identity pillars from the behavioral fingerprint."""
+    from utils.pillar_categories import generate_pillars_llm
+    pillars = await generate_pillars_llm(
+        vibe_cluster=body.vibe_cluster,
+        graveyard=body.graveyard,
+        interest_clusters=body.interest_clusters,
+        api_key=api_key,
+        provider=provider,
+    )
+    if not pillars:
+        raise HTTPException(status_code=500, detail="LLM did not return valid pillars.")
+    return {"pillars": pillars}
+
+
+class TopicsRequest(BaseModel):
+    videos: list[dict]  # [{"video_id": str, "weight": float}]
+
+
+@app.post("/api/topics")
+async def topics(
+    body: TopicsRequest,
+    api_key: str = Header(..., alias="X-API-Key"),
+    provider: str = Query("claude", pattern="^(claude|gemini-pro|gemini-flash)$"),
+):
+    """WP-2.1 Semantic Topic Engine (BYOK). Client sends {video_id, weight} pairs;
+    we fetch public titles via oEmbed and relay to the user's own LLM for
+    structured clustering. See utils/topic_engine.py."""
+    from utils import topic_engine
+    videos = [v for v in body.videos if v.get("video_id")][:800]
+    _metrics["topics_requests_total"] += 1
+    try:
+        result = await topic_engine.cluster_topics(videos, api_key, provider)
+    except Exception as exc:
+        logging.exception("Topic clustering failed: %s", exc)
+        raise HTTPException(status_code=502, detail="Topic clustering failed.")
+    if not result.get("cached"):
+        _metrics["topics_tokens_total"] += (result.get("usage") or {}).get("output_tokens", 0)
+    return result
+
+
 @app.post("/api/export/llm")
 async def export_llm(file: UploadFile = File(...)):
     """Parse a TikTok export and return a privacy-safe LLM analysis JSON."""
@@ -256,7 +360,7 @@ async def export_llm(file: UploadFile = File(...)):
 async def analyze_llm(
     file: UploadFile = File(...),
     provider: str = Query(..., pattern="^(claude|gemini-pro|gemini-flash)$"),
-    api_key: str = Query(...),
+    api_key: str = Header(..., alias="X-API-Key"),
 ):
     """Stream an LLM analysis using the user's API key. Key lives in memory only."""
     if not file.filename or not file.filename.endswith(".json"):

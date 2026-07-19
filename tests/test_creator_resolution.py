@@ -110,3 +110,21 @@ def test_budget_caps_attempts(monkeypatch):
     assert r["attempted"] == 5            # only the budget is fetched this run
     assert r["newly_resolved"] == 5
     assert r["resolved"] == 5 and r["total"] == 20
+
+
+# --------------------------------------------------------------------------- #
+# /api/resolve — thin endpoint for browser-local mode (opaque video ids only)
+# --------------------------------------------------------------------------- #
+def test_resolve_endpoint_returns_handle_map(monkeypatch):
+    from fastapi.testclient import TestClient
+    from api.main import app
+
+    monkeypatch.setattr(creator_map.oembed, "fetch_many",
+                        _fake_fetch_factory({"111": "alice", "222": "bob"}))
+    client = TestClient(app)
+    resp = client.post("/api/resolve", json={"video_ids": ["111", "222", "333"]})
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["handles"] == {"111": "alice", "222": "bob"}
+    assert body["resolved"] == 2 and body["total"] == 3
+    assert body["meta"]["111"]["display_name"] == "Alice"

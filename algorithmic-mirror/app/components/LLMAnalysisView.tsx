@@ -62,8 +62,10 @@ export function LLMAnalysisView({ file, apiUrl, onBack }: Props) {
     try {
       const fd = new FormData();
       fd.append("file", file);
-      const params = new URLSearchParams({ provider, api_key: apiKey });
-      const res = await fetch(`${apiUrl}/api/analyze/llm?${params}`, { method: "POST", body: fd });
+      const params = new URLSearchParams({ provider });
+      const res = await fetch(`${apiUrl}/api/analyze/llm?${params}`, {
+        method: "POST", body: fd, headers: { "X-API-Key": apiKey },
+      });
 
       if (!res.ok) {
         const j = await res.json().catch(() => ({ detail: `HTTP ${res.status}` }));

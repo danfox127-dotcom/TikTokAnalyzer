@@ -1,0 +1,2008 @@
+{
+  "_comment": "Golden parity fixture for the WP-1.1 creator/echo port. Generated from api.ghost_profile. Regenerate only on an intentional Python change: python3 scripts/gen_echo_parity_fixture.py",
+  "creator_url_cases": [
+    {
+      "name": "handle_with_slash",
+      "input": {
+        "url": "https://www.tiktok.com/@chelseafc/video/123"
+      },
+      "expected": "@chelseafc"
+    },
+    {
+      "name": "handle_dots_underscores",
+      "input": {
+        "url": "https://www.tiktok.com/@khaby.lame/video/9"
+      },
+      "expected": "@khaby.lame"
+    },
+    {
+      "name": "handle_hyphen",
+      "input": {
+        "url": "https://www.tiktok.com/@reece-james/video/9"
+      },
+      "expected": "@reece-james"
+    },
+    {
+      "name": "no_trailing_slash",
+      "input": {
+        "url": "https://www.tiktok.com/@masonmount"
+      },
+      "expected": null
+    },
+    {
+      "name": "no_handle",
+      "input": {
+        "url": "https://www.tiktok.com/video/555"
+      },
+      "expected": null
+    },
+    {
+      "name": "empty",
+      "input": {
+        "url": ""
+      },
+      "expected": null
+    }
+  ],
+  "handle_cases": [
+    {
+      "name": "url_handle_wins",
+      "input": {
+        "link": "https://www.tiktok.com/@nba/video/1",
+        "link_handle_map": {
+          "555": "newyorkcity",
+          "777": "@timeoutnewyork"
+        }
+      },
+      "expected": "@nba"
+    },
+    {
+      "name": "map_hit_bare_handle_gets_at",
+      "input": {
+        "link": "https://www.tiktok.com/video/555",
+        "link_handle_map": {
+          "555": "newyorkcity",
+          "777": "@timeoutnewyork"
+        }
+      },
+      "expected": "@newyorkcity"
+    },
+    {
+      "name": "map_hit_already_at",
+      "input": {
+        "link": "https://www.tiktok.com/video/777",
+        "link_handle_map": {
+          "555": "newyorkcity",
+          "777": "@timeoutnewyork"
+        }
+      },
+      "expected": "@timeoutnewyork"
+    },
+    {
+      "name": "map_miss",
+      "input": {
+        "link": "https://www.tiktok.com/video/999",
+        "link_handle_map": {
+          "555": "newyorkcity",
+          "777": "@timeoutnewyork"
+        }
+      },
+      "expected": null
+    },
+    {
+      "name": "no_map_no_urlhandle",
+      "input": {
+        "link": "https://www.tiktok.com/video/555",
+        "link_handle_map": null
+      },
+      "expected": null
+    },
+    {
+      "name": "empty_link",
+      "input": {
+        "link": "",
+        "link_handle_map": {
+          "555": "newyorkcity",
+          "777": "@timeoutnewyork"
+        }
+      },
+      "expected": null
+    }
+  ],
+  "echo_cases": [
+    {
+      "name": "single_creator",
+      "input": {
+        "linger_links": [
+          "https://www.tiktok.com/@a/video/1",
+          "https://www.tiktok.com/@a/video/2",
+          "https://www.tiktok.com/@a/video/3"
+        ],
+        "link_handle_map": null
+      },
+      "expected": {
+        "pct": 100.0,
+        "basis": 3,
+        "distinct_creators": 1
+      }
+    },
+    {
+      "name": "two_creators_top5_covers_all",
+      "input": {
+        "linger_links": [
+          "https://www.tiktok.com/@a/video/1",
+          "https://www.tiktok.com/@a/video/2",
+          "https://www.tiktok.com/@b/video/3"
+        ],
+        "link_handle_map": null
+      },
+      "expected": {
+        "pct": 100.0,
+        "basis": 3,
+        "distinct_creators": 2
+      }
+    },
+    {
+      "name": "six_creators_spread",
+      "input": {
+        "linger_links": [
+          "https://www.tiktok.com/@a/video/1",
+          "https://www.tiktok.com/@b/video/2",
+          "https://www.tiktok.com/@c/video/3",
+          "https://www.tiktok.com/@d/video/4",
+          "https://www.tiktok.com/@e/video/5",
+          "https://www.tiktok.com/@f/video/6"
+        ],
+        "link_handle_map": null
+      },
+      "expected": {
+        "pct": 83.3,
+        "basis": 6,
+        "distinct_creators": 6
+      }
+    },
+    {
+      "name": "map_and_url_mixed",
+      "input": {
+        "linger_links": [
+          "https://www.tiktok.com/@a/video/1",
+          "https://www.tiktok.com/video/101",
+          "https://www.tiktok.com/video/102",
+          "https://www.tiktok.com/video/999"
+        ],
+        "link_handle_map": {
+          "101": "creatora",
+          "102": "creatorb"
+        }
+      },
+      "expected": {
+        "pct": 100.0,
+        "basis": 3,
+        "distinct_creators": 3
+      }
+    },
+    {
+      "name": "ties",
+      "input": {
+        "linger_links": [
+          "https://www.tiktok.com/@a/video/1",
+          "https://www.tiktok.com/@b/video/2",
+          "https://www.tiktok.com/@c/video/3",
+          "https://www.tiktok.com/@a/video/4",
+          "https://www.tiktok.com/@b/video/5",
+          "https://www.tiktok.com/@c/video/6"
+        ],
+        "link_handle_map": null
+      },
+      "expected": {
+        "pct": 100.0,
+        "basis": 6,
+        "distinct_creators": 3
+      }
+    },
+    {
+      "name": "empty",
+      "input": {
+        "linger_links": [],
+        "link_handle_map": null
+      },
+      "expected": {
+        "pct": 0.0,
+        "basis": 0,
+        "distinct_creators": 0
+      }
+    }
+  ],
+  "echo_split_cases": [
+    {
+      "name": "two_clusters_one_day",
+      "input": {
+        "linger_events": [
+          {
+            "link": "https://www.tiktok.com/@a/video/1",
+            "time_spent": 30.0,
+            "_day": "2024-01-01"
+          },
+          {
+            "link": "https://www.tiktok.com/@b/video/1",
+            "time_spent": 10.0,
+            "_day": "2024-01-01"
+          }
+        ],
+        "link_handle_map": null
+      },
+      "expected": {
+        "daily_concentration": 1.0,
+        "cluster_churn": 0.0,
+        "true_bubble": true,
+        "benchmark_concentration": 0.5,
+        "benchmark_churn": 0.79,
+        "per_month": {
+          "2024-01": {
+            "daily_concentration": 1.0,
+            "cluster_churn": 0.0,
+            "true_bubble": true
+          }
+        }
+      }
+    },
+    {
+      "name": "six_clusters_one_day",
+      "input": {
+        "linger_events": [
+          {
+            "link": "https://www.tiktok.com/@a/video/1",
+            "time_spent": 6.0,
+            "_day": "2024-01-02"
+          },
+          {
+            "link": "https://www.tiktok.com/@b/video/1",
+            "time_spent": 5.0,
+            "_day": "2024-01-02"
+          },
+          {
+            "link": "https://www.tiktok.com/@c/video/1",
+            "time_spent": 4.0,
+            "_day": "2024-01-02"
+          },
+          {
+            "link": "https://www.tiktok.com/@d/video/1",
+            "time_spent": 3.0,
+            "_day": "2024-01-02"
+          },
+          {
+            "link": "https://www.tiktok.com/@e/video/1",
+            "time_spent": 2.0,
+            "_day": "2024-01-02"
+          },
+          {
+            "link": "https://www.tiktok.com/@f/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-01-02"
+          }
+        ],
+        "link_handle_map": null
+      },
+      "expected": {
+        "daily_concentration": 0.952,
+        "cluster_churn": 0.0,
+        "true_bubble": true,
+        "benchmark_concentration": 0.5,
+        "benchmark_churn": 0.79,
+        "per_month": {
+          "2024-01": {
+            "daily_concentration": 0.952,
+            "cluster_churn": 0.0,
+            "true_bubble": true
+          }
+        }
+      }
+    },
+    {
+      "name": "two_days_full_churn",
+      "input": {
+        "linger_events": [
+          {
+            "link": "https://www.tiktok.com/@a/video/1",
+            "time_spent": 10.0,
+            "_day": "2024-01-01"
+          },
+          {
+            "link": "https://www.tiktok.com/@b/video/1",
+            "time_spent": 9.0,
+            "_day": "2024-01-01"
+          },
+          {
+            "link": "https://www.tiktok.com/@c/video/1",
+            "time_spent": 8.0,
+            "_day": "2024-01-01"
+          },
+          {
+            "link": "https://www.tiktok.com/@d/video/1",
+            "time_spent": 7.0,
+            "_day": "2024-01-01"
+          },
+          {
+            "link": "https://www.tiktok.com/@e/video/1",
+            "time_spent": 6.0,
+            "_day": "2024-01-01"
+          },
+          {
+            "link": "https://www.tiktok.com/@f/video/1",
+            "time_spent": 5.0,
+            "_day": "2024-01-01"
+          },
+          {
+            "link": "https://www.tiktok.com/@g/video/1",
+            "time_spent": 10.0,
+            "_day": "2024-01-02"
+          },
+          {
+            "link": "https://www.tiktok.com/@h/video/1",
+            "time_spent": 9.0,
+            "_day": "2024-01-02"
+          },
+          {
+            "link": "https://www.tiktok.com/@i/video/1",
+            "time_spent": 8.0,
+            "_day": "2024-01-02"
+          },
+          {
+            "link": "https://www.tiktok.com/@j/video/1",
+            "time_spent": 7.0,
+            "_day": "2024-01-02"
+          },
+          {
+            "link": "https://www.tiktok.com/@k/video/1",
+            "time_spent": 6.0,
+            "_day": "2024-01-02"
+          },
+          {
+            "link": "https://www.tiktok.com/@l/video/1",
+            "time_spent": 5.0,
+            "_day": "2024-01-02"
+          }
+        ],
+        "link_handle_map": null
+      },
+      "expected": {
+        "daily_concentration": 0.889,
+        "cluster_churn": 1.0,
+        "true_bubble": false,
+        "benchmark_concentration": 0.5,
+        "benchmark_churn": 0.79,
+        "per_month": {
+          "2024-01": {
+            "daily_concentration": 0.889,
+            "cluster_churn": 1.0,
+            "true_bubble": false
+          }
+        }
+      }
+    },
+    {
+      "name": "two_days_no_churn",
+      "input": {
+        "linger_events": [
+          {
+            "link": "https://www.tiktok.com/@a/video/1",
+            "time_spent": 10.0,
+            "_day": "2024-01-01"
+          },
+          {
+            "link": "https://www.tiktok.com/@b/video/1",
+            "time_spent": 9.0,
+            "_day": "2024-01-01"
+          },
+          {
+            "link": "https://www.tiktok.com/@c/video/1",
+            "time_spent": 8.0,
+            "_day": "2024-01-01"
+          },
+          {
+            "link": "https://www.tiktok.com/@d/video/1",
+            "time_spent": 7.0,
+            "_day": "2024-01-01"
+          },
+          {
+            "link": "https://www.tiktok.com/@e/video/1",
+            "time_spent": 6.0,
+            "_day": "2024-01-01"
+          },
+          {
+            "link": "https://www.tiktok.com/@f/video/1",
+            "time_spent": 5.0,
+            "_day": "2024-01-01"
+          },
+          {
+            "link": "https://www.tiktok.com/@a/video/1",
+            "time_spent": 10.0,
+            "_day": "2024-01-02"
+          },
+          {
+            "link": "https://www.tiktok.com/@b/video/1",
+            "time_spent": 9.0,
+            "_day": "2024-01-02"
+          },
+          {
+            "link": "https://www.tiktok.com/@c/video/1",
+            "time_spent": 8.0,
+            "_day": "2024-01-02"
+          },
+          {
+            "link": "https://www.tiktok.com/@d/video/1",
+            "time_spent": 7.0,
+            "_day": "2024-01-02"
+          },
+          {
+            "link": "https://www.tiktok.com/@e/video/1",
+            "time_spent": 6.0,
+            "_day": "2024-01-02"
+          },
+          {
+            "link": "https://www.tiktok.com/@f/video/1",
+            "time_spent": 5.0,
+            "_day": "2024-01-02"
+          }
+        ],
+        "link_handle_map": null
+      },
+      "expected": {
+        "daily_concentration": 0.889,
+        "cluster_churn": 0.0,
+        "true_bubble": true,
+        "benchmark_concentration": 0.5,
+        "benchmark_churn": 0.79,
+        "per_month": {
+          "2024-01": {
+            "daily_concentration": 0.889,
+            "cluster_churn": 0.0,
+            "true_bubble": true
+          }
+        }
+      }
+    },
+    {
+      "name": "two_days_partial_churn",
+      "input": {
+        "linger_events": [
+          {
+            "link": "https://www.tiktok.com/@a/video/1",
+            "time_spent": 10.0,
+            "_day": "2024-01-01"
+          },
+          {
+            "link": "https://www.tiktok.com/@b/video/1",
+            "time_spent": 9.0,
+            "_day": "2024-01-01"
+          },
+          {
+            "link": "https://www.tiktok.com/@c/video/1",
+            "time_spent": 8.0,
+            "_day": "2024-01-01"
+          },
+          {
+            "link": "https://www.tiktok.com/@d/video/1",
+            "time_spent": 7.0,
+            "_day": "2024-01-01"
+          },
+          {
+            "link": "https://www.tiktok.com/@e/video/1",
+            "time_spent": 6.0,
+            "_day": "2024-01-01"
+          },
+          {
+            "link": "https://www.tiktok.com/@f/video/1",
+            "time_spent": 5.0,
+            "_day": "2024-01-01"
+          },
+          {
+            "link": "https://www.tiktok.com/@a/video/1",
+            "time_spent": 10.0,
+            "_day": "2024-01-02"
+          },
+          {
+            "link": "https://www.tiktok.com/@b/video/1",
+            "time_spent": 9.0,
+            "_day": "2024-01-02"
+          },
+          {
+            "link": "https://www.tiktok.com/@c/video/1",
+            "time_spent": 8.0,
+            "_day": "2024-01-02"
+          },
+          {
+            "link": "https://www.tiktok.com/@x/video/1",
+            "time_spent": 7.0,
+            "_day": "2024-01-02"
+          },
+          {
+            "link": "https://www.tiktok.com/@y/video/1",
+            "time_spent": 6.0,
+            "_day": "2024-01-02"
+          },
+          {
+            "link": "https://www.tiktok.com/@f/video/1",
+            "time_spent": 5.0,
+            "_day": "2024-01-02"
+          }
+        ],
+        "link_handle_map": null
+      },
+      "expected": {
+        "daily_concentration": 0.889,
+        "cluster_churn": 0.4,
+        "true_bubble": false,
+        "benchmark_concentration": 0.5,
+        "benchmark_churn": 0.79,
+        "per_month": {
+          "2024-01": {
+            "daily_concentration": 0.889,
+            "cluster_churn": 0.4,
+            "true_bubble": false
+          }
+        }
+      }
+    },
+    {
+      "name": "two_months",
+      "input": {
+        "linger_events": [
+          {
+            "link": "https://www.tiktok.com/@a/video/1",
+            "time_spent": 10.0,
+            "_day": "2024-01-10"
+          },
+          {
+            "link": "https://www.tiktok.com/@b/video/1",
+            "time_spent": 5.0,
+            "_day": "2024-01-10"
+          },
+          {
+            "link": "https://www.tiktok.com/@c/video/1",
+            "time_spent": 8.0,
+            "_day": "2024-02-11"
+          },
+          {
+            "link": "https://www.tiktok.com/@d/video/1",
+            "time_spent": 8.0,
+            "_day": "2024-02-11"
+          },
+          {
+            "link": "https://www.tiktok.com/@e/video/1",
+            "time_spent": 3.0,
+            "_day": "2024-02-11"
+          }
+        ],
+        "link_handle_map": null
+      },
+      "expected": {
+        "daily_concentration": 1.0,
+        "cluster_churn": 1.0,
+        "true_bubble": false,
+        "benchmark_concentration": 0.5,
+        "benchmark_churn": 0.79,
+        "per_month": {
+          "2024-01": {
+            "daily_concentration": 1.0,
+            "cluster_churn": 0.0,
+            "true_bubble": true
+          },
+          "2024-02": {
+            "daily_concentration": 1.0,
+            "cluster_churn": 0.0,
+            "true_bubble": true
+          }
+        }
+      }
+    },
+    {
+      "name": "all_unresolved",
+      "input": {
+        "linger_events": [
+          {
+            "link": "https://www.tiktok.com/video/999",
+            "time_spent": 20.0,
+            "_day": "2024-01-01"
+          }
+        ],
+        "link_handle_map": null
+      },
+      "expected": {
+        "daily_concentration": 0.0,
+        "cluster_churn": 0.0,
+        "true_bubble": false,
+        "benchmark_concentration": 0.5,
+        "benchmark_churn": 0.79,
+        "per_month": {}
+      }
+    },
+    {
+      "name": "empty",
+      "input": {
+        "linger_events": [],
+        "link_handle_map": null
+      },
+      "expected": {
+        "daily_concentration": 0.0,
+        "cluster_churn": 0.0,
+        "true_bubble": false,
+        "benchmark_concentration": 0.5,
+        "benchmark_churn": 0.79,
+        "per_month": {}
+      }
+    },
+    {
+      "name": "benchmark_scale",
+      "input": {
+        "linger_events": [
+          {
+            "link": "https://www.tiktok.com/@t0/video/1",
+            "time_spent": 10.0,
+            "_day": "2024-03-01"
+          },
+          {
+            "link": "https://www.tiktok.com/@t1/video/1",
+            "time_spent": 9.0,
+            "_day": "2024-03-01"
+          },
+          {
+            "link": "https://www.tiktok.com/@t2/video/1",
+            "time_spent": 8.0,
+            "_day": "2024-03-01"
+          },
+          {
+            "link": "https://www.tiktok.com/@t3/video/1",
+            "time_spent": 7.0,
+            "_day": "2024-03-01"
+          },
+          {
+            "link": "https://www.tiktok.com/@t4/video/1",
+            "time_spent": 6.0,
+            "_day": "2024-03-01"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail0/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-01"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail1/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-01"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail2/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-01"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail3/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-01"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail4/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-01"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail5/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-01"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail6/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-01"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail7/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-01"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail8/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-01"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail9/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-01"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail10/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-01"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail11/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-01"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail12/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-01"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail13/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-01"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail14/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-01"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail15/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-01"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail16/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-01"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail17/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-01"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail18/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-01"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail19/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-01"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail20/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-01"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail21/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-01"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail22/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-01"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail23/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-01"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail24/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-01"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail25/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-01"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail26/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-01"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail27/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-01"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail28/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-01"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail29/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-01"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail30/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-01"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail31/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-01"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail32/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-01"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail33/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-01"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail34/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-01"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail35/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-01"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail36/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-01"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail37/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-01"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail38/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-01"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail39/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-01"
+          },
+          {
+            "link": "https://www.tiktok.com/@t4/video/1",
+            "time_spent": 10.0,
+            "_day": "2024-03-02"
+          },
+          {
+            "link": "https://www.tiktok.com/@t5/video/1",
+            "time_spent": 9.0,
+            "_day": "2024-03-02"
+          },
+          {
+            "link": "https://www.tiktok.com/@t6/video/1",
+            "time_spent": 8.0,
+            "_day": "2024-03-02"
+          },
+          {
+            "link": "https://www.tiktok.com/@t7/video/1",
+            "time_spent": 7.0,
+            "_day": "2024-03-02"
+          },
+          {
+            "link": "https://www.tiktok.com/@t8/video/1",
+            "time_spent": 6.0,
+            "_day": "2024-03-02"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail0/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-02"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail1/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-02"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail2/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-02"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail3/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-02"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail4/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-02"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail5/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-02"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail6/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-02"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail7/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-02"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail8/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-02"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail9/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-02"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail10/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-02"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail11/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-02"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail12/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-02"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail13/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-02"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail14/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-02"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail15/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-02"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail16/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-02"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail17/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-02"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail18/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-02"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail19/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-02"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail20/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-02"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail21/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-02"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail22/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-02"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail23/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-02"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail24/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-02"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail25/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-02"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail26/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-02"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail27/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-02"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail28/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-02"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail29/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-02"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail30/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-02"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail31/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-02"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail32/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-02"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail33/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-02"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail34/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-02"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail35/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-02"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail36/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-02"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail37/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-02"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail38/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-02"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail39/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-02"
+          },
+          {
+            "link": "https://www.tiktok.com/@t8/video/1",
+            "time_spent": 10.0,
+            "_day": "2024-03-03"
+          },
+          {
+            "link": "https://www.tiktok.com/@t9/video/1",
+            "time_spent": 9.0,
+            "_day": "2024-03-03"
+          },
+          {
+            "link": "https://www.tiktok.com/@t10/video/1",
+            "time_spent": 8.0,
+            "_day": "2024-03-03"
+          },
+          {
+            "link": "https://www.tiktok.com/@t11/video/1",
+            "time_spent": 7.0,
+            "_day": "2024-03-03"
+          },
+          {
+            "link": "https://www.tiktok.com/@t12/video/1",
+            "time_spent": 6.0,
+            "_day": "2024-03-03"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail0/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-03"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail1/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-03"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail2/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-03"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail3/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-03"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail4/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-03"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail5/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-03"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail6/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-03"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail7/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-03"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail8/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-03"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail9/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-03"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail10/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-03"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail11/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-03"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail12/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-03"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail13/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-03"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail14/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-03"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail15/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-03"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail16/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-03"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail17/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-03"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail18/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-03"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail19/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-03"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail20/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-03"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail21/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-03"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail22/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-03"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail23/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-03"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail24/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-03"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail25/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-03"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail26/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-03"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail27/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-03"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail28/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-03"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail29/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-03"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail30/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-03"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail31/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-03"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail32/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-03"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail33/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-03"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail34/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-03"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail35/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-03"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail36/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-03"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail37/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-03"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail38/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-03"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail39/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-03"
+          },
+          {
+            "link": "https://www.tiktok.com/@t12/video/1",
+            "time_spent": 10.0,
+            "_day": "2024-03-04"
+          },
+          {
+            "link": "https://www.tiktok.com/@t13/video/1",
+            "time_spent": 9.0,
+            "_day": "2024-03-04"
+          },
+          {
+            "link": "https://www.tiktok.com/@t14/video/1",
+            "time_spent": 8.0,
+            "_day": "2024-03-04"
+          },
+          {
+            "link": "https://www.tiktok.com/@t15/video/1",
+            "time_spent": 7.0,
+            "_day": "2024-03-04"
+          },
+          {
+            "link": "https://www.tiktok.com/@t16/video/1",
+            "time_spent": 6.0,
+            "_day": "2024-03-04"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail0/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-04"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail1/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-04"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail2/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-04"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail3/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-04"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail4/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-04"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail5/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-04"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail6/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-04"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail7/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-04"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail8/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-04"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail9/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-04"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail10/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-04"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail11/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-04"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail12/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-04"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail13/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-04"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail14/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-04"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail15/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-04"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail16/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-04"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail17/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-04"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail18/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-04"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail19/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-04"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail20/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-04"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail21/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-04"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail22/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-04"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail23/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-04"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail24/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-04"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail25/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-04"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail26/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-04"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail27/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-04"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail28/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-04"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail29/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-04"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail30/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-04"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail31/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-04"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail32/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-04"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail33/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-04"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail34/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-04"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail35/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-04"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail36/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-04"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail37/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-04"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail38/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-04"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail39/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-04"
+          },
+          {
+            "link": "https://www.tiktok.com/@t16/video/1",
+            "time_spent": 10.0,
+            "_day": "2024-03-05"
+          },
+          {
+            "link": "https://www.tiktok.com/@t17/video/1",
+            "time_spent": 9.0,
+            "_day": "2024-03-05"
+          },
+          {
+            "link": "https://www.tiktok.com/@t18/video/1",
+            "time_spent": 8.0,
+            "_day": "2024-03-05"
+          },
+          {
+            "link": "https://www.tiktok.com/@t19/video/1",
+            "time_spent": 7.0,
+            "_day": "2024-03-05"
+          },
+          {
+            "link": "https://www.tiktok.com/@t20/video/1",
+            "time_spent": 6.0,
+            "_day": "2024-03-05"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail0/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-05"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail1/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-05"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail2/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-05"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail3/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-05"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail4/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-05"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail5/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-05"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail6/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-05"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail7/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-05"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail8/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-05"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail9/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-05"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail10/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-05"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail11/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-05"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail12/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-05"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail13/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-05"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail14/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-05"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail15/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-05"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail16/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-05"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail17/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-05"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail18/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-05"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail19/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-05"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail20/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-05"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail21/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-05"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail22/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-05"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail23/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-05"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail24/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-05"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail25/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-05"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail26/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-05"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail27/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-05"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail28/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-05"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail29/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-05"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail30/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-05"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail31/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-05"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail32/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-05"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail33/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-05"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail34/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-05"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail35/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-05"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail36/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-05"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail37/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-05"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail38/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-05"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail39/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-05"
+          },
+          {
+            "link": "https://www.tiktok.com/@t20/video/1",
+            "time_spent": 10.0,
+            "_day": "2024-03-06"
+          },
+          {
+            "link": "https://www.tiktok.com/@t21/video/1",
+            "time_spent": 9.0,
+            "_day": "2024-03-06"
+          },
+          {
+            "link": "https://www.tiktok.com/@t22/video/1",
+            "time_spent": 8.0,
+            "_day": "2024-03-06"
+          },
+          {
+            "link": "https://www.tiktok.com/@t23/video/1",
+            "time_spent": 7.0,
+            "_day": "2024-03-06"
+          },
+          {
+            "link": "https://www.tiktok.com/@t24/video/1",
+            "time_spent": 6.0,
+            "_day": "2024-03-06"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail0/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-06"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail1/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-06"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail2/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-06"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail3/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-06"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail4/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-06"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail5/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-06"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail6/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-06"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail7/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-06"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail8/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-06"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail9/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-06"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail10/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-06"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail11/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-06"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail12/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-06"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail13/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-06"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail14/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-06"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail15/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-06"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail16/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-06"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail17/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-06"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail18/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-06"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail19/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-06"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail20/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-06"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail21/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-06"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail22/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-06"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail23/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-06"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail24/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-06"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail25/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-06"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail26/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-06"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail27/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-06"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail28/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-06"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail29/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-06"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail30/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-06"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail31/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-06"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail32/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-06"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail33/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-06"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail34/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-06"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail35/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-06"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail36/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-06"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail37/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-06"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail38/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-06"
+          },
+          {
+            "link": "https://www.tiktok.com/@tail39/video/1",
+            "time_spent": 1.0,
+            "_day": "2024-03-06"
+          }
+        ],
+        "link_handle_map": null
+      },
+      "expected": {
+        "daily_concentration": 0.5,
+        "cluster_churn": 0.8,
+        "true_bubble": false,
+        "benchmark_concentration": 0.5,
+        "benchmark_churn": 0.79,
+        "per_month": {
+          "2024-03": {
+            "daily_concentration": 0.5,
+            "cluster_churn": 0.8,
+            "true_bubble": false
+          }
+        }
+      }
+    }
+  ]
+}

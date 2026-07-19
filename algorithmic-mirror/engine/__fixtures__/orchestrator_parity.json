@@ -1,0 +1,1688 @@
+{
+  "_comment": "Golden parity fixture for the WP-1.1 orchestrator. Regenerate with PYTHONHASHSEED=0 python3 scripts/gen_orchestrator_parity_fixture.py",
+  "cases": [
+    {
+      "name": "rich",
+      "input": {
+        "parsed": {
+          "watch_history_active": [
+            {
+              "date": "2024-01-05 10:00:00",
+              "link": "https://www.tiktok.com/@a/video/1",
+              "title": "a title 1"
+            },
+            {
+              "date": "2024-01-05 10:01:00",
+              "link": "https://www.tiktok.com/@a/video/2",
+              "title": "a title 2"
+            },
+            {
+              "date": "2024-01-05 10:02:00",
+              "link": "https://www.tiktok.com/@a/video/3",
+              "title": "a title 3"
+            },
+            {
+              "date": "2024-01-05 10:03:00",
+              "link": "https://www.tiktok.com/@a/video/4",
+              "title": "a title 4"
+            },
+            {
+              "date": "2024-01-05 10:04:00",
+              "link": "https://www.tiktok.com/@b/video/5",
+              "title": "b title 5"
+            },
+            {
+              "date": "2024-01-05 10:05:00",
+              "link": "https://www.tiktok.com/@b/video/6",
+              "title": "b title 6"
+            },
+            {
+              "date": "2024-01-05 10:06:00",
+              "link": "https://www.tiktok.com/@b/video/7",
+              "title": "b title 7"
+            },
+            {
+              "date": "2024-01-05 10:07:00",
+              "link": "https://www.tiktok.com/@c/video/8",
+              "title": "c title 8"
+            },
+            {
+              "date": "2024-01-05 10:08:00",
+              "link": "https://www.tiktok.com/@c/video/9",
+              "title": "c title 9"
+            },
+            {
+              "date": "2024-01-05 10:09:00",
+              "link": "https://www.tiktok.com/@c/video/10",
+              "title": "c title 10"
+            },
+            {
+              "date": "2024-01-05 11:00:00",
+              "link": "https://www.tiktok.com/@d/video/20"
+            },
+            {
+              "date": "2024-01-05 11:00:01",
+              "link": "https://www.tiktok.com/@d/video/21"
+            },
+            {
+              "date": "2024-01-05 11:00:02",
+              "link": "https://www.tiktok.com/@e/video/22"
+            },
+            {
+              "date": "2024-01-05 11:00:03",
+              "link": "https://www.tiktok.com/@e/video/23"
+            },
+            {
+              "date": "2024-01-05 12:00:00",
+              "link": "https://www.tiktok.com/@f/video/30"
+            },
+            {
+              "date": "2024-01-05 12:00:05",
+              "link": "https://www.tiktok.com/@f/video/31"
+            },
+            {
+              "date": "2024-01-05 12:00:10",
+              "link": "https://www.tiktok.com/@f/video/32"
+            },
+            {
+              "date": "2024-01-06 02:00:00",
+              "link": "https://www.tiktok.com/@g/video/40"
+            },
+            {
+              "date": "2024-01-06 02:01:00",
+              "link": "https://www.tiktok.com/@g/video/41"
+            }
+          ],
+          "following": [
+            {
+              "username": "a"
+            },
+            {
+              "username": "somebodyelse"
+            }
+          ],
+          "followers": [
+            {
+              "username": "fan1"
+            },
+            {
+              "username": "fan2"
+            },
+            {
+              "username": "fan3"
+            }
+          ],
+          "likes": [
+            {
+              "date": "2024-01-05 10:00:30",
+              "link": "https://www.tiktok.com/@a/video/1"
+            },
+            {
+              "date": "2024-01-05 10:30:00",
+              "link": "https://www.tiktok.com/@b/video/4"
+            }
+          ],
+          "comments": [
+            {
+              "date": "2024-01-05 10:15:00",
+              "comment": "love this baking content 🔥"
+            },
+            {
+              "date": "2024-01-06 09:00:00",
+              "comment": "the lakers are unstoppable"
+            }
+          ],
+          "shares": [
+            {
+              "date": "2024-01-05 09:00:00",
+              "link": "https://www.tiktok.com/@a/video/1",
+              "method": "whatsapp"
+            },
+            {
+              "date": "2024-01-05 09:05:00",
+              "link": "https://www.tiktok.com/@b/video/4",
+              "method": "copy_link"
+            }
+          ],
+          "searches": [
+            {
+              "term": "sourdough starter",
+              "date": "2024-01-04 09:00:00"
+            },
+            {
+              "term": "crypto crash",
+              "date": "2024-01-03 22:00:00"
+            },
+            {
+              "term": "gaming setup",
+              "date": "2024-01-02 14:00:00"
+            }
+          ],
+          "ad_interests": [
+            "Beauty",
+            "Gaming"
+          ],
+          "settings_interests": [
+            "cooking",
+            "travel"
+          ],
+          "login_history": [
+            {
+              "date": "2024-01-01 08:00:00",
+              "ip": "1.2.3.4",
+              "device_model": "iPhone",
+              "device_system": "iOS",
+              "network_type": "wifi",
+              "carrier": "ATT"
+            },
+            {
+              "date": "2024-01-02 08:00:00",
+              "ip": "5.6.7.8",
+              "device_model": "iPad",
+              "device_system": "iPadOS",
+              "network_type": "5g",
+              "carrier": "Verizon"
+            }
+          ],
+          "login_history_stats": {
+            "unique_ips": 2,
+            "unique_devices": [
+              "iPad",
+              "iPhone"
+            ],
+            "ip_locations": [
+              "1.2.3.4",
+              "5.6.7.8"
+            ]
+          },
+          "off_tiktok_activity": [
+            {
+              "x": 1
+            },
+            {
+              "y": 2
+            },
+            {
+              "z": 3
+            }
+          ],
+          "shop_orders": [
+            {
+              "date": "2024-01-01",
+              "total_price": "19.99",
+              "products": [
+                "Blender",
+                "Whisk"
+              ]
+            }
+          ],
+          "product_browsing": [
+            {
+              "date": "2024-01-02",
+              "shop": "KitchenCo",
+              "product": "Spatula"
+            }
+          ]
+        }
+      },
+      "expected": {
+        "status": "success",
+        "interest_clusters": [
+          {
+            "term": "love",
+            "count": 10,
+            "dominant_source": "comment"
+          },
+          {
+            "term": "baking",
+            "count": 10,
+            "dominant_source": "comment"
+          },
+          {
+            "term": "content",
+            "count": 10,
+            "dominant_source": "comment"
+          },
+          {
+            "term": "lakers",
+            "count": 10,
+            "dominant_source": "comment"
+          },
+          {
+            "term": "unstoppable",
+            "count": 10,
+            "dominant_source": "comment"
+          },
+          {
+            "term": "somebodyelse",
+            "count": 6,
+            "dominant_source": "follow"
+          },
+          {
+            "term": "sourdough",
+            "count": 5,
+            "dominant_source": "search"
+          },
+          {
+            "term": "starter",
+            "count": 5,
+            "dominant_source": "search"
+          },
+          {
+            "term": "crypto",
+            "count": 5,
+            "dominant_source": "search"
+          },
+          {
+            "term": "crash",
+            "count": 5,
+            "dominant_source": "search"
+          },
+          {
+            "term": "gaming",
+            "count": 5,
+            "dominant_source": "search"
+          },
+          {
+            "term": "setup",
+            "count": 5,
+            "dominant_source": "search"
+          }
+        ],
+        "interest_phrases": [
+          {
+            "phrase": "baking content",
+            "count": 1
+          }
+        ],
+        "stopwatch_metrics": {
+          "total_raw_videos": 19,
+          "total_conscious_videos": 15,
+          "sleep_anomalies_scrubbed": 0,
+          "sleep_scrubbed": 3,
+          "graveyard_skips": 3,
+          "sandbox_views": 2,
+          "deep_lingers": 10,
+          "deep_dives": 0,
+          "abandoned": 0,
+          "abandoned_night": 0,
+          "night_count": 1,
+          "night_lingers": 1,
+          "max_consecutive_skips": 3,
+          "max_session_duration": 540.0,
+          "_graveyard_links": [
+            "https://www.tiktok.com/@d/video/20",
+            "https://www.tiktok.com/@d/video/21",
+            "https://www.tiktok.com/@e/video/22"
+          ],
+          "_sandbox_links": [
+            "https://www.tiktok.com/@f/video/30",
+            "https://www.tiktok.com/@f/video/31"
+          ],
+          "_linger_links": [
+            "https://www.tiktok.com/@a/video/1",
+            "https://www.tiktok.com/@a/video/2",
+            "https://www.tiktok.com/@a/video/3",
+            "https://www.tiktok.com/@a/video/4",
+            "https://www.tiktok.com/@b/video/5",
+            "https://www.tiktok.com/@b/video/6",
+            "https://www.tiktok.com/@b/video/7",
+            "https://www.tiktok.com/@c/video/8",
+            "https://www.tiktok.com/@c/video/9",
+            "https://www.tiktok.com/@g/video/40"
+          ],
+          "_deep_dive_links": [],
+          "_abandoned_links": [],
+          "hourly_heatmap": {
+            "0": 0,
+            "1": 0,
+            "2": 1,
+            "3": 0,
+            "4": 0,
+            "5": 0,
+            "6": 0,
+            "7": 0,
+            "8": 0,
+            "9": 0,
+            "10": 9,
+            "11": 3,
+            "12": 2,
+            "13": 0,
+            "14": 0,
+            "15": 0,
+            "16": 0,
+            "17": 0,
+            "18": 0,
+            "19": 0,
+            "20": 0,
+            "21": 0,
+            "22": 0,
+            "23": 0
+          },
+          "weekly_heatmap": {
+            "0": {
+              "0": 0,
+              "1": 0,
+              "2": 0,
+              "3": 0,
+              "4": 0,
+              "5": 0,
+              "6": 0,
+              "7": 0,
+              "8": 0,
+              "9": 0,
+              "10": 0,
+              "11": 0,
+              "12": 0,
+              "13": 0,
+              "14": 0,
+              "15": 0,
+              "16": 0,
+              "17": 0,
+              "18": 0,
+              "19": 0,
+              "20": 0,
+              "21": 0,
+              "22": 0,
+              "23": 0
+            },
+            "1": {
+              "0": 0,
+              "1": 0,
+              "2": 0,
+              "3": 0,
+              "4": 0,
+              "5": 0,
+              "6": 0,
+              "7": 0,
+              "8": 0,
+              "9": 0,
+              "10": 0,
+              "11": 0,
+              "12": 0,
+              "13": 0,
+              "14": 0,
+              "15": 0,
+              "16": 0,
+              "17": 0,
+              "18": 0,
+              "19": 0,
+              "20": 0,
+              "21": 0,
+              "22": 0,
+              "23": 0
+            },
+            "2": {
+              "0": 0,
+              "1": 0,
+              "2": 0,
+              "3": 0,
+              "4": 0,
+              "5": 0,
+              "6": 0,
+              "7": 0,
+              "8": 0,
+              "9": 0,
+              "10": 0,
+              "11": 0,
+              "12": 0,
+              "13": 0,
+              "14": 0,
+              "15": 0,
+              "16": 0,
+              "17": 0,
+              "18": 0,
+              "19": 0,
+              "20": 0,
+              "21": 0,
+              "22": 0,
+              "23": 0
+            },
+            "3": {
+              "0": 0,
+              "1": 0,
+              "2": 0,
+              "3": 0,
+              "4": 0,
+              "5": 0,
+              "6": 0,
+              "7": 0,
+              "8": 0,
+              "9": 0,
+              "10": 0,
+              "11": 0,
+              "12": 0,
+              "13": 0,
+              "14": 0,
+              "15": 0,
+              "16": 0,
+              "17": 0,
+              "18": 0,
+              "19": 0,
+              "20": 0,
+              "21": 0,
+              "22": 0,
+              "23": 0
+            },
+            "4": {
+              "0": 0,
+              "1": 0,
+              "2": 0,
+              "3": 0,
+              "4": 0,
+              "5": 0,
+              "6": 0,
+              "7": 0,
+              "8": 0,
+              "9": 0,
+              "10": 9,
+              "11": 3,
+              "12": 2,
+              "13": 0,
+              "14": 0,
+              "15": 0,
+              "16": 0,
+              "17": 0,
+              "18": 0,
+              "19": 0,
+              "20": 0,
+              "21": 0,
+              "22": 0,
+              "23": 0
+            },
+            "5": {
+              "0": 0,
+              "1": 0,
+              "2": 1,
+              "3": 0,
+              "4": 0,
+              "5": 0,
+              "6": 0,
+              "7": 0,
+              "8": 0,
+              "9": 0,
+              "10": 0,
+              "11": 0,
+              "12": 0,
+              "13": 0,
+              "14": 0,
+              "15": 0,
+              "16": 0,
+              "17": 0,
+              "18": 0,
+              "19": 0,
+              "20": 0,
+              "21": 0,
+              "22": 0,
+              "23": 0
+            },
+            "6": {
+              "0": 0,
+              "1": 0,
+              "2": 0,
+              "3": 0,
+              "4": 0,
+              "5": 0,
+              "6": 0,
+              "7": 0,
+              "8": 0,
+              "9": 0,
+              "10": 0,
+              "11": 0,
+              "12": 0,
+              "13": 0,
+              "14": 0,
+              "15": 0,
+              "16": 0,
+              "17": 0,
+              "18": 0,
+              "19": 0,
+              "20": 0,
+              "21": 0,
+              "22": 0,
+              "23": 0
+            }
+          },
+          "monthly_skip_rates": {
+            "2024-01": 20.0
+          },
+          "temporal_granularity": "week",
+          "period_data": {
+            "2024-01-01": {
+              "graveyard": 3,
+              "sandbox": 2,
+              "linger": 10,
+              "deep_dive": 0,
+              "abandoned": 0,
+              "total": 15,
+              "night": 1
+            }
+          },
+          "linger_events": [
+            {
+              "video_id": "1",
+              "link": "https://www.tiktok.com/@a/video/1",
+              "time_spent": 60.0,
+              "hour": 10,
+              "_month": "2024-01",
+              "_day": "2024-01-05"
+            },
+            {
+              "video_id": "2",
+              "link": "https://www.tiktok.com/@a/video/2",
+              "time_spent": 60.0,
+              "hour": 10,
+              "_month": "2024-01",
+              "_day": "2024-01-05"
+            },
+            {
+              "video_id": "3",
+              "link": "https://www.tiktok.com/@a/video/3",
+              "time_spent": 60.0,
+              "hour": 10,
+              "_month": "2024-01",
+              "_day": "2024-01-05"
+            },
+            {
+              "video_id": "4",
+              "link": "https://www.tiktok.com/@a/video/4",
+              "time_spent": 60.0,
+              "hour": 10,
+              "_month": "2024-01",
+              "_day": "2024-01-05"
+            },
+            {
+              "video_id": "5",
+              "link": "https://www.tiktok.com/@b/video/5",
+              "time_spent": 60.0,
+              "hour": 10,
+              "_month": "2024-01",
+              "_day": "2024-01-05"
+            },
+            {
+              "video_id": "6",
+              "link": "https://www.tiktok.com/@b/video/6",
+              "time_spent": 60.0,
+              "hour": 10,
+              "_month": "2024-01",
+              "_day": "2024-01-05"
+            },
+            {
+              "video_id": "7",
+              "link": "https://www.tiktok.com/@b/video/7",
+              "time_spent": 60.0,
+              "hour": 10,
+              "_month": "2024-01",
+              "_day": "2024-01-05"
+            },
+            {
+              "video_id": "8",
+              "link": "https://www.tiktok.com/@c/video/8",
+              "time_spent": 60.0,
+              "hour": 10,
+              "_month": "2024-01",
+              "_day": "2024-01-05"
+            },
+            {
+              "video_id": "9",
+              "link": "https://www.tiktok.com/@c/video/9",
+              "time_spent": 60.0,
+              "hour": 10,
+              "_month": "2024-01",
+              "_day": "2024-01-05"
+            },
+            {
+              "video_id": "40",
+              "link": "https://www.tiktok.com/@g/video/40",
+              "time_spent": 60.0,
+              "hour": 2,
+              "_month": "2024-01",
+              "_day": "2024-01-06"
+            }
+          ],
+          "graveyard_events": [
+            {
+              "video_id": "20",
+              "link": "https://www.tiktok.com/@d/video/20",
+              "time_spent": 1.0,
+              "hour": 11
+            },
+            {
+              "video_id": "21",
+              "link": "https://www.tiktok.com/@d/video/21",
+              "time_spent": 1.0,
+              "hour": 11
+            },
+            {
+              "video_id": "22",
+              "link": "https://www.tiktok.com/@e/video/22",
+              "time_spent": 1.0,
+              "hour": 11
+            }
+          ],
+          "sandbox_events": [
+            {
+              "video_id": "30",
+              "link": "https://www.tiktok.com/@f/video/30",
+              "time_spent": 5.0,
+              "hour": 12
+            },
+            {
+              "video_id": "31",
+              "link": "https://www.tiktok.com/@f/video/31",
+              "time_spent": 5.0,
+              "hour": 12
+            }
+          ],
+          "night_linger_events": [
+            {
+              "video_id": "40",
+              "link": "https://www.tiktok.com/@g/video/40",
+              "time_spent": 60.0,
+              "hour": 2,
+              "_month": "2024-01",
+              "_day": "2024-01-06"
+            }
+          ],
+          "deep_dive_events": [],
+          "data_start_month": "January 2024"
+        },
+        "behavioral_nodes": {
+          "peak_hour": "10:00 AM",
+          "inferred_sleep_window": "3 AM – 7 AM",
+          "skip_rate_percentage": 20.0,
+          "linger_rate_percentage": 66.7,
+          "night_shift_ratio": 6.7,
+          "night_linger_pct": 10.0,
+          "night_lingers_count": 1,
+          "social_graph_algorithmic_pct": 73.3,
+          "social_graph_followed_pct": 26.7
+        },
+        "primary_archetype": {
+          "name": "The Balanced Viewer",
+          "sub_archetypes": [],
+          "dissonance": {
+            "detected": false,
+            "label": null,
+            "note": null
+          },
+          "atomic_traits": {
+            "trapped": true,
+            "ruthless": false,
+            "nocturnal": false,
+            "curator": true,
+            "ghost": false,
+            "optimizer": false
+          }
+        },
+        "creator_entities": {
+          "vibe_cluster": [
+            {
+              "handle": "@a",
+              "linger_count": 4,
+              "sample_titles": [
+                "a title 1",
+                "a title 2",
+                "a title 3",
+                "a title 4"
+              ],
+              "genre": "unknown",
+              "archetype": "unknown",
+              "confidence": 0.0,
+              "is_followed": true
+            },
+            {
+              "handle": "@b",
+              "linger_count": 3,
+              "sample_titles": [
+                "b title 5",
+                "b title 6",
+                "b title 7"
+              ],
+              "genre": "unknown",
+              "archetype": "unknown",
+              "confidence": 0.0,
+              "is_followed": false
+            },
+            {
+              "handle": "@c",
+              "linger_count": 2,
+              "sample_titles": [
+                "c title 8",
+                "c title 9"
+              ],
+              "genre": "unknown",
+              "archetype": "unknown",
+              "confidence": 0.0,
+              "is_followed": false
+            },
+            {
+              "handle": "@g",
+              "linger_count": 1,
+              "sample_titles": [
+                ""
+              ],
+              "genre": "unknown",
+              "archetype": "unknown",
+              "confidence": 0.0,
+              "is_followed": false
+            }
+          ],
+          "graveyard": [
+            {
+              "handle": "@d",
+              "skip_count": 2,
+              "sample_titles": [
+                ""
+              ],
+              "genre": "unknown",
+              "archetype": "unknown",
+              "confidence": 0.0,
+              "is_followed": false
+            },
+            {
+              "handle": "@e",
+              "skip_count": 1,
+              "sample_titles": [
+                ""
+              ],
+              "genre": "unknown",
+              "archetype": "unknown",
+              "confidence": 0.0,
+              "is_followed": false
+            }
+          ]
+        },
+        "academic_insights": {
+          "explicit_vs_implicit_ratio": 0.4,
+          "explicit_actions_count": 4,
+          "implicit_linger_count": 10,
+          "echo_chamber_index_pct": 100.0,
+          "echo_chamber_basis": 10,
+          "echo_chamber_distinct_creators": 4,
+          "echo_split": {
+            "daily_concentration": 1.0,
+            "cluster_churn": 1.0,
+            "true_bubble": false,
+            "benchmark_concentration": 0.5,
+            "benchmark_churn": 0.79,
+            "per_month": {
+              "2024-01": {
+                "daily_concentration": 1.0,
+                "cluster_churn": 1.0,
+                "true_bubble": false
+              }
+            }
+          },
+          "top_creator_handles": [
+            "@a",
+            "@b",
+            "@c",
+            "@g"
+          ]
+        },
+        "temporal_series": {
+          "granularity": "week",
+          "stopwatch_buckets": {
+            "granularity": "week",
+            "points": [
+              {
+                "period": "2024-01-01",
+                "value": {
+                  "graveyard": 3,
+                  "sandbox": 2,
+                  "linger": 10,
+                  "deep_dive": 0,
+                  "abandoned": 0,
+                  "total": 15
+                }
+              }
+            ]
+          },
+          "night_shift_ratio": {
+            "granularity": "week",
+            "points": [
+              {
+                "period": "2024-01-01",
+                "value": 6.7
+              }
+            ]
+          },
+          "explicit_vs_implicit_ratio": {
+            "granularity": "week",
+            "points": [
+              {
+                "period": "2024-01-01",
+                "value": 0.4
+              }
+            ]
+          }
+        },
+        "night_shift": {
+          "percentage": 6.7,
+          "count": 1,
+          "window": "23:00 – 04:00"
+        },
+        "sleep_scrub": {
+          "sleep_scrubbed": 3,
+          "abandoned": 0,
+          "phantom_sessions": [],
+          "phantom_nights": 0,
+          "phantom_video_count": 0,
+          "excluded_hours": 0,
+          "p99_delta_s": 50390.0,
+          "adaptive_anomaly_threshold_s": 50390.0,
+          "adaptive_anomaly_count": 0
+        },
+        "digital_footprint": {
+          "login_count": 2,
+          "unique_ips": 2,
+          "unique_devices": [
+            "iPad",
+            "iPhone"
+          ],
+          "recent_logins": [
+            {
+              "date": "2024-01-02 08:00:00",
+              "ip": "5.6.7.8",
+              "device": "iPad",
+              "system": "iPadOS",
+              "network": "5g",
+              "carrier": "Verizon"
+            },
+            {
+              "date": "2024-01-01 08:00:00",
+              "ip": "1.2.3.4",
+              "device": "iPhone",
+              "system": "iOS",
+              "network": "wifi",
+              "carrier": "ATT"
+            }
+          ]
+        },
+        "search_rhythm": {
+          "total_searches": 3,
+          "hourly_histogram": {
+            "0": 0,
+            "1": 0,
+            "2": 0,
+            "3": 0,
+            "4": 0,
+            "5": 0,
+            "6": 0,
+            "7": 0,
+            "8": 0,
+            "9": 1,
+            "10": 0,
+            "11": 0,
+            "12": 0,
+            "13": 0,
+            "14": 1,
+            "15": 0,
+            "16": 0,
+            "17": 0,
+            "18": 0,
+            "19": 0,
+            "20": 0,
+            "21": 0,
+            "22": 1,
+            "23": 0
+          },
+          "recent_searches": [
+            {
+              "term": "sourdough starter",
+              "date": "2024-01-04 09:00:00",
+              "hour": 9,
+              "dow": 3
+            },
+            {
+              "term": "crypto crash",
+              "date": "2024-01-03 22:00:00",
+              "hour": 22,
+              "dow": 2
+            },
+            {
+              "term": "gaming setup",
+              "date": "2024-01-02 14:00:00",
+              "hour": 14,
+              "dow": 1
+            }
+          ]
+        },
+        "discrepancy_gap": {
+          "declared_surface_sample": [
+            "beauty",
+            "cooking",
+            "crypto crash",
+            "gaming",
+            "gaming setup",
+            "sourdough starter",
+            "travel"
+          ],
+          "inferred_creator_handles": [
+            "@a",
+            "@b",
+            "@c",
+            "@g"
+          ],
+          "declared_count": 7,
+          "inferred_count": 4
+        },
+        "enrichment_targets": {
+          "lingered": [
+            {
+              "video_id": "1",
+              "link": "https://www.tiktok.com/@a/video/1",
+              "time_spent": 60.0,
+              "hour": 10,
+              "_month": "2024-01",
+              "_day": "2024-01-05"
+            },
+            {
+              "video_id": "2",
+              "link": "https://www.tiktok.com/@a/video/2",
+              "time_spent": 60.0,
+              "hour": 10,
+              "_month": "2024-01",
+              "_day": "2024-01-05"
+            },
+            {
+              "video_id": "3",
+              "link": "https://www.tiktok.com/@a/video/3",
+              "time_spent": 60.0,
+              "hour": 10,
+              "_month": "2024-01",
+              "_day": "2024-01-05"
+            },
+            {
+              "video_id": "4",
+              "link": "https://www.tiktok.com/@a/video/4",
+              "time_spent": 60.0,
+              "hour": 10,
+              "_month": "2024-01",
+              "_day": "2024-01-05"
+            },
+            {
+              "video_id": "5",
+              "link": "https://www.tiktok.com/@b/video/5",
+              "time_spent": 60.0,
+              "hour": 10,
+              "_month": "2024-01",
+              "_day": "2024-01-05"
+            },
+            {
+              "video_id": "6",
+              "link": "https://www.tiktok.com/@b/video/6",
+              "time_spent": 60.0,
+              "hour": 10,
+              "_month": "2024-01",
+              "_day": "2024-01-05"
+            },
+            {
+              "video_id": "7",
+              "link": "https://www.tiktok.com/@b/video/7",
+              "time_spent": 60.0,
+              "hour": 10,
+              "_month": "2024-01",
+              "_day": "2024-01-05"
+            },
+            {
+              "video_id": "8",
+              "link": "https://www.tiktok.com/@c/video/8",
+              "time_spent": 60.0,
+              "hour": 10,
+              "_month": "2024-01",
+              "_day": "2024-01-05"
+            },
+            {
+              "video_id": "9",
+              "link": "https://www.tiktok.com/@c/video/9",
+              "time_spent": 60.0,
+              "hour": 10,
+              "_month": "2024-01",
+              "_day": "2024-01-05"
+            },
+            {
+              "video_id": "40",
+              "link": "https://www.tiktok.com/@g/video/40",
+              "time_spent": 60.0,
+              "hour": 2,
+              "_month": "2024-01",
+              "_day": "2024-01-06"
+            }
+          ],
+          "graveyard": [
+            {
+              "video_id": "20",
+              "link": "https://www.tiktok.com/@d/video/20",
+              "time_spent": 1.0,
+              "hour": 11
+            },
+            {
+              "video_id": "21",
+              "link": "https://www.tiktok.com/@d/video/21",
+              "time_spent": 1.0,
+              "hour": 11
+            },
+            {
+              "video_id": "22",
+              "link": "https://www.tiktok.com/@e/video/22",
+              "time_spent": 1.0,
+              "hour": 11
+            }
+          ],
+          "sandbox": [
+            {
+              "video_id": "30",
+              "link": "https://www.tiktok.com/@f/video/30",
+              "time_spent": 5.0,
+              "hour": 12
+            },
+            {
+              "video_id": "31",
+              "link": "https://www.tiktok.com/@f/video/31",
+              "time_spent": 5.0,
+              "hour": 12
+            }
+          ],
+          "night_lingered": [
+            {
+              "video_id": "40",
+              "link": "https://www.tiktok.com/@g/video/40",
+              "time_spent": 60.0,
+              "hour": 2,
+              "_month": "2024-01",
+              "_day": "2024-01-06"
+            }
+          ],
+          "deep_dives": [],
+          "following_usernames": [
+            "a",
+            "somebodyelse"
+          ]
+        },
+        "declared_signals": {
+          "settings_interests": [
+            "cooking",
+            "travel"
+          ],
+          "ad_interests": [
+            "Beauty",
+            "Gaming"
+          ],
+          "recent_searches": [
+            "sourdough starter",
+            "crypto crash",
+            "gaming setup"
+          ],
+          "following_count": 2,
+          "follower_count": 3
+        },
+        "ad_profile": {
+          "advertiser_categories": [
+            "Beauty",
+            "Gaming"
+          ],
+          "vulnerability_window": "10 AM / 11 AM / 12 PM",
+          "peak_ad_hour": "10:00 AM",
+          "night_targeting": 6.7,
+          "off_platform_tracked": true,
+          "off_platform_events": 3,
+          "shop_order_count": 1,
+          "shop_products": [
+            "Blender",
+            "Whisk"
+          ],
+          "product_browsing_count": 1,
+          "browsed_products": [
+            "Spatula"
+          ]
+        },
+        "comment_voice": {
+          "total_comments": 2,
+          "avg_length_chars": 26.0,
+          "long_comments_count": 0,
+          "long_comment_pct": 0.0,
+          "top_20_longest": [
+            "love this baking content 🔥",
+            "the lakers are unstoppable"
+          ],
+          "references_detected": {
+            "sports_teams": [
+              "lakers"
+            ]
+          },
+          "emoji_density": 0.0192,
+          "engagement_style_label": "Reactive Commenter"
+        },
+        "share_behavior": {
+          "total_shares": 2,
+          "share_methods": {
+            "whatsapp": 1,
+            "copy_link": 1
+          },
+          "primary_share_method": "whatsapp",
+          "share_behavior_type": "Mixed Sharer",
+          "dm_share_count": 1
+        },
+        "transparency_gap": {
+          "official_ad_interest_count": 2,
+          "behavioral_interest_count": 12,
+          "gap_interpretation": "Significant gap: TikTok's declared interests underrepresent actual behavioral profile by approx 83%."
+        },
+        "algorithm_drift": {
+          "detectable": false,
+          "direction": null,
+          "delta_pct": null
+        },
+        "monthly_creator_trends": {
+          "2024-01": [
+            {
+              "handle": "@a",
+              "count": 4
+            },
+            {
+              "handle": "@b",
+              "count": 3
+            },
+            {
+              "handle": "@c",
+              "count": 2
+            },
+            {
+              "handle": "@g",
+              "count": 1
+            }
+          ]
+        },
+        "monthly_topic_trends": {
+          "2024-01": [
+            {
+              "term": "sourdough starter",
+              "count": 3
+            },
+            {
+              "term": "crypto crash",
+              "count": 3
+            },
+            {
+              "term": "gaming setup",
+              "count": 3
+            },
+            {
+              "term": "love",
+              "count": 1
+            },
+            {
+              "term": "baking",
+              "count": 1
+            },
+            {
+              "term": "content",
+              "count": 1
+            },
+            {
+              "term": "lakers",
+              "count": 1
+            },
+            {
+              "term": "unstoppable",
+              "count": 1
+            }
+          ]
+        },
+        "sandbox_retests": [
+          {
+            "handle": "@f",
+            "times_served": 2
+          }
+        ],
+        "skip_anomalies": [],
+        "data_cliff": {
+          "start_month": "January 2024",
+          "window_days": 180
+        }
+      }
+    },
+    {
+      "name": "empty",
+      "input": {
+        "parsed": {}
+      },
+      "expected": {
+        "status": "success",
+        "interest_clusters": [],
+        "interest_phrases": [],
+        "stopwatch_metrics": {
+          "total_raw_videos": 0,
+          "total_conscious_videos": 0,
+          "sleep_anomalies_scrubbed": 0,
+          "sleep_scrubbed": 0,
+          "graveyard_skips": 0,
+          "sandbox_views": 0,
+          "deep_lingers": 0,
+          "deep_dives": 0,
+          "abandoned": 0,
+          "abandoned_night": 0,
+          "night_count": 0,
+          "night_lingers": 0,
+          "max_consecutive_skips": 0,
+          "max_session_duration": 0,
+          "_graveyard_links": [],
+          "_sandbox_links": [],
+          "_linger_links": [],
+          "_deep_dive_links": [],
+          "_abandoned_links": [],
+          "hourly_heatmap": {
+            "0": 0,
+            "1": 0,
+            "2": 0,
+            "3": 0,
+            "4": 0,
+            "5": 0,
+            "6": 0,
+            "7": 0,
+            "8": 0,
+            "9": 0,
+            "10": 0,
+            "11": 0,
+            "12": 0,
+            "13": 0,
+            "14": 0,
+            "15": 0,
+            "16": 0,
+            "17": 0,
+            "18": 0,
+            "19": 0,
+            "20": 0,
+            "21": 0,
+            "22": 0,
+            "23": 0
+          },
+          "weekly_heatmap": {
+            "0": {
+              "0": 0,
+              "1": 0,
+              "2": 0,
+              "3": 0,
+              "4": 0,
+              "5": 0,
+              "6": 0,
+              "7": 0,
+              "8": 0,
+              "9": 0,
+              "10": 0,
+              "11": 0,
+              "12": 0,
+              "13": 0,
+              "14": 0,
+              "15": 0,
+              "16": 0,
+              "17": 0,
+              "18": 0,
+              "19": 0,
+              "20": 0,
+              "21": 0,
+              "22": 0,
+              "23": 0
+            },
+            "1": {
+              "0": 0,
+              "1": 0,
+              "2": 0,
+              "3": 0,
+              "4": 0,
+              "5": 0,
+              "6": 0,
+              "7": 0,
+              "8": 0,
+              "9": 0,
+              "10": 0,
+              "11": 0,
+              "12": 0,
+              "13": 0,
+              "14": 0,
+              "15": 0,
+              "16": 0,
+              "17": 0,
+              "18": 0,
+              "19": 0,
+              "20": 0,
+              "21": 0,
+              "22": 0,
+              "23": 0
+            },
+            "2": {
+              "0": 0,
+              "1": 0,
+              "2": 0,
+              "3": 0,
+              "4": 0,
+              "5": 0,
+              "6": 0,
+              "7": 0,
+              "8": 0,
+              "9": 0,
+              "10": 0,
+              "11": 0,
+              "12": 0,
+              "13": 0,
+              "14": 0,
+              "15": 0,
+              "16": 0,
+              "17": 0,
+              "18": 0,
+              "19": 0,
+              "20": 0,
+              "21": 0,
+              "22": 0,
+              "23": 0
+            },
+            "3": {
+              "0": 0,
+              "1": 0,
+              "2": 0,
+              "3": 0,
+              "4": 0,
+              "5": 0,
+              "6": 0,
+              "7": 0,
+              "8": 0,
+              "9": 0,
+              "10": 0,
+              "11": 0,
+              "12": 0,
+              "13": 0,
+              "14": 0,
+              "15": 0,
+              "16": 0,
+              "17": 0,
+              "18": 0,
+              "19": 0,
+              "20": 0,
+              "21": 0,
+              "22": 0,
+              "23": 0
+            },
+            "4": {
+              "0": 0,
+              "1": 0,
+              "2": 0,
+              "3": 0,
+              "4": 0,
+              "5": 0,
+              "6": 0,
+              "7": 0,
+              "8": 0,
+              "9": 0,
+              "10": 0,
+              "11": 0,
+              "12": 0,
+              "13": 0,
+              "14": 0,
+              "15": 0,
+              "16": 0,
+              "17": 0,
+              "18": 0,
+              "19": 0,
+              "20": 0,
+              "21": 0,
+              "22": 0,
+              "23": 0
+            },
+            "5": {
+              "0": 0,
+              "1": 0,
+              "2": 0,
+              "3": 0,
+              "4": 0,
+              "5": 0,
+              "6": 0,
+              "7": 0,
+              "8": 0,
+              "9": 0,
+              "10": 0,
+              "11": 0,
+              "12": 0,
+              "13": 0,
+              "14": 0,
+              "15": 0,
+              "16": 0,
+              "17": 0,
+              "18": 0,
+              "19": 0,
+              "20": 0,
+              "21": 0,
+              "22": 0,
+              "23": 0
+            },
+            "6": {
+              "0": 0,
+              "1": 0,
+              "2": 0,
+              "3": 0,
+              "4": 0,
+              "5": 0,
+              "6": 0,
+              "7": 0,
+              "8": 0,
+              "9": 0,
+              "10": 0,
+              "11": 0,
+              "12": 0,
+              "13": 0,
+              "14": 0,
+              "15": 0,
+              "16": 0,
+              "17": 0,
+              "18": 0,
+              "19": 0,
+              "20": 0,
+              "21": 0,
+              "22": 0,
+              "23": 0
+            }
+          },
+          "monthly_skip_rates": {},
+          "temporal_granularity": "month",
+          "period_data": {},
+          "linger_events": [],
+          "graveyard_events": [],
+          "sandbox_events": [],
+          "night_linger_events": [],
+          "deep_dive_events": [],
+          "data_start_month": null
+        },
+        "behavioral_nodes": {
+          "peak_hour": "Unknown",
+          "inferred_sleep_window": "Unknown",
+          "skip_rate_percentage": 0.0,
+          "linger_rate_percentage": 0.0,
+          "night_shift_ratio": 0.0,
+          "night_linger_pct": 0.0,
+          "night_lingers_count": 0,
+          "social_graph_algorithmic_pct": 0.0,
+          "social_graph_followed_pct": 0.0
+        },
+        "primary_archetype": {
+          "name": "The Passive Observer",
+          "sub_archetypes": [
+            {
+              "name": "The Passive Observer",
+              "confidence": 0.8
+            }
+          ],
+          "dissonance": {
+            "detected": false,
+            "label": null,
+            "note": null
+          },
+          "atomic_traits": {
+            "trapped": false,
+            "ruthless": false,
+            "nocturnal": false,
+            "curator": false,
+            "ghost": true,
+            "optimizer": false
+          }
+        },
+        "creator_entities": {
+          "vibe_cluster": [],
+          "graveyard": []
+        },
+        "academic_insights": {
+          "explicit_vs_implicit_ratio": 0.0,
+          "explicit_actions_count": 0,
+          "implicit_linger_count": 0,
+          "echo_chamber_index_pct": 0.0,
+          "echo_chamber_basis": 0,
+          "echo_chamber_distinct_creators": 0,
+          "echo_split": {
+            "daily_concentration": 0.0,
+            "cluster_churn": 0.0,
+            "true_bubble": false,
+            "benchmark_concentration": 0.5,
+            "benchmark_churn": 0.79,
+            "per_month": {}
+          },
+          "top_creator_handles": []
+        },
+        "temporal_series": {
+          "granularity": "month",
+          "stopwatch_buckets": {
+            "granularity": "month",
+            "points": []
+          },
+          "night_shift_ratio": {
+            "granularity": "month",
+            "points": []
+          },
+          "explicit_vs_implicit_ratio": {
+            "granularity": "month",
+            "points": []
+          }
+        },
+        "night_shift": {
+          "percentage": 0.0,
+          "count": 0,
+          "window": "23:00 – 04:00"
+        },
+        "sleep_scrub": {
+          "sleep_scrubbed": 0,
+          "abandoned": 0,
+          "phantom_sessions": [],
+          "phantom_nights": 0,
+          "phantom_video_count": 0,
+          "excluded_hours": 0,
+          "p99_delta_s": 0.0,
+          "adaptive_anomaly_threshold_s": 1200.0,
+          "adaptive_anomaly_count": 0
+        },
+        "digital_footprint": {
+          "login_count": 0,
+          "unique_ips": 0,
+          "unique_devices": [],
+          "recent_logins": []
+        },
+        "search_rhythm": {
+          "total_searches": 0,
+          "hourly_histogram": {
+            "0": 0,
+            "1": 0,
+            "2": 0,
+            "3": 0,
+            "4": 0,
+            "5": 0,
+            "6": 0,
+            "7": 0,
+            "8": 0,
+            "9": 0,
+            "10": 0,
+            "11": 0,
+            "12": 0,
+            "13": 0,
+            "14": 0,
+            "15": 0,
+            "16": 0,
+            "17": 0,
+            "18": 0,
+            "19": 0,
+            "20": 0,
+            "21": 0,
+            "22": 0,
+            "23": 0
+          },
+          "recent_searches": []
+        },
+        "discrepancy_gap": {
+          "declared_surface_sample": [],
+          "inferred_creator_handles": [],
+          "declared_count": 0,
+          "inferred_count": 0
+        },
+        "enrichment_targets": {
+          "lingered": [],
+          "graveyard": [],
+          "sandbox": [],
+          "night_lingered": [],
+          "deep_dives": [],
+          "following_usernames": []
+        },
+        "declared_signals": {
+          "settings_interests": [],
+          "ad_interests": [],
+          "recent_searches": [],
+          "following_count": 0,
+          "follower_count": 0
+        },
+        "ad_profile": {
+          "advertiser_categories": [],
+          "vulnerability_window": "Unknown",
+          "peak_ad_hour": "Unknown",
+          "night_targeting": 0.0,
+          "off_platform_tracked": false,
+          "off_platform_events": 0,
+          "shop_order_count": 0,
+          "shop_products": [],
+          "product_browsing_count": 0,
+          "browsed_products": []
+        },
+        "comment_voice": {
+          "total_comments": 0,
+          "avg_length_chars": 0.0,
+          "long_comments_count": 0,
+          "long_comment_pct": 0.0,
+          "top_20_longest": [],
+          "references_detected": {},
+          "emoji_density": 0.0,
+          "engagement_style_label": "Lurker"
+        },
+        "share_behavior": {
+          "total_shares": 0,
+          "share_methods": {},
+          "primary_share_method": null,
+          "share_behavior_type": "Mixed Sharer",
+          "dm_share_count": 0
+        },
+        "transparency_gap": {
+          "official_ad_interest_count": 0,
+          "behavioral_interest_count": 0,
+          "gap_interpretation": "Official interests roughly match behavioral profile."
+        },
+        "algorithm_drift": {
+          "detectable": false,
+          "direction": null,
+          "delta_pct": null
+        },
+        "monthly_creator_trends": {},
+        "monthly_topic_trends": {},
+        "sandbox_retests": [],
+        "skip_anomalies": [],
+        "data_cliff": {
+          "start_month": null,
+          "window_days": 180
+        }
+      }
+    }
+  ]
+}

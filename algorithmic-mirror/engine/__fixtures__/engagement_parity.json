@@ -1,0 +1,373 @@
+{
+  "_comment": "Golden parity fixture for the WP-1.1 comment/share port. Regenerate only on an intentional Python change: python3 scripts/gen_engagement_parity_fixture.py",
+  "comment_voice_cases": [
+    {
+      "name": "empty",
+      "input": {
+        "comments": [],
+        "active_video_count": 100,
+        "dm_share_count": 0
+      },
+      "expected": {
+        "total_comments": 0,
+        "avg_length_chars": 0.0,
+        "long_comments_count": 0,
+        "long_comment_pct": 0.0,
+        "top_20_longest": [],
+        "references_detected": {},
+        "emoji_density": 0.0,
+        "engagement_style_label": "Lurker"
+      }
+    },
+    {
+      "name": "lurker_low_rate",
+      "input": {
+        "comments": [
+          {
+            "comment": "nice"
+          }
+        ],
+        "active_video_count": 1000,
+        "dm_share_count": 0
+      },
+      "expected": {
+        "total_comments": 1,
+        "avg_length_chars": 4.0,
+        "long_comments_count": 0,
+        "long_comment_pct": 0.0,
+        "top_20_longest": [
+          "nice"
+        ],
+        "references_detected": {},
+        "emoji_density": 0.0,
+        "engagement_style_label": "Lurker"
+      }
+    },
+    {
+      "name": "analytical",
+      "input": {
+        "comments": [
+          {
+            "comment": "This is a genuinely thoughtful long-form comment that goes well beyond a hundred characters to explain the nuance in detail."
+          },
+          {
+            "comment": "Another carefully written paragraph with substance and no emoji at all, again comfortably over the one hundred character mark here."
+          }
+        ],
+        "active_video_count": 200,
+        "dm_share_count": 0
+      },
+      "expected": {
+        "total_comments": 2,
+        "avg_length_chars": 127.5,
+        "long_comments_count": 0,
+        "long_comment_pct": 0.0,
+        "top_20_longest": [
+          "Another carefully written paragraph with substance and no emoji at all, again comfortably over the one hundred character mark here.",
+          "This is a genuinely thoughtful long-form comment that goes well beyond a hundred characters to explain the nuance in detail."
+        ],
+        "references_detected": {},
+        "emoji_density": 0.0,
+        "engagement_style_label": "Analytical Commenter"
+      }
+    },
+    {
+      "name": "reactive_short_highrate",
+      "input": {
+        "comments": [
+          {
+            "comment": "lol"
+          },
+          {
+            "comment": "lol"
+          },
+          {
+            "comment": "lol"
+          },
+          {
+            "comment": "lol"
+          },
+          {
+            "comment": "lol"
+          },
+          {
+            "comment": "lol"
+          },
+          {
+            "comment": "lol"
+          },
+          {
+            "comment": "lol"
+          },
+          {
+            "comment": "lol"
+          },
+          {
+            "comment": "lol"
+          }
+        ],
+        "active_video_count": 100,
+        "dm_share_count": 0
+      },
+      "expected": {
+        "total_comments": 10,
+        "avg_length_chars": 3.0,
+        "long_comments_count": 0,
+        "long_comment_pct": 0.0,
+        "top_20_longest": [
+          "lol",
+          "lol",
+          "lol",
+          "lol",
+          "lol",
+          "lol",
+          "lol",
+          "lol",
+          "lol",
+          "lol"
+        ],
+        "references_detected": {},
+        "emoji_density": 0.0,
+        "engagement_style_label": "Reactive Commenter"
+      }
+    },
+    {
+      "name": "curator_dm_heavy",
+      "input": {
+        "comments": [
+          {
+            "comment": "a decent medium comment here ok"
+          },
+          {
+            "comment": "a decent medium comment here ok"
+          },
+          {
+            "comment": "a decent medium comment here ok"
+          },
+          {
+            "comment": "a decent medium comment here ok"
+          },
+          {
+            "comment": "a decent medium comment here ok"
+          }
+        ],
+        "active_video_count": 100,
+        "dm_share_count": 20
+      },
+      "expected": {
+        "total_comments": 5,
+        "avg_length_chars": 31.0,
+        "long_comments_count": 0,
+        "long_comment_pct": 0.0,
+        "top_20_longest": [
+          "a decent medium comment here ok",
+          "a decent medium comment here ok",
+          "a decent medium comment here ok",
+          "a decent medium comment here ok",
+          "a decent medium comment here ok"
+        ],
+        "references_detected": {},
+        "emoji_density": 0.0,
+        "engagement_style_label": "Curator"
+      }
+    },
+    {
+      "name": "references_and_emoji",
+      "input": {
+        "comments": [
+          {
+            "comment": "the lakers are unstoppable this season 🔥🔥"
+          },
+          {
+            "comment": "taylor swift and drake dropped ☀ love it"
+          },
+          {
+            "comment": "trump vs biden again, and the office reruns"
+          }
+        ],
+        "active_video_count": 300,
+        "dm_share_count": 0
+      },
+      "expected": {
+        "total_comments": 3,
+        "avg_length_chars": 41.3,
+        "long_comments_count": 0,
+        "long_comment_pct": 0.0,
+        "top_20_longest": [
+          "trump vs biden again, and the office reruns",
+          "the lakers are unstoppable this season 🔥🔥",
+          "taylor swift and drake dropped ☀ love it"
+        ],
+        "references_detected": {
+          "sports_teams": [
+            "lakers"
+          ],
+          "tv_shows": [
+            "the office"
+          ],
+          "musicians": [
+            "taylor swift",
+            "drake"
+          ],
+          "political_figures": [
+            "trump",
+            "biden"
+          ]
+        },
+        "emoji_density": 0.0242,
+        "engagement_style_label": "Community Participant"
+      }
+    },
+    {
+      "name": "codepoint_boundary",
+      "input": {
+        "comments": [
+          {
+            "comment": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx🔥"
+          }
+        ],
+        "active_video_count": 500,
+        "dm_share_count": 0
+      },
+      "expected": {
+        "total_comments": 1,
+        "avg_length_chars": 150.0,
+        "long_comments_count": 0,
+        "long_comment_pct": 0.0,
+        "top_20_longest": [
+          "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx🔥"
+        ],
+        "references_detected": {},
+        "emoji_density": 0.0067,
+        "engagement_style_label": "Lurker"
+      }
+    }
+  ],
+  "share_behavior_cases": [
+    {
+      "name": "empty",
+      "input": {
+        "shares": []
+      },
+      "expected": {
+        "total_shares": 0,
+        "share_methods": {},
+        "primary_share_method": null,
+        "share_behavior_type": "Mixed Sharer",
+        "dm_share_count": 0
+      }
+    },
+    {
+      "name": "private_curator",
+      "input": {
+        "shares": [
+          {
+            "method": "whatsapp"
+          },
+          {
+            "method": "whatsapp"
+          },
+          {
+            "method": "dm"
+          },
+          {
+            "method": "copy_link"
+          }
+        ]
+      },
+      "expected": {
+        "total_shares": 4,
+        "share_methods": {
+          "whatsapp": 2,
+          "dm": 1,
+          "copy_link": 1
+        },
+        "primary_share_method": "whatsapp",
+        "share_behavior_type": "Private Curator",
+        "dm_share_count": 3
+      }
+    },
+    {
+      "name": "public_broadcaster",
+      "input": {
+        "shares": [
+          {
+            "method": "copy_link"
+          },
+          {
+            "method": "copy_link"
+          },
+          {
+            "method": "copy_link"
+          },
+          {
+            "method": "whatsapp"
+          }
+        ]
+      },
+      "expected": {
+        "total_shares": 4,
+        "share_methods": {
+          "copy_link": 3,
+          "whatsapp": 1
+        },
+        "primary_share_method": "copy_link",
+        "share_behavior_type": "Public Broadcaster",
+        "dm_share_count": 1
+      }
+    },
+    {
+      "name": "mixed",
+      "input": {
+        "shares": [
+          {
+            "method": "whatsapp"
+          },
+          {
+            "method": "whatsapp"
+          },
+          {
+            "method": "copy_link"
+          },
+          {
+            "method": "copy_link"
+          }
+        ]
+      },
+      "expected": {
+        "total_shares": 4,
+        "share_methods": {
+          "whatsapp": 2,
+          "copy_link": 2
+        },
+        "primary_share_method": "whatsapp",
+        "share_behavior_type": "Mixed Sharer",
+        "dm_share_count": 2
+      }
+    },
+    {
+      "name": "method_missing_defaults_unknown",
+      "input": {
+        "shares": [
+          {},
+          {
+            "method": null
+          },
+          {
+            "method": "COPY_LINK"
+          }
+        ]
+      },
+      "expected": {
+        "total_shares": 3,
+        "share_methods": {
+          "unknown": 2,
+          "copy_link": 1
+        },
+        "primary_share_method": "unknown",
+        "share_behavior_type": "Public Broadcaster",
+        "dm_share_count": 0
+      }
+    }
+  ]
+}

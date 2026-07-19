@@ -156,8 +156,9 @@ def test_analyze_llm_claude(mock_anthropic):
     }
     
     response = client.post(
-        "/api/analyze/llm?provider=claude&api_key=test-key",
-        files={"file": ("user_data_tiktok.json", json.dumps(fake_export).encode("utf-8"))}
+        "/api/analyze/llm?provider=claude",
+        files={"file": ("user_data_tiktok.json", json.dumps(fake_export).encode("utf-8"))},
+        headers={"X-API-Key": "test-key"}
     )
     assert response.status_code == 200
     assert response.headers["content-type"].startswith("text/event-stream")
@@ -192,8 +193,9 @@ def test_analyze_llm_gemini(mock_gemini_model):
     }
     
     response = client.post(
-        "/api/analyze/llm?provider=gemini-pro&api_key=test-key",
-        files={"file": ("user_data_tiktok.json", json.dumps(fake_export).encode("utf-8"))}
+        "/api/analyze/llm?provider=gemini-pro",
+        files={"file": ("user_data_tiktok.json", json.dumps(fake_export).encode("utf-8"))},
+        headers={"X-API-Key": "test-key"}
     )
     assert response.status_code == 200
     assert response.headers["content-type"].startswith("text/event-stream")

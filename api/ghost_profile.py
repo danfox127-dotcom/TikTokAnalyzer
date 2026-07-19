@@ -15,6 +15,7 @@ Public API
 from __future__ import annotations
 
 from collections import Counter, defaultdict
+from datetime import timedelta
 import re
 
 from parsers.tiktok import _parse_date
@@ -164,12 +165,125 @@ def _echo_chamber_index(linger_links, link_handle_map: dict[str, str] | None = N
     }
 
 
+# WP-1.7 — split echo-chamber signal. Published benchmarks (research-integration
+# §2): a typical feed sits near ≈0.5 daily concentration and ≈0.79 cluster churn.
+# A "true bubble" is the rarer high-concentration + low-churn corner.
+ECHO_BENCHMARK_CONCENTRATION = 0.5
+ECHO_BENCHMARK_CHURN = 0.79
+BUBBLE_CONCENTRATION_MIN = 0.6
+BUBBLE_CHURN_MAX = 0.4
+
+
+def _echo_top5(cluster_times: dict[str, float]) -> list[str]:
+    """Top-5 clusters by watch time. Stable: ties keep first-seen (insertion) order,
+    so the result is deterministic regardless of dict/Counter iteration quirks."""
+    return [h for h, _ in sorted(cluster_times.items(), key=lambda kv: -kv[1])[:5]]
+
+
+def _echo_day_cluster_times(linger_events, link_handle_map) -> dict[str, dict[str, float]]:
+    """{day → {resolved handle → summed linger watch time}}, first-seen order preserved.
+
+    Only lingers with a *resolved* creator contribute — matching _echo_chamber_index,
+    so both signals share one honest basis at low resolution coverage.
+    """
+    days: dict[str, dict[str, float]] = {}
+    for ev in linger_events:
+        h = _handle_from_link(ev.get("link", ""), link_handle_map)
+        if not h:
+            continue
+        day = ev.get("_day")
+        if not day:
+            continue
+        d = days.setdefault(day, {})
+        d[h] = d.get(h, 0.0) + float(ev.get("time_spent", 0.0))
+    return days
+
+
+def _echo_split_over_days(day_times: dict[str, dict[str, float]]) -> dict:
+    active_days = [d for d in sorted(day_times.keys()) if sum(day_times[d].values()) > 0]
+
+    concentrations: list[float] = []
+    for day in active_days:
+        ct = day_times[day]
+        total = sum(ct.values())
+        top5_time = sum(ct[h] for h in _echo_top5(ct))
+        concentrations.append(top5_time / total)
+    daily_concentration = round(sum(concentrations) / len(concentrations), 3) if concentrations else 0.0
+
+    churns: list[float] = []
+    for i in range(1, len(active_days)):
+        prev = set(_echo_top5(day_times[active_days[i - 1]]))
+        curr = _echo_top5(day_times[active_days[i]])
+        if not curr:
+            continue
+        churns.append(len(set(curr) - prev) / len(curr))
+    cluster_churn = round(sum(churns) / len(churns), 3) if churns else 0.0
+
+    return {
+        "daily_concentration": daily_concentration,
+        "cluster_churn": cluster_churn,
+        "true_bubble": daily_concentration > BUBBLE_CONCENTRATION_MIN and cluster_churn < BUBBLE_CHURN_MAX,
+    }
+
+
+def _echo_chamber_split(linger_events, link_handle_map: dict[str, str] | None = None) -> dict:
+    """WP-1.7: daily_concentration + cluster_churn (overall and per-month), plus a
+    true_bubble flag and the published benchmarks. Additive to _echo_chamber_index,
+    which stays as the deprecated single-number alias for one release."""
+    day_times = _echo_day_cluster_times(linger_events, link_handle_map)
+    overall = _echo_split_over_days(day_times)
+    per_month: dict[str, dict] = {}
+    for mk in sorted({d[:7] for d in day_times}):
+        per_month[mk] = _echo_split_over_days({d: v for d, v in day_times.items() if d[:7] == mk})
+    return {
+        **overall,
+        "benchmark_concentration": ECHO_BENCHMARK_CONCENTRATION,
+        "benchmark_churn": ECHO_BENCHMARK_CHURN,
+        "per_month": per_month,
+    }
+
+
+# WP-1.4 — temporal bucketing. Every overall metric also gets a per-period series.
+# Coverage < 90 days degrades from monthly to weekly. The week key is the
+# Monday-anchored date "YYYY-MM-DD" (NOT ISO %G-W%V) so the TS port is trivially
+# parity-safe — no ISO week-numbering / week-year-boundary divergence.
+TEMPORAL_MONTH_MIN_DAYS = 90
+
+
+def _temporal_granularity(entries: list[dict]) -> str:
+    if not entries:
+        return "month"
+    span_days = (entries[-1]["dt"] - entries[0]["dt"]).days
+    return "week" if span_days < TEMPORAL_MONTH_MIN_DAYS else "month"
+
+
+def _period_key(dt, granularity: str) -> str:
+    if granularity == "week":
+        monday = dt - timedelta(days=dt.weekday())
+        return monday.strftime("%Y-%m-%d")
+    return dt.strftime("%Y-%m")
+
+
+def _temporal_series(granularity: str, points: list[dict]) -> dict:
+    """Canonical TemporalSeries<T>: {granularity, points:[{period, value}]} sorted by period."""
+    return {"granularity": granularity, "points": sorted(points, key=lambda p: p["period"])}
+
+
 # ---------------------------------------------------------------------------
 # Task 1: True Stopwatch & AFK Firewall
 # ---------------------------------------------------------------------------
 
-def _run_stopwatch(browsing_history: list[dict], exclude_hours: tuple[int, ...] = ()) -> dict:
-    """Parse consecutive video timestamps to compute time-delta behavioral metrics."""
+def _run_stopwatch(browsing_history: list[dict], exclude_hours: tuple[int, ...] = (),
+                   engaged_video_ids: set[str] | None = None) -> dict:
+    """Parse consecutive video timestamps to compute time-delta behavioral metrics.
+
+    WP-1.3: 180–300s is `deep_dive`; 300–1200s is `abandoned` (long uncorroborated
+    gap, likely autoplay-while-away) UNLESS the video's id is in `engaged_video_ids`
+    (liked/faved/shared/commented), which promotes it back to `deep_dive`. Abandoned
+    videos stay in `total_conscious` but are excluded from engaged signals
+    (deep_dive/linger links & events, night_lingers) — and from persona inputs.
+    """
+    engaged = engaged_video_ids or set()
     entries: list[dict] = []
     for item in browsing_history:
         dt = _parse_date(item.get("date", ""))
@@ -178,6 +292,10 @@ def _run_stopwatch(browsing_history: list[dict], exclude_hours: tuple[int, ...] 
 
     entries.sort(key=lambda x: x["dt"])
 
+    # WP-1.4: separate per-period accumulator (leaves monthly_data byte-identical).
+    granularity = _temporal_granularity(entries)
+    period_data = defaultdict(lambda: {"graveyard": 0, "sandbox": 0, "linger": 0, "deep_dive": 0, "abandoned": 0, "total": 0, "night": 0})
+
     SLEEP_THRESHOLD_S = 1200
     clock_anomalies = 0
     sleep_scrubbed = 0
@@ -185,6 +303,8 @@ def _run_stopwatch(browsing_history: list[dict], exclude_hours: tuple[int, ...] 
     sandbox_count = 0
     linger_count = 0
     deep_dive_count = 0
+    abandoned_count = 0
+    abandoned_night_count = 0
     night_count = 0
     night_lingers = 0
 
@@ -197,6 +317,7 @@ def _run_stopwatch(browsing_history: list[dict], exclude_hours: tuple[int, ...] 
     sandbox_links: set[str] = set()
     linger_links: set[str] = set()
     deep_dive_links: set[str] = set()
+    abandoned_links: set[str] = set()
     hourly: defaultdict[int, int] = defaultdict(int)
     weekly: defaultdict[int, defaultdict[int, int]] = defaultdict(lambda: defaultdict(int))
     monthly_data = defaultdict(lambda: {"skip": 0, "total": 0})
@@ -236,17 +357,24 @@ def _run_stopwatch(browsing_history: list[dict], exclude_hours: tuple[int, ...] 
         weekly[dow][hour] += 1
         
         month_key = cur["dt"].strftime("%Y-%m")
+        day_key = cur["dt"].strftime("%Y-%m-%d")
+        period_key = _period_key(cur["dt"], granularity)
         monthly_data[month_key]["total"] += 1
+        period_data[period_key]["total"] += 1
 
         if 23 <= hour or hour < 4:
             night_count += 1
+            period_data[period_key]["night"] += 1
 
         link = cur["link"]
         vid = oembed.extract_video_id(link) if link else None
         time_spent = min(delta, 270.0)
+        monthly_data[month_key].setdefault("time_sum", 0.0)
+        monthly_data[month_key]["time_sum"] += time_spent if delta >= 3 else 0.0
         
         if delta < 3:
             graveyard_count += 1
+            period_data[period_key]["graveyard"] += 1
             consecutive_skips += 1
             max_consecutive_skips = max(max_consecutive_skips, consecutive_skips)
             monthly_data[month_key]["skip"] += 1
@@ -255,31 +383,43 @@ def _run_stopwatch(browsing_history: list[dict], exclude_hours: tuple[int, ...] 
         elif delta <= 15:
             consecutive_skips = 0
             sandbox_count += 1
+            period_data[period_key]["sandbox"] += 1
             if link: sandbox_links.add(link)
             if vid: sandbox_events.append({"video_id": vid, "link": link, "time_spent": time_spent, "hour": hour})
         elif delta <= 180:
             consecutive_skips = 0
             linger_count += 1
+            period_data[period_key]["linger"] += 1
             if 23 <= hour or hour < 4: night_lingers += 1
             if link: linger_links.add(link)
             if vid:
-                ev = {"video_id": vid, "link": link, "time_spent": time_spent, "hour": hour}
+                ev = {"video_id": vid, "link": link, "time_spent": time_spent, "hour": hour, "_month": month_key, "_day": day_key}
                 linger_events.append(ev)
                 if 23 <= hour or hour < 4: night_linger_events.append(ev)
-        else:
+        elif delta <= 300 or (vid is not None and vid in engaged):
+            # deep_dive: 180–300s, OR a longer gap the user corroborated by engaging.
             consecutive_skips = 0
             deep_dive_count += 1
+            period_data[period_key]["deep_dive"] += 1
             if 23 <= hour or hour < 4: night_lingers += 1
             if link:
                 deep_dive_links.add(link)
                 linger_links.add(link)
             if vid:
-                ev = {"video_id": vid, "link": link, "time_spent": time_spent, "hour": hour}
+                ev = {"video_id": vid, "link": link, "time_spent": time_spent, "hour": hour, "_month": month_key, "_day": day_key}
                 deep_dive_events.append(ev)
                 linger_events.append(ev)
                 if 23 <= hour or hour < 4: night_linger_events.append(ev)
+        else:
+            # abandoned: 300–1200s uncorroborated. Stays in total_conscious but is
+            # NOT an engaged signal — excluded from linger/deep_dive links & events.
+            consecutive_skips = 0
+            abandoned_count += 1
+            period_data[period_key]["abandoned"] += 1
+            if 23 <= hour or hour < 4: abandoned_night_count += 1
+            if link: abandoned_links.add(link)
 
-    total_conscious = graveyard_count + sandbox_count + linger_count + deep_dive_count
+    total_conscious = graveyard_count + sandbox_count + linger_count + deep_dive_count + abandoned_count
 
     weekly_heatmap: dict[int, dict[int, int]] = {
         dow: {h: weekly[dow].get(h, 0) for h in range(24)}
@@ -300,6 +440,8 @@ def _run_stopwatch(browsing_history: list[dict], exclude_hours: tuple[int, ...] 
         "sandbox_views": sandbox_count,
         "deep_lingers": linger_count,
         "deep_dives": deep_dive_count,
+        "abandoned": abandoned_count,  # WP-1.3
+        "abandoned_night": abandoned_night_count,  # WP-1.3 (persona night adjustment)
         "night_count": night_count,
         "night_lingers": night_lingers,
         "max_consecutive_skips": max_consecutive_skips,
@@ -308,15 +450,241 @@ def _run_stopwatch(browsing_history: list[dict], exclude_hours: tuple[int, ...] 
         "_sandbox_links": sandbox_links,
         "_linger_links": linger_links,
         "_deep_dive_links": deep_dive_links,
+        "_abandoned_links": abandoned_links,  # WP-1.3
         "hourly_heatmap": {str(h): hourly.get(h, 0) for h in range(24)},
         "weekly_heatmap": weekly_heatmap,
         "monthly_skip_rates": monthly_skip_rates,
+        "temporal_granularity": granularity,  # WP-1.4
+        "period_data": {p: dict(period_data[p]) for p in sorted(period_data.keys())},  # WP-1.4
         "linger_events": linger_events,
         "graveyard_events": graveyard_events,
         "sandbox_events": sandbox_events,
         "night_linger_events": night_linger_events,
         "deep_dive_events": deep_dive_events,
+        "data_start_month": entries[0]["dt"].strftime("%B %Y") if entries else None,
     }
+
+
+# WP-1.3 phantom-session detection (asleep-autoplay). A run of >=10 consecutive
+# night-hour videos at a steady 30-180s autoplay cadence with ZERO engagement in
+# the window is almost certainly the app playing to an empty room. Retained as an
+# artifact; the videos stay in raw buckets but are pulled from persona scoring.
+PHANTOM_MIN_RUN = 10
+PHANTOM_DELTA_MIN = 30.0
+PHANTOM_DELTA_MAX = 180.0
+
+
+def _is_night(hour: int) -> bool:
+    return hour >= 23 or hour < 4
+
+
+def _detect_phantom_sessions(browsing_history: list[dict], engagement_times: list) -> dict:
+    """Second pass over the ordered history for phantom (asleep-autoplay) runs.
+
+    `engagement_times` is a sorted list of datetimes (likes/faves/shares/comments);
+    a run is only phantom if NONE fall within its [start, end] window.
+    """
+    entries: list[dict] = []
+    for item in browsing_history:
+        dt = _parse_date(item.get("date", ""))
+        if dt:
+            entries.append({"dt": dt, "link": item.get("link", "")})
+    entries.sort(key=lambda x: x["dt"])
+    eng = sorted(engagement_times)
+
+    sessions: list[dict] = []
+    phantom_links: set[str] = set()
+    n = len(entries)
+    i = 0
+    while i < n:
+        # Extend while entry j is a night-hour view with a 30–180s onward delta —
+        # i.e. every video in [i, j-1] is a night linger in steady autoplay cadence.
+        j = i
+        while (j + 1 < n
+               and _is_night(entries[j]["dt"].hour)
+               and PHANTOM_DELTA_MIN <= (entries[j + 1]["dt"] - entries[j]["dt"]).total_seconds() <= PHANTOM_DELTA_MAX):
+            j += 1
+        run_len = j - i  # count of qualifying (night-linger) videos [i, j-1]
+        if run_len >= PHANTOM_MIN_RUN:
+            start, end = entries[i]["dt"], entries[j]["dt"]  # end = landing view
+            if not any(start <= t <= end for t in eng):
+                hours = (end - start).total_seconds() / 3600.0
+                sessions.append({
+                    "start": start.strftime("%Y-%m-%d %H:%M:%S"),
+                    "end": end.strftime("%Y-%m-%d %H:%M:%S"),
+                    "night": start.strftime("%Y-%m-%d"),
+                    "video_count": run_len,
+                    "hours": round(hours, 2),
+                })
+                for k in range(i, j):
+                    if entries[k]["link"]:
+                        phantom_links.add(entries[k]["link"])
+        i = max(j, i + 1)
+
+    phantom_video_count = sum(s["video_count"] for s in sessions)
+    return {
+        "phantom_sessions": sessions,
+        "phantom_video_count": phantom_video_count,
+        "phantom_nights": len({s["night"] for s in sessions}),
+        "excluded_hours": round(sum(s["hours"] for s in sessions), 2),
+        "_phantom_links": phantom_links,
+    }
+
+
+ADAPTIVE_ANOMALY_FLOOR_S = 1200  # 20-minute floor
+
+
+def _adaptive_anomaly(browsing_history: list[dict]) -> dict:
+    """Per-user adaptive long-gap flag: count of inter-video gaps strictly beyond
+    the user's own p99 delta (nearest-rank), floored at 20 min. Additive metadata —
+    it does NOT move the fixed 1200s sleep-scrub cutoff. Sample = all non-negative
+    deltas (INCLUDING the long gaps), so a heavy-tail user gets a higher personal
+    bar and a sparse-tail user falls back to the 1200s floor.
+    """
+    dts: list = []
+    for item in browsing_history:
+        dt = _parse_date(item.get("date", ""))
+        if dt:
+            dts.append(dt)
+    dts.sort()
+    deltas = [(dts[i + 1] - dts[i]).total_seconds() for i in range(len(dts) - 1)]
+    deltas = [d for d in deltas if d >= 0]  # drop clock anomalies (negative)
+    if not deltas:
+        return {"p99_delta_s": 0.0, "adaptive_anomaly_threshold_s": float(ADAPTIVE_ANOMALY_FLOOR_S),
+                "adaptive_anomaly_count": 0}
+    ordered = sorted(deltas)
+    n = len(ordered)
+    idx = (99 * n + 99) // 100 - 1          # ceil(0.99 * n) - 1, integer nearest-rank
+    idx = max(0, min(idx, n - 1))
+    p99 = ordered[idx]
+    threshold = max(p99, float(ADAPTIVE_ANOMALY_FLOOR_S))
+    count = sum(1 for d in deltas if d > threshold)
+    return {"p99_delta_s": p99, "adaptive_anomaly_threshold_s": threshold, "adaptive_anomaly_count": count}
+
+
+def _parse_date_to_month(ev: dict) -> str | None:
+    return ev.get("_month")
+
+
+def _infer_sleep_window(hourly_heatmap: dict) -> str:
+    """Find the 4-hour consecutive dead zone — most likely the sleep window."""
+    hours = [hourly_heatmap.get(str(h), hourly_heatmap.get(h, 0)) for h in range(24)]
+    if not any(hours):
+        return "Unknown"
+    doubled = hours * 2
+    WINDOW = 4
+    best_start, best_sum = 0, float("inf")
+    for s in range(24):
+        w = sum(doubled[s : s + WINDOW])
+        if w < best_sum:
+            best_sum, best_start = w, s
+    def _h(h: int) -> str:
+        h = h % 24
+        if h == 0: return "12 AM"
+        if h < 12: return f"{h} AM"
+        if h == 12: return "12 PM"
+        return f"{h - 12} PM"
+    return f"{_h(best_start)} – {_h(best_start + WINDOW)}"
+
+
+def _algorithm_drift(monthly_skip_rates: dict) -> dict:
+    """Compare first-half vs second-half skip rates to detect filter-bubble tightening."""
+    months = sorted(monthly_skip_rates.keys())
+    if len(months) < 4:
+        return {"detectable": False, "direction": None, "delta_pct": None}
+    mid = len(months) // 2
+    early = [monthly_skip_rates[m] for m in months[:mid]]
+    recent = [monthly_skip_rates[m] for m in months[mid:]]
+    avg_early = sum(early) / len(early)
+    avg_recent = sum(recent) / len(recent)
+    delta = round(avg_recent - avg_early, 1)  # negative = fewer skips lately = tighter loop
+    if delta < -4:
+        direction = "tightening"
+    elif delta > 4:
+        direction = "loosening"
+    else:
+        direction = "stable"
+    return {
+        "detectable": True,
+        "direction": direction,
+        "delta_pct": delta,
+        "early_avg": round(avg_early, 1),
+        "recent_avg": round(avg_recent, 1),
+    }
+
+
+def _monthly_creator_trends(linger_events: list[dict], link_handle_map: dict[str, str] | None = None) -> dict:
+    """Top-5 lingered creators per month (resolved handle → count)."""
+    monthly_creators: dict[str, dict[str, int]] = defaultdict(lambda: defaultdict(int))
+    for ev in linger_events:
+        handle = _handle_from_link(ev["link"], link_handle_map)
+        if handle:
+            mk = _parse_date_to_month(ev)
+            if mk:
+                monthly_creators[mk][handle] += 1
+    return {
+        mk: [{"handle": h, "count": c} for h, c in sorted(handles.items(), key=lambda x: -x[1])[:5]]
+        for mk, handles in sorted(monthly_creators.items())
+    }
+
+
+def _monthly_topic_trends(searches_raw: list[dict], comments: list[dict]) -> dict:
+    """Top-8 topics per month: whole search terms (weight 3) + comment words."""
+    monthly_topics: dict[str, Counter] = defaultdict(Counter)
+    for s in searches_raw:
+        term = (s.get("term") or "").lower().strip()
+        dt = _parse_date(s.get("date", ""))
+        if term and dt and term not in _FOOTPRINT_STOP and len(term) > 2:
+            mk = dt.strftime("%Y-%m")
+            monthly_topics[mk][term] += 3  # searches weighted higher
+
+    for c in comments:
+        text = (c.get("comment") or "").lower()
+        dt = _parse_date(c.get("date", ""))
+        if text and dt:
+            mk = dt.strftime("%Y-%m")
+            for word in re.findall(r"[a-z]{3,}", text):
+                if word not in _FOOTPRINT_STOP:
+                    monthly_topics[mk][word] += 1
+
+    return {
+        mk: [{"term": t, "count": c} for t, c in counter.most_common(8)]
+        for mk, counter in sorted(monthly_topics.items())
+    }
+
+
+def _sandbox_retests(sandbox_events: list[dict], link_handle_map: dict[str, str] | None = None) -> list[dict]:
+    """Creators the algorithm re-served in the sandbox tier ≥2 times."""
+    sandbox_creator_counts: Counter = Counter()
+    for ev in sandbox_events:
+        h = _handle_from_link(ev.get("link", ""), link_handle_map)
+        if h:
+            sandbox_creator_counts[h] += 1
+    return [
+        {"handle": h, "times_served": c}
+        for h, c in sandbox_creator_counts.most_common(8)
+        if c >= 2
+    ]
+
+
+def _skip_anomalies(monthly_skip_rates: dict) -> list[dict]:
+    """Months whose skip rate deviates ≥3 points from the leave-one-out baseline."""
+    skip_months = sorted(monthly_skip_rates.keys())
+    anomalies: list[dict] = []
+    if len(skip_months) >= 3:
+        baseline_months = skip_months[:-1]
+        baseline_avg = sum(monthly_skip_rates[m] for m in baseline_months) / len(baseline_months)
+        for mk in skip_months:
+            delta = monthly_skip_rates[mk] - baseline_avg
+            if abs(delta) >= 3.0:
+                anomalies.append({
+                    "month": mk,
+                    "skip_rate": monthly_skip_rates[mk],
+                    "baseline_avg": round(baseline_avg, 1),
+                    "delta": round(delta, 1),
+                    "direction": "spike" if delta > 0 else "dip",
+                })
+    return anomalies
 
 
 def _compute_peak_hour(hourly_heatmap: dict) -> str:
@@ -548,9 +916,18 @@ def _detect_cognitive_dissonance(traits: dict, sw: dict, behavioral_nodes: dict,
     return {"detected": False, "label": None, "note": None}
 
 
-def _determine_primary_archetype(behavioral_nodes: dict, parsed: dict, sw: dict, vibe_cluster: list[dict]) -> dict:
-    """Synthesize high-level metrics into a deterministic primary archetype."""
-    traits = _detect_atomic_traits(sw, sw["total_conscious_videos"], parsed, behavioral_nodes.get("linger_rate_percentage", 0), behavioral_nodes.get("night_shift_ratio", 0), vibe_cluster)
+def _determine_primary_archetype(behavioral_nodes: dict, parsed: dict, sw: dict, vibe_cluster: list[dict],
+                                 persona_conscious: int | None = None, persona_linger_rate: float | None = None,
+                                 persona_night_shift: float | None = None) -> dict:
+    """Synthesize high-level metrics into a deterministic primary archetype.
+
+    WP-1.3: persona_* inputs (which exclude `abandoned`/`phantom` events) override
+    the raw values when supplied; they default to the full-population metrics.
+    """
+    pc = persona_conscious if persona_conscious is not None else sw["total_conscious_videos"]
+    plr = persona_linger_rate if persona_linger_rate is not None else behavioral_nodes.get("linger_rate_percentage", 0)
+    pns = persona_night_shift if persona_night_shift is not None else behavioral_nodes.get("night_shift_ratio", 0)
+    traits = _detect_atomic_traits(sw, pc, parsed, plr, pns, vibe_cluster)
     sub_archetypes = _synthesize_sub_archetypes(traits, behavioral_nodes)
     dissonance = _detect_cognitive_dissonance(traits, sw, behavioral_nodes, parsed, vibe_cluster)
     primary_name = sub_archetypes[0]["name"] if sub_archetypes else "The Balanced Viewer"
@@ -569,8 +946,23 @@ def build_ghost_profile(parsed: dict, exclude_hours: tuple[int, ...] = (), link_
     split, archetype — re-derive from real creators once oEmbed has resolved them.
     """
     active_history = parsed.get("watch_history_active", [])
-    sw = _run_stopwatch(active_history, exclude_hours=exclude_hours)
-    
+    # WP-1.3 corroboration: video ids the user engaged with (like/fav/share/comment).
+    # A long (300–1200s) gap on one of these is a real deep-dive, not abandonment.
+    engaged_video_ids: set[str] = set()
+    engagement_times: list = []  # WP-1.3 phantom detection: engagement timestamps
+    for coll, key in ((parsed.get("likes", []), "link"), (parsed.get("favorites", []), "link"),
+                      (parsed.get("shares", []), "link"), (parsed.get("comments", []), "url")):
+        for item in coll:
+            evid = oembed.extract_video_id(item.get(key, "") or item.get("link", ""))
+            if evid:
+                engaged_video_ids.add(evid)
+            edt = _parse_date(item.get("date", ""))
+            if edt:
+                engagement_times.append(edt)
+    sw = _run_stopwatch(active_history, exclude_hours=exclude_hours, engaged_video_ids=engaged_video_ids)
+    phantom = _detect_phantom_sessions(active_history, engagement_times)
+    anomaly = _adaptive_anomaly(active_history)
+
     # Pre-map links to titles for richer creator context
     link_to_title = {item.get("link", ""): item.get("title", "") for item in active_history if item.get("link")}
 
@@ -584,6 +976,16 @@ def build_ghost_profile(parsed: dict, exclude_hours: tuple[int, ...] = (), link_
     linger_rate_pct = (sustained_and_dives / max(total_conscious, 1)) * 100
     night_shift_pct = (sw["night_count"] / max(total_conscious, 1)) * 100
     night_linger_pct = (sw["night_lingers"] / max(sustained_and_dives, 1)) * 100
+
+    # WP-1.3: persona-dimension inputs exclude `abandoned` (autoplay-while-away) and
+    # `phantom` (asleep-autoplay) videos — they don't reflect intent. Displayed
+    # metrics above keep the full population. Phantom videos are night lingers, so
+    # they come out of the sustained (numerator) and night counts too.
+    phantom_n = phantom["phantom_video_count"]
+    persona_conscious = max(total_conscious - sw["abandoned"] - phantom_n, 0)
+    persona_sustained = max(sustained_and_dives - phantom_n, 0)
+    persona_linger_rate = (persona_sustained / max(persona_conscious, 1)) * 100
+    persona_night_shift = (max(sw["night_count"] - sw["abandoned_night"] - phantom_n, 0) / max(persona_conscious, 1)) * 100
 
     vibe_cluster = resolve_vibe_cluster(_count_creators(sw["_linger_links"], limit=20, count_key="linger_count", link_to_title=link_to_title, link_handle_map=link_handle_map))
     graveyard = resolve_vibe_cluster(_count_creators(sw["_graveyard_links"], limit=20, count_key="skip_count", link_to_title=link_to_title, link_handle_map=link_handle_map))
@@ -605,6 +1007,7 @@ def build_ghost_profile(parsed: dict, exclude_hours: tuple[int, ...] = (), link_
 
     behavioral_nodes = {
         "peak_hour": _compute_peak_hour(sw["hourly_heatmap"]),
+        "inferred_sleep_window": _infer_sleep_window(sw["hourly_heatmap"]),
         "skip_rate_percentage": round((sw["graveyard_skips"] / max(total_conscious, 1)) * 100, 1),
         "linger_rate_percentage": round(linger_rate_pct, 1),
         "night_shift_ratio": round(night_shift_pct, 1),
@@ -613,8 +1016,10 @@ def build_ghost_profile(parsed: dict, exclude_hours: tuple[int, ...] = (), link_
         "social_graph_algorithmic_pct": algorithmic_pct,
         "social_graph_followed_pct": followed_pct,
     }
+    algorithm_drift = _algorithm_drift(sw.get("monthly_skip_rates", {}))
 
-    primary_archetype = _determine_primary_archetype(behavioral_nodes, parsed, sw, vibe_cluster)
+    primary_archetype = _determine_primary_archetype(behavioral_nodes, parsed, sw, vibe_cluster,
+                                                      persona_conscious, persona_linger_rate, persona_night_shift)
 
     searches_raw = parsed.get("searches", [])
     search_hour_hist = defaultdict(int)
@@ -635,6 +1040,40 @@ def build_ghost_profile(parsed: dict, exclude_hours: tuple[int, ...] = (), link_
     implicit_total = sustained_and_dives
     
     echo = _echo_chamber_index(sw["_linger_links"], link_handle_map)
+    echo_split = _echo_chamber_split(sw["linger_events"], link_handle_map)
+
+    # ── WP-1.4: per-period temporal series (month, or week when coverage < 90d) ──
+    gran = sw["temporal_granularity"]
+    pdata = sw["period_data"]
+    bucket_series = _temporal_series(gran, [
+        {"period": p, "value": {k: d[k] for k in ("graveyard", "sandbox", "linger", "deep_dive", "abandoned", "total")}}
+        for p, d in pdata.items()
+    ])
+    night_shift_series = _temporal_series(gran, [
+        {"period": p, "value": round(d["night"] / d["total"] * 100, 1) if d["total"] > 0 else 0.0}
+        for p, d in pdata.items()
+    ])
+    explicit_by_period: defaultdict[str, int] = defaultdict(int)
+    for item in list(parsed.get("likes", [])) + list(parsed.get("comments", [])):
+        edt = _parse_date(item.get("date", ""))
+        if edt:
+            explicit_by_period[_period_key(edt, gran)] += 1
+    ei_periods = sorted(set(explicit_by_period) | set(pdata.keys()))
+    ei_points = []
+    for p in ei_periods:
+        implicit_p = pdata.get(p, {}).get("linger", 0) + pdata.get(p, {}).get("deep_dive", 0)
+        ratio = round(explicit_by_period.get(p, 0) / implicit_p, 3) if implicit_p > 0 else 0.0
+        ei_points.append({"period": p, "value": ratio})
+    explicit_implicit_series = _temporal_series(gran, ei_points)
+
+    # ── Temporal / monthly features ──────────────────────────────────────────
+    monthly_creator_trends = _monthly_creator_trends(sw["linger_events"], link_handle_map)
+    monthly_topic_trends = _monthly_topic_trends(searches_raw, parsed.get("comments", []))
+    sandbox_retests = _sandbox_retests(sw["sandbox_events"], link_handle_map)
+    anomalies = _skip_anomalies(sw.get("monthly_skip_rates", {}))
+
+    # ── Data cliff (start of watch history) ──────────────────────────────────
+    data_start = sw.get("data_start_month")
 
     hourly_sorted = sorted(sw["hourly_heatmap"].items(), key=lambda x: x[1], reverse=True)
     top_hours = sorted([int(h) for h, v in hourly_sorted[:3] if v > 0])
@@ -650,6 +1089,7 @@ def build_ghost_profile(parsed: dict, exclude_hours: tuple[int, ...] = (), link_
     sw["_sandbox_links"] = list(sw["_sandbox_links"])
     sw["_linger_links"] = list(sw["_linger_links"])
     sw["_deep_dive_links"] = list(sw["_deep_dive_links"])
+    sw["_abandoned_links"] = list(sw["_abandoned_links"])
 
     return {
         "status": "success",
@@ -663,12 +1103,30 @@ def build_ghost_profile(parsed: dict, exclude_hours: tuple[int, ...] = (), link_
             "explicit_vs_implicit_ratio": round(explicit_total / implicit_total, 3) if implicit_total > 0 else 0.0,
             "explicit_actions_count": explicit_total,
             "implicit_linger_count": implicit_total,
-            "echo_chamber_index_pct": echo["pct"],
+            "echo_chamber_index_pct": echo["pct"],  # WP-1.7: deprecated alias, kept one release
             "echo_chamber_basis": echo["basis"],
             "echo_chamber_distinct_creators": echo["distinct_creators"],
+            "echo_split": echo_split,  # WP-1.7: daily_concentration / cluster_churn / true_bubble
             "top_creator_handles": [c.get("handle") for c in vibe_cluster[:5]],
         },
+        "temporal_series": {  # WP-1.4: per-period series; cluster_shares deferred to WP-2.1
+            "granularity": gran,
+            "stopwatch_buckets": bucket_series,
+            "night_shift_ratio": night_shift_series,
+            "explicit_vs_implicit_ratio": explicit_implicit_series,
+        },
         "night_shift": {"percentage": round(night_shift_pct, 1), "count": sw["night_count"], "window": "23:00 – 04:00"},
+        "sleep_scrub": {  # WP-1.3 scrub summary stats
+            "sleep_scrubbed": sw["sleep_scrubbed"],
+            "abandoned": sw["abandoned"],
+            "phantom_sessions": phantom["phantom_sessions"],
+            "phantom_nights": phantom["phantom_nights"],
+            "phantom_video_count": phantom["phantom_video_count"],
+            "excluded_hours": phantom["excluded_hours"],
+            "p99_delta_s": anomaly["p99_delta_s"],
+            "adaptive_anomaly_threshold_s": anomaly["adaptive_anomaly_threshold_s"],
+            "adaptive_anomaly_count": anomaly["adaptive_anomaly_count"],
+        },
         "digital_footprint": {
             "login_count": len(parsed.get("login_history", [])),
             "unique_ips": parsed.get("login_history_stats", {}).get("unique_ips", 0),
@@ -707,4 +1165,10 @@ def build_ghost_profile(parsed: dict, exclude_hours: tuple[int, ...] = (), link_
         "comment_voice": comment_voice,
         "share_behavior": share_behavior,
         "transparency_gap": transparency_gap,
+        "algorithm_drift": algorithm_drift,
+        "monthly_creator_trends": monthly_creator_trends,
+        "monthly_topic_trends": monthly_topic_trends,
+        "sandbox_retests": sandbox_retests,
+        "skip_anomalies": anomalies,
+        "data_cliff": {"start_month": data_start, "window_days": 180},
     }
