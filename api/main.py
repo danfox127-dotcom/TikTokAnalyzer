@@ -72,6 +72,8 @@ _metrics = {
     "enrich_requests_total": 0,
     "enrich_requested_videos_total": 0,
     "enrich_fetched_videos_total": 0,
+    "topics_requests_total": 0,
+    "topics_tokens_total": 0,
 }
 
 @app.get("/health")
@@ -303,6 +305,30 @@ async def generate_pillars(
     if not pillars:
         raise HTTPException(status_code=500, detail="LLM did not return valid pillars.")
     return {"pillars": pillars}
+
+
+class TopicsRequest(BaseModel):
+    videos: list[dict]  # [{"video_id": str, "weight": float}]
+
+
+@app.post("/api/topics")
+async def topics(
+    body: TopicsRequest,
+    api_key: str = Query(...),
+    provider: str = Query("claude", pattern="^(claude|gemini-pro|gemini-flash)$"),
+):
+    """WP-2.1 Semantic Topic Engine (BYOK). Client sends {video_id, weight} pairs;
+    we fetch public titles via oEmbed and relay to the user's own LLM for
+    structured clustering. See utils/topic_engine.py."""
+    from utils import topic_engine
+    videos = [v for v in body.videos if v.get("video_id")][:800]
+    _metrics["topics_requests_total"] += 1
+    try:
+        result = await topic_engine.cluster_topics(videos, api_key, provider)
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"Topic clustering failed: {exc}")
+    _metrics["topics_tokens_total"] += (result.get("usage") or {}).get("output_tokens", 0)
+    return result
 
 
 @app.post("/api/export/llm")
