@@ -10,6 +10,8 @@ import { LLMAnalysisView } from "./components/LLMAnalysisView";
 import { runEngineOffThread } from "./utils/engineWorker";
 import { extractVideoId } from "../engine/videoId";
 import type { NarrativeBlock } from "./types/narrative";
+import { resolveTopicResult, readSavedKey } from "./utils/topicStep";
+import { buildTargetingCard } from "../engine/targetingCard";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8005";
 // Browser-local mode (Gate 0) is the DEFAULT: the whole deterministic engine runs
@@ -98,9 +100,26 @@ async function analyzeLocal(file: File): Promise<any> {
     }
   }
 
+  // WP-2.2 — topics step + Targeting Card. BYOK → /api/topics; else keyword
+  // fallback (which gates the card to insufficient_evidence). Best-effort: any
+  // failure leaves the card gated, never blocks the dossier.
+  let targeting_card;
+  try {
+    const topicResult = await resolveTopicResult({
+      topicCandidates: out.topicCandidates ?? [],
+      profile: out.profile,
+      getKey: () => readSavedKey((k) => localStorage.getItem(k)),
+      post: postEnrich,
+    });
+    targeting_card = buildTargetingCard(topicResult, out.profile);
+  } catch {
+    targeting_card = undefined;
+  }
+
   return {
     ...out.profile, narrative_blocks: out.narratives,
     coverage: out.coverage, gates: out.gates, claims: out.claims, schema: out.schema,
+    targeting_card,
     _local_mode: true,
   };
 }

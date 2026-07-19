@@ -19,6 +19,7 @@ import { CreatorGraph } from "./CreatorGraph";
 import { LLMAnalysisView } from "./LLMAnalysisView";
 import { FourPillarsPanel } from "./FourPillarsPanel";
 import { LocalModeBanner } from "./LocalModeBanner";
+import { TargetingCard } from "./TargetingCard";
 
 // We'll import existing visualizations or build new ones inside these tabs.
 // For now, let's define the tab types.
@@ -973,6 +974,13 @@ export function ForensicDashboard({ profile, onReset, sourceFile }: Props) {
                         No advertiser audience labels were present in this export.
                       </div>
                     )}
+                  </DashboardPanel>
+                </div>
+
+                <div className="md:col-span-2">
+                  <DashboardPanel label="09 · Targeting Card" accent={ACCENT}>
+                    <SectionTitle>What Advertisers Can Target You By</SectionTitle>
+                    <TargetingCard result={profile.targeting_card} />
                   </DashboardPanel>
                 </div>
 

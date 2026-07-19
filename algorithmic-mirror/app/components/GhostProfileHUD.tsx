@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { ArrowLeft } from "lucide-react";
 import { DownloadExportButton } from "./DownloadExportButton";
 import { CreatorGraph } from "./CreatorGraph";
+import type { TargetingCardResult } from "../../engine/targetingCard";
 
 export interface EnrichmentTarget {
   video_id: string;
@@ -54,6 +55,8 @@ export interface GhostProfile {
   // Set when the profile was produced by the browser-local engine (page.tsx
   // analyzeLocal). Drives the LocalModeBanner provenance strip.
   _local_mode?: boolean;
+  // WP-2.2 — advertiser targeting segments (present in browser-local payloads).
+  targeting_card?: TargetingCardResult;
   stopwatch_metrics: {
     total_conscious_videos: number;
     sleep_anomalies_scrubbed: number;
