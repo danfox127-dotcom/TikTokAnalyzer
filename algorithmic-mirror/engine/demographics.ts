@@ -168,7 +168,8 @@ export function buildInterestsCard(input: DemographicInput): DemographicCard {
     };
   }
   const categories = tc.claims.slice(0, 5).map((c: any) => String(c?.value?.category ?? "")).filter(Boolean);
-  const confidence = Math.max(...tc.claims.map((c: any) => Number(c?.confidence ?? 0)));
+  const confs = tc.claims.map((c: any) => Number(c?.confidence ?? 0)).filter((n: number) => Number.isFinite(n));
+  const confidence = confs.length ? Math.max(...confs) : 0.5;
   const claim: Claim = {
     id: "demo.interests", tier: "inferred", value: categories, confidence,
     method: "Top advertiser-taxonomy segments from your watched-video topics (see the Targeting Card).",

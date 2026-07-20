@@ -18,7 +18,13 @@ const LABELS: Record<DemographicCard["category"], string> = {
 };
 
 function renderValue(v: unknown): string {
-  if (Array.isArray(v)) return v.join(", ");
+  if (Array.isArray(v)) {
+    return v
+      .map((x) => (x && typeof x === "object" && "city" in x
+        ? `${(x as any).city} (${(x as any).days}d)`
+        : String(x)))
+      .join(", ");
+  }
   if (v && typeof v === "object") return JSON.stringify(v);
   return String(v);
 }

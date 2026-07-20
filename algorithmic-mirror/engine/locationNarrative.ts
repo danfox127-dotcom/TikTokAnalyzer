@@ -83,13 +83,13 @@ export function buildLocationCard(input: DemographicInput): DemographicCard {
 
   const claims: Claim[] = [{
     id: "demo.location.home", tier: "derived", value: home,
-    method: "Most frequent city among your 11pm–4am logins.",
+    method: "Most frequent city among your 11pm–4am (UTC) logins.",
     evidence: [{ kind: "login", note: "night-hours logins" }, cite],
   }];
   if (work && work !== home) {
     claims.push({
       id: "demo.location.work", tier: "derived", value: work,
-      method: "Most frequent city among your 9am–5pm logins.",
+      method: "Most frequent city among your 9am–5pm (UTC) logins.",
       evidence: [{ kind: "login", note: "day-hours logins" }, cite],
     });
   }

@@ -14,6 +14,19 @@ const ok: DemographicModuleResult = {
   ],
 };
 
+const withTrips: DemographicModuleResult = {
+  moduleId: "demographics", status: "ok",
+  cards: [
+    { category: "location", status: "ok", tiktok_infers: { ...cite, note: "TikTok is documented to infer location" },
+      claims: [{
+        id: "demo.location.trips", tier: "derived",
+        value: [{ city: "Miami", start: "2026-01-04", end: "2026-01-05", days: 2 }],
+        method: "Detected trips from geo-resolved logins.",
+        evidence: [{ kind: "login", note: "trip detection" }, cite],
+      }] },
+  ],
+};
+
 describe("DemographicPanel", () => {
   test("renders each card with the PIPEDA line and the reconstructed value / gated state", () => {
     render(<DemographicPanel result={ok} />);
@@ -21,6 +34,12 @@ describe("DemographicPanel", () => {
     expect(screen.getByText("female")).toBeInTheDocument();          // ok card value
     expect(screen.getByText(/recorded/i)).toBeInTheDocument();       // tier chip
     expect(screen.getByText(/geo-resolved days/i)).toBeInTheDocument(); // gated card requirements
+  });
+
+  test("location card with trips claim renders the city name, not [object Object]", () => {
+    render(<DemographicPanel result={withTrips} />);
+    expect(screen.getByText(/Miami/)).toBeInTheDocument();
+    expect(screen.queryByText(/object Object/)).toBeNull();
   });
 
   test("module error → a plain error note", () => {

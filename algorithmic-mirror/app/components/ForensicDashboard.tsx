@@ -1126,12 +1126,14 @@ export function ForensicDashboard({ profile, onReset, sourceFile }: Props) {
                   </DashboardPanel>
                 )}
 
-                <div className="md:col-span-2">
-                  <DashboardPanel label="13 · Demographic Reconstruction" accent={ACCENT}>
-                    <SectionTitle>What TikTok Infers About You</SectionTitle>
-                    <DemographicPanel result={profile.demographics} />
-                  </DashboardPanel>
-                </div>
+                {profile.demographics && (
+                  <div className="md:col-span-2">
+                    <DashboardPanel label="13 · Demographic Reconstruction" accent={ACCENT}>
+                      <SectionTitle>What TikTok Infers About You</SectionTitle>
+                      <DemographicPanel result={profile.demographics} />
+                    </DashboardPanel>
+                  </div>
+                )}
               </div>
             )}
 
