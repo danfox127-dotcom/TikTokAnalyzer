@@ -127,13 +127,46 @@ export function buildGenderCard(input: DemographicInput): DemographicCard {
   return { category: "gender", status: "ok", claims: [claim], tiktok_infers: cite };
 }
 
+// Category substrings that signal higher spending power (income proxy).
+const HIGH_VALUE_CATEGORIES = ["financial", "finance", "luxury", "real estate", "investment", "wealth"];
+
+export function buildSpendingCard(input: DemographicInput): DemographicCard {
+  const cite = pipedaCitation("spending");
+  const ad = input.profile?.ad_profile ?? {};
+  const orders = Number(ad.shop_order_count ?? 0);
+  const browsing = Number(ad.product_browsing_count ?? 0);
+  const segCats = (input.targeting_card?.claims ?? [])
+    .map((c: any) => String(c?.value?.category ?? "").toLowerCase());
+  const highValue = segCats.some((c: string) => HIGH_VALUE_CATEGORIES.some((h) => c.includes(h)));
+
+  if (orders === 0 && browsing === 0 && !highValue) {
+    return {
+      category: "spending", status: "insufficient_evidence", claims: [], tiktok_infers: cite,
+      requirements: { needed: "shop orders, product browsing, or a high-value interest", had: "no commerce footprint" },
+    };
+  }
+
+  let level = "mid";
+  if (orders >= 5 && highValue) level = "high";
+  else if (orders === 0 && browsing <= 2 && !highValue) level = "low";
+
+  const claim: Claim = {
+    id: "demo.spending", tier: "inferred", value: level, confidence: 0.3,
+    method: `Conservative proxy from ${orders} shop orders, ${browsing} products browsed${highValue ? ", high-value interests present" : ""}.`,
+    evidence: [{ kind: "order", note: `${orders} orders / ${browsing} browsed` }, cite],
+  };
+  return { category: "spending", status: "ok", claims: [claim], tiktok_infers: cite };
+}
+
 export function buildDemographics(input: DemographicInput): DemographicModuleResult {
   if (!input || !input.parsed || typeof input.parsed !== "object") {
     return { moduleId: "demographics", status: "error", error: "malformed input", cards: [] };
   }
   // Cards are added by later tasks in the spec's stable order:
   // [interests, location, age, gender, spending].
-  const cards: DemographicCard[] = [buildLocationCard(input), buildAgeCard(input), buildGenderCard(input)];
+  const cards: DemographicCard[] = [
+    buildLocationCard(input), buildAgeCard(input), buildGenderCard(input), buildSpendingCard(input),
+  ];
   const status: DemographicModuleResult["status"] = cards.some((c) => c.status === "ok")
     ? "ok" : "insufficient_evidence";
   return { moduleId: "demographics", status, cards };

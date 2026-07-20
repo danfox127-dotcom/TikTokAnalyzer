@@ -1,5 +1,5 @@
 // algorithmic-mirror/engine/__tests__/demographics.test.ts
-import { buildDemographics, buildGenderCard, ageToBracket, PIPEDA_CITATION } from "../demographics";
+import { buildDemographics, buildGenderCard, ageToBracket, PIPEDA_CITATION, buildSpendingCard } from "../demographics";
 import { buildAgeCard, ageFromBirthDate } from "../demographics";
 import { validateClaims } from "../claims";
 
@@ -78,5 +78,37 @@ describe("demographics — age", () => {
     const card = buildAgeCard({ parsed: { birth_date: "" }, profile: {}, now: NOW });
     expect(card.status).toBe("insufficient_evidence");
     expect(card.claims).toEqual([]);
+  });
+});
+
+const seg = (category: string) => ({ id: `targeting.segment.${category}`, tier: "inferred", confidence: 0.7,
+  evidence: [{ kind: "video", id: "1" }], method: "m", value: { category } });
+const tc = (cats: string[]) => ({ moduleId: "targeting_card", status: "ok", taxonomy_version: "v",
+  counts: { declared_ad_interest_count: 0, segment_count: cats.length, confirmed_count: 0 },
+  claims: cats.map(seg) });
+
+describe("demographics — spending", () => {
+  test("many orders + a high-value interest → high, inferred, conf 0.3", () => {
+    const card = buildSpendingCard({
+      parsed: {}, profile: { ad_profile: { shop_order_count: 6, product_browsing_count: 10 } },
+      targeting_card: tc(["Financial Services"]) as any,
+    });
+    expect(card.status).toBe("ok");
+    expect(card.claims[0].value).toBe("high");
+    expect(card.claims[0].tier).toBe("inferred");
+    expect(card.claims[0].confidence).toBe(0.3);
+  });
+
+  test("near-zero footprint → low", () => {
+    const card = buildSpendingCard({
+      parsed: {}, profile: { ad_profile: { shop_order_count: 0, product_browsing_count: 1 } },
+      targeting_card: tc(["Education"]) as any,
+    });
+    expect(card.claims[0].value).toBe("low");
+  });
+
+  test("no orders, no browsing, no high-value interest → insufficient_evidence", () => {
+    const card = buildSpendingCard({ parsed: {}, profile: { ad_profile: {} }, targeting_card: tc(["Education"]) as any });
+    expect(card.status).toBe("insufficient_evidence");
   });
 });
