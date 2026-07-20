@@ -5,6 +5,7 @@ import { ArrowLeft } from "lucide-react";
 import { DownloadExportButton } from "./DownloadExportButton";
 import { CreatorGraph } from "./CreatorGraph";
 import type { TargetingCardResult } from "../../engine/targetingCard";
+import type { DemographicModuleResult } from "../../engine/demographics";
 
 export interface EnrichmentTarget {
   video_id: string;
@@ -57,6 +58,8 @@ export interface GhostProfile {
   _local_mode?: boolean;
   // WP-2.2 — advertiser targeting segments (present in browser-local payloads).
   targeting_card?: TargetingCardResult;
+  // WP-2.3 — the five demographic inference cards (present in browser-local payloads).
+  demographics?: DemographicModuleResult;
   stopwatch_metrics: {
     total_conscious_videos: number;
     sleep_anomalies_scrubbed: number;
