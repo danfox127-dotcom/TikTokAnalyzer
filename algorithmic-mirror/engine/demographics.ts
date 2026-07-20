@@ -6,6 +6,7 @@
  */
 import type { Claim, EvidenceRef } from "./types";
 import type { TargetingCardResult } from "./targetingCard";
+import { parseDate } from "./parseDate";
 
 export const PIPEDA_CITATION = "PIPEDA #2025-003";
 export const AGE_BRACKETS = ["13-17", "18-24", "25-34", "35-44", "45-54", "55+"] as const;
@@ -44,6 +45,70 @@ export function ageToBracket(age: number): string {
   return "55+";
 }
 
+// Heuristic, tunable: category substrings that skew a viewer younger.
+const YOUTH_TOPICS = ["gaming", "video games", "anime", "students", "education"];
+
+export function ageFromBirthDate(birthDate: string, now: Date): number | null {
+  const m = String(birthDate ?? "").match(/(\d{4})/); // first 4-digit run = birth year
+  if (!m) return null;
+  const year = Number(m[1]);
+  if (year < 1900 || year > now.getUTCFullYear()) return null;
+  return now.getUTCFullYear() - year;
+}
+
+function loginSpanDays(parsed: any): number | null {
+  const dates = (parsed?.login_history ?? [])
+    .map((l: any) => parseDate(String(l?.date ?? "")))
+    .filter((d: Date | null): d is Date => d != null);
+  if (dates.length < 2) return null;
+  const times = dates.map((d) => d.getTime());
+  return (Math.max(...times) - Math.min(...times)) / 86400000;
+}
+
+export function buildAgeCard(input: DemographicInput): DemographicCard {
+  const cite = pipedaCitation("age");
+  const now = input.now ?? new Date();
+  const claims: Claim[] = [];
+
+  const age = ageFromBirthDate(input.parsed?.birth_date ?? "", now);
+  if (age != null) {
+    claims.push({
+      id: "demo.age.declared", tier: "recorded", value: ageToBracket(age),
+      method: "Age bracket computed from the declared birth year in your export profile.",
+      evidence: [{ kind: "settings", note: "declared birthDate" }, cite],
+    });
+  }
+
+  const bn = input.profile?.behavioral_nodes ?? {};
+  const nightShift = Number(bn.night_shift_ratio ?? 0); // percentage 0–100
+  const span = loginSpanDays(input.parsed);
+  const segCats = (input.targeting_card?.claims ?? [])
+    .map((c: any) => String(c?.value?.category ?? "").toLowerCase());
+  const youthHit = segCats.some((c: string) => YOUTH_TOPICS.some((y) => c.includes(y)));
+
+  const signals: string[] = [];
+  let idx = 2; // start neutral at "25-34"
+  if (nightShift > 30) { idx -= 1; signals.push(`heavy late-night use (${nightShift}% of activity)`); }
+  if (youthHit) { idx -= 1; signals.push("youth-coded topics in your feed"); }
+  if (span != null && span > 1095) { idx += 1; signals.push("long account tenure"); }
+  if (signals.length) {
+    idx = Math.max(0, Math.min(AGE_BRACKETS.length - 1, idx));
+    claims.push({
+      id: "demo.age.behavioral", tier: "inferred", value: AGE_BRACKETS[idx], confidence: 0.4,
+      method: `Low-confidence behavioral estimate from: ${signals.join("; ")}.`,
+      evidence: [{ kind: "video", note: "behavioral age signals" }, cite],
+    });
+  }
+
+  if (!claims.length) {
+    return {
+      category: "age", status: "insufficient_evidence", claims: [], tiktok_infers: cite,
+      requirements: { needed: "a declared birth year or usable behavioral signals", had: "neither present" },
+    };
+  }
+  return { category: "age", status: "ok", claims, tiktok_infers: cite };
+}
+
 export function buildGenderCard(input: DemographicInput): DemographicCard {
   const cite = pipedaCitation("gender");
   const g = String(input.parsed?.inferred_gender ?? "").trim();
@@ -67,7 +132,7 @@ export function buildDemographics(input: DemographicInput): DemographicModuleRes
   }
   // Cards are added by later tasks in the spec's stable order:
   // [interests, location, age, gender, spending].
-  const cards: DemographicCard[] = [buildGenderCard(input)];
+  const cards: DemographicCard[] = [buildAgeCard(input), buildGenderCard(input)];
   const status: DemographicModuleResult["status"] = cards.some((c) => c.status === "ok")
     ? "ok" : "insufficient_evidence";
   return { moduleId: "demographics", status, cards };
