@@ -71,6 +71,7 @@ describe("demographics — age", () => {
     expect(beh.confidence).toBe(0.4);
     expect(beh.value).toBe("18-24");
     expect(beh.method).toMatch(/late-night/i);
+    expect(validateClaims(card.claims)).toEqual([]);
   });
 
   test("no birthdate and no behavioral signal → insufficient_evidence", () => {

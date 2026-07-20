@@ -57,7 +57,7 @@ export function ageFromBirthDate(birthDate: string, now: Date): number | null {
 }
 
 function loginSpanDays(parsed: any): number | null {
-  const dates = (parsed?.login_history ?? [])
+  const dates: Date[] = (parsed?.login_history ?? [])
     .map((l: any) => parseDate(String(l?.date ?? "")))
     .filter((d: Date | null): d is Date => d != null);
   if (dates.length < 2) return null;
