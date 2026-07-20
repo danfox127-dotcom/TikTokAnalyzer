@@ -1,5 +1,5 @@
 // algorithmic-mirror/engine/__tests__/demographics.test.ts
-import { buildDemographics, buildGenderCard, ageToBracket, PIPEDA_CITATION, buildSpendingCard } from "../demographics";
+import { buildDemographics, buildGenderCard, ageToBracket, PIPEDA_CITATION, buildSpendingCard, buildInterestsCard } from "../demographics";
 import { buildAgeCard, ageFromBirthDate } from "../demographics";
 import { validateClaims } from "../claims";
 
@@ -110,5 +110,28 @@ describe("demographics — spending", () => {
   test("no orders, no browsing, no high-value interest → insufficient_evidence", () => {
     const card = buildSpendingCard({ parsed: {}, profile: { ad_profile: {} }, targeting_card: tc(["Education"]) as any });
     expect(card.status).toBe("insufficient_evidence");
+  });
+});
+
+describe("demographics — interests + full module order", () => {
+  test("ok targeting_card → interests card surfaces its segment categories (inferred)", () => {
+    const card = buildInterestsCard({ parsed: {}, profile: {}, targeting_card: tc(["Education", "Financial Services"]) as any });
+    expect(card.status).toBe("ok");
+    expect(card.claims[0].tier).toBe("inferred");
+    expect(card.claims[0].value).toEqual(["Education", "Financial Services"]);
+    expect(card.claims[0].confidence).toBe(0.7);
+  });
+
+  test("missing / insufficient targeting_card → interests insufficient_evidence", () => {
+    expect(buildInterestsCard({ parsed: {}, profile: {} }).status).toBe("insufficient_evidence");
+    expect(buildInterestsCard({ parsed: {}, profile: {},
+      targeting_card: { moduleId: "targeting_card", status: "insufficient_evidence", taxonomy_version: "v",
+        claims: [], counts: { declared_ad_interest_count: 0, segment_count: 0, confirmed_count: 0 } } as any,
+    }).status).toBe("insufficient_evidence");
+  });
+
+  test("full module: cards are in the stable order interests, location, age, gender, spending", () => {
+    const res = buildDemographics({ parsed: { inferred_gender: "male" }, profile: {}, targeting_card: tc(["Education"]) as any });
+    expect(res.cards.map((c) => c.category)).toEqual(["interests", "location", "age", "gender", "spending"]);
   });
 });

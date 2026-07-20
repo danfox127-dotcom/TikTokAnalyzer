@@ -158,6 +158,25 @@ export function buildSpendingCard(input: DemographicInput): DemographicCard {
   return { category: "spending", status: "ok", claims: [claim], tiktok_infers: cite };
 }
 
+export function buildInterestsCard(input: DemographicInput): DemographicCard {
+  const cite = pipedaCitation("interests");
+  const tc = input.targeting_card;
+  if (!tc || tc.status !== "ok" || !tc.claims?.length) {
+    return {
+      category: "interests", status: "insufficient_evidence", claims: [], tiktok_infers: cite,
+      requirements: { needed: "the Targeting Card (LLM topic pass)", had: tc ? tc.status : "no targeting card" },
+    };
+  }
+  const categories = tc.claims.slice(0, 5).map((c: any) => String(c?.value?.category ?? "")).filter(Boolean);
+  const confidence = Math.max(...tc.claims.map((c: any) => Number(c?.confidence ?? 0)));
+  const claim: Claim = {
+    id: "demo.interests", tier: "inferred", value: categories, confidence,
+    method: "Top advertiser-taxonomy segments from your watched-video topics (see the Targeting Card).",
+    evidence: [{ kind: "video", note: `${tc.claims.length} targeting segments` }, cite],
+  };
+  return { category: "interests", status: "ok", claims: [claim], tiktok_infers: cite };
+}
+
 export function buildDemographics(input: DemographicInput): DemographicModuleResult {
   if (!input || !input.parsed || typeof input.parsed !== "object") {
     return { moduleId: "demographics", status: "error", error: "malformed input", cards: [] };
@@ -165,7 +184,8 @@ export function buildDemographics(input: DemographicInput): DemographicModuleRes
   // Cards are added by later tasks in the spec's stable order:
   // [interests, location, age, gender, spending].
   const cards: DemographicCard[] = [
-    buildLocationCard(input), buildAgeCard(input), buildGenderCard(input), buildSpendingCard(input),
+    buildInterestsCard(input), buildLocationCard(input), buildAgeCard(input),
+    buildGenderCard(input), buildSpendingCard(input),
   ];
   const status: DemographicModuleResult["status"] = cards.some((c) => c.status === "ok")
     ? "ok" : "insufficient_evidence";
