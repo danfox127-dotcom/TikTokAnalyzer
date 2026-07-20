@@ -12,6 +12,7 @@ import { extractVideoId } from "../engine/videoId";
 import type { NarrativeBlock } from "./types/narrative";
 import { resolveTopicResult, readSavedKey } from "./utils/topicStep";
 import { buildTargetingCard } from "../engine/targetingCard";
+import { buildDemographics } from "../engine/demographics";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8005";
 // Browser-local mode (Gate 0) is the DEFAULT: the whole deterministic engine runs
@@ -88,17 +89,22 @@ async function analyzeLocal(file: File): Promise<any> {
     };
   }
 
-  // Best-effort IP geo on the login history (city/country labels). Sends only the
-  // deduped login IPs — strictly less than the whole export the server path uploads.
+  // Geo over ALL login IPs (for the WP-2.3 location card), not just the 25 display
+  // logins. Still sends only IPs — strictly less than the export.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const logins: any[] = out.profile.digital_footprint?.recent_logins ?? [];
-  const ips = [...new Set(logins.map((l) => l?.ip).filter((ip: string): ip is string => !!ip))];
+  const displayLogins: any[] = out.profile.digital_footprint?.recent_logins ?? [];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const allLogins: any[] = out.parsed?.login_history ?? [];
+  const ips = [...new Set([...allLogins, ...displayLogins]
+    .map((l) => l?.ip).filter((ip: string): ip is string => !!ip))];
+  let ipGeo: Record<string, { city: string; country_name: string }> = {};
   if (ips.length) {
     const geoResp = await postEnrich<{ geo: Record<string, { city: string; country_name: string }> }>(
       "/api/geo", { ips });
     if (geoResp?.geo) {
-      for (const l of logins) {
-        const g = geoResp.geo[l.ip];
+      ipGeo = geoResp.geo;
+      for (const l of displayLogins) {
+        const g = ipGeo[l.ip];
         if (g) { l.city = g.city; l.country_name = g.country_name; }
       }
     }
@@ -120,10 +126,22 @@ async function analyzeLocal(file: File): Promise<any> {
     targeting_card = undefined;
   }
 
+  // WP-2.3 — demographic reconstruction (gender/age/location/spending/interests).
+  // Best-effort: any failure leaves demographics undefined, never blocks the dossier.
+  let demographics;
+  try {
+    demographics = buildDemographics({
+      parsed: out.parsed, profile: out.profile, targeting_card, ipGeo, now: new Date(),
+    });
+  } catch {
+    demographics = undefined;
+  }
+
   return {
     ...out.profile, narrative_blocks: out.narratives,
     coverage: out.coverage, gates: out.gates, claims: out.claims, schema: out.schema,
     targeting_card,
+    demographics,
     _local_mode: true,
   };
 }

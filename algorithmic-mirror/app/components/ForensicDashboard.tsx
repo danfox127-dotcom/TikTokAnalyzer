@@ -20,6 +20,7 @@ import { LLMAnalysisView } from "./LLMAnalysisView";
 import { FourPillarsPanel } from "./FourPillarsPanel";
 import { LocalModeBanner } from "./LocalModeBanner";
 import { TargetingCard } from "./TargetingCard";
+import { DemographicPanel } from "./DemographicPanel";
 
 // We'll import existing visualizations or build new ones inside these tabs.
 // For now, let's define the tab types.
@@ -1124,6 +1125,13 @@ export function ForensicDashboard({ profile, onReset, sourceFile }: Props) {
                     </div>
                   </DashboardPanel>
                 )}
+
+                <div className="md:col-span-2">
+                  <DashboardPanel label="13 · Demographic Reconstruction" accent={ACCENT}>
+                    <SectionTitle>What TikTok Infers About You</SectionTitle>
+                    <DemographicPanel result={profile.demographics} />
+                  </DashboardPanel>
+                </div>
               </div>
             )}
 
