@@ -7,6 +7,7 @@
 import type { Claim, EvidenceRef } from "./types";
 import type { TargetingCardResult } from "./targetingCard";
 import { parseDate } from "./parseDate";
+import { buildLocationCard } from "./locationNarrative";
 
 export const PIPEDA_CITATION = "PIPEDA #2025-003";
 export const AGE_BRACKETS = ["13-17", "18-24", "25-34", "35-44", "45-54", "55+"] as const;
@@ -132,7 +133,7 @@ export function buildDemographics(input: DemographicInput): DemographicModuleRes
   }
   // Cards are added by later tasks in the spec's stable order:
   // [interests, location, age, gender, spending].
-  const cards: DemographicCard[] = [buildAgeCard(input), buildGenderCard(input)];
+  const cards: DemographicCard[] = [buildLocationCard(input), buildAgeCard(input), buildGenderCard(input)];
   const status: DemographicModuleResult["status"] = cards.some((c) => c.status === "ok")
     ? "ok" : "insufficient_evidence";
   return { moduleId: "demographics", status, cards };
