@@ -5,6 +5,8 @@
  * prefix, not an archetype axis). Every formula is deterministic and exposed in `method`.
  */
 
+import { requireCoverage, type Coverage } from "./coverage";
+
 export interface PersonaDimensions {
   intentionality: number;
   capture_susceptibility: number;
@@ -64,4 +66,68 @@ export function computeDimensions(profile: any): PersonaDimensions {
       : clamp(Math.min(58, shares * 2)),                          // never-commenters stay below 59
     parasociality: clamp(0.5 * echoPct + 0.3 * followed + 0.2 * Math.min(100, refCount * 10)),
   };
+}
+
+// The 5 "who" dimensions the archetype centroids live in (nocturnality is a prefix,
+// not an axis). Tunable config — retuning archetypes is data, not code branches.
+const WHO_DIMS = [
+  "intentionality", "capture_susceptibility", "exploration", "expressiveness", "parasociality",
+] as const;
+
+interface Centroid { name: string; v: Record<(typeof WHO_DIMS)[number], number>; }
+
+export const ARCHETYPE_CENTROIDS: Centroid[] = [
+  { name: "The Intentional Curator", v: { intentionality: 85, capture_susceptibility: 20, exploration: 60, expressiveness: 70, parasociality: 50 } },
+  { name: "The Seeker",              v: { intentionality: 70, capture_susceptibility: 25, exploration: 90, expressiveness: 55, parasociality: 40 } },
+  { name: "The Algorithmic Captured",v: { intentionality: 20, capture_susceptibility: 90, exploration: 25, expressiveness: 25, parasociality: 65 } },
+  { name: "The Passive Observer",    v: { intentionality: 30, capture_susceptibility: 55, exploration: 40, expressiveness: 10, parasociality: 30 } },
+  { name: "The Balanced Viewer",     v: { intentionality: 50, capture_susceptibility: 50, exploration: 50, expressiveness: 50, parasociality: 50 } },
+];
+
+const SECONDARY_GAP = 25;
+const MAX_DIST = Math.sqrt(WHO_DIMS.length) * 100; // max Euclidean over 5 dims of range 100
+
+const METHOD =
+  "6 dimensions (0–100) from your behavioral metrics; archetype = nearest centroid over the 5 identity " +
+  "dimensions (nocturnality is a descriptive prefix, not an axis). Expressiveness is anchored on platform " +
+  "benchmarks (59.2% never comment / 73.5% never post).";
+
+function distance(dims: PersonaDimensions, c: Centroid): number {
+  let s = 0;
+  for (const k of WHO_DIMS) { const d = (dims as any)[k] - c.v[k]; s += d * d; }
+  return Math.sqrt(s);
+}
+
+export function nocturnalityModifier(nocturnality: number): "Nocturnal" | "Diurnal" | "" {
+  if (nocturnality >= 66) return "Nocturnal";
+  if (nocturnality <= 33) return "Diurnal";
+  return "";
+}
+
+function zeroDims(): PersonaDimensions {
+  return { intentionality: 0, capture_susceptibility: 0, nocturnality: 0, exploration: 0, expressiveness: 0, parasociality: 0 };
+}
+
+export function buildPersona(profile: any, coverage: Coverage): PersonaResult {
+  if (!profile || typeof profile !== "object") {
+    return { status: "error", dimensions: zeroDims(), base_archetype: "", nocturnality_modifier: "", display_name: "", confidence: 0, method: "malformed profile" };
+  }
+  const dimensions = computeDimensions(profile);
+  const gate = requireCoverage("persona", coverage ?? { overall: { start: "", end: "", days: 0 }, perSection: {} },
+    { consciousViews: Number(profile?.stopwatch_metrics?.total_conscious_videos ?? 0) });
+  if (gate.status !== "ok") {
+    return { status: "insufficient_evidence", dimensions, base_archetype: "", nocturnality_modifier: "", display_name: "", confidence: 0, requirements: gate.requirements, method: METHOD };
+  }
+
+  const ranked = ARCHETYPE_CENTROIDS
+    .map((c) => ({ name: c.name, d: distance(dimensions, c) }))
+    .sort((a, b) => a.d - b.d || (a.name < b.name ? -1 : 1));
+  const primary = ranked[0];
+  const secondary = ranked[1] && ranked[1].d <= primary.d + SECONDARY_GAP ? ranked[1].name : undefined;
+  const modifier = nocturnalityModifier(dimensions.nocturnality);
+  const bare = primary.name.replace(/^The /, "");
+  const display_name = modifier ? `${modifier} ${bare}` : primary.name;
+  const confidence = Math.round(Math.max(0, Math.min(1, 1 - primary.d / MAX_DIST)) * 100) / 100;
+
+  return { status: "ok", dimensions, base_archetype: primary.name, nocturnality_modifier: modifier, display_name, secondary, confidence, method: METHOD };
 }

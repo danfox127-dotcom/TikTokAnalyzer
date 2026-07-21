@@ -1,5 +1,5 @@
 // algorithmic-mirror/engine/__tests__/persona.test.ts
-import { computeDimensions } from "../persona";
+import { computeDimensions, buildPersona, nocturnalityModifier } from "../persona";
 
 // a profile with the dimension inputs; omitted fields default to 0
 const prof = (over: any = {}) => ({
@@ -66,5 +66,57 @@ describe("computeDimensions", () => {
     const d = computeDimensions(prof({ ai: { echo_chamber_index_pct: 80 }, bn: { social_graph_followed_pct: 50 },
       cv: { references_detected: { song: ["a"], creator: ["b"] } } }));
     expect(d.parasociality).toBe(59);
+  });
+});
+
+// coverage that clears the persona gate (≥30 days); consciousViews via the profile
+const goodCoverage = { overall: { start: "2026-01-01", end: "2026-06-01", days: 150 }, perSection: {} };
+const seekerProfile = () => prof({
+  ai: { echo_chamber_index_pct: 10, echo_chamber_distinct_creators: 60, explicit_vs_implicit_ratio: 1 },
+  sr: { total_searches: 80 }, bn: { social_graph_followed_pct: 60 },
+  sw: { total_conscious_videos: 2000 },
+});
+
+describe("buildPersona", () => {
+  test("nocturnalityModifier thresholds", () => {
+    expect(nocturnalityModifier(70)).toBe("Nocturnal");
+    expect(nocturnalityModifier(20)).toBe("Diurnal");
+    expect(nocturnalityModifier(50)).toBe("");
+  });
+
+  test("heavy-search profile → primary 'The Seeker'; exactly one primary", () => {
+    const res = buildPersona(seekerProfile(), goodCoverage);
+    expect(res.status).toBe("ok");
+    expect(res.base_archetype).toBe("The Seeker");
+    expect(res.confidence).toBeGreaterThan(0);
+    expect(typeof res.display_name).toBe("string");
+  });
+
+  test("nocturnal prefix composes the display name (dropping 'The')", () => {
+    const res = buildPersona(prof({ ...(seekerProfile() as any), bn: { night_shift_ratio: 45, social_graph_followed_pct: 60 },
+      ai: { echo_chamber_index_pct: 10, echo_chamber_distinct_creators: 60 }, sr: { total_searches: 80 }, sw: { total_conscious_videos: 2000 } }), goodCoverage);
+    expect(res.nocturnality_modifier).toBe("Nocturnal");        // 45*2=90 ≥ 66
+    expect(res.display_name).toBe("Nocturnal Seeker");
+  });
+
+  test("midpoint profile → 'The Balanced Viewer'", () => {
+    const mid = prof({ bn: { social_graph_followed_pct: 50, social_graph_algorithmic_pct: 50, skip_rate_percentage: 50, linger_rate_percentage: 50 },
+      ai: { echo_chamber_index_pct: 50, echo_chamber_distinct_creators: 25, explicit_vs_implicit_ratio: 1 },
+      sw: { max_session_duration: 1800, total_conscious_videos: 2000 }, sr: { total_searches: 25 }, cv: { total_comments: 1 } });
+    expect(buildPersona(mid, goodCoverage).base_archetype).toBe("The Balanced Viewer");
+  });
+
+  test("coverage below gate → insufficient_evidence with requirements", () => {
+    const res = buildPersona(seekerProfile(), { overall: { start: "", end: "", days: 5 }, perSection: {} });
+    expect(res.status).toBe("insufficient_evidence");
+    expect(res.requirements?.needed).toMatch(/days/i);
+  });
+
+  test("malformed profile → status error", () => {
+    expect(buildPersona(null as any, goodCoverage).status).toBe("error");
+  });
+
+  test("deterministic: same input → identical result", () => {
+    expect(buildPersona(seekerProfile(), goodCoverage)).toEqual(buildPersona(seekerProfile(), goodCoverage));
   });
 });
