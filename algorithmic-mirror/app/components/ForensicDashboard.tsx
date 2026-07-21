@@ -21,6 +21,7 @@ import { FourPillarsPanel } from "./FourPillarsPanel";
 import { LocalModeBanner } from "./LocalModeBanner";
 import { TargetingCard } from "./TargetingCard";
 import { DemographicPanel } from "./DemographicPanel";
+import { PersonaRadar } from "./PersonaRadar";
 
 // We'll import existing visualizations or build new ones inside these tabs.
 // For now, let's define the tab types.
@@ -454,6 +455,15 @@ export function ForensicDashboard({ profile, onReset, sourceFile }: Props) {
                     )}
                   </div>
                 </header>
+
+                {profile.persona && (
+                  <div className="md:col-span-2">
+                    <DashboardPanel label="Persona Engine" accent={ACCENT}>
+                      <SectionTitle>Your Six Dimensions</SectionTitle>
+                      <PersonaRadar result={profile.persona} />
+                    </DashboardPanel>
+                  </div>
+                )}
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                   {/* High level Summary Cards would go here */}

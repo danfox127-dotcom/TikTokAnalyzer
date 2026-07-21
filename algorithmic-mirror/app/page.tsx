@@ -142,6 +142,7 @@ async function analyzeLocal(file: File): Promise<any> {
     coverage: out.coverage, gates: out.gates, claims: out.claims, schema: out.schema,
     targeting_card,
     demographics,
+    persona: out.persona,
     _local_mode: true,
   };
 }
