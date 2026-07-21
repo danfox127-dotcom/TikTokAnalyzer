@@ -13,6 +13,7 @@ import { buildNarrativeBlocks } from "./narratives";
 import { computeCoverage, evaluateGates, Coverage, GateResult } from "./coverage";
 import { buildClaims } from "./claims";
 import { fingerprintExport, SchemaFingerprint } from "./schemaFingerprint";
+import { buildPersona, PersonaResult } from "./persona";
 import { Claim } from "./types";
 import { selectTopicCandidates, TopicCandidate } from "./topicCandidates";
 
@@ -34,6 +35,8 @@ export interface EngineResult {
   claims: Claim[];
   /** WP-2.1 topic candidates: top-N watch-weighted video ids (no titles). */
   topicCandidates: TopicCandidate[];
+  /** WP-2.4 persona: 6-dimension vector + archetype (supersedes the old primary_archetype). */
+  persona: PersonaResult;
   /**
    * Structural fingerprint of the raw export (WP-1.6) — named layout + any
    * unrecognized top-level sections. Only present when the pipeline was fed a
@@ -59,5 +62,6 @@ export function runEngineFromParsed(parsed: any, opts: EngineOptions = {}): Engi
   });
   const claims = buildClaims(profile);
   const topicCandidates = selectTopicCandidates(profile);
-  return { parsed, profile, narratives, coverage, gates, claims, topicCandidates };
+  const persona = buildPersona(profile, coverage);
+  return { parsed, profile, narratives, coverage, gates, claims, topicCandidates, persona };
 }
