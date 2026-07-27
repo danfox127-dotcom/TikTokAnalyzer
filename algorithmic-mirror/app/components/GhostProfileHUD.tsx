@@ -6,6 +6,7 @@ import { DownloadExportButton } from "./DownloadExportButton";
 import { CreatorGraph } from "./CreatorGraph";
 import type { TargetingCardResult } from "../../engine/targetingCard";
 import type { DemographicModuleResult } from "../../engine/demographics";
+import type { PersonaResult } from "../../engine/persona";
 
 export interface EnrichmentTarget {
   video_id: string;
@@ -60,6 +61,8 @@ export interface GhostProfile {
   targeting_card?: TargetingCardResult;
   // WP-2.3 — the five demographic inference cards (present in browser-local payloads).
   demographics?: DemographicModuleResult;
+  // WP-2.4 — persona vector + archetype (supersedes primary_archetype; present in local payloads).
+  persona?: PersonaResult;
   stopwatch_metrics: {
     total_conscious_videos: number;
     sleep_anomalies_scrubbed: number;
