@@ -92,6 +92,30 @@ describe("buildPersona", () => {
     expect(typeof res.display_name).toBe("string");
   });
 
+  test("margin-based confidence: discriminates (no systematic inflation floor) and stays in [0,1]", () => {
+    // A profile sitting ON the Balanced centroid (all who-dims ≈ 50) is a clean,
+    // decisive match — far from every other centroid → HIGH margin confidence.
+    const onCentroid = buildPersona(prof({
+      bn: { social_graph_followed_pct: 50, social_graph_algorithmic_pct: 50, skip_rate_percentage: 50, linger_rate_percentage: 50 },
+      ai: { echo_chamber_index_pct: 50, echo_chamber_distinct_creators: 25, explicit_vs_implicit_ratio: 1 },
+      sw: { max_session_duration: 1800, total_conscious_videos: 2000 }, sr: { total_searches: 25 }, cv: { total_comments: 1 },
+    }), goodCoverage);
+    // An extreme profile whose two nearest centroids SHARE a dominant dimension
+    // (Captured & Passive both high-capture) is genuinely ambiguous → LOW margin —
+    // exactly the case the old distance-from-worst-case formula wrongly rated ~0.7+.
+    const ambiguous = buildPersona(prof({
+      bn: { social_graph_algorithmic_pct: 100, linger_rate_percentage: 100, social_graph_followed_pct: 0, skip_rate_percentage: 0 },
+      sw: { max_session_duration: 7200, total_conscious_videos: 2000 },
+      ai: { echo_chamber_index_pct: 90, echo_chamber_distinct_creators: 2, explicit_vs_implicit_ratio: 0 },
+      sr: { total_searches: 0 }, cv: { total_comments: 0 }, sb: { total_shares: 0 },
+    }), goodCoverage);
+    for (const r of [onCentroid, ambiguous]) { expect(r.confidence).toBeGreaterThanOrEqual(0); expect(r.confidence).toBeLessThanOrEqual(1); }
+    // The clean centroid match reads more confident than the genuinely-ambiguous one,
+    // and the ambiguous case drops below the old ~0.65 inflation floor.
+    expect(onCentroid.confidence).toBeGreaterThan(ambiguous.confidence);
+    expect(ambiguous.confidence).toBeLessThan(0.65);
+  });
+
   test("nocturnal prefix composes the display name (dropping 'The')", () => {
     const res = buildPersona(prof({ ...(seekerProfile() as any), bn: { night_shift_ratio: 45, social_graph_followed_pct: 60 },
       ai: { echo_chamber_index_pct: 10, echo_chamber_distinct_creators: 60 }, sr: { total_searches: 80 }, sw: { total_conscious_videos: 2000 } }), goodCoverage);

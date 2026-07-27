@@ -85,7 +85,6 @@ export const ARCHETYPE_CENTROIDS: Centroid[] = [
 ];
 
 const SECONDARY_GAP = 25;
-const MAX_DIST = Math.sqrt(WHO_DIMS.length) * 100; // max Euclidean over 5 dims of range 100
 
 const METHOD =
   "6 dimensions (0–100) from your behavioral metrics; archetype = nearest centroid over the 5 identity " +
@@ -127,7 +126,13 @@ export function buildPersona(profile: any, coverage: Coverage): PersonaResult {
   const modifier = nocturnalityModifier(dimensions.nocturnality);
   const bare = primary.name.replace(/^The /, "");
   const display_name = modifier ? `${modifier} ${bare}` : primary.name;
-  const confidence = Math.round(Math.max(0, Math.min(1, 1 - primary.d / MAX_DIST)) * 100) / 100;
+  // Margin-based confidence: how clearly the primary beats the runner-up. A near-tie
+  // reads low; a decisive winner reads high. This is more honest than distance-from-
+  // the-theoretical-worst-case (which almost never drops below ~0.65). Guard the
+  // degenerate all-zero-distance tie (identical centroids) → 0.
+  const runnerUp = ranked[1]?.d ?? primary.d;
+  const confidenceRaw = runnerUp > 0 ? 1 - primary.d / runnerUp : 0;
+  const confidence = Math.round(Math.max(0, Math.min(1, confidenceRaw)) * 100) / 100;
 
   return { status: "ok", dimensions, base_archetype: primary.name, nocturnality_modifier: modifier, display_name, secondary, confidence, method: METHOD };
 }

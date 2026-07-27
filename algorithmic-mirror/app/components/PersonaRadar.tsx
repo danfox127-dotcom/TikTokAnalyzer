@@ -46,7 +46,7 @@ export function PersonaRadar({ result }: { result?: PersonaResult }) {
     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
       <div>
         <span style={{ fontWeight: 600, color: INK, fontSize: 18 }}>{result.display_name}</span>{" "}
-        <span style={{ fontSize: 11, color: ACCENT }}>{Math.round(result.confidence * 100)}% fit</span>
+        <span style={{ fontSize: 11, color: ACCENT }}>{Math.round(result.confidence * 100)}% confidence</span>
       </div>
       {result.secondary && (
         <div style={{ fontSize: 11, color: INK_DIM }}>Secondary reading: {result.secondary}</div>
