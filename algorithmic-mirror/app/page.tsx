@@ -143,6 +143,7 @@ async function analyzeLocal(file: File): Promise<any> {
     targeting_card,
     demographics,
     persona: out.persona,
+    niche_drift: out.niche_drift,
     _local_mode: true,
   };
 }
