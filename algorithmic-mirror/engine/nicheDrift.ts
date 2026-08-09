@@ -100,11 +100,12 @@ export function buildNicheDrift(profile: any, linkHandleMap?: Record<string, str
   const emptySeries: TemporalSeries<NicheDriftPoint> = { granularity: "month", points: [] };
   const noTrend = { slope: null, direction: "insufficient_trend" };
   if (coverage < MIN_COVERAGE_PCT) {
+    const hadPct = Math.floor(coverage * 10) / 10;
     return {
       status: "insufficient_evidence", series: emptySeries,
       distinct_creators_trend: { ...noTrend }, top5_concentration_trend: { ...noTrend },
       resolved_coverage_pct,
-      requirements: { needed: "≥40% of watched videos resolved to a creator", had: `${resolved_coverage_pct}%` },
+      requirements: { needed: "≥40% of watched videos resolved to a creator", had: `${hadPct}%` },
       method: METHOD,
     };
   }

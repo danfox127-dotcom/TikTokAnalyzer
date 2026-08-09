@@ -23,6 +23,8 @@ function headline(result: NicheDriftResult): string {
     return `Your feed narrowed from ${first} to ${last} creators.`;
   if (result.distinct_creators_trend.direction === "widening")
     return `Your feed widened from ${first} to ${last} creators.`;
+  if (result.distinct_creators_trend.direction === "insufficient_trend")
+    return `Too few periods yet to read a trend — ${last} creators most recently.`;
   return `Your feed held steady around ${last} creators.`;
 }
 

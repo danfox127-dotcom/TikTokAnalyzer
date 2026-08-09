@@ -43,6 +43,23 @@ describe("NicheDriftChart", () => {
     expect(screen.getByText(/resolved to a creator|not enough/i)).toBeInTheDocument();
   });
 
+  test("ok with insufficient_trend on 2 points: does not claim 'held steady', shows honest fallback", () => {
+    const insufficientTrend: NicheDriftResult = {
+      status: "ok",
+      series: { granularity: "month", points: [
+        { period: "2026-01", value: { period: "2026-01", distinct_creators: 30, top5_concentration_pct: 40 } },
+        { period: "2026-02", value: { period: "2026-02", distinct_creators: 28, top5_concentration_pct: 42 } },
+      ] },
+      distinct_creators_trend: { slope: null, direction: "insufficient_trend" },
+      top5_concentration_trend: { slope: null, direction: "insufficient_trend" },
+      resolved_coverage_pct: 82,
+      method: "…",
+    };
+    render(<NicheDriftChart result={insufficientTrend} />);
+    expect(screen.queryByText(/held steady/i)).not.toBeInTheDocument();
+    expect(screen.getByText(/too few periods/i)).toBeInTheDocument();
+  });
+
   test("undefined → renders nothing", () => {
     const { container } = render(<NicheDriftChart result={undefined} />);
     expect(container).toBeEmptyDOMElement();
