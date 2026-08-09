@@ -14,6 +14,7 @@ import { computeCoverage, evaluateGates, Coverage, GateResult } from "./coverage
 import { buildClaims } from "./claims";
 import { fingerprintExport, SchemaFingerprint } from "./schemaFingerprint";
 import { buildPersona, PersonaResult } from "./persona";
+import { buildNicheDrift, NicheDriftResult } from "./nicheDrift";
 import { Claim } from "./types";
 import { selectTopicCandidates, TopicCandidate } from "./topicCandidates";
 
@@ -37,6 +38,8 @@ export interface EngineResult {
   topicCandidates: TopicCandidate[];
   /** WP-2.4 persona: 6-dimension vector + archetype (supersedes the old primary_archetype). */
   persona: PersonaResult;
+  /** WP-2.5 niche-drift: per-period creator concentration + fitted trend. */
+  niche_drift: NicheDriftResult;
   /**
    * Structural fingerprint of the raw export (WP-1.6) — named layout + any
    * unrecognized top-level sections. Only present when the pipeline was fed a
@@ -63,5 +66,6 @@ export function runEngineFromParsed(parsed: any, opts: EngineOptions = {}): Engi
   const claims = buildClaims(profile);
   const topicCandidates = selectTopicCandidates(profile);
   const persona = buildPersona(profile, coverage);
-  return { parsed, profile, narratives, coverage, gates, claims, topicCandidates, persona };
+  const niche_drift = buildNicheDrift(profile, opts.linkHandleMap ?? null);
+  return { parsed, profile, narratives, coverage, gates, claims, topicCandidates, persona, niche_drift };
 }
