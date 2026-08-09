@@ -25,7 +25,7 @@ export interface EvidenceRef {
  * or "week" (Monday-anchored period keys, < 90d). Points are sorted by period.
  */
 export interface TemporalSeries<T = unknown> {
-  granularity: "month" | "week";
+  granularity: "month" | "week" | "quarter";
   points: { period: string; value: T }[];
 }
 

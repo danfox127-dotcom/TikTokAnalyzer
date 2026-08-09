@@ -22,6 +22,7 @@ import { LocalModeBanner } from "./LocalModeBanner";
 import { TargetingCard } from "./TargetingCard";
 import { DemographicPanel } from "./DemographicPanel";
 import { PersonaRadar } from "./PersonaRadar";
+import { NicheDriftChart } from "./NicheDriftChart";
 
 // We'll import existing visualizations or build new ones inside these tabs.
 // For now, let's define the tab types.
@@ -823,6 +824,15 @@ export function ForensicDashboard({ profile, onReset, sourceFile }: Props) {
 
             {activeTab === "timeline" && (
               <div className="grid grid-cols-1 gap-8">
+                {profile.niche_drift && (
+                  <div className="md:col-span-2">
+                    <DashboardPanel label="Niche Drift" accent={ACCENT}>
+                      <SectionTitle>How Your Feed Narrowed</SectionTitle>
+                      <NicheDriftChart result={profile.niche_drift} />
+                    </DashboardPanel>
+                  </div>
+                )}
+
                 {/* Algorithm efficiency + anomaly flags */}
                 {(() => {
                   const rates = profile.stopwatch_metrics.monthly_skip_rates;
