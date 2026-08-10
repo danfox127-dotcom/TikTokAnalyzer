@@ -51,9 +51,22 @@ const prof = (over: any = {}) => ({
 });
 
 describe("computeDimensions", () => {
-  test("all-zero profile → all dimensions 0 (finite, clamped)", () => {
+  test("all-zero profile → dimensions finite & clamped; exploration has an echo-inverse base", () => {
     const d = computeDimensions(prof());
-    for (const v of Object.values(d)) { expect(Number.isFinite(v)).toBe(true); expect(v).toBe(0); }
+    for (const v of Object.values(d)) {
+      expect(Number.isFinite(v)).toBe(true);
+      expect(v).toBeGreaterThanOrEqual(0);
+      expect(v).toBeLessThanOrEqual(100);
+    }
+    // Everything reads 0 with no data EXCEPT exploration: low echo-concentration
+    // scores as exploratory (0.4·(100−0)=40). Never user-facing — empty profiles
+    // gate to insufficient_evidence upstream.
+    expect(d.intentionality).toBe(0);
+    expect(d.capture_susceptibility).toBe(0);
+    expect(d.nocturnality).toBe(0);
+    expect(d.expressiveness).toBe(0);
+    expect(d.parasociality).toBe(0);
+    expect(d.exploration).toBe(40);
   });
 
   test("intentionality blends followed% + explicit ratio + skip%", () => {
