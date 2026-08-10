@@ -12,7 +12,6 @@ import { ClaimText } from "./ClaimText";
 const BORDER = "rgba(26, 22, 16, 0.16)";
 const INK = "#1a1610";
 const INK_DIM = "rgba(26, 22, 16, 0.62)";
-const ACCENT = "#8b2323";
 
 const LABELS: Record<DemographicCard["category"], string> = {
   interests: "Interests", location: "Location", age: "Age range", gender: "Gender", spending: "Spending power",
