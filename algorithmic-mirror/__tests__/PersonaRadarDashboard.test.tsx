@@ -44,7 +44,7 @@ const profile = {
   },
 } as unknown as GhostProfile;
 
-test("Overview tab renders the Persona radar from the payload", () => {
+test("Overview tab renders the Persona radar from the payload", async () => {
   render(<ForensicDashboard profile={profile} onReset={jest.fn()} sourceFile={new File(["{}"], "x.json")} />);
-  expect(screen.getByText("Nocturnal Seeker")).toBeInTheDocument();
+  expect(await screen.findByText("Nocturnal Seeker")).toBeInTheDocument();
 });

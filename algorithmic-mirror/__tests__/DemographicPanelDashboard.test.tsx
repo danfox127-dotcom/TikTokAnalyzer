@@ -36,9 +36,9 @@ const profile = {
   },
 } as unknown as GhostProfile;
 
-test("Privacy tab renders the Demographic panel from the payload", () => {
+test("Privacy tab renders the Demographic panel from the payload", async () => {
   render(<ForensicDashboard profile={profile} onReset={jest.fn()} sourceFile={new File(["{}"], "x.json")} />);
   fireEvent.click(screen.getByText(/Privacy & Footprint/i));
-  expect(screen.getByText(/What TikTok Infers About You/i)).toBeInTheDocument();
-  expect(screen.getByText(/PIPEDA #2025-003/)).toBeInTheDocument();
+  expect(await screen.findByText(/What TikTok Infers About You/i)).toBeInTheDocument();
+  expect(await screen.findByText(/PIPEDA #2025-003/)).toBeInTheDocument();
 });

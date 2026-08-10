@@ -38,9 +38,9 @@ const profile = {
   },
 } as unknown as GhostProfile;
 
-test("Interests tab renders the Targeting Card panel from the payload", () => {
+test("Interests tab renders the Targeting Card panel from the payload", async () => {
   render(<ForensicDashboard profile={profile} onReset={jest.fn()} sourceFile={new File(["{}"], "x.json")} />);
   fireEvent.click(screen.getByText(/Interests & Keywords/i));
-  expect(screen.getByText(/Targeting Card/i)).toBeInTheDocument();
-  expect(screen.getByText(/bring your own key/i)).toBeInTheDocument();
+  expect(await screen.findByText(/Targeting Card/i)).toBeInTheDocument();
+  expect(await screen.findByText(/bring your own key/i)).toBeInTheDocument();
 });

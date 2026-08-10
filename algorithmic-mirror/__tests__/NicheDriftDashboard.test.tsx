@@ -35,8 +35,8 @@ const profile = {
   },
 } as unknown as GhostProfile;
 
-test("Timeline tab renders the niche-drift chart from the payload", () => {
+test("Timeline tab renders the niche-drift chart from the payload", async () => {
   render(<ForensicDashboard profile={profile} onReset={jest.fn()} sourceFile={new File(["{}"], "x.json")} />);
   fireEvent.click(screen.getByText(/Timeline|Evolution/i));
-  expect(screen.getByText(/narrowed from 40 to 12/i)).toBeInTheDocument();
+  expect(await screen.findByText(/narrowed from 40 to 12/i)).toBeInTheDocument();
 });

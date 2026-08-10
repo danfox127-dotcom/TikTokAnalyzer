@@ -2,8 +2,7 @@
 /**
  * WP-3.1 — the persistent Dossier workspace: sidebar navigation, header, reset
  * control, and the tab-switch animation wrapper. Owns `activeTab` state. Tab
- * bodies are still statically imported here; Task 11 converts them to
- * next/dynamic() for real code-splitting.
+ * bodies are loaded via next/dynamic() for real code-splitting.
  */
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -14,14 +13,17 @@ import type { GhostProfile } from "./GhostProfileHUD";
 import { DownloadExportButton } from "./DownloadExportButton";
 import { LocalModeBanner } from "./LocalModeBanner";
 import { BG, SIDEBAR, BORDER, ACCENT, INK, INK_DIM, INK_GHOST, SidebarItem } from "./dashboardPrimitives";
-import { OverviewTab } from "./tabs/OverviewTab";
-import { BehaviorTab } from "./tabs/BehaviorTab";
-import { NetworkTab } from "./tabs/NetworkTab";
-import { TimelineTab } from "./tabs/TimelineTab";
-import { InterestsTab } from "./tabs/InterestsTab";
-import { PrivacyTab } from "./tabs/PrivacyTab";
-import { AiTab } from "./tabs/AiTab";
-import { ClaimsTab } from "./tabs/ClaimsTab";
+import dynamic from "next/dynamic";
+
+const dynamicOpts = { loading: () => <div style={{ padding: 48, color: INK_DIM, fontSize: 12 }}>Loading…</div> };
+const OverviewTab = dynamic(() => import("./tabs/OverviewTab").then(m => m.OverviewTab), dynamicOpts);
+const BehaviorTab = dynamic(() => import("./tabs/BehaviorTab").then(m => m.BehaviorTab), dynamicOpts);
+const NetworkTab = dynamic(() => import("./tabs/NetworkTab").then(m => m.NetworkTab), dynamicOpts);
+const TimelineTab = dynamic(() => import("./tabs/TimelineTab").then(m => m.TimelineTab), dynamicOpts);
+const InterestsTab = dynamic(() => import("./tabs/InterestsTab").then(m => m.InterestsTab), dynamicOpts);
+const PrivacyTab = dynamic(() => import("./tabs/PrivacyTab").then(m => m.PrivacyTab), dynamicOpts);
+const AiTab = dynamic(() => import("./tabs/AiTab").then(m => m.AiTab), dynamicOpts);
+const ClaimsTab = dynamic(() => import("./tabs/ClaimsTab").then(m => m.ClaimsTab), dynamicOpts);
 
 type Tab = "overview" | "behavior" | "timeline" | "network" | "interests" | "privacy" | "ai" | "claims";
 
