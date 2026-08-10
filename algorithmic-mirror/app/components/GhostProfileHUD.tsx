@@ -8,6 +8,7 @@ import type { TargetingCardResult } from "../../engine/targetingCard";
 import type { DemographicModuleResult } from "../../engine/demographics";
 import type { PersonaResult } from "../../engine/persona";
 import type { NicheDriftResult } from "../../engine/nicheDrift";
+import type { Claim } from "../../engine/types";
 
 export interface EnrichmentTarget {
   video_id: string;
@@ -66,6 +67,8 @@ export interface GhostProfile {
   persona?: PersonaResult;
   // WP-2.5 — per-period creator-concentration drift (present in local payloads).
   niche_drift?: NicheDriftResult;
+  // WP-1.5/WP-3.2 — the flat claim list (recorded/derived/inferred), surfaced in the Evidence Log tab.
+  claims?: Claim[];
   stopwatch_metrics: {
     total_conscious_videos: number;
     sleep_anomalies_scrubbed: number;
