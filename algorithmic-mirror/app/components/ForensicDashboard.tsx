@@ -16,7 +16,6 @@ import {
 import type { GhostProfile } from "./GhostProfileHUD";
 import { DownloadExportButton } from "./DownloadExportButton";
 import { LocalModeBanner } from "./LocalModeBanner";
-import { ClaimsPanel } from "./ClaimsPanel";
 import { OverviewTab } from "./tabs/OverviewTab";
 import { BehaviorTab } from "./tabs/BehaviorTab";
 import { NetworkTab } from "./tabs/NetworkTab";
@@ -24,9 +23,10 @@ import { TimelineTab } from "./tabs/TimelineTab";
 import { InterestsTab } from "./tabs/InterestsTab";
 import { PrivacyTab } from "./tabs/PrivacyTab";
 import { AiTab } from "./tabs/AiTab";
+import { ClaimsTab } from "./tabs/ClaimsTab";
 import {
   BG, SIDEBAR, BORDER, ACCENT, INK, INK_DIM, INK_GHOST,
-  DashboardPanel, SectionTitle, SidebarItem,
+  SidebarItem,
 } from "./dashboardPrimitives";
 
 // We'll import existing visualizations or build new ones inside these tabs.
@@ -184,14 +184,7 @@ export function ForensicDashboard({ profile, onReset, sourceFile }: Props) {
                 onBack={() => setActiveTab("overview")}
               />
             )}
-            {activeTab === "claims" && (
-              <div>
-                <DashboardPanel label="Evidence Log" accent={ACCENT}>
-                  <SectionTitle>Every Claim, By Tier</SectionTitle>
-                  <ClaimsPanel claims={profile.claims} />
-                </DashboardPanel>
-              </div>
-            )}
+            {activeTab === "claims" && <ClaimsTab profile={profile} />}
           </motion.div>
         </AnimatePresence>
       </main>
