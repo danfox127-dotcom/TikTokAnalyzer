@@ -17,16 +17,14 @@ import type { GhostProfile } from "./GhostProfileHUD";
 import { DownloadExportButton } from "./DownloadExportButton";
 import { CreatorGraph } from "./CreatorGraph";
 import { LLMAnalysisView } from "./LLMAnalysisView";
-import { FourPillarsPanel } from "./FourPillarsPanel";
 import { LocalModeBanner } from "./LocalModeBanner";
 import { TargetingCard } from "./TargetingCard";
 import { DemographicPanel } from "./DemographicPanel";
-import { PersonaRadar } from "./PersonaRadar";
 import { NicheDriftChart } from "./NicheDriftChart";
 import { ClaimsPanel } from "./ClaimsPanel";
 import { OverviewTab } from "./tabs/OverviewTab";
 import {
-  BG, SIDEBAR, PANEL, BORDER, ACCENT, INK, INK_DIM, INK_GHOST,
+  BG, SIDEBAR, BORDER, ACCENT, INK, INK_DIM, INK_GHOST,
   MODULE_A, MODULE_B, MODULE_C, MODULE_D, GRAVEYARD_ACCENT, VIBE_ACCENT,
   DashboardPanel, SectionTitle, SidebarItem, StopwatchFunnel, CreatorLedger,
 } from "./dashboardPrimitives";
