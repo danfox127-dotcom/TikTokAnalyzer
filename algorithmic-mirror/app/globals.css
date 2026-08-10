@@ -11,6 +11,8 @@
   --ink-dim:    #6a5e4a;
   --ink-ghost:  #a89a80;
   --accent:     #8b2323; /* oxblood — highlights, claim markers, accents */
+  --stamp-blue:      #1f4e6b; /* Inferred-tier claims — bureaucratic ink-stamp blue */
+  --redaction-black: #0d0b08; /* redaction motif, reused by WP-3.4 */
   --highlight:  #f5d57a; /* highlighter marker */
   --rule:       rgba(26, 22, 16, 0.14);
 
@@ -73,4 +75,19 @@ html, body {
 /* Neon-glow kept for backward compat (VideoCard) — maps to a soft oxblood glow */
 .neon-glow {
   text-shadow: 0 0 8px rgba(139, 35, 35, 0.4);
+}
+
+/* ── WP-3.2 confidence-tier textures — color + border-style + (label rendered by
+   the component, never by CSS alone) ─────────────────────────────────────────── */
+.tier-recorded {
+  border: 1px solid var(--ink);
+  color: var(--ink);
+}
+.tier-derived {
+  border: 1px dashed var(--accent);
+  color: var(--accent);
+}
+.tier-inferred {
+  border: 1px dotted var(--stamp-blue);
+  color: var(--stamp-blue);
 }

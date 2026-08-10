@@ -10,7 +10,8 @@ import {
   ArrowLeft,
   Lock,
   Zap,
-  TrendingUp
+  TrendingUp,
+  ScrollText
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import type { GhostProfile } from "./GhostProfileHUD";
@@ -23,10 +24,11 @@ import { TargetingCard } from "./TargetingCard";
 import { DemographicPanel } from "./DemographicPanel";
 import { PersonaRadar } from "./PersonaRadar";
 import { NicheDriftChart } from "./NicheDriftChart";
+import { ClaimsPanel } from "./ClaimsPanel";
 
 // We'll import existing visualizations or build new ones inside these tabs.
 // For now, let's define the tab types.
-type Tab = "overview" | "behavior" | "timeline" | "network" | "interests" | "privacy" | "ai";
+type Tab = "overview" | "behavior" | "timeline" | "network" | "interests" | "privacy" | "ai" | "claims";
 
 interface Props {
   profile: GhostProfile;
@@ -376,11 +378,17 @@ export function ForensicDashboard({ profile, onReset, sourceFile }: Props) {
             active={activeTab === "privacy"} 
             onClick={() => setActiveTab("privacy")} 
           />
-          <SidebarItem 
-            icon={Zap} 
-            label="AI Forensic Analyst" 
-            active={activeTab === "ai"} 
-            onClick={() => setActiveTab("ai")} 
+          <SidebarItem
+            icon={Zap}
+            label="AI Forensic Analyst"
+            active={activeTab === "ai"}
+            onClick={() => setActiveTab("ai")}
+          />
+          <SidebarItem
+            icon={ScrollText}
+            label="Evidence Log"
+            active={activeTab === "claims"}
+            onClick={() => setActiveTab("claims")}
           />
         </nav>
 
@@ -1164,6 +1172,14 @@ export function ForensicDashboard({ profile, onReset, sourceFile }: Props) {
                   apiUrl={process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8005"}
                   onBack={() => setActiveTab("overview")}
                 />
+              </div>
+            )}
+            {activeTab === "claims" && (
+              <div>
+                <DashboardPanel label="Evidence Log" accent={ACCENT}>
+                  <SectionTitle>Every Claim, By Tier</SectionTitle>
+                  <ClaimsPanel claims={profile.claims} />
+                </DashboardPanel>
               </div>
             )}
           </motion.div>

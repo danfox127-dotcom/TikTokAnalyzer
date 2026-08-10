@@ -2,6 +2,8 @@
 
 import { motion, AnimatePresence } from "framer-motion";
 import { X, FileJson } from "lucide-react";
+import { tierMeta } from "./claimStyle";
+import type { Claim } from "../../engine/types";
 
 interface Props {
   open: boolean;
@@ -9,9 +11,10 @@ interface Props {
   claim: string | null;
   payload: unknown;
   onClose: () => void;
+  claimObj?: Claim;
 }
 
-export function EvidencePanel({ open, title, claim, payload, onClose }: Props) {
+export function EvidencePanel({ open, title, claim, payload, onClose, claimObj }: Props) {
   return (
     <AnimatePresence>
       {open && (
@@ -94,9 +97,42 @@ export function EvidencePanel({ open, title, claim, payload, onClose }: Props) {
                     letterSpacing: "-0.01em",
                   }}
                 >
-                  {title ?? "Evidence"}
+                  {claimObj ? title ?? "Evidence" : title ?? "Evidence"}
                 </div>
-                {claim && (
+                {claimObj && (
+                  <div
+                    style={{
+                      marginTop: 10,
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 6,
+                      padding: "3px 8px",
+                      fontSize: 10,
+                      textTransform: "uppercase",
+                      letterSpacing: "0.08em",
+                      ...(() => { const m = tierMeta(claimObj.tier); return { border: `1px ${m.borderStyle} ${m.color}`, color: m.color }; })(),
+                    }}
+                  >
+                    {tierMeta(claimObj.tier).label}
+                  </div>
+                )}
+                {claimObj && (
+                  <div
+                    style={{
+                      marginTop: 10,
+                      padding: "8px 12px",
+                      borderLeft: "3px solid #8b6b3a",
+                      background: "rgba(139, 107, 58, 0.08)",
+                      fontStyle: "italic",
+                      fontSize: 13,
+                      lineHeight: 1.5,
+                      color: "#3a3024",
+                    }}
+                  >
+                    {claimObj.method}
+                  </div>
+                )}
+                {!claimObj && claim && (
                   <div
                     style={{
                       marginTop: 10,
@@ -153,24 +189,46 @@ export function EvidencePanel({ open, title, claim, payload, onClose }: Props) {
               >
                 {"//"} raw excerpt · parsed from your export
               </div>
-              <pre
-                style={{
-                  fontFamily: "var(--font-mono, ui-monospace, Menlo, monospace)",
-                  fontSize: 11.5,
-                  lineHeight: 1.7,
-                  color: "#2a241b",
-                  whiteSpace: "pre-wrap",
-                  wordBreak: "break-word",
-                  background: "#fdfbf6",
-                  border: "1px solid rgba(30, 27, 24, 0.12)",
-                  padding: "18px 20px",
-                  margin: 0,
-                }}
-              >
-                {payload === null || payload === undefined
-                  ? "// no evidence captured for this claim"
-                  : JSON.stringify(payload, null, 2)}
-              </pre>
+              {claimObj ? (
+                claimObj.evidence.length === 0 ? (
+                  <div style={{ fontFamily: "var(--font-mono, ui-monospace, Menlo, monospace)", fontSize: 12, color: "#6a5e4a", fontStyle: "italic" }}>
+                    no evidence captured for this claim
+                  </div>
+                ) : (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                    {claimObj.evidence.map((e, i) => (
+                      <div key={i} style={{ background: "#fdfbf6", border: "1px solid rgba(30, 27, 24, 0.12)", padding: "12px 16px" }}>
+                        <div style={{ fontFamily: "var(--font-mono, ui-monospace, Menlo, monospace)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.15em", color: "#8a7c64", marginBottom: 6 }}>
+                          {e.kind}
+                        </div>
+                        {e.note && <div style={{ fontSize: 12.5, color: "#2a241b" }}>{e.note}</div>}
+                        {e.link && <div style={{ fontSize: 11, color: "#6a5e4a", wordBreak: "break-word" }}>{e.link}</div>}
+                        {e.timestamp && <div style={{ fontSize: 11, color: "#8a7c64" }}>{e.timestamp}</div>}
+                        {e.citation && <div style={{ fontSize: 11, fontStyle: "italic", color: "#8a7c64" }}>{e.citation}</div>}
+                      </div>
+                    ))}
+                  </div>
+                )
+              ) : (
+                <pre
+                  style={{
+                    fontFamily: "var(--font-mono, ui-monospace, Menlo, monospace)",
+                    fontSize: 11.5,
+                    lineHeight: 1.7,
+                    color: "#2a241b",
+                    whiteSpace: "pre-wrap",
+                    wordBreak: "break-word",
+                    background: "#fdfbf6",
+                    border: "1px solid rgba(30, 27, 24, 0.12)",
+                    padding: "18px 20px",
+                    margin: 0,
+                  }}
+                >
+                  {payload === null || payload === undefined
+                    ? "// no evidence captured for this claim"
+                    : JSON.stringify(payload, null, 2)}
+                </pre>
+              )}
 
               <div
                 style={{

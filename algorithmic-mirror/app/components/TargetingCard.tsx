@@ -6,6 +6,7 @@
  */
 import { ShieldCheck, ShieldAlert, Lock, AlertTriangle } from "lucide-react";
 import type { TargetingCardResult, TargetingSegment } from "../../engine/targetingCard";
+import { ClaimText } from "./ClaimText";
 
 const BORDER = "rgba(26, 22, 16, 0.16)";
 const INK = "#1a1610";
@@ -29,9 +30,7 @@ function Segment({ seg }: { seg: TargetingSegment }) {
           </span>
         )}
       </div>
-      <div style={{ fontSize: 11, color: INK_DIM }}>
-        {seg.evidence.length} watched videos · confidence {seg.confidence}
-      </div>
+      <ClaimText claim={seg}>{seg.evidence.length} watched videos</ClaimText>
       <div style={{ fontSize: 10, color: INK_DIM }}>{seg.method}</div>
     </div>
   );
