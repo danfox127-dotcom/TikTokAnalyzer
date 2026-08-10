@@ -7,6 +7,7 @@
  */
 import { ShieldAlert, Lock, AlertTriangle } from "lucide-react";
 import type { DemographicModuleResult, DemographicCard } from "../../engine/demographics";
+import { ClaimText } from "./ClaimText";
 
 const BORDER = "rgba(26, 22, 16, 0.16)";
 const INK = "#1a1610";
@@ -17,17 +18,6 @@ const LABELS: Record<DemographicCard["category"], string> = {
   interests: "Interests", location: "Location", age: "Age range", gender: "Gender", spending: "Spending power",
 };
 
-function renderValue(v: unknown): string {
-  if (Array.isArray(v)) {
-    return v
-      .map((x) => (x && typeof x === "object" && "city" in x
-        ? `${(x as any).city} (${(x as any).days}d)`
-        : String(x)))
-      .join(", ");
-  }
-  if (v && typeof v === "object") return JSON.stringify(v);
-  return String(v);
-}
 
 function Card({ card }: { card: DemographicCard }) {
   return (
@@ -40,12 +30,7 @@ function Card({ card }: { card: DemographicCard }) {
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
           {card.claims.map((c) => (
             <div key={c.id} style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-              <div>
-                <span style={{ color: INK, fontWeight: 500 }}>{renderValue(c.value)}</span>{" "}
-                <span style={{ fontSize: 10, textTransform: "uppercase", color: ACCENT, letterSpacing: "0.05em" }}>
-                  {c.tier}{c.confidence != null ? ` · ${c.confidence}` : ""}
-                </span>
-              </div>
+              <ClaimText claim={c} />
               <div style={{ fontSize: 10, color: INK_DIM }}>{c.method}</div>
             </div>
           ))}
