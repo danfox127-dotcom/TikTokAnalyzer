@@ -15,7 +15,6 @@ import {
 } from "lucide-react";
 import type { GhostProfile } from "./GhostProfileHUD";
 import { DownloadExportButton } from "./DownloadExportButton";
-import { LLMAnalysisView } from "./LLMAnalysisView";
 import { LocalModeBanner } from "./LocalModeBanner";
 import { ClaimsPanel } from "./ClaimsPanel";
 import { OverviewTab } from "./tabs/OverviewTab";
@@ -24,6 +23,7 @@ import { NetworkTab } from "./tabs/NetworkTab";
 import { TimelineTab } from "./tabs/TimelineTab";
 import { InterestsTab } from "./tabs/InterestsTab";
 import { PrivacyTab } from "./tabs/PrivacyTab";
+import { AiTab } from "./tabs/AiTab";
 import {
   BG, SIDEBAR, BORDER, ACCENT, INK, INK_DIM, INK_GHOST,
   DashboardPanel, SectionTitle, SidebarItem,
@@ -178,13 +178,11 @@ export function ForensicDashboard({ profile, onReset, sourceFile }: Props) {
             {activeTab === "privacy" && <PrivacyTab profile={profile} />}
 
             {activeTab === "ai" && (
-              <div>
-                <LLMAnalysisView 
-                  file={sourceFile!} 
-                  apiUrl={process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8005"}
-                  onBack={() => setActiveTab("overview")}
-                />
-              </div>
+              <AiTab
+                sourceFile={sourceFile!}
+                apiUrl={process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8005"}
+                onBack={() => setActiveTab("overview")}
+              />
             )}
             {activeTab === "claims" && (
               <div>
