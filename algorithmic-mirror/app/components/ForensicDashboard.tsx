@@ -27,7 +27,7 @@ import { NetworkTab } from "./tabs/NetworkTab";
 import {
   BG, SIDEBAR, BORDER, ACCENT, INK, INK_DIM, INK_GHOST,
   MODULE_A, MODULE_B, MODULE_C, MODULE_D, GRAVEYARD_ACCENT, VIBE_ACCENT,
-  DashboardPanel, SectionTitle, SidebarItem, CreatorLedger,
+  DashboardPanel, SectionTitle, SidebarItem,
 } from "./dashboardPrimitives";
 
 // We'll import existing visualizations or build new ones inside these tabs.
