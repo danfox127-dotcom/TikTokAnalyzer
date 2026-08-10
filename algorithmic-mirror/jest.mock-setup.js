@@ -4,16 +4,17 @@ const React = require('react');
 jest.mock('framer-motion', () => {
   const motion = new Proxy({}, {
     get: () => (props) => {
-      const { 
-        initial, animate, transition, 
+      const {
+        initial, animate, transition,
         whileTap, whileHover, whileFocus, whileDrag,
         whileInView, viewport,
-        ...rest 
+        ...rest
       } = props || {};
       return React.createElement('div', rest, props && props.children);
     },
   });
-  return { motion };
+  const AnimatePresence = ({ children }) => React.createElement(React.Fragment, null, children);
+  return { motion, AnimatePresence };
 });
 
 jest.mock('lucide-react', () => {
