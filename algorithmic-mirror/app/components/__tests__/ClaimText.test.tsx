@@ -37,4 +37,10 @@ describe("ClaimText", () => {
     fireEvent.click(screen.getByText("female"));
     expect(screen.getByText(claim.method)).toBeInTheDocument();
   });
+
+  test("pressing Enter opens the evidence panel showing the method", () => {
+    render(<ClaimText claim={claim} />);
+    fireEvent.keyDown(screen.getByText("female"), { key: "Enter" });
+    expect(screen.getByText(claim.method)).toBeInTheDocument();
+  });
 });

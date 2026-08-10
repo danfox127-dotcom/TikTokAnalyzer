@@ -26,12 +26,14 @@ export function ClaimsPanel({ claims }: { claims?: Claim[] }) {
     byTier.get(c.tier)!.push(c);
   }
 
-  const counts = TIER_ORDER.map((t) => `${byTier.get(t)?.length ?? 0} ${tierMeta(t).label.toLowerCase()}`).join(" · ");
+  const allTiers = [...TIER_ORDER, ...[...byTier.keys()].filter((t) => !TIER_ORDER.includes(t))];
+
+  const counts = allTiers.map((t) => `${byTier.get(t)?.length ?? 0} ${tierMeta(t).label.toLowerCase()}`).join(" · ");
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
       <div style={{ fontSize: 12, color: "rgba(26,22,16,0.62)" }}>{counts}</div>
-      {TIER_ORDER.map((tier) => {
+      {allTiers.map((tier) => {
         const group = byTier.get(tier);
         if (!group || group.length === 0) return null;
         return (

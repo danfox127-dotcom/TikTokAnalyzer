@@ -16,6 +16,12 @@ export function ClaimStat({ claim, label, children }: { claim: Claim; label: str
     <>
       <div
         onClick={() => setOpen(true)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            setOpen(true);
+          }
+        }}
         role="button"
         tabIndex={0}
         className={meta.className}

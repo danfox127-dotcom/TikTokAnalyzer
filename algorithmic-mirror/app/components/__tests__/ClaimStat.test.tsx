@@ -39,4 +39,10 @@ describe("ClaimStat", () => {
     fireEvent.click(screen.getByText("42"));
     expect(screen.getByText(/1200 skips \/ 3400 conscious views/)).toBeInTheDocument();
   });
+
+  test("pressing Enter opens the evidence panel showing the evidence note", () => {
+    render(<ClaimStat claim={claim} label="Skip Rate" />);
+    fireEvent.keyDown(screen.getByText("42"), { key: "Enter" });
+    expect(screen.getByText(/1200 skips \/ 3400 conscious views/)).toBeInTheDocument();
+  });
 });

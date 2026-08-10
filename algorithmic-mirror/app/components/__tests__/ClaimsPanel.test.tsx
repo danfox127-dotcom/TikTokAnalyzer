@@ -34,4 +34,13 @@ describe("ClaimsPanel", () => {
     render(<ClaimsPanel claims={undefined} />);
     expect(screen.getAllByText(/no claims/i).length).toBeGreaterThan(0);
   });
+
+  test("a claim with an out-of-union tier is never silently dropped", () => {
+    const claimsWithUnknownTier: Claim[] = [
+      ...claims,
+      { id: "weird.claim", tier: "bogus" as any, value: "some-marker-value", method: "Unclear.", evidence: [{ kind: "video" }] },
+    ];
+    render(<ClaimsPanel claims={claimsWithUnknownTier} />);
+    expect(screen.getByText("some-marker-value")).toBeInTheDocument();
+  });
 });

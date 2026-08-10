@@ -17,6 +17,12 @@ export function ClaimText({ claim, children }: { claim: Claim; children?: React.
     <>
       <span
         onClick={() => setOpen(true)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            setOpen(true);
+          }
+        }}
         role="button"
         tabIndex={0}
         style={{ cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12 }}
