@@ -91,3 +91,41 @@ html, body {
   border: 1px dotted var(--stamp-blue);
   color: var(--stamp-blue);
 }
+
+/* ── WP-3.3 month-range scrubber — two overlaid <input type="range"> thumbs
+   sharing one visual track. Only the thumb captures pointer events; the
+   track itself is transparent and non-interactive so both handles stay
+   independently draggable. ───────────────────────────────────────────── */
+.month-scrubber-input {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  margin: 0;
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  pointer-events: none;
+}
+.month-scrubber-input::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  pointer-events: auto;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 2px solid var(--ink);
+  cursor: pointer;
+  margin-top: 4px;
+}
+.month-scrubber-input::-moz-range-thumb {
+  pointer-events: auto;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 2px solid var(--ink);
+  cursor: pointer;
+  border: none;
+}
