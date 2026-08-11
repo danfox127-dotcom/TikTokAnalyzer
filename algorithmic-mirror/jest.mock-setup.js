@@ -7,14 +7,15 @@ jest.mock('framer-motion', () => {
       const {
         initial, animate, transition,
         whileTap, whileHover, whileFocus, whileDrag,
-        whileInView, viewport,
+        whileInView, viewport, onAnimationComplete,
         ...rest
       } = props || {};
       return React.createElement('div', rest, props && props.children);
     },
   });
   const AnimatePresence = ({ children }) => React.createElement(React.Fragment, null, children);
-  return { motion, AnimatePresence };
+  const useReducedMotion = () => false;
+  return { motion, AnimatePresence, useReducedMotion };
 });
 
 jest.mock('lucide-react', () => {

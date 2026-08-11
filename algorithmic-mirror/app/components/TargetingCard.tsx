@@ -1,12 +1,16 @@
 "use client";
 /**
- * WP-2.2 — minimal, functional Targeting Card. Renders the three InsightModuleResult
- * states from payload alone. Deliberately unstyled beyond the shared warm-paper
- * register; the animated case-file panel is WP-3.4.
+ * WP-2.2 — Targeting Card. Renders the three InsightModuleResult states from
+ * payload alone.
+ * WP-3.4a — ok state gets a one-shot wax-seal reveal on mount; insufficient_evidence
+ * gets a permanent "INSUFFICIENT EVIDENCE" stamp alongside its existing copy.
  */
+import { useState } from "react";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { ShieldCheck, ShieldAlert, Lock, AlertTriangle } from "lucide-react";
 import type { TargetingCardResult, TargetingSegment } from "../../engine/targetingCard";
 import { ClaimText } from "./ClaimText";
+import { Stamp } from "./Stamp";
 
 const BORDER = "rgba(26, 22, 16, 0.16)";
 const INK = "#1a1610";
@@ -37,6 +41,14 @@ function Segment({ seg }: { seg: TargetingSegment }) {
 }
 
 export function TargetingCard({ result }: { result?: TargetingCardResult }) {
+  const prefersReducedMotion = useReducedMotion();
+  const [hasRevealed, setHasRevealed] = useState(false);
+  const revealed = Boolean(prefersReducedMotion) || hasRevealed;
+  const showStamp = !revealed;
+  const contentTransition = prefersReducedMotion
+    ? { duration: 0 }
+    : { duration: 0.4, ease: "easeOut" as const, delay: 0.15 };
+
   if (!result) return null;
 
   if (result.status === "error") {
@@ -49,28 +61,52 @@ export function TargetingCard({ result }: { result?: TargetingCardResult }) {
 
   if (result.status === "insufficient_evidence") {
     return (
-      <div style={{ display: "flex", gap: 8, color: INK_DIM, fontSize: 12, alignItems: "flex-start" }}>
-        <Lock size={15} style={{ marginTop: 2, flexShrink: 0 }} />
-        <span>
-          Run topic analysis with your own key to see exactly what advertisers can target.
-          <br />
-          <span style={{ fontSize: 11 }}>Needs {result.requirements?.needed}; have {result.requirements?.had}.</span>
-        </span>
+      <div style={{ display: "flex", flexDirection: "column", gap: 12, alignItems: "center" }}>
+        <Stamp label="INSUFFICIENT EVIDENCE" />
+        <div style={{ display: "flex", gap: 8, color: INK_DIM, fontSize: 12, alignItems: "flex-start" }}>
+          <Lock size={15} style={{ marginTop: 2, flexShrink: 0 }} />
+          <span>
+            Run topic analysis with your own key to see exactly what advertisers can target.
+            <br />
+            <span style={{ fontSize: 11 }}>Needs {result.requirements?.needed}; have {result.requirements?.had}.</span>
+          </span>
+        </div>
       </div>
     );
   }
 
   const { counts } = result;
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-      <p style={{ fontSize: 12, color: INK_DIM }}>
-        TikTok admits <strong style={{ color: INK }}>{counts.declared_ad_interest_count}</strong> interest categories;
-        your watched behavior surfaced <strong style={{ color: INK }}>{counts.segment_count}</strong> targetable
-        segments, <strong style={{ color: INK }}>{counts.confirmed_count}</strong> already on TikTok&apos;s list.
-      </p>
-      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-        {result.claims.map((s) => <Segment key={s.id} seg={s} />)}
-      </div>
+    <div style={{ display: "flex", flexDirection: "column", gap: 12, position: "relative" }}>
+      <AnimatePresence>
+        {showStamp && (
+          <motion.div
+            key="seal"
+            initial={{ scale: 1, opacity: 1 }}
+            animate={{ scale: 1.15, opacity: 0 }}
+            transition={{ duration: 0.4, ease: "easeOut" }}
+            onAnimationComplete={() => setHasRevealed(true)}
+            style={{ display: "flex", justifyContent: "center" }}
+          >
+            <Stamp label="SEALED" />
+          </motion.div>
+        )}
+      </AnimatePresence>
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: revealed ? 1 : 0 }}
+        transition={contentTransition}
+        style={{ display: "flex", flexDirection: "column", gap: 12 }}
+      >
+        <p style={{ fontSize: 12, color: INK_DIM }}>
+          TikTok admits <strong style={{ color: INK }}>{counts.declared_ad_interest_count}</strong> interest categories;
+          your watched behavior surfaced <strong style={{ color: INK }}>{counts.segment_count}</strong> targetable
+          segments, <strong style={{ color: INK }}>{counts.confirmed_count}</strong> already on TikTok&apos;s list.
+        </p>
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          {result.claims.map((s) => <Segment key={s.id} seg={s} />)}
+        </div>
+      </motion.div>
     </div>
   );
 }

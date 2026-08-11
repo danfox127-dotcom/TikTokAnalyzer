@@ -13,8 +13,12 @@ jest.mock("framer-motion", () => {
       return React.createElement(tag, dom, children as React.ReactNode);
     },
   });
-  return { motion, AnimatePresence: ({ children }: { children: React.ReactNode }) =>
-    React.createElement(React.Fragment, null, children) };
+  return {
+    motion,
+    AnimatePresence: ({ children }: { children: React.ReactNode }) =>
+      React.createElement(React.Fragment, null, children),
+    useReducedMotion: () => false,
+  };
 });
 
 // Minimal profile: only what the Interests tab touches. Pad with any field the
