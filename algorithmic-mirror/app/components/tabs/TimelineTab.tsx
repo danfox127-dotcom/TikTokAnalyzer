@@ -2,13 +2,19 @@
 /** WP-3.1 — extracted from the former monolithic ForensicDashboard.tsx, verbatim. */
 /** WP-3.3 — month-range scrubber narrows the panels below to a sub-window of history. */
 import { useState } from "react";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import type { GhostProfile } from "../GhostProfileHUD";
 import { NicheDriftChart } from "../NicheDriftChart";
 import { MonthRangeScrubber } from "../MonthRangeScrubber";
 import { unionMonths, isMonthInRange, filterEntriesByRange } from "../../utils/monthRange";
 import { BORDER, ACCENT, MODULE_A, MODULE_B, VIBE_ACCENT, INK, INK_DIM, INK_GHOST, DashboardPanel, SectionTitle } from "../dashboardPrimitives";
 
+const SPRING = { type: "spring", stiffness: 320, damping: 18 } as const;
+
 export function TimelineTab({ profile }: { profile: GhostProfile }) {
+  const prefersReducedMotion = useReducedMotion();
+  const transition = prefersReducedMotion ? { duration: 0 } : SPRING;
+
   const skipRates = profile.stopwatch_metrics.monthly_skip_rates ?? {};
   const creatorTrends = profile.monthly_creator_trends ?? {};
   const topicTrends = profile.monthly_topic_trends ?? {};
@@ -57,16 +63,26 @@ export function TimelineTab({ profile }: { profile: GhostProfile }) {
               When the skip rate goes down, the algorithm has a better read on you — it's serving content you actually want. When it spikes, something changed: your tastes shifted, the algorithm lost its calibration, or the platform started pushing content you didn't ask for.
             </div>
             <div style={{ display: "flex", gap: 4, alignItems: "flex-end", height: 80, marginBottom: 8 }}>
-              {visibleSkipEntries.map(([month, rate]) => {
-                const isAnomaly = anomalyMonths.has(month);
-                const color = isAnomaly ? MODULE_B : VIBE_ACCENT;
-                return (
-                  <div key={month} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
-                    {isAnomaly && <div style={{ width: 6, height: 6, borderRadius: "50%", background: MODULE_B, flexShrink: 0 }} title="Anomaly detected" />}
-                    <div style={{ width: "100%", height: `${Math.max((rate / maxRate) * 72, 4)}px`, background: color, opacity: isAnomaly ? 1 : 0.65 }} title={`${month}: ${rate}% skip`} />
-                  </div>
-                );
-              })}
+              <AnimatePresence>
+                {visibleSkipEntries.map(([month, rate]) => {
+                  const isAnomaly = anomalyMonths.has(month);
+                  const color = isAnomaly ? MODULE_B : VIBE_ACCENT;
+                  return (
+                    <motion.div
+                      key={month}
+                      layout={!prefersReducedMotion}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={transition}
+                      style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}
+                    >
+                      {isAnomaly && <div style={{ width: 6, height: 6, borderRadius: "50%", background: MODULE_B, flexShrink: 0 }} title="Anomaly detected" />}
+                      <div style={{ width: "100%", height: `${Math.max((rate / maxRate) * 72, 4)}px`, background: color, opacity: isAnomaly ? 1 : 0.65 }} title={`${month}: ${rate}% skip`} />
+                    </motion.div>
+                  );
+                })}
+              </AnimatePresence>
             </div>
             <div style={{ display: "flex", justifyContent: "space-between", fontSize: 9, color: INK_GHOST, fontFamily: "var(--font-mono, monospace)", marginBottom: 16 }}>
               <span>{visibleSkipEntries[0]?.[0]}</span>
@@ -74,17 +90,27 @@ export function TimelineTab({ profile }: { profile: GhostProfile }) {
             </div>
             {visibleAnomalies.length > 0 && (
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                {visibleAnomalies.map((a, i) => (
-                  <div key={i} style={{ padding: "12px 16px", border: `1px solid ${MODULE_B}40`, background: `${MODULE_B}08` }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
-                      <span style={{ fontFamily: "var(--font-mono, monospace)", fontSize: 11, color: MODULE_B }}>{a.month} · anomaly</span>
-                      <span style={{ fontFamily: "var(--font-mono, monospace)", fontSize: 11, color: INK }}>{a.skip_rate}% <span style={{ color: INK_GHOST }}>vs {a.baseline_avg}% baseline</span></span>
-                    </div>
-                    <div style={{ fontSize: 12, color: INK_DIM, lineHeight: 1.6 }}>
-                      Skip rate {a.direction === "spike" ? "spiked" : "dipped"} {Math.abs(a.delta)}pp from your baseline. This could mean the algorithm lost its read on you, your tastes shifted, the platform changed what it was pushing, or a data purge disrupted the recommendation model. The data alone can't say which.
-                    </div>
-                  </div>
-                ))}
+                <AnimatePresence>
+                  {visibleAnomalies.map((a) => (
+                    <motion.div
+                      key={a.month}
+                      layout={!prefersReducedMotion}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={transition}
+                      style={{ padding: "12px 16px", border: `1px solid ${MODULE_B}40`, background: `${MODULE_B}08` }}
+                    >
+                      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+                        <span style={{ fontFamily: "var(--font-mono, monospace)", fontSize: 11, color: MODULE_B }}>{a.month} · anomaly</span>
+                        <span style={{ fontFamily: "var(--font-mono, monospace)", fontSize: 11, color: INK }}>{a.skip_rate}% <span style={{ color: INK_GHOST }}>vs {a.baseline_avg}% baseline</span></span>
+                      </div>
+                      <div style={{ fontSize: 12, color: INK_DIM, lineHeight: 1.6 }}>
+                        Skip rate {a.direction === "spike" ? "spiked" : "dipped"} {Math.abs(a.delta)}pp from your baseline. This could mean the algorithm lost its read on you, your tastes shifted, the platform changed what it was pushing, or a data purge disrupted the recommendation model. The data alone can't say which.
+                      </div>
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
               </div>
             )}
           </DashboardPanel>
@@ -101,23 +127,33 @@ export function TimelineTab({ profile }: { profile: GhostProfile }) {
               The creators you lingered on most, month by month. Shifts here show the algorithm changing what it thinks you want — or you actively seeking something new.
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 16 }}>
-              {visibleCreatorEntries.map(([month, creators]) => (
-                <div key={month} style={{ border: `1px solid ${BORDER}`, padding: 16 }}>
-                  <div style={{ fontFamily: "var(--font-mono, monospace)", fontSize: 10, letterSpacing: "0.2em", color: INK_GHOST, textTransform: "uppercase", marginBottom: 12 }}>{month}</div>
-                  {creators.length === 0 ? (
-                    <div style={{ fontSize: 11, color: INK_GHOST }}>No resolved creators</div>
-                  ) : (
-                    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                      {creators.map((c, i) => (
-                        <div key={i} style={{ display: "flex", justifyContent: "space-between", fontSize: 11 }}>
-                          <span style={{ color: i === 0 ? VIBE_ACCENT : INK_DIM, fontFamily: "var(--font-mono, monospace)" }}>{c.handle}</span>
-                          <span style={{ color: INK_GHOST }}>{c.count}</span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              ))}
+              <AnimatePresence>
+                {visibleCreatorEntries.map(([month, creators]) => (
+                  <motion.div
+                    key={month}
+                    layout={!prefersReducedMotion}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={transition}
+                    style={{ border: `1px solid ${BORDER}`, padding: 16 }}
+                  >
+                    <div style={{ fontFamily: "var(--font-mono, monospace)", fontSize: 10, letterSpacing: "0.2em", color: INK_GHOST, textTransform: "uppercase", marginBottom: 12 }}>{month}</div>
+                    {creators.length === 0 ? (
+                      <div style={{ fontSize: 11, color: INK_GHOST }}>No resolved creators</div>
+                    ) : (
+                      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                        {creators.map((c, i) => (
+                          <div key={i} style={{ display: "flex", justifyContent: "space-between", fontSize: 11 }}>
+                            <span style={{ color: i === 0 ? VIBE_ACCENT : INK_DIM, fontFamily: "var(--font-mono, monospace)" }}>{c.handle}</span>
+                            <span style={{ color: INK_GHOST }}>{c.count}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </motion.div>
+                ))}
+              </AnimatePresence>
             </div>
           </DashboardPanel>
         );
@@ -133,18 +169,28 @@ export function TimelineTab({ profile }: { profile: GhostProfile }) {
               Top keywords from your searches and comments each month. A snapshot of what was on your mind.
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 16 }}>
-              {visibleTopicEntries.map(([month, topics]) => (
-                <div key={month} style={{ border: `1px solid ${BORDER}`, padding: 16 }}>
-                  <div style={{ fontFamily: "var(--font-mono, monospace)", fontSize: 10, letterSpacing: "0.2em", color: INK_GHOST, textTransform: "uppercase", marginBottom: 12 }}>{month}</div>
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
-                    {topics.map((t, i) => (
-                      <span key={i} style={{ fontSize: 10, padding: "3px 8px", background: i === 0 ? `${MODULE_A}20` : "transparent", border: `1px solid ${i === 0 ? MODULE_A : BORDER}`, color: i === 0 ? MODULE_A : INK_DIM }}>
-                        {t.term}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              ))}
+              <AnimatePresence>
+                {visibleTopicEntries.map(([month, topics]) => (
+                  <motion.div
+                    key={month}
+                    layout={!prefersReducedMotion}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={transition}
+                    style={{ border: `1px solid ${BORDER}`, padding: 16 }}
+                  >
+                    <div style={{ fontFamily: "var(--font-mono, monospace)", fontSize: 10, letterSpacing: "0.2em", color: INK_GHOST, textTransform: "uppercase", marginBottom: 12 }}>{month}</div>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
+                      {topics.map((t, i) => (
+                        <span key={i} style={{ fontSize: 10, padding: "3px 8px", background: i === 0 ? `${MODULE_A}20` : "transparent", border: `1px solid ${i === 0 ? MODULE_A : BORDER}`, color: i === 0 ? MODULE_A : INK_DIM }}>
+                          {t.term}
+                        </span>
+                      ))}
+                    </div>
+                  </motion.div>
+                ))}
+              </AnimatePresence>
             </div>
           </DashboardPanel>
         );
