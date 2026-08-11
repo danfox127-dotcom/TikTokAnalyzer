@@ -48,3 +48,6 @@ report.json
 # Local secrets: ignore .env itself, but keep the committed template
 .env
 !.env.example
+
+# superpowers scratch (SDD progress, brainstorm mockups)
+.superpowers/
