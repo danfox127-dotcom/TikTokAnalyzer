@@ -44,9 +44,8 @@ test("with < 2 months of history, no scrubber renders", () => {
 
 test("with >= 2 months of history, the scrubber renders spanning the full range", () => {
   render(<TimelineTab profile={richProfile} />);
-  expect(screen.getByLabelText("Start month")).toBeInTheDocument();
-  expect(screen.getAllByText("2026-01").length).toBeGreaterThan(0);
-  expect(screen.getAllByText("2026-03").length).toBeGreaterThan(0);
+  expect(screen.getByLabelText("Start month")).toHaveValue("0");
+  expect(screen.getByLabelText("End month")).toHaveValue("2");
 });
 
 test("narrowing the range hides creator/topic cards outside it", () => {
