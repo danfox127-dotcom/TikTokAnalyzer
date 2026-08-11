@@ -18,6 +18,10 @@ export function TimelineTab({ profile }: { profile: GhostProfile }) {
   const skipRates = profile.stopwatch_metrics.monthly_skip_rates ?? {};
   const creatorTrends = profile.monthly_creator_trends ?? {};
   const topicTrends = profile.monthly_topic_trends ?? {};
+  // Scrubber axis is the union of the three always-month-keyed panels only.
+  // niche_drift.series isn't included (it can widen to quarter keys), so if
+  // its period range ever extends outside this union, the fully-open scrub
+  // position would still clip a niche-drift point the headline counts.
   const months = unionMonths(Object.keys(skipRates), Object.keys(creatorTrends), Object.keys(topicTrends));
   const showScrubber = months.length >= 2;
 
