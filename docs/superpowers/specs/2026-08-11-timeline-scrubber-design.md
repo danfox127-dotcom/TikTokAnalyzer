@@ -117,11 +117,14 @@ panel already null-guards on empty datasets independent of this WP).
 
 Each of the four panel bodies wraps its filtered list (bars, cards, anomaly
 entries) in a `motion.div` with `layout` enabled inside an `AnimatePresence`,
-reusing the spring transition values already established in
-`DossierShell.tsx`'s tab-switch `AnimatePresence` rather than inventing a new
-motion curve. Entries added/removed by scrubbing animate in/out and reflow
-instead of popping. Respects `prefers-reduced-motion` per this repo's
-standing convention.
+using the transition `{ type: "spring", stiffness: 320, damping: 18 }` — the
+same spring values already established as this codebase's general-purpose
+motion curve in `FileDropzone.tsx`'s `SPRING_HOVER`, rather than inventing a
+new one. (`DossierShell.tsx`'s own tab-switch `AnimatePresence` uses a plain
+`{ duration: 0.2 }` fade, not a spring — not the right reference here.)
+Entries added/removed by scrubbing animate in/out and reflow instead of
+popping. Respects `prefers-reduced-motion` per this repo's standing
+convention.
 
 ## 7. Out of scope (YAGNI / later WPs)
 
