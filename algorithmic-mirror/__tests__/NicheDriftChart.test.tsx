@@ -7,7 +7,9 @@ import type { NicheDriftResult } from "../engine/nicheDrift";
 jest.mock("recharts", () => {
   const React = require("react");
   const Pass = ({ children }: any) => React.createElement("div", null, children);
-  return { ResponsiveContainer: Pass, LineChart: Pass, Line: Pass, XAxis: Pass, YAxis: Pass, CartesianGrid: Pass, Tooltip: Pass, Legend: Pass };
+  const LineChart = ({ children, data }: any) =>
+    React.createElement("div", { "data-testid": "linechart", "data-points": String((data ?? []).length) }, children);
+  return { ResponsiveContainer: Pass, LineChart, Line: Pass, XAxis: Pass, YAxis: Pass, CartesianGrid: Pass, Tooltip: Pass, Legend: Pass };
 });
 
 const ok: NicheDriftResult = {
@@ -63,5 +65,32 @@ describe("NicheDriftChart", () => {
   test("undefined → renders nothing", () => {
     const { container } = render(<NicheDriftChart result={undefined} />);
     expect(container).toBeEmptyDOMElement();
+  });
+
+  test("no visibleRange: plots every point", () => {
+    render(<NicheDriftChart result={ok} />);
+    expect(screen.getByTestId("linechart")).toHaveAttribute("data-points", "2");
+  });
+
+  test("visibleRange narrows the plotted points but not the headline", () => {
+    render(<NicheDriftChart result={ok} visibleRange={["2026-01", "2026-01"]} />);
+    expect(screen.getByTestId("linechart")).toHaveAttribute("data-points", "1");
+    // headline still reads the full, unfiltered result (40 → 12), not the visible slice
+    expect(screen.getByText(/narrowed/i)).toBeInTheDocument();
+    expect(screen.getByText(/40/)).toBeInTheDocument();
+    expect(screen.getByText(/12/)).toBeInTheDocument();
+  });
+
+  test("visibleRange with quarter granularity keeps a quarter whose range overlaps at all", () => {
+    const quarterly: NicheDriftResult = {
+      ...ok,
+      series: { granularity: "quarter", points: [
+        { period: "2026-Q1", value: { period: "2026-Q1", distinct_creators: 40, top5_concentration_pct: 34 } },
+        { period: "2026-Q3", value: { period: "2026-Q3", distinct_creators: 12, top5_concentration_pct: 58 } },
+      ] },
+    };
+    render(<NicheDriftChart result={quarterly} visibleRange={["2026-02", "2026-02"]} />);
+    // 2026-02 falls inside Q1 (Jan-Mar), not Q3 (Jul-Sep)
+    expect(screen.getByTestId("linechart")).toHaveAttribute("data-points", "1");
   });
 });

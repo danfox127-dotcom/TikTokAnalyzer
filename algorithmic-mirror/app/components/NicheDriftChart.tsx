@@ -3,10 +3,13 @@
  * WP-2.5 — minimal niche-drift chart. Two lines (distinct creators + top-5
  * concentration %) over the month/quarter x-axis, from payload alone (ok /
  * insufficient_evidence / error). The polished Timeline panel is WP-3.4.
+ * WP-3.3 — optional `visibleRange` narrows which points are plotted; the
+ * headline and trend badges always read the full, unfiltered `result`.
  */
 import { Lock, AlertTriangle } from "lucide-react";
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from "recharts";
 import type { NicheDriftResult } from "../../engine/nicheDrift";
+import { isMonthInRange, quarterOverlapsRange } from "../utils/monthRange";
 
 const BORDER = "rgba(26, 22, 16, 0.16)";
 const INK = "#1a1610";
@@ -28,7 +31,7 @@ function headline(result: NicheDriftResult): string {
   return `Your feed held steady around ${last} creators.`;
 }
 
-export function NicheDriftChart({ result }: { result?: NicheDriftResult }) {
+export function NicheDriftChart({ result, visibleRange }: { result?: NicheDriftResult; visibleRange?: [string, string] }) {
   if (!result) return null;
 
   if (result.status === "error") {
@@ -47,7 +50,14 @@ export function NicheDriftChart({ result }: { result?: NicheDriftResult }) {
     );
   }
 
-  const data = result.series.points.map((p) => ({
+  const visiblePoints = visibleRange
+    ? result.series.points.filter((p) =>
+        result.series.granularity === "quarter"
+          ? quarterOverlapsRange(p.value.period, visibleRange)
+          : isMonthInRange(p.value.period, visibleRange)
+      )
+    : result.series.points;
+  const data = visiblePoints.map((p) => ({
     period: p.value.period,
     creators: p.value.distinct_creators,
     concentration: p.value.top5_concentration_pct,
