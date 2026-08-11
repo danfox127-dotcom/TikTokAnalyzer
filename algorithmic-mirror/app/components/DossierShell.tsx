@@ -15,15 +15,15 @@ import { LocalModeBanner } from "./LocalModeBanner";
 import { BG, SIDEBAR, BORDER, ACCENT, INK, INK_DIM, INK_GHOST, SidebarItem } from "./dashboardPrimitives";
 import dynamic from "next/dynamic";
 
-const dynamicOpts = { loading: () => <div style={{ padding: 48, color: INK_DIM, fontSize: 12 }}>Loading…</div> };
-const OverviewTab = dynamic(() => import("./tabs/OverviewTab").then(m => m.OverviewTab), dynamicOpts);
-const BehaviorTab = dynamic(() => import("./tabs/BehaviorTab").then(m => m.BehaviorTab), dynamicOpts);
-const NetworkTab = dynamic(() => import("./tabs/NetworkTab").then(m => m.NetworkTab), dynamicOpts);
-const TimelineTab = dynamic(() => import("./tabs/TimelineTab").then(m => m.TimelineTab), dynamicOpts);
-const InterestsTab = dynamic(() => import("./tabs/InterestsTab").then(m => m.InterestsTab), dynamicOpts);
-const PrivacyTab = dynamic(() => import("./tabs/PrivacyTab").then(m => m.PrivacyTab), dynamicOpts);
-const AiTab = dynamic(() => import("./tabs/AiTab").then(m => m.AiTab), dynamicOpts);
-const ClaimsTab = dynamic(() => import("./tabs/ClaimsTab").then(m => m.ClaimsTab), dynamicOpts);
+const DynamicLoading = () => <div style={{ padding: 48, color: INK_DIM, fontSize: 12 }}>Loading…</div>;
+const OverviewTab = dynamic(() => import("./tabs/OverviewTab").then(m => m.OverviewTab), { loading: DynamicLoading });
+const BehaviorTab = dynamic(() => import("./tabs/BehaviorTab").then(m => m.BehaviorTab), { loading: DynamicLoading });
+const NetworkTab = dynamic(() => import("./tabs/NetworkTab").then(m => m.NetworkTab), { loading: DynamicLoading });
+const TimelineTab = dynamic(() => import("./tabs/TimelineTab").then(m => m.TimelineTab), { loading: DynamicLoading });
+const InterestsTab = dynamic(() => import("./tabs/InterestsTab").then(m => m.InterestsTab), { loading: DynamicLoading });
+const PrivacyTab = dynamic(() => import("./tabs/PrivacyTab").then(m => m.PrivacyTab), { loading: DynamicLoading });
+const AiTab = dynamic(() => import("./tabs/AiTab").then(m => m.AiTab), { loading: DynamicLoading });
+const ClaimsTab = dynamic(() => import("./tabs/ClaimsTab").then(m => m.ClaimsTab), { loading: DynamicLoading });
 
 type Tab = "overview" | "behavior" | "timeline" | "network" | "interests" | "privacy" | "ai" | "claims";
 
