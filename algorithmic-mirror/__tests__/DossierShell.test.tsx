@@ -14,10 +14,14 @@ jest.mock("recharts", () => {
 jest.mock("framer-motion", () => {
   const React = require("react");
   const motion = new Proxy({}, { get: (_t, tag: string) => ({ children, ...rest }: Record<string, unknown>) => {
-    const { initial, animate, exit, transition, whileHover, whileTap, ...dom } = rest as Record<string, unknown>;
-    void initial; void animate; void exit; void transition; void whileHover; void whileTap;
+    const { initial, animate, exit, transition, whileHover, whileTap, onAnimationComplete, ...dom } = rest as Record<string, unknown>;
+    void initial; void animate; void exit; void transition; void whileHover; void whileTap; void onAnimationComplete;
     return React.createElement(tag, dom, children as React.ReactNode); } });
-  return { motion, AnimatePresence: ({ children }: any) => React.createElement(React.Fragment, null, children) };
+  return {
+    motion,
+    AnimatePresence: ({ children }: any) => React.createElement(React.Fragment, null, children),
+    useReducedMotion: () => false,
+  };
 });
 
 const profile = {

@@ -22,9 +22,9 @@ jest.mock('framer-motion', () => {
       get: (_t, tag: string) =>
         ({ children, ...rest }: Record<string, unknown>) => {
           // drop animation-only props that aren't valid DOM attributes
-          const { initial, animate, exit, transition, whileHover, whileTap, ...domProps } =
+          const { initial, animate, exit, transition, whileHover, whileTap, onAnimationComplete, ...domProps } =
             rest as Record<string, unknown>;
-          void initial; void animate; void exit; void transition; void whileHover; void whileTap;
+          void initial; void animate; void exit; void transition; void whileHover; void whileTap; void onAnimationComplete;
           return React.createElement(tag, domProps, children as React.ReactNode);
         },
     }
@@ -33,6 +33,7 @@ jest.mock('framer-motion', () => {
     motion,
     AnimatePresence: ({ children }: { children: React.ReactNode }) =>
       React.createElement(React.Fragment, null, children),
+    useReducedMotion: () => false,
   };
 });
 
