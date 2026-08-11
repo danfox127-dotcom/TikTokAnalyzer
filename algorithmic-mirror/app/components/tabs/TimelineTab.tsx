@@ -1,29 +1,55 @@
 "use client";
 /** WP-3.1 — extracted from the former monolithic ForensicDashboard.tsx, verbatim. */
+/** WP-3.3 — month-range scrubber narrows the panels below to a sub-window of history. */
+import { useState } from "react";
 import type { GhostProfile } from "../GhostProfileHUD";
 import { NicheDriftChart } from "../NicheDriftChart";
+import { MonthRangeScrubber } from "../MonthRangeScrubber";
+import { unionMonths, isMonthInRange, filterEntriesByRange } from "../../utils/monthRange";
 import { BORDER, ACCENT, MODULE_A, MODULE_B, VIBE_ACCENT, INK, INK_DIM, INK_GHOST, DashboardPanel, SectionTitle } from "../dashboardPrimitives";
 
 export function TimelineTab({ profile }: { profile: GhostProfile }) {
+  const skipRates = profile.stopwatch_metrics.monthly_skip_rates ?? {};
+  const creatorTrends = profile.monthly_creator_trends ?? {};
+  const topicTrends = profile.monthly_topic_trends ?? {};
+  const months = unionMonths(Object.keys(skipRates), Object.keys(creatorTrends), Object.keys(topicTrends));
+  const showScrubber = months.length >= 2;
+
+  const [range, setRange] = useState<[string, string]>(
+    showScrubber ? [months[0], months[months.length - 1]] : ["", ""]
+  );
+  const activeRange: [string, string] | null = showScrubber ? range : null;
+
+  const visibleSkipEntries = (activeRange ? filterEntriesByRange(Object.entries(skipRates), activeRange) : Object.entries(skipRates))
+    .sort(([a], [b]) => a.localeCompare(b));
+  const visibleAnomalies = activeRange
+    ? (profile.skip_anomalies ?? []).filter((a) => isMonthInRange(a.month, activeRange))
+    : (profile.skip_anomalies ?? []);
+  const visibleCreatorEntries = (activeRange ? filterEntriesByRange(Object.entries(creatorTrends), activeRange) : Object.entries(creatorTrends))
+    .sort(([a], [b]) => a.localeCompare(b));
+  const visibleTopicEntries = (activeRange ? filterEntriesByRange(Object.entries(topicTrends), activeRange) : Object.entries(topicTrends))
+    .sort(([a], [b]) => a.localeCompare(b));
+
   return (
     <div className="grid grid-cols-1 gap-8">
+      {showScrubber && (
+        <MonthRangeScrubber months={months} value={range} onChange={setRange} />
+      )}
+
       {profile.niche_drift && (
         <div className="md:col-span-2">
           <DashboardPanel label="Niche Drift" accent={ACCENT}>
             <SectionTitle>How Your Feed Narrowed</SectionTitle>
-            <NicheDriftChart result={profile.niche_drift} />
+            <NicheDriftChart result={profile.niche_drift} visibleRange={activeRange ?? undefined} />
           </DashboardPanel>
         </div>
       )}
 
       {/* Algorithm efficiency + anomaly flags */}
       {(() => {
-        const rates = profile.stopwatch_metrics.monthly_skip_rates;
-        const anomalies = profile.skip_anomalies ?? [];
-        if (!rates || Object.keys(rates).length < 2) return null;
-        const months = Object.entries(rates).sort(([a], [b]) => a.localeCompare(b));
-        const maxRate = Math.max(...months.map(([, v]) => v), 1);
-        const anomalyMonths = new Set(anomalies.map(a => a.month));
+        if (!skipRates || Object.keys(skipRates).length < 2) return null;
+        const maxRate = Math.max(...visibleSkipEntries.map(([, v]) => v), 1);
+        const anomalyMonths = new Set(visibleAnomalies.map(a => a.month));
         return (
           <DashboardPanel label="· Algorithm Efficiency Timeline" accent={ACCENT}>
             <SectionTitle>Skip Rate Over Time</SectionTitle>
@@ -31,7 +57,7 @@ export function TimelineTab({ profile }: { profile: GhostProfile }) {
               When the skip rate goes down, the algorithm has a better read on you — it's serving content you actually want. When it spikes, something changed: your tastes shifted, the algorithm lost its calibration, or the platform started pushing content you didn't ask for.
             </div>
             <div style={{ display: "flex", gap: 4, alignItems: "flex-end", height: 80, marginBottom: 8 }}>
-              {months.map(([month, rate]) => {
+              {visibleSkipEntries.map(([month, rate]) => {
                 const isAnomaly = anomalyMonths.has(month);
                 const color = isAnomaly ? MODULE_B : VIBE_ACCENT;
                 return (
@@ -43,12 +69,12 @@ export function TimelineTab({ profile }: { profile: GhostProfile }) {
               })}
             </div>
             <div style={{ display: "flex", justifyContent: "space-between", fontSize: 9, color: INK_GHOST, fontFamily: "var(--font-mono, monospace)", marginBottom: 16 }}>
-              <span>{months[0]?.[0]}</span>
-              <span>{months[months.length - 1]?.[0]}</span>
+              <span>{visibleSkipEntries[0]?.[0]}</span>
+              <span>{visibleSkipEntries[visibleSkipEntries.length - 1]?.[0]}</span>
             </div>
-            {anomalies.length > 0 && (
+            {visibleAnomalies.length > 0 && (
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                {anomalies.map((a, i) => (
+                {visibleAnomalies.map((a, i) => (
                   <div key={i} style={{ padding: "12px 16px", border: `1px solid ${MODULE_B}40`, background: `${MODULE_B}08` }}>
                     <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
                       <span style={{ fontFamily: "var(--font-mono, monospace)", fontSize: 11, color: MODULE_B }}>{a.month} · anomaly</span>
@@ -67,9 +93,7 @@ export function TimelineTab({ profile }: { profile: GhostProfile }) {
 
       {/* Monthly creator dominance */}
       {(() => {
-        const trends = profile.monthly_creator_trends;
-        if (!trends || Object.keys(trends).length === 0) return null;
-        const months = Object.entries(trends).sort(([a], [b]) => a.localeCompare(b));
+        if (!creatorTrends || Object.keys(creatorTrends).length === 0) return null;
         return (
           <DashboardPanel label="· Creator Dominance by Month" accent={VIBE_ACCENT}>
             <SectionTitle accent={VIBE_ACCENT}>Who You Were Watching</SectionTitle>
@@ -77,7 +101,7 @@ export function TimelineTab({ profile }: { profile: GhostProfile }) {
               The creators you lingered on most, month by month. Shifts here show the algorithm changing what it thinks you want — or you actively seeking something new.
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 16 }}>
-              {months.map(([month, creators]) => (
+              {visibleCreatorEntries.map(([month, creators]) => (
                 <div key={month} style={{ border: `1px solid ${BORDER}`, padding: 16 }}>
                   <div style={{ fontFamily: "var(--font-mono, monospace)", fontSize: 10, letterSpacing: "0.2em", color: INK_GHOST, textTransform: "uppercase", marginBottom: 12 }}>{month}</div>
                   {creators.length === 0 ? (
@@ -101,9 +125,7 @@ export function TimelineTab({ profile }: { profile: GhostProfile }) {
 
       {/* Monthly topic trends */}
       {(() => {
-        const trends = profile.monthly_topic_trends;
-        if (!trends || Object.keys(trends).length === 0) return null;
-        const months = Object.entries(trends).sort(([a], [b]) => a.localeCompare(b));
+        if (!topicTrends || Object.keys(topicTrends).length === 0) return null;
         return (
           <DashboardPanel label="· Topic Trends by Month" accent={MODULE_A}>
             <SectionTitle accent={MODULE_A}>What You Were Into</SectionTitle>
@@ -111,7 +133,7 @@ export function TimelineTab({ profile }: { profile: GhostProfile }) {
               Top keywords from your searches and comments each month. A snapshot of what was on your mind.
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 16 }}>
-              {months.map(([month, topics]) => (
+              {visibleTopicEntries.map(([month, topics]) => (
                 <div key={month} style={{ border: `1px solid ${BORDER}`, padding: 16 }}>
                   <div style={{ fontFamily: "var(--font-mono, monospace)", fontSize: 10, letterSpacing: "0.2em", color: INK_GHOST, textTransform: "uppercase", marginBottom: 12 }}>{month}</div>
                   <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
