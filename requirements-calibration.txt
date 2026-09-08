@@ -1,0 +1,9 @@
+# Author-side only — NOT installed by the app or the Docker image.
+#
+# Dependencies for the one-off corpus calibration pass:
+#   scripts/calibrate_from_corpus.py  ->  data/corpus_calibration.json
+#   scripts/derive_thresholds.py      ->  data/stopwatch_calibration.json
+#
+# The committed outputs are small JSON files, so nothing here ships to users.
+duckdb>=1.0
+pyarrow>=15.0
