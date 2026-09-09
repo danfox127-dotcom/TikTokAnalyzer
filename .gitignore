@@ -38,6 +38,10 @@ Thumbs.db
 data/*
 # Committed reference data (not user exports): the TikTok ad-targeting taxonomy
 !data/tiktok-ad-taxonomy.json
+# Committed corpus calibration: aggregate statistics only, no row-level data.
+# See docs/corpus-calibration.md.
+!data/corpus_calibration.json
+!data/stopwatch_calibration.json
 exports/
 user_data_tiktok.json
 instagram-export*/
