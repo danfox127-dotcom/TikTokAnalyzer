@@ -1,7 +1,8 @@
 name: tests
 
-# Runs the backend test suite on every pull request and on pushes to main.
-# The frontend has its own Jest suite (algorithmic-mirror/); it is not run here.
+# Runs both test suites on every pull request and on pushes to main:
+# the Python backend (pytest) and the Next.js frontend (jest). The two jobs are
+# independent and run in parallel.
 on:
   pull_request:
   push:
@@ -46,3 +47,38 @@ jobs:
 
       - name: Run pytest
         run: pytest tests/ -v --tb=short
+
+  jest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    defaults:
+      run:
+        working-directory: algorithmic-mirror
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          # The repo pins no Node version (no .nvmrc, no engines field);
+          # GEMINI.md calls for Node 20+, so this tracks current LTS.
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: algorithmic-mirror/package-lock.json
+
+      - name: Install dependencies
+        # `npm ci` deliberately, not `npm install --legacy-peer-deps` as in the
+        # local setup docs: that flag is for resolving a fresh tree, while `ci`
+        # installs the already-resolved lockfile and does not need it. Plain
+        # `ci` is also the stricter choice — it fails loudly if package.json and
+        # the lockfile ever drift apart, which is what CI should do.
+        run: npm ci
+
+      - name: Run jest
+        # One suite stays skipped here by design: ForensicDashboard.realdata
+        # is gated on a real TikTok export at /tmp/ttk_profile.json, which is
+        # personal data and must never exist on a runner. Unlike the backend's
+        # calibration extras above, this skip is correct — do not add a guard
+        # that fails the job for it.
+        run: npm test
