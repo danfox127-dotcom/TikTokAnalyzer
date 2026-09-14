@@ -40,9 +40,28 @@ function Segment({ seg }: { seg: TargetingSegment }) {
   );
 }
 
+/**
+ * Spec WP-3.4a §5: the seal "never re-seals — no re-trigger on re-render,
+ * tab-switch, or data scrub". DossierShell renders tab bodies as
+ * `{activeTab === "interests" && <InterestsTab/>}`, so this component is
+ * unmounted whenever the user looks at another tab and ordinary useState would
+ * reset. Module scope outlives the remount; a page reload starts sealed again,
+ * which is the intended once-per-visit reveal.
+ *
+ * Safe under SSR despite being module-level mutable state: the only writer is
+ * the seal's onAnimationComplete, which never runs on the server, so a server
+ * render always emits the sealed markup and hydration matches.
+ */
+let sealAlreadyBroken = false;
+
+/** Test seam: restore the pre-reveal state. Not used by application code. */
+export function __resetTargetingCardSeal() {
+  sealAlreadyBroken = false;
+}
+
 export function TargetingCard({ result }: { result?: TargetingCardResult }) {
   const prefersReducedMotion = useReducedMotion();
-  const [hasRevealed, setHasRevealed] = useState(false);
+  const [hasRevealed, setHasRevealed] = useState(sealAlreadyBroken);
   const revealed = Boolean(prefersReducedMotion) || hasRevealed;
   const showStamp = !revealed;
   const contentTransition = prefersReducedMotion
@@ -85,16 +104,35 @@ export function TargetingCard({ result }: { result?: TargetingCardResult }) {
             initial={{ scale: 1, opacity: 1 }}
             animate={{ scale: 1.15, opacity: 0 }}
             transition={{ duration: 0.4, ease: "easeOut" }}
-            onAnimationComplete={() => setHasRevealed(true)}
-            style={{ display: "flex", justifyContent: "center" }}
+            onAnimationComplete={() => {
+              sealAlreadyBroken = true;
+              setHasRevealed(true);
+            }}
+            // Overlay, not a flow item. As a flex child the seal added its own
+            // height to the card and the content snapped upward when it
+            // unmounted; the container's `position: relative` exists for this.
+            style={{
+              position: "absolute",
+              inset: 0,
+              zIndex: 1,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
           >
             <Stamp label="SEALED" />
           </motion.div>
         )}
       </AnimatePresence>
       <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: revealed ? 1 : 0 }}
+        // Animates from mount rather than waiting on `revealed`. Gating it on
+        // the seal's onAnimationComplete made the two run in sequence: the
+        // seal vanished at 0.4s and the content only began its 0.15s-delayed
+        // fade afterwards, leaving the card blank in between. Spec §5 wants
+        // them concurrent — seal out over 0.4s, content in over 0.15s-0.55s,
+        // so the stamp is gone just before the content reaches full opacity.
+        initial={{ opacity: prefersReducedMotion ? 1 : 0 }}
+        animate={{ opacity: 1 }}
         transition={contentTransition}
         style={{ display: "flex", flexDirection: "column", gap: 12 }}
       >
