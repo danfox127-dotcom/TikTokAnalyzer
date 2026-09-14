@@ -5,8 +5,11 @@ Identifies genres and archetypes for TikTok creators using engagement context.
 from __future__ import annotations
 
 import json
+import logging
 import anthropic
 import google.generativeai as genai
+
+logger = logging.getLogger(__name__)
 
 # Handle (lowercase, no @) -> (Genre, Archetype, Confidence)
 CREATOR_REGISTRY: dict[str, tuple[str, str, float]] = {
@@ -133,8 +136,8 @@ STRICT RULES:
                     c["confidence"] = 0.8
 
         return vibe_cluster
-    except Exception as e:
-        print(f"Creator Enrichment Error: {e}")
+    except Exception:
+        logger.exception("Creator Enrichment Error")
         return vibe_cluster
 
 async def cluster_creators_llm(
@@ -192,6 +195,6 @@ Tone: Forensic, Noir, Dark Deco. Use hedged claims (e.g. "suggests a model of", 
         if start != -1 and end > start:
             return json.loads(raw_text[start:end])
         return []
-    except Exception as e:
-        print(f"Shadow Clustering Error: {e}")
+    except Exception:
+        logger.exception("Shadow Clustering Error")
         return []

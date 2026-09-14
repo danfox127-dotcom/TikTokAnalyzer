@@ -5,9 +5,12 @@ Maps keywords to content verticals for narrative generation.
 from __future__ import annotations
 
 import json
+import logging
 import anthropic
 import google.generativeai as genai
 from collections import defaultdict
+
+logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # Static Fallback Map
@@ -148,7 +151,7 @@ Respond with a JSON array only — no explanation, no markdown, just the JSON:
             raw_text = response.content[0].text
         elif provider.startswith("gemini"):
             genai.configure(api_key=api_key)
-            model_name = "gemini-2.0-flash" if "flash" in provider else "gemini-2.0-pro"
+            model_name = "gemini-3-flash" if "flash" in provider else "gemini-3-pro"
             model = genai.GenerativeModel(model_name)
             response = await model.generate_content_async(prompt)
             raw_text = response.text
@@ -160,8 +163,8 @@ Respond with a JSON array only — no explanation, no markdown, just the JSON:
         if start != -1 and end > start:
             return json.loads(raw_text[start:end])
         return []
-    except Exception as e:
-        print(f"Pillar Generation Error: {e}")
+    except Exception:
+        logger.exception("Pillar Generation Error")
         return []
 
 
@@ -209,6 +212,6 @@ RESPONSE FORMAT (JSON):
         if start != -1 and end > start:
             return json.loads(raw_text[start:end])
         return {}
-    except Exception as e:
-        print(f"Keyword Categorization Error: {e}")
+    except Exception:
+        logger.exception("Keyword Categorization Error")
         return {}

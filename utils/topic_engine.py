@@ -98,6 +98,21 @@ Respond with a JSON array only, no markdown:
 [{{"name":"...","video_ids":["..."],"taxonomy_hint":"exact category name or null"}}]"""
 
 
+def _gemini_usage(resp) -> dict:
+    """Token counts from a Gemini response, in the same shape as the Claude branch.
+
+    usage_metadata is not guaranteed to be present, so a missing or partial one
+    degrades to zeros rather than failing a call that otherwise succeeded.
+    """
+    meta = getattr(resp, "usage_metadata", None)
+    if meta is None:
+        return {"input_tokens": 0, "output_tokens": 0}
+    return {
+        "input_tokens": getattr(meta, "prompt_token_count", 0) or 0,
+        "output_tokens": getattr(meta, "candidates_token_count", 0) or 0,
+    }
+
+
 async def _call_llm(prompt: str, api_key: str, provider: str) -> tuple[str, dict]:
     """Relay to the user's own LLM. Returns (raw_text, usage)."""
     if provider == "claude":
@@ -110,7 +125,7 @@ async def _call_llm(prompt: str, api_key: str, provider: str) -> tuple[str, dict
         try:
             text = resp.content[0].text
         except (IndexError, AttributeError) as e:
-            raise ValueError(f"empty or blocked LLM response: {e}")
+            raise ValueError(f"empty or blocked {provider} response: {e}")
         return text, usage
     if provider.startswith("gemini"):
         genai.configure(api_key=api_key)
@@ -118,9 +133,13 @@ async def _call_llm(prompt: str, api_key: str, provider: str) -> tuple[str, dict
         resp = await model.generate_content_async(prompt)
         try:
             text = resp.text
-        except (IndexError, AttributeError) as e:
-            raise ValueError(f"empty or blocked LLM response: {e}")
-        return text, {"input_tokens": 0, "output_tokens": 0}
+        except (ValueError, IndexError, AttributeError) as e:
+            # The SDK's `.text` accessor raises ValueError — not IndexError — when
+            # the candidate carries no parts (safety stop, recitation, MAX_TOKENS,
+            # blocked prompt). Catching only the latter two meant this guard never
+            # fired and Google's raw message propagated instead.
+            raise ValueError(f"empty or blocked {provider} response: {e}")
+        return text, _gemini_usage(resp)
     raise ValueError(f"unknown provider: {provider}")
 
 
