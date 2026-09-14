@@ -43,6 +43,10 @@ data/*
 !data/corpus_calibration.json
 !data/stopwatch_calibration.json
 exports/
+# Claude Code scratch worktrees. One of these was committed as a gitlink (mode
+# 160000) with no .gitmodules, which made `git submodule` operations fail with
+# exit 128 — visible as a warning in every CI run.
+.claude/worktrees/
 user_data_tiktok.json
 instagram-export*/
 
