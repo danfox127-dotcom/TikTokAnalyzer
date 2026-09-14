@@ -402,8 +402,17 @@ async def analyze_llm(
             model = genai.GenerativeModel(model_name)
             response = await model.generate_content_async(prompt, stream=True)
             async for chunk in response:
-                if chunk.text:
-                    yield f"data: {chunk.text}\n\n"
+                # `.text` raises rather than returning empty when a chunk carries
+                # no parts — which happens mid-stream for chunks bearing only
+                # finish_reason or usage metadata. Skip those; letting the raise
+                # reach the handler below ended the analysis with an error
+                # partway through.
+                try:
+                    text = chunk.text
+                except (ValueError, IndexError, AttributeError):
+                    continue
+                if text:
+                    yield f"data: {text}\n\n"
             yield "data: [DONE]\n\n"
         except Exception as e:
             yield f"data: Error: {str(e)}\n\n"

@@ -8,9 +8,12 @@ Each block: {id, title, icon, prose, accent, stats, chart, provenance}.
 from __future__ import annotations
 
 import json
+import logging
 from collections import Counter
 import anthropic
 import google.generativeai as genai
+
+logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # Block 1 — Algorithmic Identity
@@ -519,8 +522,8 @@ RESPONSE:
         if start != -1 and end > start:
             return json.loads(raw_text[start:end])
         return []
-    except Exception as e:
-        print(f"LLM Narrative Error: {e}")
+    except Exception:
+        logger.exception("LLM Narrative Error")
         return []
 
 # ---------------------------------------------------------------------------
@@ -544,6 +547,6 @@ def build_narrative_blocks(ghost_profile: dict, parsed: dict) -> list[dict]:
     for builder in builders:
         try:
             blocks.append(builder(ghost_profile, parsed))
-        except Exception as e:
-            print(f"Block Builder Error: {e}")
+        except Exception:
+            logger.exception("Block Builder Error")
     return blocks
