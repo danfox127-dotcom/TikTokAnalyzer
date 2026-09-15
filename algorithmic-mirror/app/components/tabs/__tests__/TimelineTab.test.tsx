@@ -87,3 +87,18 @@ test("motion wrapper props do not leak onto the DOM (no React 'unknown prop' war
   expect(spy).not.toHaveBeenCalled();
   spy.mockRestore();
 });
+
+test("the anomaly list container survives scrubbing the last anomaly out", () => {
+  // The AnimatePresence lived inside a `visibleAnomalies.length > 0 &&` guard,
+  // so removing the last anomaly unmounted the controller in the same commit
+  // and its exit animation never ran. jsdom cannot observe the animation
+  // itself, but it can observe the container that has to outlive the children
+  // for one to be possible. The bar and creator lists already work this way.
+  render(<TimelineTab profile={richProfile} />);
+  expect(screen.getByTestId("anomaly-list")).toBeInTheDocument();
+
+  fireEvent.change(screen.getByLabelText("End month"), { target: { value: "0" } });
+
+  expect(screen.queryByText(/anomaly/i)).not.toBeInTheDocument();
+  expect(screen.getByTestId("anomaly-list")).toBeInTheDocument();
+});

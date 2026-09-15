@@ -44,6 +44,20 @@ export function MonthRangeScrubber({ months, value, onChange }: MonthRangeScrubb
             right: `${100 - (endIndex / maxIndex) * 100}%`,
           }}
         />
+        {/*
+          The two inputs overlay the same track, so where the thumbs coincide
+          only the topmost is hit-testable. DOM order alone puts End on top,
+          which traps the user: drag Start to the last month and the range
+          collapses to [last, last], where Start is buried and End cannot move
+          right — no pointer path back to a wider range.
+
+          Which handle needs to be on top depends on where the pair collapsed,
+          because the clamps only allow one direction out:
+            collapsed at the last month  -> only Start can move (left)
+            collapsed anywhere else      -> End can always move right
+          So Start is raised above End exactly at the top of the range, and
+          End keeps the higher layer everywhere else.
+        */}
         <input
           type="range"
           className="month-scrubber-input"
@@ -52,6 +66,7 @@ export function MonthRangeScrubber({ months, value, onChange }: MonthRangeScrubb
           max={maxIndex}
           value={startIndex}
           onChange={handleStartChange}
+          style={{ zIndex: startIndex === maxIndex ? 3 : 1 }}
         />
         <input
           type="range"
@@ -61,6 +76,7 @@ export function MonthRangeScrubber({ months, value, onChange }: MonthRangeScrubb
           max={maxIndex}
           value={endIndex}
           onChange={handleEndChange}
+          style={{ zIndex: 2 }}
         />
       </div>
     </div>

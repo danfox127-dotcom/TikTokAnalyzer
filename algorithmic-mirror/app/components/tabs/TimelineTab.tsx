@@ -92,31 +92,38 @@ export function TimelineTab({ profile }: { profile: GhostProfile }) {
               <span>{visibleSkipEntries[0]?.[0]}</span>
               <span>{visibleSkipEntries[visibleSkipEntries.length - 1]?.[0]}</span>
             </div>
-            {visibleAnomalies.length > 0 && (
-              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                <AnimatePresence>
-                  {visibleAnomalies.map((a) => (
-                    <motion.div
-                      key={a.month}
-                      layout={!prefersReducedMotion}
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      exit={{ opacity: 0 }}
-                      transition={transition}
-                      style={{ padding: "12px 16px", border: `1px solid ${MODULE_B}40`, background: `${MODULE_B}08` }}
-                    >
-                      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
-                        <span style={{ fontFamily: "var(--font-mono, monospace)", fontSize: 11, color: MODULE_B }}>{a.month} · anomaly</span>
-                        <span style={{ fontFamily: "var(--font-mono, monospace)", fontSize: 11, color: INK }}>{a.skip_rate}% <span style={{ color: INK_GHOST }}>vs {a.baseline_avg}% baseline</span></span>
-                      </div>
-                      <div style={{ fontSize: 12, color: INK_DIM, lineHeight: 1.6 }}>
-                        Skip rate {a.direction === "spike" ? "spiked" : "dipped"} {Math.abs(a.delta)}pp from your baseline. This could mean the algorithm lost its read on you, your tastes shifted, the platform changed what it was pushing, or a data purge disrupted the recommendation model. The data alone can't say which.
-                      </div>
-                    </motion.div>
-                  ))}
-                </AnimatePresence>
-              </div>
-            )}
+            {/*
+              AnimatePresence stays mounted even with nothing to show. Nesting
+              it inside a `visibleAnomalies.length > 0 &&` guard tore the
+              controller down in the same commit that removed the last child,
+              so scrubbing the final anomaly away skipped its exit animation.
+              An empty flex column occupies no height, so rendering the
+              container unconditionally costs nothing visually. The bar and
+              creator lists above already work this way.
+            */}
+            <div data-testid="anomaly-list" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              <AnimatePresence>
+                {visibleAnomalies.map((a) => (
+                  <motion.div
+                    key={a.month}
+                    layout={!prefersReducedMotion}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={transition}
+                    style={{ padding: "12px 16px", border: `1px solid ${MODULE_B}40`, background: `${MODULE_B}08` }}
+                  >
+                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+                      <span style={{ fontFamily: "var(--font-mono, monospace)", fontSize: 11, color: MODULE_B }}>{a.month} · anomaly</span>
+                      <span style={{ fontFamily: "var(--font-mono, monospace)", fontSize: 11, color: INK }}>{a.skip_rate}% <span style={{ color: INK_GHOST }}>vs {a.baseline_avg}% baseline</span></span>
+                    </div>
+                    <div style={{ fontSize: 12, color: INK_DIM, lineHeight: 1.6 }}>
+                      Skip rate {a.direction === "spike" ? "spiked" : "dipped"} {Math.abs(a.delta)}pp from your baseline. This could mean the algorithm lost its read on you, your tastes shifted, the platform changed what it was pushing, or a data purge disrupted the recommendation model. The data alone can't say which.
+                    </div>
+                  </motion.div>
+                ))}
+              </AnimatePresence>
+            </div>
           </DashboardPanel>
         );
       })()}
