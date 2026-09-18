@@ -59,3 +59,11 @@ report.json
 
 # superpowers scratch (SDD progress, brainstorm mockups)
 .superpowers/
+
+# The favorites library is personal data — a record of everything you save.
+# It must never be committed, including SQLite's write-ahead log sidecars.
+favorites/favorites.db
+*.sqlite
+*.sqlite3
+*.db-wal
+*.db-shm

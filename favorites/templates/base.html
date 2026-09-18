@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>{% block title %}Favorites{% endblock %}</title>
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" href="/static/icon.svg" type="image/svg+xml">
+<meta name="theme-color" content="#0f1115">
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<header class="masthead">
+  <a class="wordmark" href="/">
+    <span class="mark" aria-hidden="true"></span>
+    <span>Favorites</span>
+  </a>
+  <form class="search" action="/search" method="get" role="search">
+    <input type="search" name="q" value="{{ q or '' }}" placeholder="Search everything you've kept"
+           aria-label="Search your favorites" autocomplete="off" spellcheck="false">
+  </form>
+  <a class="count" href="/all" title="Everything in the library">{{ total }}</a>
+</header>
+
+<main>
+{% block content %}{% endblock %}
+</main>
+
+<footer class="footer">
+  <span>Your library lives on this machine.</span>
+  <a href="/all">Everything</a>
+  <a href="/unlabelled">Unlabelled</a>
+</footer>
+<script>
+  if ('serviceWorker' in navigator) { navigator.serviceWorker.register('/sw.js').catch(() => {}); }
+</script>
+</body>
+</html>

@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% from "_card.html" import card %}
+{% block title %}{{ item.title or 'Item' }} · Favorites{% endblock %}
+{% block content %}
+
+{% if just_saved %}<p class="flash">Saved.</p>{% endif %}
+
+<article class="detail">
+  {% if item.thumbnail_url %}
+    <div class="detail-thumb">
+      <img src="{{ item.thumbnail_url }}" alt="" referrerpolicy="no-referrer" onerror="this.remove()">
+    </div>
+  {% endif %}
+
+  <div class="detail-body">
+    <p class="eyebrow">
+      <span class="chip">{{ platform_label(item.platform) }}</span>
+      <span>Saved {{ item.saved_at[:10] }}</span>
+      {% if item.resolve_status != 'ok' %}<span class="warn">unresolved</span>{% endif %}
+    </p>
+
+    <h1>{{ item.title or item.canonical_url }}</h1>
+
+    {% if item.creator_name or item.creator_handle %}
+      <p class="byline">
+        <a href="/creator/{{ item.creator_handle or item.creator_name }}">
+          {{ item.creator_name or item.creator_handle }}</a>
+        {% if item.creator_handle and item.creator_name %}<span>{{ item.creator_handle }}</span>{% endif %}
+      </p>
+    {% endif %}
+
+    <p><a class="open" href="{{ item.canonical_url }}" target="_blank" rel="noopener noreferrer">
+      Open on {{ platform_label(item.platform) }} ↗</a></p>
+
+    <form class="note-form" action="/item/{{ item.id }}/note" method="post">
+      <label for="note">Your placard</label>
+      <textarea id="note" name="note" rows="3"
+        placeholder="Why did you keep this?">{{ item.note or '' }}</textarea>
+      <button type="submit">Save note</button>
+    </form>
+
+    {% if item.description and item.description != item.title %}
+      <section class="block"><h3>Description</h3><p>{{ item.description }}</p></section>
+    {% endif %}
+
+    {% if item.tags or shared %}
+      <ul class="theme-pills">
+        {% for tag in item.tags %}<li><a href="/search?q={{ tag }}">#{{ tag }}</a></li>{% endfor %}
+        {% for term in shared %}<li><a href="/search?q={{ term }}">{{ term }}</a></li>{% endfor %}
+      </ul>
+    {% endif %}
+
+    {% if item.transcript %}
+      <section class="block">
+        <h3>Transcript</h3>
+        <details><summary>Read it</summary><p class="transcript">{{ item.transcript }}</p></details>
+      </section>
+    {% endif %}
+  </div>
+</article>
+
+{% if related %}
+<section class="shelf">
+  <div class="shelf-head"><h2>More from this creator</h2></div>
+  <div class="rail">{% for r in related %}{{ card(r) }}{% endfor %}</div>
+</section>
+{% endif %}
+{% endblock %}
