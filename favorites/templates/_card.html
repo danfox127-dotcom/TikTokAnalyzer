@@ -1,0 +1,22 @@
+{% macro card(item, size='') %}
+<article class="card {{ size }}">
+  <a class="card-thumb" href="/item/{{ item.id }}">
+    {% if item.thumbnail_url %}
+      <img src="{{ item.thumbnail_url }}" alt="" loading="lazy" referrerpolicy="no-referrer"
+           onerror="this.remove()">
+    {% endif %}
+    <span class="chip">{{ platform_label(item.platform) }}</span>
+  </a>
+  <div class="card-body">
+    <a class="card-title" href="/item/{{ item.id }}">{{ item.title or item.canonical_url }}</a>
+    {% if item.creator_name or item.creator_handle %}
+      <a class="card-creator" href="/creator/{{ item.creator_handle or item.creator_name }}">
+        {{ item.creator_name or item.creator_handle }}
+      </a>
+    {% endif %}
+    {% if item.note %}
+      <p class="placard">{{ item.note }}</p>
+    {% endif %}
+  </div>
+</article>
+{% endmacro %}

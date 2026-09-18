@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% from "_card.html" import card %}
+{% block content %}
+
+{% if total == 0 %}
+  <section class="empty">
+    <h1>Nothing here yet.</h1>
+    <p>Share a link into this library and it will be catalogued: title, creator,
+       thumbnail, and a transcript where one is legitimately available.</p>
+    <p class="hint">Set up one-tap capture from your phone's share sheet —
+       see <code>favorites/SHARE_SHEET.md</code>.</p>
+    <form class="quick-save" action="/save" method="post">
+      <input type="url" name="url" placeholder="https://…" required>
+      <input type="text" name="note" placeholder="Why are you keeping this? (optional)">
+      <button type="submit">Save</button>
+    </form>
+  </section>
+{% else %}
+
+<section class="digest">
+  <h1>The last month</h1>
+  <p class="digest-prose">{{ digest.prose }}</p>
+  {% if digest.themes %}
+  <ul class="theme-pills">
+    {% for term, n in digest.themes %}
+      <li><a href="/search?q={{ term }}">{{ term }}<span>{{ n }}</span></a></li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+</section>
+
+{% for shelf in shelves %}
+<section class="shelf" data-kind="{{ shelf.kind }}">
+  <div class="shelf-head">
+    <h2>{% if shelf.href %}<a href="{{ shelf.href }}">{{ shelf.title }}</a>{% else %}{{ shelf.title }}{% endif %}</h2>
+    <p>{{ shelf.subtitle }}</p>
+  </div>
+  <div class="rail">
+    {% for item in shelf.entries %}{{ card(item) }}{% endfor %}
+  </div>
+</section>
+{% endfor %}
+
+{% endif %}
+{% endblock %}

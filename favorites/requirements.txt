@@ -1,0 +1,12 @@
+# The favorites library. Install with:
+#   pip install -r favorites/requirements.txt
+
+fastapi
+uvicorn[standard]
+httpx
+jinja2
+python-multipart        # lets the note form post back
+
+# Optional. Fetches YouTube caption tracks so transcripts become searchable.
+# Remove this line and everything still works, minus transcripts.
+youtube-transcript-api
