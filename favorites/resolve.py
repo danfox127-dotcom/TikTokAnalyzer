@@ -213,6 +213,37 @@ def canonical_form(url: str, platform: str) -> tuple[str, Optional[str]]:
     return cleaned, None
 
 
+def browsable_url(item: dict) -> str:
+    """A URL a person can actually open.
+
+    ``canonical_url`` is an identity key, not a link. For TikTok it deliberately
+    drops the @handle so that the same video files once whether it arrived from
+    an export (handle stripped) or a share sheet (handle present) -- but
+    ``tiktok.com/video/<id>`` is not a route TikTok serves, so linking to it
+    404s. The two jobs are separate and need separate values.
+
+    In order of preference: rebuild the real URL from the creator we resolved,
+    fall back to the URL the item actually arrived as (an export's share link
+    redirects correctly), and only then to the identity key.
+    """
+    canonical = item.get("canonical_url") or ""
+    shared = item.get("shared_url") or ""
+
+    if item.get("platform") != "tiktok":
+        # Every other platform's canonical form is a real, browsable URL, and
+        # it is the tidier of the two. If that ever stops being true for one of
+        # them, it needs a branch here like TikTok's.
+        return canonical or shared
+
+    handle = (item.get("creator_handle") or "").lstrip("@").strip()
+    external_id = (item.get("external_id") or "").strip()
+    if handle and external_id:
+        return f"https://www.tiktok.com/@{handle}/video/{external_id}"
+    # No handle: the item never resolved. Its original share link still
+    # redirects correctly, which is the best that can be offered.
+    return shared or canonical
+
+
 async def expand(url: str, client: httpx.AsyncClient) -> str:
     """Follow a shortener to its destination.
 

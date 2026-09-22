@@ -8,7 +8,7 @@
     <span class="chip">{{ platform_label(item.platform) }}</span>
   </a>
   <div class="card-body">
-    <a class="card-title" href="/item/{{ item.id }}">{{ item.title or item.canonical_url }}</a>
+    <a class="card-title" href="/item/{{ item.id }}">{{ item.title or browsable_url(item) }}</a>
     {% if item.creator_name or item.creator_handle %}
       <a class="card-creator" href="/creator/{{ item.creator_handle or item.creator_name }}">
         {{ item.creator_name or item.creator_handle }}

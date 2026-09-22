@@ -29,7 +29,7 @@ from fastapi.templating import Jinja2Templates
 from starlette.concurrency import run_in_threadpool
 
 from . import db, museum, tagging, transcript
-from .resolve import extract_url, platform_label, resolve
+from .resolve import browsable_url, extract_url, platform_label, resolve
 
 logger = logging.getLogger(__name__)
 
@@ -40,6 +40,8 @@ app = FastAPI(title="Favorites", docs_url=None, redoc_url=None)
 app.mount("/static", StaticFiles(directory=HERE / "static"), name="static")
 templates = Jinja2Templates(directory=str(HERE / "templates"))
 templates.env.globals["platform_label"] = platform_label
+# canonical_url identifies an item; it is not necessarily a link that opens.
+templates.env.globals["browsable_url"] = browsable_url
 
 
 def get_db():

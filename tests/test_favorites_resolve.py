@@ -5,7 +5,8 @@ import pytest
 import respx
 
 from favorites.resolve import (
-    canonical_form, detect_platform, extract_url, resolve, strip_tracking,
+    browsable_url, canonical_form, detect_platform, extract_url, resolve,
+    strip_tracking,
 )
 
 TIKTOK_OEMBED = {
@@ -254,3 +255,46 @@ class TestPlaceholderPagesAreNotResolutions:
         async with httpx.AsyncClient() as client:
             item = await resolve("https://example.com/gone", client)
         assert item.resolve_status == "unresolved"
+
+
+class TestBrowsableUrl:
+    """The identity key and the link you click are different values.
+
+    TikTok identity deliberately drops the @handle so an export and a share
+    sheet file the same video once. But tiktok.com/video/<id> is not a route
+    TikTok serves, so using the identity as the outbound link 404s every item
+    in the library.
+    """
+
+    TIKTOK = {
+        "platform": "tiktok",
+        "external_id": "7123",
+        "canonical_url": "https://www.tiktok.com/video/7123",
+        "shared_url": "https://www.tiktokv.com/share/video/7123/",
+    }
+
+    def test_the_identity_key_is_never_the_link(self):
+        assert browsable_url(self.TIKTOK) != self.TIKTOK["canonical_url"]
+
+    def test_a_resolved_tiktok_links_to_the_real_url(self):
+        item = {**self.TIKTOK, "creator_handle": "@citydesk"}
+        assert browsable_url(item) == "https://www.tiktok.com/@citydesk/video/7123"
+
+    def test_a_bare_handle_is_handled(self):
+        item = {**self.TIKTOK, "creator_handle": "citydesk"}
+        assert browsable_url(item) == "https://www.tiktok.com/@citydesk/video/7123"
+
+    def test_an_unresolved_tiktok_falls_back_to_its_share_link(self):
+        # No creator means it never resolved. The export's own share URL still
+        # redirects, so it is the best link available.
+        assert browsable_url(self.TIKTOK) == "https://www.tiktokv.com/share/video/7123/"
+
+    def test_other_platforms_use_their_canonical_form(self):
+        item = {"platform": "youtube", "external_id": "abc",
+                "canonical_url": "https://www.youtube.com/watch?v=abc",
+                "shared_url": "https://youtu.be/abc?si=tracking"}
+        assert browsable_url(item) == "https://www.youtube.com/watch?v=abc"
+
+    def test_an_item_with_nothing_does_not_raise(self):
+        assert browsable_url({"platform": "tiktok"}) == ""
+        assert browsable_url({}) == ""
