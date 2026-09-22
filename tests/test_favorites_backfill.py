@@ -265,3 +265,75 @@ class TestStats:
         s = backfill.stats(conn)
         assert (s["total"], s["resolved"], s["remaining"]) == (4, 2, 2)
         assert s["hit_rate"] == 0.5
+
+
+class TestRepairingFalseResolutions:
+    """Correcting rows an earlier, too-lenient check marked resolved.
+
+    A library that reports itself fully resolved will never retry those items,
+    so the failure stays invisible until someone notices the shelves are full
+    of things called "TikTok".
+    """
+
+    def resolved(self, conn, vid, title, creator=None):
+        db.upsert_item(conn, {
+            "canonical_url": f"https://www.tiktok.com/video/{vid}",
+            "shared_url": "x", "platform": "tiktok", "external_id": vid,
+            "title": title, "creator_handle": creator,
+            "saved_at": "2023-01-01T00:00:00+00:00",
+            "resolve_status": "ok", "source": "export",
+        })
+
+    def test_a_placeholder_row_goes_back_in_the_queue(self, conn):
+        self.resolved(conn, "7001", "TikTok")
+        assert backfill.requeue_placeholders(conn) == {
+            "cleared_titles": 1, "requeued": 1}
+
+        row = db.rows_to_dicts(db.recent(conn))[0]
+        assert row["title"] is None
+        assert row["resolve_status"] == "pending"
+        assert row["resolve_attempts"] == 0
+
+    def test_a_placeholder_title_over_a_real_creator_is_cleared_not_requeued(self, conn):
+        # oEmbed gave a creator but no caption, so the junk page supplied the
+        # title. The creator is real; only the title has to go.
+        self.resolved(conn, "7001", "TikTok", creator="@citydesk")
+        assert backfill.requeue_placeholders(conn) == {
+            "cleared_titles": 1, "requeued": 0}
+
+        row = db.rows_to_dicts(db.recent(conn))[0]
+        assert row["title"] is None
+        assert row["creator_handle"] == "@citydesk"
+        assert row["resolve_status"] == "ok"
+
+    def test_genuine_rows_are_untouched(self, conn):
+        self.resolved(conn, "7001", "the zoning meeting went sideways", "@citydesk")
+        assert backfill.requeue_placeholders(conn) == {
+            "cleared_titles": 0, "requeued": 0}
+        assert db.rows_to_dicts(db.recent(conn))[0]["title"] == \
+            "the zoning meeting went sideways"
+
+    def test_the_repair_restores_an_honest_hit_rate(self, conn):
+        # Mirrors the real shape: mostly genuine, a block of junk pages, and a
+        # few that kept a creator. Before the repair the library claims 100%.
+        for i in range(70):
+            self.resolved(conn, f"7{i:03d}", f"a real caption {i}", f"@creator{i % 9}")
+        for i in range(25):
+            self.resolved(conn, f"8{i:03d}", "TikTok")
+        for i in range(5):
+            self.resolved(conn, f"9{i:03d}", "TikTok", creator="@citydesk")
+
+        assert backfill.stats(conn)["hit_rate"] == 1.0
+
+        assert backfill.requeue_placeholders(conn) == {
+            "cleared_titles": 30, "requeued": 25}
+        after = backfill.stats(conn)
+        assert after["resolved"] == 75
+        assert after["remaining"] == 25
+        assert round(after["hit_rate"], 2) == 0.75
+
+    def test_the_repair_is_idempotent(self, conn):
+        self.resolved(conn, "7001", "TikTok")
+        backfill.requeue_placeholders(conn)
+        assert backfill.requeue_placeholders(conn) == {
+            "cleared_titles": 0, "requeued": 0}

@@ -34,7 +34,7 @@ from typing import Optional
 import httpx
 
 from . import db, tagging, transcript
-from .resolve import resolve
+from .resolve import _is_placeholder_title, resolve
 
 CONCURRENCY = 3       # deliberately low; higher trips TikTok's throttle
 MAX_ATTEMPTS = 3      # after this, treat the item as permanently gone
@@ -52,6 +52,36 @@ def pending(conn: sqlite3.Connection, limit: Optional[int] = None) -> list[dict]
         sql += " LIMIT ?"
         params.append(limit)
     return db.rows_to_dicts(conn.execute(sql, params).fetchall())
+
+
+def requeue_placeholders(conn: sqlite3.Connection) -> dict:
+    """Undo resolutions that an earlier, too-lenient check let through.
+
+    Before the placeholder guard existed, a deleted video's "TikTok" page was
+    accepted as a successful resolution. Those rows have to be corrected in
+    place, because a library that reports itself fully resolved will never
+    retry them and the failure stays invisible.
+
+    A junk title is cleared outright. A row left with neither a title nor a
+    creator is put back in the queue so the fixed logic can rule on it.
+    """
+    rows = db.rows_to_dicts(conn.execute(
+        "SELECT id, platform, title, creator_name, creator_handle"
+        " FROM items WHERE resolve_status = 'ok'").fetchall())
+
+    cleared = requeued = 0
+    for row in rows:
+        if not _is_placeholder_title(row["title"], row["platform"]):
+            continue
+        conn.execute("UPDATE items SET title = NULL WHERE id = ?", (row["id"],))
+        cleared += 1
+        if not (row["creator_name"] or row["creator_handle"]):
+            conn.execute(
+                "UPDATE items SET resolve_status = 'pending', resolve_attempts = 0,"
+                " resolve_error = NULL WHERE id = ?", (row["id"],))
+            requeued += 1
+    conn.commit()
+    return {"cleared_titles": cleared, "requeued": requeued}
 
 
 def stats(conn: sqlite3.Connection) -> dict:
@@ -164,6 +194,8 @@ def main(argv: Optional[list[str]] = None) -> int:
     ap.add_argument("--all", action="store_true",
                     help="keep going until nothing is left to try")
     ap.add_argument("--stats", action="store_true", help="report and exit")
+    ap.add_argument("--recheck", action="store_true",
+                    help="re-test items an earlier run resolved to a placeholder")
     ap.add_argument("--db", help="library path (default: $FAVORITES_DB)")
     ap.add_argument("--quiet", action="store_true")
     args = ap.parse_args(argv)
@@ -173,6 +205,11 @@ def main(argv: Optional[list[str]] = None) -> int:
         _print_stats(stats(conn))
         conn.close()
         return 0
+
+    if args.recheck:
+        fixed = requeue_placeholders(conn)
+        print(f"placeholder titles cleared : {fixed['cleared_titles']}")
+        print(f"put back in the queue      : {fixed['requeued']}\n")
 
     limit = None if args.all else args.limit
     result = asyncio.run(run(conn, limit, quiet=args.quiet))

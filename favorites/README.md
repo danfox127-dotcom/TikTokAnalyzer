@@ -149,6 +149,25 @@ your attention. Three things make that survivable:
 
 Check progress any time with `python -m favorites.backfill --stats`.
 
+### A 100% hit rate means something is wrong
+
+A deleted video, a private account and a login wall all answer **200 with a
+well-formed page** whose title is just `TikTok`. An early version of this
+accepted that as a successful resolution, and cheerfully reported that every
+link in a five-year-old library was still alive.
+
+Resolution now refuses a title that is only the site's own name, and refuses a
+creator taken from the same place. If you resolved a library before that guard
+existed, correct it in place:
+
+```bash
+python -m favorites.backfill --recheck --all
+```
+
+That clears the junk titles and puts the genuinely dead links back in the queue,
+where they will fail honestly. Expect the reported hit rate to drop -- that is
+the repair working, not breaking.
+
 ### Items that never resolve are still kept
 
 Deleted videos and private accounts cannot be recovered by any method. Those
