@@ -2,6 +2,7 @@ streamlit
 fastapi
 uvicorn[standard]
 python-multipart
+jinja2                  # server-rendered templates in favorites/
 httpx
 pytest
 pytest-asyncio
