@@ -186,6 +186,27 @@ class TestPages:
         assert "/search?q=meeting+went" not in page.text
         assert client.get("/item/99999").status_code == 404
 
+    def test_the_item_page_links_somewhere_that_actually_opens(self, client, tiktok_ok):
+        # The unit tests prove the helper is right; this proves the template
+        # uses it. Linking the identity key sends every item in the library to
+        # a 404, and nothing but rendering the page catches that.
+        item_id = client.post("/save", json={
+            "url": "https://www.tiktok.com/@citydesk/video/7123"}).json()["id"]
+        body = client.get(f"/item/{item_id}").text
+        assert 'href="https://www.tiktok.com/@citydesk/video/7123"' in body
+        assert 'href="https://www.tiktok.com/video/7123"' not in body
+
+    def test_an_unresolved_item_links_to_its_original_url(self, client, library):
+        db.upsert_item(library, {
+            "canonical_url": "https://www.tiktok.com/video/7123",
+            "shared_url": "https://www.tiktokv.com/share/video/7123/",
+            "platform": "tiktok", "external_id": "7123",
+            "resolve_status": "unresolved", "source": "export",
+        })
+        item_id = db.rows_to_dicts(db.recent(library))[0]["id"]
+        body = client.get(f"/item/{item_id}").text
+        assert 'href="https://www.tiktokv.com/share/video/7123/"' in body
+
     def test_a_note_can_be_written_from_the_item_page(self, client, library, tiktok_ok):
         item_id = client.post("/save", json={
             "url": "https://www.tiktok.com/@citydesk/video/7123"}).json()["id"]

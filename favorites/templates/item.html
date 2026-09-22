@@ -19,7 +19,7 @@
       {% if item.resolve_status != 'ok' %}<span class="warn">unresolved</span>{% endif %}
     </p>
 
-    <h1>{{ item.title or item.canonical_url }}</h1>
+    <h1>{{ item.title or browsable_url(item) }}</h1>
 
     {% if item.creator_name or item.creator_handle %}
       <p class="byline">
@@ -29,7 +29,7 @@
       </p>
     {% endif %}
 
-    <p><a class="open" href="{{ item.canonical_url }}" target="_blank" rel="noopener noreferrer">
+    <p><a class="open" href="{{ browsable_url(item) }}" target="_blank" rel="noopener noreferrer">
       Open on {{ platform_label(item.platform) }} ↗</a></p>
 
     <form class="note-form" action="/item/{{ item.id }}/note" method="post">
