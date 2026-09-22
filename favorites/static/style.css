@@ -219,3 +219,17 @@ button:hover { filter: brightness(1.08); }
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; animation: none !important; }
 }
+
+/* Backfill in progress: an imported library is mostly dated URLs until the
+   resolver has run, and the front page has to say so or it reads as broken. */
+.pending-notice { max-width: 640px; margin: 12vh auto; text-align: center; }
+.pending-notice h1 { font-family: var(--serif); font-weight: 500; font-size: clamp(24px, 4vw, 32px); margin: 0 0 14px; }
+.pending-notice p { color: var(--muted); }
+.pending-notice code, .pending-strip code {
+  background: var(--surface); border: 1px solid var(--line); border-radius: 6px;
+  padding: 2px 7px; font-size: 13px;
+}
+.pending-strip {
+  margin: 28px 0 0; padding: 10px 14px; border-radius: 10px; font-size: 14px;
+  background: var(--surface); border: 1px solid var(--line); color: var(--muted);
+}

@@ -103,6 +103,64 @@ different saves becomes a theme. That is the honest version of "what am I into
 lately": it emerges from repetition rather than from one model's guess about
 one video.
 
+## Backfilling your history from a TikTok export
+
+The share sheet only captures from today onward. To bring in what you saved
+before this existed, import a data export.
+
+```bash
+python -m favorites.importers.tiktok_export ~/Downloads/user_data_tiktok.json
+python -m favorites.backfill --limit 100     # see how many resolve
+python -m favorites.backfill --all           # then let it run
+```
+
+**What an export actually gives you is two fields** -- a date and a link -- and
+the link is an id-only URL on `tiktokv.com` with the @handle stripped. So the
+import cannot produce a title or a creator. It produces dated URLs, and a
+second pass fetches the rest one at a time.
+
+**The date is the part worth having.** Favourites go back years. That history is
+what lets the museum show months, recurring creators and *From the vault*
+immediately, instead of after six months of collecting.
+
+### Favourites, not likes
+
+An export carries both, and they are not the same thing. A favourite is a
+deliberate "keep this". A like is a tap. The like list is also usually **capped**
+and covers only recent months, so importing it buries a multi-year collection of
+deliberate saves under a short burst of taps.
+
+Likes are therefore opt-in (`--include-likes`) and tagged `source='export-like'`
+so you can tell them apart or delete them later.
+
+### Resolution is slow, and that is fine
+
+TikTok throttles hard -- expect roughly **700 an hour**. A few thousand
+favourites is a few hours of a script running unattended, not a few hours of
+your attention. Three things make that survivable:
+
+- **Newest first.** Recent videos are likeliest to still exist, and they are what
+  the digest needs. The museum starts working after the first batch.
+- **Resumable.** Progress lives in the database. Stop it, re-run it, do it over a
+  week -- it continues where it left off.
+- **It gives up eventually.** An item that fails three times is left alone. A
+  video deleted three years ago is not coming back, and re-asking costs budget
+  that live items need.
+
+Check progress any time with `python -m favorites.backfill --stats`.
+
+### Items that never resolve are still kept
+
+Deleted videos and private accounts cannot be recovered by any method. Those
+rows stay in the library with their link and date, and stay off the shelves --
+a wall of untitled URLs is worse than an empty shelf. They still count, and the
+front page tells you how many are outstanding.
+
+### What this does not cover
+
+Instagram. `parsers/instagram.py` does not extract saved posts at all, so an
+Instagram backfill means writing that parser first.
+
 ## Privacy
 
 The library is a file on your machine. Nothing is uploaded, and the only
@@ -129,10 +187,6 @@ suite (`pytest tests/`).
 
 ## Not built yet
 
-- **Backfilling history from exports.** `parsers/tiktok.py` in this repo
-  already reads `FavoriteVideoList` and `FavoriteCollectionList` out of a
-  TikTok export, so the hard part is done; it needs wiring to `upsert_item`.
-  Expect thin results — expired media, no transcripts.
 - **A native app.** The share sheet works today through an iOS Shortcut and an
   installed PWA on Android, which is enough to find out whether you actually
   use this before anyone builds a real one.

@@ -17,7 +17,8 @@ def conn():
 
 
 def save(conn, n, *, days_ago=1, platform="tiktok", creator="City Desk",
-         handle="@citydesk", tags=(), terms=(), note=None, title=None):
+         handle="@citydesk", tags=(), terms=(), note=None, title=None,
+         resolve_status="ok"):
     when = (NOW - timedelta(days=days_ago)).replace(microsecond=0).isoformat()
     db.upsert_item(conn, {
         "canonical_url": f"https://example.com/{platform}/{n}",
@@ -30,6 +31,7 @@ def save(conn, n, *, days_ago=1, platform="tiktok", creator="City Desk",
         "terms": list(terms),
         "note": note,
         "saved_at": when,
+        "resolve_status": resolve_status,
     })
 
 
@@ -191,3 +193,39 @@ class TestSharedTerms:
         save(conn, 1, terms=["zoning code"])
         item = db.rows_to_dicts(db.recent(conn, limit=1))[0]
         assert museum.shared_terms(conn, item) == []
+
+
+class TestUnresolvedItemsStayOffTheShelves:
+    """A backfilled import is a dated URL until it resolves.
+
+    Those rows have no title, so putting them on a shelf produces a wall of raw
+    links -- worse than showing nothing. They count, but they do not display.
+    """
+
+    def test_an_unresolved_item_is_not_on_the_recent_shelf(self, conn):
+        for i in range(6):
+            save(conn, i, days_ago=i + 2)
+        save(conn, 99, days_ago=1, resolve_status="pending", title="not ready")
+        recent = museum.shelves(conn, now=NOW)[0]
+        assert all(e["resolve_status"] == "ok" for e in recent["entries"])
+
+    def test_unresolved_items_do_not_create_shelves(self, conn):
+        # An import of 40 unresolved favourites must not make the front page
+        # look busy while having nothing to show.
+        for i in range(40):
+            save(conn, i, days_ago=i * 8 + 1, resolve_status="pending")
+        assert museum.shelves(conn, now=NOW) == []
+
+    def test_a_library_of_only_imports_reports_them_as_pending(self, conn):
+        for i in range(10):
+            save(conn, i, resolve_status="pending")
+        assert museum.resolved_count(conn) == 0
+        assert museum.pending_count(conn) == 10
+
+    def test_resolving_puts_an_item_back_in_the_room(self, conn):
+        for i in range(6):
+            save(conn, i, days_ago=i + 2, resolve_status="pending")
+        assert museum.shelves(conn, now=NOW) == []
+        for i in range(6):
+            save(conn, i, days_ago=i + 2, resolve_status="ok")
+        assert museum.shelves(conn, now=NOW)[0]["kind"] == "recent"

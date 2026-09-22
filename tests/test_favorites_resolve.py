@@ -62,13 +62,23 @@ class TestCanonicalForm:
         dirty = "https://www.tiktok.com/@citydesk/video/7123?_t=8abc&_r=1&utm_source=x"
         assert strip_tracking(dirty) == "https://www.tiktok.com/@citydesk/video/7123"
 
-    def test_two_shares_of_one_video_agree(self):
-        a, id_a = canonical_form(
-            "https://www.tiktok.com/@citydesk/video/7123?_t=1&is_from_webapp=1", "tiktok")
-        b, id_b = canonical_form(
-            "https://m.tiktok.com/@citydesk/video/7123/?_t=999", "tiktok")
-        assert a == b == "https://www.tiktok.com/@citydesk/video/7123"
-        assert id_a == id_b == "7123"
+    def test_every_way_a_tiktok_can_arrive_resolves_to_one_identity(self):
+        # The handle is deliberately not part of the identity. A data export
+        # strips it and serves from tiktokv.com; a share sheet includes it. If
+        # identity depended on the handle, importing your history and later
+        # sharing the same video would file it twice.
+        forms = [
+            "https://www.tiktok.com/@citydesk/video/7123?_t=1&is_from_webapp=1",
+            "https://m.tiktok.com/@citydesk/video/7123/?_t=999",
+            "https://www.tiktokv.com/share/video/7123/",
+            "https://www.tiktok.com/video/7123",
+        ]
+        results = {canonical_form(u, detect_platform(u)) for u in forms}
+        assert results == {("https://www.tiktok.com/video/7123", "7123")}
+
+    def test_export_links_are_recognised_as_tiktok(self):
+        # Exports serve from tiktokv.com, which is a different host entirely.
+        assert detect_platform("https://www.tiktokv.com/share/video/7123/") == "tiktok"
 
     @pytest.mark.parametrize("url", [
         "https://www.youtube.com/watch?v=dQw4w9WgXcQ&t=42s",
@@ -122,7 +132,7 @@ class TestResolve:
         # Instagram has no open oEmbed endpoint, and TikTok's sometimes 403s.
         respx.get(host="www.tiktok.com", path="/oembed").mock(
             return_value=httpx.Response(403))
-        respx.get(host="www.tiktok.com", path__startswith="/@").mock(
+        respx.get(host="www.tiktok.com", path__startswith="/video").mock(
             return_value=httpx.Response(200, text=OG_PAGE,
                                         headers={"content-type": "text/html"}))
         async with httpx.AsyncClient() as client:
@@ -144,6 +154,7 @@ class TestResolve:
     @respx.mock
     async def test_shortener_is_expanded_before_identity_is_decided(self):
         full = "https://www.tiktok.com/@citydesk/video/7123"
+        canonical = "https://www.tiktok.com/video/7123"
         respx.head(host="vm.tiktok.com").mock(
             return_value=httpx.Response(301, headers={"location": full}))
         respx.head(host="www.tiktok.com").mock(return_value=httpx.Response(200))
@@ -151,7 +162,7 @@ class TestResolve:
             return_value=httpx.Response(200, json=TIKTOK_OEMBED))
         async with httpx.AsyncClient() as client:
             item = await resolve("https://vm.tiktok.com/ZMabc/", client)
-        assert item.canonical_url == full
+        assert item.canonical_url == canonical
         assert item.external_id == "7123"
 
     @respx.mock

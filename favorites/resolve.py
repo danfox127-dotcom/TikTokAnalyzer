@@ -64,6 +64,10 @@ SHORTENERS = {
 
 HOST_PLATFORMS = [
     ("tiktok.com", "tiktok"),
+    # Data-export links are served from tiktokv.com, not tiktok.com. Without
+    # this an imported favourite is filed as a generic web page and its video
+    # id is never extracted.
+    ("tiktokv.com", "tiktok"),
     ("youtube.com", "youtube"),
     ("youtu.be", "youtube"),
     ("instagram.com", "instagram"),
@@ -159,7 +163,7 @@ def strip_tracking(url: str) -> str:
     kept = [(k, v) for k, v in parse_qsl(parts.query, keep_blank_values=False)
             if k.lower() not in TRACKING_PARAMS]
     host = (parts.hostname or "").lower().removeprefix("m.").removeprefix("www.")
-    if host.endswith("tiktok.com"):
+    if host.endswith("tiktok.com") or host.endswith("tiktokv.com"):
         host = "www.tiktok.com"
     path = parts.path.rstrip("/") or "/"
     return urlunparse((
@@ -178,10 +182,12 @@ def canonical_form(url: str, platform: str) -> tuple[str, Optional[str]]:
 
     if platform == "tiktok":
         vid = re.search(r"/video/(\d+)", parts.path) or re.search(r"/photo/(\d+)", parts.path)
-        handle = re.search(r"/@([\w.\-]+)", parts.path)
         if vid:
-            owner = handle.group(1) if handle else "unknown"
-            return f"https://www.tiktok.com/@{owner}/video/{vid.group(1)}", vid.group(1)
+            # Identity is the video id alone -- deliberately NOT the @handle.
+            # A data export strips the handle while a share sheet includes it, so
+            # keying on the handle would file the same video twice depending on
+            # how it arrived. The handle is an attribute of the item, not its name.
+            return f"https://www.tiktok.com/video/{vid.group(1)}", vid.group(1)
 
     if platform == "youtube":
         vid = dict(parse_qsl(parts.query)).get("v")

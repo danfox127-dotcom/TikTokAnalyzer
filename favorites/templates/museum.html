@@ -2,7 +2,17 @@
 {% from "_card.html" import card %}
 {% block content %}
 
-{% if total == 0 %}
+{% if pending and total == pending %}
+  <section class="pending-notice">
+    <h1>{{ pending }} saves imported, none identified yet</h1>
+    <p>Your history is in the library — every link and the date you saved it.
+       Titles, creators and thumbnails come from a separate pass, because they
+       have to be fetched one at a time.</p>
+    <p class="hint">Run <code>python -m favorites.backfill --limit 100</code> to
+       start. Newest first, so the shelves fill in with the things you saved most
+       recently. It resumes where it stops, so run it in batches.</p>
+  </section>
+{% elif total == 0 %}
   <section class="empty">
     <h1>Nothing here yet.</h1>
     <p>Share a link into this library and it will be catalogued: title, creator,
@@ -16,6 +26,11 @@
     </form>
   </section>
 {% else %}
+
+{% if pending %}
+  <p class="pending-strip">{{ pending }} imported {{ "save" if pending == 1 else "saves" }}
+     still to identify — <code>python -m favorites.backfill --all</code></p>
+{% endif %}
 
 <section class="digest">
   <h1>The last month</h1>
