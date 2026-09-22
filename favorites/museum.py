@@ -26,6 +26,12 @@ from . import db
 from .resolve import platform_label
 from .tagging import collection_themes
 
+# The museum only arranges items it can actually describe. A backfilled import
+# is a dated URL until it resolves, and a shelf of untitled links is worse than
+# no shelf -- so unresolved items contribute their dates to the counts but stay
+# out of the display until they have a title.
+RESOLVED = "resolve_status = 'ok'"
+
 MONTH_NAMES = [
     "January", "February", "March", "April", "May", "June",
     "July", "August", "September", "October", "November", "December",
@@ -214,9 +220,19 @@ def _shelf(kind: str, title: str, subtitle: str, entries: list[dict], href: str 
 
 def _items_where(conn: sqlite3.Connection, clause: str, params: tuple, limit: int = 8) -> list[dict]:
     return db.rows_to_dicts(conn.execute(
-        f"SELECT * FROM items WHERE {clause} ORDER BY saved_at DESC LIMIT ?",
+        f"SELECT * FROM items WHERE {RESOLVED} AND ({clause}) ORDER BY saved_at DESC LIMIT ?",
         (*params, limit),
     ).fetchall())
+
+
+def resolved_count(conn: sqlite3.Connection) -> int:
+    return int(conn.execute(
+        f"SELECT count(*) AS n FROM items WHERE {RESOLVED}").fetchone()["n"])
+
+
+def pending_count(conn: sqlite3.Connection) -> int:
+    return int(conn.execute(
+        f"SELECT count(*) AS n FROM items WHERE NOT ({RESOLVED})").fetchone()["n"])
 
 
 def shelves(
@@ -231,10 +247,12 @@ def shelves(
     arrangement is stable through the day and different tomorrow.
     """
     now = now or datetime.now(timezone.utc)
-    total = db.count(conn)
+    total = resolved_count(conn)
     out: list[dict] = []
 
-    recent = db.rows_to_dicts(db.recent(conn, limit=8))
+    recent = db.rows_to_dicts(conn.execute(
+        f"SELECT * FROM items WHERE {RESOLVED} ORDER BY saved_at DESC, id DESC LIMIT 8"
+    ).fetchall())
     if recent:
         out.append(_shelf(
             "recent", "Recently saved",
@@ -243,7 +261,8 @@ def shelves(
     if total <= 3:
         return out
 
-    everything = db.rows_to_dicts(conn.execute("SELECT * FROM items").fetchall())
+    everything = db.rows_to_dicts(conn.execute(
+        f"SELECT * FROM items WHERE {RESOLVED}").fetchall())
     rng = random.Random(f"{now.date().isoformat()}:{total}")
     candidates: list[dict] = []
 
@@ -262,8 +281,8 @@ def shelves(
 
     # A month you were busy.
     months = conn.execute(
-        "SELECT substr(saved_at, 1, 7) AS m, count(*) AS n FROM items"
-        " GROUP BY m HAVING n >= 3 ORDER BY n DESC LIMIT 6"
+        f"SELECT substr(saved_at, 1, 7) AS m, count(*) AS n FROM items"
+        f" WHERE {RESOLVED} GROUP BY m HAVING n >= 3 ORDER BY n DESC LIMIT 6"
     ).fetchall()
     for row in months:
         if row["m"] == now.strftime("%Y-%m"):
@@ -277,8 +296,9 @@ def shelves(
 
     # Someone you keep coming back to.
     creators = conn.execute(
-        "SELECT coalesce(creator_handle, creator_name) AS k, count(*) AS n FROM items"
-        " WHERE k IS NOT NULL GROUP BY k HAVING n >= 2 ORDER BY n DESC LIMIT 6"
+        f"SELECT coalesce(creator_handle, creator_name) AS k, count(*) AS n FROM items"
+        f" WHERE {RESOLVED} AND k IS NOT NULL GROUP BY k HAVING n >= 2"
+        f" ORDER BY n DESC LIMIT 6"
     ).fetchall()
     for row in creators:
         items = _items_where(
@@ -296,7 +316,8 @@ def shelves(
     # something you were not already thinking about.
     old_cutoff = _cutoff(120, now)
     old = db.rows_to_dicts(conn.execute(
-        "SELECT * FROM items WHERE saved_at < ? ORDER BY random() LIMIT 8", (old_cutoff,)
+        f"SELECT * FROM items WHERE {RESOLVED} AND saved_at < ?"
+        f" ORDER BY random() LIMIT 8", (old_cutoff,)
     ).fetchall())
     if len(old) >= 3:
         candidates.append(_shelf(

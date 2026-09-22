@@ -176,6 +176,10 @@ def home(request: Request, conn: sqlite3.Connection = Depends(get_db)):
         "shelves": museum.shelves(conn, now=now),
         "digest": museum.digest(conn, days=30, now=now),
         "total": db.count(conn),
+        # A freshly backfilled library is mostly dated URLs. Without saying so,
+        # an empty-looking front page over a four-figure item count reads as a
+        # bug rather than as work still in progress.
+        "pending": museum.pending_count(conn),
     })
 
 

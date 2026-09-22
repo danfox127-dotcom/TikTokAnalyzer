@@ -141,6 +141,19 @@ class TestPages:
         body = client.get("/").text
         assert "Nothing here yet" in body
 
+    def test_a_freshly_imported_library_explains_itself(self, client, library):
+        # 844 items and an empty front page reads as a bug unless the page says
+        # what is actually going on.
+        for i in range(5):
+            db.upsert_item(library, {
+                "canonical_url": f"https://www.tiktok.com/video/{7000 + i}",
+                "shared_url": "x", "platform": "tiktok",
+                "resolve_status": "pending", "source": "export",
+            })
+        body = client.get("/").text
+        assert "5 saves imported, none identified yet" in body
+        assert "favorites.backfill" in body
+
     def test_the_front_page_leads_with_the_digest(self, client, tiktok_ok):
         client.post("/save", json={"url": "https://www.tiktok.com/@citydesk/video/7123"})
         body = client.get("/").text

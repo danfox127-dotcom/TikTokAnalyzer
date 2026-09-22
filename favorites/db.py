@@ -43,12 +43,16 @@ CREATE TABLE IF NOT EXISTS items (
     resolved_at    TEXT,
     resolve_status TEXT NOT NULL DEFAULT 'pending',
     resolve_error  TEXT,
+    resolve_attempts INTEGER NOT NULL DEFAULT 0,
+    source         TEXT NOT NULL DEFAULT 'share',
+    imported_at    TEXT,
     raw            TEXT
 );
 
 CREATE INDEX IF NOT EXISTS idx_items_saved_at ON items(saved_at DESC);
 CREATE INDEX IF NOT EXISTS idx_items_platform ON items(platform);
 CREATE INDEX IF NOT EXISTS idx_items_creator  ON items(creator_handle);
+CREATE INDEX IF NOT EXISTS idx_items_status   ON items(resolve_status);
 
 CREATE VIRTUAL TABLE IF NOT EXISTS items_fts USING fts5(
     item_id UNINDEXED,
@@ -68,8 +72,31 @@ WRITABLE = (
     "canonical_url", "shared_url", "platform", "external_id", "title",
     "creator_name", "creator_handle", "creator_url", "thumbnail_url",
     "description", "transcript", "note", "tags", "terms", "saved_at",
-    "resolved_at", "resolve_status", "resolve_error", "raw",
+    "resolved_at", "resolve_status", "resolve_error", "resolve_attempts",
+    "source", "imported_at", "raw",
 )
+
+# Columns added after the first release. A library created by an earlier version
+# is migrated in place on open rather than rebuilt -- it holds the only copy of
+# your notes.
+MIGRATIONS = {
+    "resolve_attempts": "INTEGER NOT NULL DEFAULT 0",
+    "source": "TEXT NOT NULL DEFAULT 'share'",
+    "imported_at": "TEXT",
+}
+
+
+def migrate(conn: sqlite3.Connection) -> list[str]:
+    """Add any columns this version expects but the file does not have."""
+    have = {row["name"] for row in conn.execute("PRAGMA table_info(items)")}
+    added = []
+    for column, ddl in MIGRATIONS.items():
+        if column not in have:
+            conn.execute(f"ALTER TABLE items ADD COLUMN {column} {ddl}")
+            added.append(column)
+    if added:
+        conn.commit()
+    return added
 
 
 def now_iso() -> str:
@@ -88,6 +115,7 @@ def connect(path: str | os.PathLike | None = None) -> sqlite3.Connection:
     conn.execute("PRAGMA foreign_keys = ON")
     conn.executescript(SCHEMA)
     conn.commit()
+    migrate(conn)
     return conn
 
 
