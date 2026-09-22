@@ -57,6 +57,22 @@ Python 3.8+ (standard library only -- no pip installs needed).
 
 All analysis runs locally in Python. The dashboard is a single HTML file that reads your report via the browser FileReader API. Nothing is uploaded, transmitted, or stored remotely.
 
+## Also in This Repo
+
+### `favorites/` -- a searchable library of your saved content
+
+A separate prototype, not part of the analyzer. It catalogues the things you save
+across platforms -- TikTok, YouTube, Instagram, Reddit, newsletters -- into a
+searchable library with a browsable front page of recent saves, recurring themes,
+months and creators.
+
+Capture is a phone share sheet rather than platform APIs, because TikTok and
+Instagram expose no way for an app to read your saved items. Unlike the analyzer,
+it has its own dependencies (`favorites/requirements.txt`).
+
+- [`favorites/README.md`](favorites/README.md) -- what it does, what each platform gives you, and how to run it
+- [`favorites/SHARE_SHEET.md`](favorites/SHARE_SHEET.md) -- one-tap saving from iOS or Android, with no app to install
+
 ## 🌐 Community & Hosting
 
 Want to host this as a private or public web app? We've included a **Streamlit** wrapper ready for deployment.
