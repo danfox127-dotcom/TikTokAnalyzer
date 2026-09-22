@@ -64,6 +64,21 @@ TikTok.
 When both fail, the item is still saved. The link and your own note are the
 parts that cannot be recovered later anyway.
 
+### Adding a platform
+
+Everything a platform needs is one descriptor in `platforms.py`: the hosts it
+owns, how to derive a stable **identity** from a URL, how to build a
+**browsable link**, its oEmbed endpoint if it has one, where the @handle lives,
+and whether transcripts exist.
+
+Identity and link are deliberately two fields, because they are two jobs. A
+TikTok's identity is its video id alone — the same video files once whether it
+arrived from a data export (handle stripped) or a share sheet (handle present).
+But `tiktok.com/video/<id>` is not a route TikTok serves, so the link has to be
+rebuilt with the handle. They used to live in separate functions that quietly
+stopped agreeing, and every link in the library 404'd. Now they sit in one
+object, and a test asserts they still match.
+
 ### Your note is the best field in the database
 
 Every item has a one-line note — a placard. It is optional, it takes three
@@ -194,6 +209,7 @@ library.
 
 | File | What it does |
 |---|---|
+| `platforms.py` | What we know about each platform, one descriptor each |
 | `resolve.py` | A shared link → title, creator, thumbnail |
 | `tagging.py` | Hashtags and themes, no model required |
 | `transcript.py` | YouTube captions, where available |
