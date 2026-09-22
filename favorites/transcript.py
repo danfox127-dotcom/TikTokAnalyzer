@@ -15,9 +15,13 @@ from __future__ import annotations
 import logging
 from typing import Optional
 
+from .platforms import PLATFORMS
+
 logger = logging.getLogger(__name__)
 
-SUPPORTED = {"youtube"}
+#: Platforms declaring transcript support in the registry -- in practice, the
+#: ones that publish a caption track rather than requiring a media download.
+SUPPORTED = {p.name for p in PLATFORMS if p.transcripts}
 MAX_CHARS = 20_000
 
 
