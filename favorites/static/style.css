@@ -233,3 +233,50 @@ button:hover { filter: brightness(1.08); }
   margin: 28px 0 0; padding: 10px 14px; border-radius: 10px; font-size: 14px;
   background: var(--surface); border: 1px solid var(--line); color: var(--muted);
 }
+
+/* Placard run: one item at a time. A grid invites choosing which to do; a
+   single card invites doing it. The note is a one-line input rather than a
+   textarea so Enter submits and the whole run is keyboard-only. */
+.placard-run { max-width: 860px; margin: 32px auto; }
+.placard-progress { color: var(--muted); font-size: 14px; margin: 0 0 18px; }
+.placard-progress strong { color: var(--text); font-variant-numeric: tabular-nums; }
+/* inherit-coloured links vanish inside muted text */
+.placard-progress a { color: var(--accent); border-bottom: 1px solid color-mix(in srgb, var(--accent) 40%, transparent); }
+
+.placard-card {
+  display: grid; grid-template-columns: minmax(0, 280px) minmax(0, 1fr); gap: 32px;
+  align-items: start; padding: 24px; border-radius: var(--radius);
+  background: var(--surface); border: 1px solid var(--line);
+}
+.placard-thumb {
+  display: block; position: relative; aspect-ratio: 3 / 4; overflow: hidden;
+  border-radius: 12px; border: 1px solid var(--line);
+  background: linear-gradient(145deg, var(--surface-2), var(--surface));
+}
+.placard-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+.placard-creator { margin: 0 0 6px; font-weight: 600; }
+.placard-caption {
+  margin: 0 0 16px; font-family: var(--serif); font-size: 19px; line-height: 1.4;
+  text-wrap: pretty;
+}
+.placard-nothing { color: var(--muted); font-style: italic; }
+
+.placard-form { display: flex; flex-direction: column; gap: 9px; margin: 22px 0 8px; }
+.placard-form label {
+  font-family: var(--serif); font-size: 12px; letter-spacing: .14em;
+  text-transform: uppercase; color: var(--accent);
+}
+.placard-form input[type="text"] {
+  padding: 12px 14px; border-radius: 10px; border: 1px solid var(--line);
+  background: var(--bg); color: var(--text);
+  font-family: var(--serif); font-size: 17px;
+}
+.placard-form input[type="text"]:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+.placard-actions { display: flex; align-items: center; gap: 16px; }
+.placard-skip { color: var(--muted); font-size: 14px; }
+
+@media (max-width: 720px) {
+  .placard-card { grid-template-columns: 1fr; gap: 20px; padding: 18px; }
+  .placard-thumb { max-width: 220px; }
+}

@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block title %}Placards · Favorites{% endblock %}
+{% block content %}
+
+{% if item %}
+<section class="placard-run">
+  <p class="placard-progress">
+    <strong>{{ remaining }}</strong> left to label ·
+    {{ written }} placard{{ '' if written == 1 else 's' }} written
+    {% if not everything %}
+      · <a href="/placards?all=1">include everything unlabelled</a>
+    {% else %}
+      · <a href="/placards">only the ones with no caption</a>
+    {% endif %}
+  </p>
+
+  <div class="placard-card">
+    <a class="placard-thumb" href="{{ browsable_url(item) }}"
+       target="_blank" rel="noopener noreferrer">
+      {% if item.thumbnail_url %}
+        <img src="{{ item.thumbnail_url }}" alt="" referrerpolicy="no-referrer"
+             onerror="this.remove()">
+      {% endif %}
+      <span class="chip">{{ platform_label(item.platform) }}</span>
+    </a>
+
+    <div class="placard-body">
+      {% if item.creator_name or item.creator_handle %}
+        <p class="placard-creator">{{ item.creator_name or item.creator_handle }}</p>
+      {% endif %}
+
+      {% if item.title %}
+        <p class="placard-caption">{{ item.title }}</p>
+      {% else %}
+        <p class="placard-caption placard-nothing">No caption — the picture is all there is.</p>
+      {% endif %}
+
+      <p><a class="open" href="{{ browsable_url(item) }}"
+            target="_blank" rel="noopener noreferrer">
+        Watch it on {{ platform_label(item.platform) }} ↗</a></p>
+
+      <form class="placard-form" action="/placards/{{ item.id }}" method="post">
+        <label for="note">Why did you keep this?</label>
+        <input type="text" id="note" name="note" autofocus autocomplete="off"
+               placeholder="one line is plenty">
+        <input type="hidden" name="all" value="{{ 1 if everything else 0 }}">
+        <div class="placard-actions">
+          <button type="submit">Save &amp; next</button>
+          <a class="placard-skip"
+             href="/placards?after={{ item.id }}{{ '&all=1' if everything else '' }}">Skip</a>
+        </div>
+      </form>
+      <p class="hint">Enter saves and moves on. Skipping leaves it for another day.</p>
+    </div>
+  </div>
+</section>
+
+{% else %}
+<section class="empty">
+  <h1>{% if after %}That's the last one.{% else %}Nothing needs a placard.{% endif %}</h1>
+  <p>{{ written }} placard{{ '' if written == 1 else 's' }} written.</p>
+  {% if not everything %}
+    <p class="hint">Only items with no caption at all were in this pass —
+       <a href="/placards?all=1">there may be more unlabelled ones</a>.</p>
+  {% endif %}
+  <p><a class="open" href="/">Back to the museum</a></p>
+</section>
+{% endif %}
+
+{% endblock %}

@@ -254,6 +254,67 @@ def unlabelled(request: Request, conn: sqlite3.Connection = Depends(get_db)):
     })
 
 
+# An item with no extracted terms has a caption of pure emoji and hashtags --
+# nothing a person could search for. Those are the ones worth a placard first:
+# they are the only items in the library with no findable text at all.
+NO_PROSE = "(terms = '[]' OR terms IS NULL)"
+
+
+def _placard_clause(everything: bool) -> str:
+    unlabelled = "(note IS NULL OR trim(note) = '')"
+    base = f"resolve_status = 'ok' AND {unlabelled}"
+    return base if everything else f"{base} AND {NO_PROSE}"
+
+
+@app.get("/placards", response_class=HTMLResponse)
+def placards(
+    request: Request,
+    after: int = Query(0),
+    all: int = Query(0),
+    conn: sqlite3.Connection = Depends(get_db),
+):
+    """Write a line about one item, then the next.
+
+    One at a time rather than a grid: the point is to get through them, and a
+    wall of thumbnails invites deciding which to do rather than doing them.
+    """
+    clause = _placard_clause(bool(all))
+    row = conn.execute(
+        f"SELECT * FROM items WHERE {clause} AND id > ? ORDER BY id LIMIT 1", (after,)
+    ).fetchone()
+
+    remaining = conn.execute(
+        f"SELECT count(*) AS n FROM items WHERE {clause}").fetchone()["n"]
+    written = conn.execute(
+        "SELECT count(*) AS n FROM items WHERE note IS NOT NULL AND trim(note) != ''"
+    ).fetchone()["n"]
+
+    return templates.TemplateResponse(request, "placard.html", {
+        "item": db.rows_to_dicts([row])[0] if row else None,
+        "remaining": remaining,
+        "written": written,
+        "after": after,
+        "everything": bool(all),
+        "q": "", "total": db.count(conn),
+    })
+
+
+@app.post("/placards/{item_id}")
+def write_placard(
+    item_id: int,
+    note: str = Form(""),
+    all: int = Form(0),
+    conn: sqlite3.Connection = Depends(get_db),
+):
+    if db.get_item(conn, item_id) is None:
+        raise HTTPException(status_code=404, detail="no such item")
+    if note.strip():
+        db.set_note(conn, item_id, note.strip())
+    # Advance past this item either way, so a skip does not loop on it.
+    suffix = "&all=1" if all else ""
+    return RedirectResponse(f"/placards?after={item_id}{suffix}", status_code=303)
+
+
 @app.get("/item/{item_id}", response_class=HTMLResponse)
 def item_page(
     request: Request, item_id: int, saved: int = Query(0),

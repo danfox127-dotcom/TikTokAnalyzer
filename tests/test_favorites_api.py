@@ -226,3 +226,91 @@ class TestPages:
         client.post("/save", json={"url": "https://www.tiktok.com/@citydesk/video/7123"})
         body = client.get("/healthz").json()
         assert body == {"ok": True, "items": 1, "transcripts_enabled": body["transcripts_enabled"]}
+
+
+class TestPlacardRun:
+    """Writing a line about the items that have no findable text at all.
+
+    A caption of pure emoji and hashtags leaves an item searchable by nothing.
+    No model recovers why it was kept -- only the person who kept it can.
+    """
+
+    def stock(self, conn):
+        def add(vid, title, terms, note=None):
+            db.upsert_item(conn, {
+                "canonical_url": f"https://www.tiktok.com/video/{vid}",
+                "shared_url": f"https://www.tiktokv.com/share/video/{vid}/",
+                "platform": "tiktok", "external_id": vid,
+                "title": title, "terms": terms, "note": note,
+                "thumbnail_url": "https://p16.tiktokcdn.com/t.jpg",
+                "resolve_status": "ok", "source": "export",
+            })
+        add("7001", "🥰🥰🥰 #mentalhealth", [])                      # no prose
+        add("7002", "#fyp #viral", [])                               # no prose
+        add("7003", "the zoning meeting went sideways", ["zoning"])  # prose, no note
+        add("7004", "🎃🎃 #spooky", [], note="for the october post")  # no prose, done
+
+    def test_only_items_with_no_prose_are_queued_by_default(self, client, library):
+        self.stock(library)
+        body = client.get("/placards").text
+        assert "<strong>2</strong> left to label" in body
+        assert "1 placard written" in body
+
+    def test_widening_includes_everything_unlabelled(self, client, library):
+        self.stock(library)
+        body = client.get("/placards?all=1").text
+        assert "<strong>3</strong> left to label" in body
+
+    def test_an_item_with_no_caption_says_so_rather_than_showing_blank(self, client, library):
+        db.upsert_item(library, {
+            "canonical_url": "https://www.tiktok.com/video/7001",
+            "shared_url": "https://www.tiktokv.com/share/video/7001/",
+            "platform": "tiktok", "external_id": "7001",
+            "title": None, "terms": [], "resolve_status": "ok",
+        })
+        assert "the picture is all there is" in client.get("/placards").text
+
+    def test_writing_a_placard_advances_to_the_next_item(self, client, library):
+        self.stock(library)
+        first = client.get("/placards").text
+        assert "7001" in first  # its thumbnail/link carry the id
+
+        item_id = db.rows_to_dicts(db.recent(library, limit=10))[-1]["id"]
+        resp = client.post(f"/placards/{item_id}", data={"note": "made me laugh"},
+                           follow_redirects=False)
+        assert resp.status_code == 303
+        assert resp.headers["location"] == f"/placards?after={item_id}"
+        assert db.get_item(library, item_id)["note"] == "made me laugh"
+
+    def test_a_written_placard_is_immediately_searchable(self, client, library):
+        # The whole point: these items had no findable text before.
+        self.stock(library)
+        item_id = db.rows_to_dicts(db.recent(library, limit=10))[-1]["id"]
+        client.post(f"/placards/{item_id}", data={"note": "referendum explainer"},
+                    follow_redirects=False)
+        assert len(db.search(library, "referendum")) == 1
+
+    def test_skipping_does_not_loop_on_the_same_item(self, client, library):
+        self.stock(library)
+        ids = [i["id"] for i in db.rows_to_dicts(db.recent(library, limit=10))]
+        first = min(ids)
+        body = client.get(f"/placards?after={first}").text
+        assert f"/placards/{first}" not in body
+
+    def test_an_empty_note_skips_rather_than_storing_blank(self, client, library):
+        self.stock(library)
+        item_id = db.rows_to_dicts(db.recent(library, limit=10))[-1]["id"]
+        client.post(f"/placards/{item_id}", data={"note": "   "},
+                    follow_redirects=False)
+        assert not (db.get_item(library, item_id)["note"] or "").strip()
+
+    def test_the_end_of_the_run_says_so(self, client, library):
+        self.stock(library)
+        highest = max(i["id"] for i in db.rows_to_dicts(db.recent(library, limit=10)))
+        assert "That's the last one." in client.get(f"/placards?after={highest}").text
+
+    def test_an_empty_library_is_not_an_error(self, client):
+        assert "Nothing needs a placard." in client.get("/placards").text
+
+    def test_a_missing_item_is_a_404(self, client):
+        assert client.post("/placards/99999", data={"note": "x"}).status_code == 404
