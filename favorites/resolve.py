@@ -330,6 +330,33 @@ async def _try_opengraph(url: str, client: httpx.AsyncClient) -> Optional[dict]:
         return None
 
 
+def _placeholder_names(platform: str, site_name: Optional[str] = None) -> set[str]:
+    """The strings that mean "this is the site, not the thing you asked for"."""
+    names = {platform.lower(), platform_label(platform).lower()}
+    if site_name:
+        names.add(re.sub(r"\s+", " ", site_name).strip().lower())
+    return names
+
+
+def _is_placeholder_title(
+    title: Optional[str], platform: str, site_name: Optional[str] = None
+) -> bool:
+    """True when the only "title" we got is the site telling us its own name.
+
+    A deleted video, a private account or a login wall still answers 200 with a
+    perfectly well-formed page whose title is just "TikTok". Treating that as a
+    successful resolution produces an item that looks catalogued and describes
+    nothing -- and, worse, reports a 100% success rate over a library where a
+    seventh of the links are dead.
+    """
+    if not title:
+        return True
+    cleaned = re.sub(r"\s+", " ", title).strip().lower()
+    if not cleaned:
+        return True
+    return cleaned in _placeholder_names(platform, site_name)
+
+
 def _clean(value: Optional[str]) -> Optional[str]:
     if not value:
         return None
@@ -387,6 +414,23 @@ async def resolve(shared: str, client: httpx.AsyncClient) -> Resolved:
         item.raw["opengraph"] = {k: v for k, v in meta.items() if not k.startswith("__")}
         item.resolve_status = "ok"
 
+    site_name = (meta or {}).get("og:site_name")
+    if _is_placeholder_title(item.title, platform, site_name):
+        item.title = None
+        # og:site_name doubles as a weak creator fallback above. When the title
+        # was only the site's own name, a creator taken from the same place is
+        # just as hollow -- together they would pass the check below while
+        # telling us nothing about the item.
+        hollow = _placeholder_names(platform, site_name)
+        if (item.creator_name or "").strip().lower() in hollow:
+            item.creator_name = None
+
+    # A resolution has to have produced something that actually identifies the
+    # item. A bare placeholder title is not that, and neither is nothing at all.
+    if not item.title and not (item.creator_name or item.creator_handle):
+        item.resolve_status = "unresolved"
+        item.resolve_error = item.resolve_error or "only placeholder metadata available"
+
     # On TikTok the oEmbed "title" is the caption, so it is both the label and
     # the body text. Keeping it in one field loses the hashtags to truncation.
     if platform == "tiktok" and item.title and not item.description:
@@ -394,7 +438,7 @@ async def resolve(shared: str, client: httpx.AsyncClient) -> Resolved:
 
     if item.resolve_status != "ok":
         item.resolve_status = "unresolved"
-        item.resolve_error = "no oEmbed or OpenGraph metadata available"
+        item.resolve_error = item.resolve_error or "no oEmbed or OpenGraph metadata available"
         item.title = item.title or canonical
 
     return item

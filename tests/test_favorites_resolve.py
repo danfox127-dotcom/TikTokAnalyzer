@@ -181,3 +181,76 @@ class TestResolve:
             item = await resolve("   ", client)
         assert item.resolve_status == "failed"
         assert item.canonical_url == ""
+
+
+PLACEHOLDER_PAGE = "<html><head><title>TikTok</title></head><body></body></html>"
+
+
+@pytest.mark.asyncio
+class TestPlaceholderPagesAreNotResolutions:
+    """A deleted video still answers 200 with a well-formed page.
+
+    Its title is just "TikTok". Accepting that as a resolution produces an item
+    that looks catalogued and describes nothing -- and reports a 100% success
+    rate over a library where a seventh of the links are dead.
+    """
+
+    @respx.mock
+    async def test_a_dead_video_page_does_not_count_as_resolved(self):
+        respx.get(host="www.tiktok.com", path="/oembed").mock(
+            return_value=httpx.Response(404))
+        respx.get(host="www.tiktok.com", path__startswith="/video").mock(
+            return_value=httpx.Response(200, text=PLACEHOLDER_PAGE,
+                                        headers={"content-type": "text/html"}))
+        async with httpx.AsyncClient() as client:
+            item = await resolve("https://www.tiktok.com/video/7123", client)
+        assert item.resolve_status == "unresolved"
+        assert item.title != "TikTok"
+
+    @respx.mock
+    async def test_an_empty_oembed_is_not_rescued_by_the_placeholder_page(self):
+        # This is the subtler half: oEmbed answers 200 but carries no title, so
+        # the OpenGraph fallback runs and fills the gap with "TikTok".
+        respx.get(host="www.tiktok.com", path="/oembed").mock(
+            return_value=httpx.Response(200, json={"title": "", "author_name": ""}))
+        respx.get(host="www.tiktok.com", path__startswith="/video").mock(
+            return_value=httpx.Response(200, text=PLACEHOLDER_PAGE,
+                                        headers={"content-type": "text/html"}))
+        async with httpx.AsyncClient() as client:
+            item = await resolve("https://www.tiktok.com/video/7123", client)
+        assert item.title != "TikTok"
+        assert item.resolve_status == "unresolved"
+
+    @respx.mock
+    async def test_a_real_video_still_resolves(self):
+        respx.get(host="www.tiktok.com", path="/oembed").mock(
+            return_value=httpx.Response(200, json=TIKTOK_OEMBED))
+        async with httpx.AsyncClient() as client:
+            item = await resolve("https://www.tiktok.com/video/7123", client)
+        assert item.resolve_status == "ok"
+        assert item.creator_handle == "@citydesk"
+
+    @respx.mock
+    async def test_a_page_whose_only_metadata_is_a_real_title_still_resolves(self):
+        # Don't over-correct: a blog with no OpenGraph tags but a genuine
+        # <title> is a perfectly good resolution.
+        page = "<html><head><title>What the zoning code does</title></head></html>"
+        respx.get(host="someones.blog").mock(
+            return_value=httpx.Response(200, text=page,
+                                        headers={"content-type": "text/html"}))
+        async with httpx.AsyncClient() as client:
+            item = await resolve("https://someones.blog/post", client)
+        assert item.resolve_status == "ok"
+        assert item.title == "What the zoning code does"
+
+    @respx.mock
+    async def test_a_site_name_title_is_also_a_placeholder(self):
+        # Some platforms answer with og:site_name rather than the bare host.
+        page = ('<html><head><title>Cityscape</title>'
+                '<meta property="og:site_name" content="Cityscape"></head></html>')
+        respx.get(host="example.com").mock(
+            return_value=httpx.Response(200, text=page,
+                                        headers={"content-type": "text/html"}))
+        async with httpx.AsyncClient() as client:
+            item = await resolve("https://example.com/gone", client)
+        assert item.resolve_status == "unresolved"
