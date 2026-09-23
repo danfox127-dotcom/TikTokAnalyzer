@@ -168,7 +168,7 @@ class TestCatchingUp:
         respx.get(NEW).mock(return_value=httpx.Response(
             200, content=JPEG, headers={"content-type": "image/jpeg"}))
         r = asyncio.run(thumbnails.run(conn, quiet=True))
-        assert r == {"attempted": 1, "kept": 1, "refreshed": 0, "failed": 0}
+        assert r == {"attempted": 1, "kept": 1, "refreshed": 0, "failed": 0, "why": {}}
         assert thumbnails.get(conn, item_id)["data"] == JPEG
 
     @respx.mock
@@ -192,7 +192,46 @@ class TestCatchingUp:
         respx.get(OLD).mock(return_value=httpx.Response(403))
         respx.route().mock(return_value=httpx.Response(404))
         r = asyncio.run(thumbnails.run(conn, quiet=True))
-        assert r == {"attempted": 1, "kept": 0, "refreshed": 0, "failed": 1}
+        assert r == {"attempted": 1, "kept": 0, "refreshed": 0, "failed": 1,
+                     "why": {"unavailable (usually a deleted video)": 1}}
+
+    @respx.mock
+    def test_a_full_size_png_cover_is_kept(self, conn):
+        """Found on a real library: TikTok serves some covers as 3-4 MB PNGs."""
+        item_id = resolved_item(conn, thumb=NEW)
+        big = b"\x89PNG" + b"x" * 4_268_753
+        respx.get(NEW).mock(return_value=httpx.Response(
+            200, content=big, headers={"content-type": "image/png"}))
+        assert asyncio.run(thumbnails.run(conn, quiet=True))["kept"] == 1
+        assert len(thumbnails.get(conn, item_id)["data"]) == len(big)
+
+    @respx.mock
+    def test_a_refused_picture_is_named_and_not_refetched(self, conn):
+        resolved_item(conn, thumb=NEW)
+        respx.get(NEW).mock(return_value=httpx.Response(
+            200, content=b"<svg/>", headers={"content-type": "image/svg+xml"}))
+        oembed = respx.get(host="www.tiktok.com", path="/oembed").mock(
+            return_value=httpx.Response(200, json=OEMBED))
+        r = asyncio.run(thumbnails.run(conn, quiet=True))
+        assert r["why"] == {"not an image we keep (image/svg+xml)": 1}
+        assert not oembed.called  # a fresh link would only fetch the same refused picture
+
+    @respx.mock
+    def test_the_command_says_why_each_failure_failed(self, tmp_path, capsys):
+        path = tmp_path / "lib.db"
+        c = db.connect(str(path))
+        resolved_item(c, vid="1", thumb=NEW)
+        resolved_item(c, vid="2", thumb=OLD)
+        c.close()
+        respx.get(NEW).mock(return_value=httpx.Response(
+            200, content=b"x" * (thumbnails.MAX_BYTES + 1), headers={"content-type": "image/png"}))
+        respx.get(OLD).mock(return_value=httpx.Response(404))
+        respx.route().mock(return_value=httpx.Response(404))
+        thumbnails.main(["--db", str(path), "--quiet"])
+        out = capsys.readouterr().out
+        assert "2 could not be saved:" in out
+        assert "1  over 10 MB" in out
+        assert "1  unavailable (usually a deleted video)" in out
 
     def test_only_resolved_items_without_a_kept_copy_are_attempted(self, conn):
         kept = resolved_item(conn, vid="1")
