@@ -313,6 +313,32 @@ caught TikTok's placeholder pages. Old Watch later lists tend to hold a lot of
 them, so a hit rate well under 100% is expected; one at 100% is worth a second
 look.
 
+## Backfilling your Instagram saves
+
+Request the export in Instagram under **Accounts Center → Your information and
+permissions → Download your information**. Choose **Some of your information**,
+tick **Saved**, and set **Format: JSON** — the default is HTML, which is far
+harder to read reliably.
+
+```bash
+python -m favorites.importers.instagram_export ~/Downloads/instagram-export --list
+python -m favorites.importers.instagram_export ~/Downloads/instagram-export
+```
+
+Point it at `saved_posts.json`, the unzipped folder, or the `.zip`.
+
+**This one arrives ready.** Unlike TikTok's, Instagram's export carries each
+post's caption, author, hashtags and the date you saved it — so imported posts
+are searchable and on the shelves immediately, with no backfill. That matters,
+because Instagram shows a login wall to almost anything that is not a logged-in
+browser, and the lookup that fills in a TikTok or a YouTube video usually
+learns nothing about an Instagram post.
+
+**What it cannot carry is the picture.** Imported posts show as a card with
+their caption and author but no image.
+
+Reels are recorded as short-form video, the same as TikToks and YouTube Shorts.
+
 ## Privacy
 
 The library is a file on your machine. Nothing is uploaded, and the only
@@ -329,7 +355,7 @@ library.
 |---|---|
 | `platforms.py` | What we know about each platform, one descriptor each |
 | `resolve.py` | A shared link → title, creator, thumbnail |
-| `importers/` | One-time backfills: a TikTok export, a YouTube Takeout |
+| `importers/` | One-time backfills: a TikTok export, a YouTube Takeout, an Instagram export |
 | `tagging.py` | Hashtags and themes, no model required |
 | `transcript.py` | YouTube captions, where available |
 | `thumbnails.py` | Keeps each picture, because platform links expire |

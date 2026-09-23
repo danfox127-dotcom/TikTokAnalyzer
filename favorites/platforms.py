@@ -125,6 +125,12 @@ def _instagram_identity(parts: ParseResult) -> Optional[tuple[str, str]]:
     return f"https://www.instagram.com/{kind}/{m.group(2)}", m.group(2)
 
 
+def _instagram_format(parts: ParseResult) -> Optional[str]:
+    # A reel is short-form vertical video; a /p/ post may be a photo, a
+    # carousel or a video, so it says nothing either way.
+    return "short" if parts.path.startswith(("/reel/", "/reels/")) else None
+
+
 def _x_identity(parts: ParseResult) -> Optional[tuple[str, str]]:
     m = re.search(r"/([\w]+)/status/(\d+)", parts.path)
     if not m:
@@ -202,6 +208,7 @@ PLATFORMS: tuple[Platform, ...] = (
     Platform(
         name="instagram", label="Instagram",
         hosts=("instagram.com",), identity=_instagram_identity,
+        format_from_url=_instagram_format,
     ),
     Platform(
         name="reddit", label="Reddit",
