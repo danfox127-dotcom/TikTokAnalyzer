@@ -179,6 +179,38 @@ every item page has a box to file them later.
 That shelf is the only one on the front page you curated yourself rather than
 one the library inferred.
 
+## Search and filters
+
+`/search` is the whole library, narrowed as far as you like. With nothing chosen
+it is everything, newest first; the item count in the corner and **Search &
+filter** at the foot of every page both go there.
+
+Beside the results, every way the library can be cut, each with a count:
+
+| Filter | What it reads |
+|---|---|
+| Platform | Where it came from |
+| Season saved | The day you saved it: winter is December–February (northern hemisphere), across every year |
+| Year saved | The same day, by year |
+| Your categories | Playlists, collections, and anything you filed |
+| Kind | Short-form or long-form video, where known |
+| Hashtags | The creator's own hashtags, minus distribution noise like #fyp |
+| Keywords | Words and phrases from captions, titles, your notes and transcripts |
+| Creators | Who made it |
+| Your notes | Only the saves you wrote a note on |
+
+Filters combine, and the words in the search box combine with them. Each count
+is what that option would leave *given the other filters*, so choosing 2024
+shows how much of each platform is in 2024 instead of greying the rest out.
+Clicking a chosen option again, or the × on its chip, removes it.
+
+Hashtags and keywords that appear on only one save are left out of the list:
+at that point they describe a video, not a pattern. They are still searchable.
+
+Every view is a web address, so a view worth keeping — *TikTok saves tagged
+#cooking from summers* — can be bookmarked, and the back button undoes a filter.
+Nothing here needs JavaScript.
+
 ### How themes are worked out
 
 Hashtags come straight from the caption. Everything else is content words and

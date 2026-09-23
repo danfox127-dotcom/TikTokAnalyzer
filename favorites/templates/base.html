@@ -15,11 +15,15 @@
     <span class="mark" aria-hidden="true"></span>
     <span>Favorites</span>
   </a>
+  {#- The search page has its own box, which keeps your filters; this one
+      would silently start over. -#}
+  {% if not own_search %}
   <form class="search" action="/search" method="get" role="search">
     <input type="search" name="q" value="{{ q or '' }}" placeholder="Search everything you've kept"
            aria-label="Search your favorites" autocomplete="off" spellcheck="false">
   </form>
-  <a class="count" href="/all" title="Everything in the library">{{ total }}</a>
+  {% else %}<span class="search" aria-hidden="true"></span>{% endif %}
+  <a class="count" href="/search" title="Everything in the library">{{ total }}</a>
 </header>
 
 <main>
@@ -28,7 +32,7 @@
 
 <footer class="footer">
   <span>Your library lives on this machine.</span>
-  <a href="/all">Everything</a>
+  <a href="/search">Search &amp; filter</a>
   <a href="/placards">Write placards</a>
   <a href="/unlabelled">Unlabelled</a>
 </footer>

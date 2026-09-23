@@ -29,13 +29,12 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from starlette.concurrency import run_in_threadpool
 
-from . import db, museum, tagging, thumbnails, transcript
+from . import db, explore, museum, tagging, thumbnails, transcript
 from .resolve import browsable_url, extract_url, platform_label, resolve
 
 logger = logging.getLogger(__name__)
 
 HERE = Path(__file__).resolve().parent
-PAGE_SIZE = 48
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
@@ -228,34 +227,34 @@ def home(request: Request, conn: sqlite3.Connection = Depends(get_db)):
 
 
 @app.get("/search", response_class=HTMLResponse)
-def search_page(
-    request: Request, q: str = Query(""), conn: sqlite3.Connection = Depends(get_db)
-):
-    results = db.rows_to_dicts(db.search(conn, q, limit=200)) if q.strip() else []
-    return templates.TemplateResponse(request, "list.html", {
-        "heading": f"“{q}”" if q else "Search",
-        "subheading": f"{len(results)} {'result' if len(results) == 1 else 'results'}" if q else "",
-        "items": results,
-        "q": q,
-        "total": db.count(conn),
-    })
-
-
-@app.get("/all", response_class=HTMLResponse)
-def all_items(
-    request: Request, page: int = Query(1, ge=1), conn: sqlite3.Connection = Depends(get_db)
-):
+def search_page(request: Request, conn: sqlite3.Connection = Depends(get_db)):
+    """Search and filter the whole library. With nothing chosen, it is everything."""
+    f = explore.Filters.from_params(request.query_params)
+    items, found = explore.results(conn, f)
+    facets = explore.facets(conn, f)
     total = db.count(conn)
-    items = db.rows_to_dicts(db.recent(conn, limit=PAGE_SIZE, offset=(page - 1) * PAGE_SIZE))
-    return templates.TemplateResponse(request, "list.html", {
-        "heading": "Everything",
-        "subheading": f"{total} {'save' if total == 1 else 'saves'}",
+    noun = ("result", "results") if (f.q or f.narrowing()) else ("save", "saves")
+    return templates.TemplateResponse(request, "explore.html", {
+        "heading": explore.describe(f, facets),
+        "subheading": f"{found} {noun[0] if found == 1 else noun[1]}"
+                      + (f" of {total}" if f.narrowing() or f.q else ""),
         "items": items,
-        "q": "",
+        "found": found,
+        "filters": f,
+        "facets": facets,
+        "chips": explore.chips(f, facets),
+        "own_search": True,
+        "sorts": explore.SORTS,
+        "q": f.q,
         "total": total,
-        "page": page,
-        "has_next": page * PAGE_SIZE < total,
+        "has_next": f.page * explore.PAGE_SIZE < found,
     })
+
+
+@app.get("/all")
+def all_items(page: int = Query(1, ge=1)):
+    """Everything, newest first -- the search page with nothing chosen."""
+    return RedirectResponse("/search" + (f"?page={page}" if page > 1 else ""), status_code=307)
 
 
 @app.get("/month/{key}", response_class=HTMLResponse)
