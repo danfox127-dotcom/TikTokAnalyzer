@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import dataclasses
 import logging
+from contextlib import asynccontextmanager
 import os
 import secrets
 import sqlite3
@@ -36,7 +37,19 @@ logger = logging.getLogger(__name__)
 HERE = Path(__file__).resolve().parent
 PAGE_SIZE = 48
 
-app = FastAPI(title="Favorites", docs_url=None, redoc_url=None)
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    # Say which library file this server is reading. Without it, a second
+    # library file -- one an import quietly created somewhere else -- is
+    # invisible: the page loads fine, it just never shows what was imported.
+    # uvicorn's own logger, because it is the one uvicorn prints.
+    conn, where = db.connect_announced()
+    conn.close()
+    logging.getLogger("uvicorn.error").info(where)
+    yield
+
+
+app = FastAPI(title="Favorites", docs_url=None, redoc_url=None, lifespan=lifespan)
 app.mount("/static", StaticFiles(directory=HERE / "static"), name="static")
 templates = Jinja2Templates(directory=str(HERE / "templates"))
 templates.env.globals["platform_label"] = platform_label

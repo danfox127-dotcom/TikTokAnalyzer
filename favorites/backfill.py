@@ -219,7 +219,8 @@ def main(argv: Optional[list[str]] = None) -> int:
     ap.add_argument("--quiet", action="store_true")
     args = ap.parse_args(argv)
 
-    conn = db.connect(args.db)
+    conn, where = db.connect_announced(args.db)
+    print(where + "\n")
     if args.stats:
         _print_stats(stats(conn))
         conn.close()

@@ -118,9 +118,22 @@ def now_iso() -> str:
     return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
 
 
+def resolve_path(path: str | os.PathLike | None = None) -> str:
+    """Which library file a command will use, as an absolute path.
+
+    An explicit path wins, then ``$FAVORITES_DB``, then the file next to this
+    package. Absolute because a relative one silently means a different file
+    depending on which folder the command was run from.
+    """
+    target = str(path or os.environ.get("FAVORITES_DB") or DEFAULT_DB)
+    if target == ":memory:":
+        return target
+    return os.path.abspath(os.path.expanduser(target))
+
+
 def connect(path: str | os.PathLike | None = None) -> sqlite3.Connection:
     """Open the library, creating it if this is the first run."""
-    target = str(path or os.environ.get("FAVORITES_DB") or DEFAULT_DB)
+    target = resolve_path(path)
     if target != ":memory:":
         Path(target).parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(target)
@@ -131,6 +144,24 @@ def connect(path: str | os.PathLike | None = None) -> sqlite3.Connection:
     conn.commit()
     migrate(conn)
     return conn
+
+
+def connect_announced(path: str | os.PathLike | None = None) -> tuple[sqlite3.Connection, str]:
+    """:func:`connect`, plus a line saying which file -- and whether it is new.
+
+    Two library files can exist side by side without anything looking wrong:
+    an import into the wrong one reports success and the museum simply never
+    shows what was imported. Every command that writes says which file it
+    used, and says loudly when it has just created one.
+    """
+    target = resolve_path(path)
+    existed = target == ":memory:" or os.path.exists(target)
+    conn = connect(target)
+    if existed:
+        n = count(conn)
+        return conn, f"library: {target}  ({n} {'item' if n == 1 else 'items'})"
+    return conn, (f"library: {target}  (NEW -- created just now. If you expected your "
+                  f"existing library, pass --db with its path or set FAVORITES_DB.)")
 
 
 def _json_list(value: Any) -> str:
