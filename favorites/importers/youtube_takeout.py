@@ -322,10 +322,23 @@ def main(argv: Optional[list[str]] = None) -> int:
     ap.add_argument("--db", help="library path (default: $FAVORITES_DB)")
     args = ap.parse_args(argv)
 
-    playlists = read_takeout(args.takeout)
+    try:
+        playlists = read_takeout(args.takeout)
+    except FileNotFoundError:
+        print(f"Nothing at {args.takeout}.")
+        print("If it is still unzipping, wait for that to finish. To see what is there:")
+        print("  ls -d ~/Downloads/*akeout*")
+        return 1
+    except zipfile.BadZipFile:
+        print(f"{args.takeout} is not a complete zip -- it may still be downloading.")
+        return 1
+
     if not playlists:
-        print("No playlist files found. Point this at the Takeout .zip, or at the")
-        print("folder containing 'playlists' inside 'YouTube and YouTube Music'.")
+        print("No playlists in there.")
+        print("Google often splits an export across several downloads, and a Mac unzips")
+        print("the second one as 'Takeout 2'. Look for it with:")
+        print("  ls -d ~/Downloads/*akeout*")
+        print("and point this at whichever folder has 'YouTube and YouTube Music' inside.")
         return 1
 
     chosen = _selected(playlists, args.include_likes, args.only, args.skip)
