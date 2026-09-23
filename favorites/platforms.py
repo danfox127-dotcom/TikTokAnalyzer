@@ -37,6 +37,14 @@ Link = Callable[[dict], Optional[str]]
 # Handle: a URL path -> a display handle, beyond the generic "/@name" rule.
 Handle = Callable[[str], Optional[str]]
 
+# Format: the parsed URL -> "short" when the URL itself proves the item is
+# short-form vertical video, else None. None means "unknown", never "long".
+Format = Callable[[ParseResult], Optional[str]]
+
+# Probe: an external id -> a URL that answers 200 only if the item is
+# short-form, and redirects otherwise. Used when the URL alone cannot tell.
+Probe = Callable[[str], str]
+
 
 @dataclass(frozen=True)
 class Platform:
@@ -58,6 +66,12 @@ class Platform:
     identity: Optional[Identity] = None
     link: Optional[Link] = None
     handle: Optional[Handle] = None
+
+    #: How to tell short-form vertical video from the URL, and how to ask the
+    #: platform when the URL is silent. Only matters where one platform serves
+    #: both -- YouTube does, TikTok does not.
+    format_from_url: Optional[Format] = None
+    short_form_probe: Optional[Probe] = None
 
     #: Whether captions are obtainable for this platform (see transcript.py).
     transcripts: bool = False
@@ -92,6 +106,17 @@ def _youtube_identity(parts: ParseResult) -> Optional[tuple[str, str]]:
     return f"https://www.youtube.com/watch?v={vid}", vid
 
 
+def _youtube_format(parts: ParseResult) -> Optional[str]:
+    # A /shorts/ URL proves it. A watch?v= URL proves nothing: every Short also
+    # plays at watch?v=, so a Short shared from a desktop arrives looking long.
+    return "short" if parts.path.startswith("/shorts/") else None
+
+
+def _youtube_short_probe(video_id: str) -> str:
+    # /shorts/<id> serves a Short and redirects anything else to /watch.
+    return f"https://www.youtube.com/shorts/{video_id}"
+
+
 def _instagram_identity(parts: ParseResult) -> Optional[tuple[str, str]]:
     m = re.search(r"/(p|reel|reels|tv)/([\w\-]+)", parts.path)
     if not m:
@@ -121,6 +146,20 @@ def _tiktok_link(item: dict) -> Optional[str]:
     if handle and external_id:
         return f"https://www.tiktok.com/@{handle}/video/{external_id}"
     return None
+
+
+def _youtube_link(item: dict) -> Optional[str]:
+    """Open a Short in the Shorts player; everything else at its watch URL.
+
+    The identity is ``watch?v=<id>`` for both, so a Short shared from the
+    Shorts player and from a desktop files once. But a Short opened at
+    ``watch?v=`` plays in the landscape player, letterboxed, with none of the
+    vertical feed around it -- a worse way to see the thing you kept.
+    """
+    external_id = (item.get("external_id") or "").strip()
+    if item.get("format") == "short" and external_id:
+        return f"https://www.youtube.com/shorts/{external_id}"
+    return item.get("canonical_url") or None
 
 
 # --- handle rules -----------------------------------------------------------
@@ -157,7 +196,8 @@ PLATFORMS: tuple[Platform, ...] = (
         name="youtube", label="YouTube",
         hosts=("youtube.com", "youtu.be"), shorteners=("youtu.be",),
         oembed="https://www.youtube.com/oembed",
-        identity=_youtube_identity, transcripts=True,
+        identity=_youtube_identity, link=_youtube_link, transcripts=True,
+        format_from_url=_youtube_format, short_form_probe=_youtube_short_probe,
     ),
     Platform(
         name="instagram", label="Instagram",

@@ -4,7 +4,14 @@ The whole design rests on saving being effortless. If it takes more than two
 taps you will stop doing it, and an encyclopedia nobody adds to is just a
 database.
 
+This is the direct save: one video at a time, from the app you are watching
+it in, at the moment you decide to keep it. The TikTok and YouTube backfills
+are for history — everything from here on can come in this way instead, with
+no second save inside the app and no export to wait for.
+
 None of this needs an app store, an Apple developer account, or a native build.
+The one real prerequisite is below: your phone has to be able to reach the
+machine the library runs on.
 
 ---
 
@@ -56,6 +63,33 @@ About three minutes, once.
 
 Now: any app → Share → **Keep**. Done.
 
+### Optional: see that it worked
+
+By default the shortcut saves silently. To get a confirmation, add two actions
+after **Get Contents of URL**: **Get Dictionary Value** (key `title`), then
+**Show Notification** with that value. You will see the video's title a second
+after tapping. If the phone cannot reach the library, Shortcuts stops with a
+connection error instead — which is the other thing worth knowing straight away.
+
+### Optional: a second shortcut that files it under a category
+
+YouTube's save button asks whether to just save or to pick a playlist. The same
+choice here is two shortcuts side by side in the share sheet: **Keep** stays the
+one-tap save, and **Keep in…** asks where.
+
+1. Duplicate **Keep** and rename the copy **Keep in…**.
+2. At the top, add **Get Contents of URL** with the URL
+   `https://YOUR-ADDRESS/collections.json` (method `GET`, same
+   `Authorization` header). It returns your categories, largest first.
+3. Add **Choose from List** (prompt: *File under*).
+4. In the existing save step, add a JSON field `collection` set to
+   **Chosen Item**.
+
+If the list comes up empty even though you have categories, put **Get
+Dictionary from Input** between steps 2 and 3. To create a brand-new category
+from your phone, swap **Choose from List** for **Ask for Input**; any name typed
+that matches an existing category, in any capitalisation, files into it.
+
 ### Optional: capture the note at the same time
 
 The note is the most valuable field in the library and the moment you save is
@@ -82,6 +116,10 @@ register.
 If you set a token, Android's share sheet cannot attach a header, so the app
 must be started without `FAVORITES_TOKEN` or reached over a network you trust.
 
+Android's share target cannot ask a question first, so every share is a plain
+save. It opens the item's page afterwards, which has a **File under** box right
+there.
+
 ---
 
 ## Desktop — a bookmarklet
@@ -106,7 +144,8 @@ curl -X POST https://YOUR-ADDRESS/save \
 ```
 
 A `201` means it was saved for the first time; a `200` means you already had it
-and the existing entry was refreshed. Then check `GET /healthz` for the item
+and the existing entry was refreshed. Add `"collection":"Recipes"` to the body
+to file it in the same request. Then check `GET /healthz` for the item
 count and whether transcripts are switched on.
 
 ---

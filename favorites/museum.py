@@ -21,6 +21,7 @@ import sqlite3
 from collections import Counter
 from datetime import datetime, timedelta, timezone
 from typing import Optional
+from urllib.parse import quote
 
 from . import db
 from .resolve import platform_label
@@ -292,6 +293,21 @@ def shelves(
             "month", _month_title(row["m"]),
             f"{row['n']} {_plural(row['n'], 'save')} that month", items,
             href=f"/month/{row['m']}",
+        ))
+
+    # A category you made yourself. Of all the shelves this is the one that is
+    # yours rather than inferred: you did the curating when you saved it.
+    for name, n in db.collection_counts(conn, resolved_only=True)[:6]:
+        if n < 2:
+            continue
+        entries = db.rows_to_dicts(conn.execute(
+            f"SELECT i.* FROM items i JOIN collections c ON c.item_id = i.id"
+            f" WHERE i.{RESOLVED} AND c.name = ?"
+            f" ORDER BY i.saved_at DESC, i.id DESC LIMIT 8", (name,)
+        ).fetchall())
+        candidates.append(_shelf(
+            "collection", name, f"Your category · {n} {_plural(n, 'save')}", entries,
+            href=f"/collection/{quote(name)}",
         ))
 
     # Someone you keep coming back to.

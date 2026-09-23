@@ -145,6 +145,16 @@ def test_platform_owned_shorteners_are_followed():
             assert host in platforms.SHORTENERS
 
 
+def test_a_short_form_probe_only_ever_asks_the_platform_itself():
+    """A probe is sent for every item; it must never leak ids to another host."""
+    from urllib.parse import urlparse
+    for p in PLATFORMS:
+        if p.short_form_probe:
+            url = p.short_form_probe("abc123DEF45")
+            assert url.startswith("https://"), p.name
+            assert platforms.for_host(urlparse(url).hostname).name == p.name
+
+
 def test_oembed_endpoints_are_absolute_https_urls():
     for p in PLATFORMS:
         if p.oembed:

@@ -46,6 +46,7 @@ CREATE TABLE IF NOT EXISTS items (
     resolve_attempts INTEGER NOT NULL DEFAULT 0,
     source         TEXT NOT NULL DEFAULT 'share',
     imported_at    TEXT,
+    format         TEXT,
     raw            TEXT
 );
 
@@ -53,6 +54,18 @@ CREATE INDEX IF NOT EXISTS idx_items_saved_at ON items(saved_at DESC);
 CREATE INDEX IF NOT EXISTS idx_items_platform ON items(platform);
 CREATE INDEX IF NOT EXISTS idx_items_creator  ON items(creator_handle);
 CREATE INDEX IF NOT EXISTS idx_items_status   ON items(resolve_status);
+
+-- Categories you filed things into: an imported YouTube playlist, a name picked
+-- in the share sheet, one typed on an item's page. Separate from items because
+-- one thing can sit in several. "Just saved" -- Watch later, a plain favourite
+-- -- is no row at all.
+CREATE TABLE IF NOT EXISTS collections (
+    item_id  INTEGER NOT NULL REFERENCES items(id) ON DELETE CASCADE,
+    name     TEXT NOT NULL,
+    added_at TEXT,
+    PRIMARY KEY (item_id, name)
+);
+CREATE INDEX IF NOT EXISTS idx_collections_name ON collections(name);
 
 CREATE VIRTUAL TABLE IF NOT EXISTS items_fts USING fts5(
     item_id UNINDEXED,
@@ -73,7 +86,7 @@ WRITABLE = (
     "creator_name", "creator_handle", "creator_url", "thumbnail_url",
     "description", "transcript", "note", "tags", "terms", "saved_at",
     "resolved_at", "resolve_status", "resolve_error", "resolve_attempts",
-    "source", "imported_at", "raw",
+    "source", "imported_at", "format", "raw",
 )
 
 # Columns added after the first release. A library created by an earlier version
@@ -83,6 +96,7 @@ MIGRATIONS = {
     "resolve_attempts": "INTEGER NOT NULL DEFAULT 0",
     "source": "TEXT NOT NULL DEFAULT 'share'",
     "imported_at": "TEXT",
+    "format": "TEXT",
 }
 
 
@@ -145,7 +159,11 @@ def index_item(conn: sqlite3.Connection, item_id: int) -> None:
         conn.execute("DELETE FROM items_fts WHERE item_id = ?", (item_id,))
         return
     creator = " ".join(filter(None, [row["creator_name"], row["creator_handle"]]))
-    tags = " ".join(loads_list(row["tags"]) + loads_list(row["terms"]))
+    # A category name is your own label, as telling as a note: filing something
+    # under "Recipes" should make it findable by searching "recipes".
+    filed = [r["name"] for r in conn.execute(
+        "SELECT name FROM collections WHERE item_id = ?", (item_id,))]
+    tags = " ".join(loads_list(row["tags"]) + loads_list(row["terms"]) + filed)
     conn.execute("DELETE FROM items_fts WHERE item_id = ?", (item_id,))
     conn.execute(
         "INSERT INTO items_fts (item_id, title, creator, description, note, transcript, tags)"
@@ -192,6 +210,10 @@ def upsert_item(conn: sqlite3.Connection, payload: dict) -> tuple[int, bool]:
         created = False
         if not data.get("note") and existing["note"]:
             data.pop("note", None)
+        if data.get("format") is None:
+            # A re-resolve that could not tell (a probe hit a consent wall, say)
+            # must not erase a format an earlier one established.
+            data.pop("format", None)
         data.pop("saved_at", None)  # keep the original save date
         assignments = ", ".join(f"{k} = ?" for k in data)
         conn.execute(
@@ -201,6 +223,65 @@ def upsert_item(conn: sqlite3.Connection, payload: dict) -> tuple[int, bool]:
     index_item(conn, item_id)
     conn.commit()
     return item_id, created
+
+
+def file_under(
+    conn: sqlite3.Connection, item_id: int, name: str, added_at: Optional[str] = None
+) -> Optional[str]:
+    """Put an item in a collection. Returns the collection's name as stored.
+
+    Names match case-insensitively, so "recipes" typed at save time lands in
+    the "Recipes" playlist you imported rather than beside it. The earliest
+    date wins: when you first filed it there is the date that means something.
+    """
+    name = re.sub(r"\s+", " ", name or "").strip()
+    if not name:
+        return None
+    existing = conn.execute(
+        "SELECT name FROM collections WHERE name = ? COLLATE NOCASE LIMIT 1", (name,)
+    ).fetchone()
+    name = existing["name"] if existing else name
+    conn.execute(
+        "INSERT INTO collections (item_id, name, added_at) VALUES (?, ?, ?)"
+        " ON CONFLICT (item_id, name) DO UPDATE SET added_at = CASE"
+        "   WHEN collections.added_at IS NULL THEN excluded.added_at"
+        "   WHEN excluded.added_at IS NULL THEN collections.added_at"
+        "   ELSE min(collections.added_at, excluded.added_at) END",
+        (item_id, name, added_at),
+    )
+    index_item(conn, item_id)
+    conn.commit()
+    return name
+
+
+def unfile(conn: sqlite3.Connection, item_id: int, name: str) -> None:
+    conn.execute(
+        "DELETE FROM collections WHERE item_id = ? AND name = ? COLLATE NOCASE",
+        (item_id, (name or "").strip()))
+    index_item(conn, item_id)
+    conn.commit()
+
+
+def collections_for(conn: sqlite3.Connection, item_id: int) -> list[str]:
+    return [r["name"] for r in conn.execute(
+        "SELECT name FROM collections WHERE item_id = ? ORDER BY name COLLATE NOCASE",
+        (item_id,))]
+
+
+def collection_counts(conn: sqlite3.Connection, resolved_only: bool = False) -> list[tuple[str, int]]:
+    """Every collection with how many items it holds, largest first."""
+    join = " JOIN items i ON i.id = c.item_id AND i.resolve_status = 'ok'" if resolved_only else ""
+    return [(r["name"], r["n"]) for r in conn.execute(
+        f"SELECT c.name AS name, count(*) AS n FROM collections c{join}"
+        " GROUP BY c.name ORDER BY n DESC, c.name COLLATE NOCASE")]
+
+
+def in_collection(conn: sqlite3.Connection, name: str, limit: int = 200) -> list[sqlite3.Row]:
+    return conn.execute(
+        "SELECT i.* FROM items i JOIN collections c ON c.item_id = i.id"
+        " WHERE c.name = ? COLLATE NOCASE ORDER BY i.saved_at DESC, i.id DESC LIMIT ?",
+        (name, limit),
+    ).fetchall()
 
 
 def set_note(conn: sqlite3.Connection, item_id: int, note: str) -> None:
