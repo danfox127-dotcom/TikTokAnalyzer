@@ -30,39 +30,51 @@ from .resolve import TIMEOUT, USER_AGENT, resolve
 
 CONCURRENCY = 4
 
-# A thumbnail, not a poster. Anything bigger is not what we asked for.
-MAX_BYTES = 3_000_000
+# A ceiling against something absurd, not a judgement on size. TikTok serves
+# some covers as full-resolution PNGs -- 3.3 MB and 4.3 MB on a real library,
+# refused by an earlier 3 MB cap that assumed a thumbnail is always small.
+MAX_BYTES = 10_000_000
 
 # Raster formats only. An SVG is a document that can carry script, and this one
 # would be served from the library's own address -- so it is refused outright.
 ALLOWED_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif", "image/avif"}
 
 
-async def fetch(url: Optional[str], client: httpx.AsyncClient) -> Optional[tuple[bytes, str]]:
-    """Download one image. Returns ``(bytes, content_type)`` or None. Never raises."""
+async def fetch_explained(
+    url: Optional[str], client: httpx.AsyncClient
+) -> tuple[Optional[tuple[bytes, str]], str]:
+    """Download one image, saying why when it fails. Never raises.
+
+    The reason matters: "the video is gone" and "this code refused a real
+    picture" look identical from outside, and only one of them is a bug.
+    """
     if not url:
-        return None
+        return None, "no link"
     try:
         async with client.stream(
             "GET", url, follow_redirects=True, timeout=TIMEOUT,
             headers={"User-Agent": USER_AGENT},
         ) as resp:
             if resp.status_code != 200:
-                return None
+                return None, "unavailable"
             ctype = resp.headers.get("content-type", "").split(";")[0].strip().lower()
             if ctype not in ALLOWED_TYPES:
-                return None
+                return None, f"not an image we keep ({ctype or 'no type'})"
             chunks, size = [], 0
             async for chunk in resp.aiter_bytes():
                 size += len(chunk)
                 if size > MAX_BYTES:
-                    return None
+                    return None, f"over {MAX_BYTES // 1_000_000} MB"
                 chunks.append(chunk)
     except Exception:
-        # Expired link, network error, anything: no picture this time.
-        return None
+        return None, "network error"
     data = b"".join(chunks)
-    return (data, ctype) if data else None
+    return ((data, ctype), "ok") if data else (None, "empty")
+
+
+async def fetch(url: Optional[str], client: httpx.AsyncClient) -> Optional[tuple[bytes, str]]:
+    """Download one image. Returns ``(bytes, content_type)`` or None. Never raises."""
+    return (await fetch_explained(url, client))[0]
 
 
 def store(conn: sqlite3.Connection, item_id: int, image: tuple[bytes, str],
@@ -109,22 +121,26 @@ def counts(conn: sqlite3.Connection) -> dict:
 async def _one(item: dict, client: httpx.AsyncClient, sem: asyncio.Semaphore):
     """Try the stored link; if it has lapsed, ask the platform for a fresh one."""
     async with sem:
-        image = await fetch(item["thumbnail_url"], client)
+        image, why = await fetch_explained(item["thumbnail_url"], client)
         if image:
-            return item, image, item["thumbnail_url"], False
+            return item, image, item["thumbnail_url"], False, why
+        if why != "unavailable":
+            # The picture is there and was refused -- asking for a fresh link
+            # would only fetch the same picture and refuse it again.
+            return item, None, None, False, why
         try:
             fresh = await resolve(item["canonical_url"], client)
         except Exception:
             fresh = None
         if fresh is None or fresh.resolve_status != "ok" or not fresh.thumbnail_url:
-            return item, None, None, True
-        image = await fetch(fresh.thumbnail_url, client)
-        return item, image, fresh.thumbnail_url, True
+            return item, None, None, True, "unavailable (usually a deleted video)"
+        image, why = await fetch_explained(fresh.thumbnail_url, client)
+        return item, image, fresh.thumbnail_url, True, why
 
 
 async def run(conn: sqlite3.Connection, limit: Optional[int] = None, quiet: bool = False) -> dict:
     queue = missing(conn, limit)
-    result = {"attempted": len(queue), "kept": 0, "refreshed": 0, "failed": 0}
+    result = {"attempted": len(queue), "kept": 0, "refreshed": 0, "failed": 0, "why": {}}
     if not queue:
         return result
 
@@ -133,7 +149,7 @@ async def run(conn: sqlite3.Connection, limit: Optional[int] = None, quiet: bool
     async with httpx.AsyncClient() as client:
         tasks = [_one(item, client, sem) for item in queue]
         for done, coro in enumerate(asyncio.as_completed(tasks), 1):
-            item, image, source, refreshed = await coro
+            item, image, source, refreshed, why = await coro
             if image:
                 store(conn, item["id"], image, source)
                 result["kept"] += 1
@@ -145,6 +161,7 @@ async def run(conn: sqlite3.Connection, limit: Optional[int] = None, quiet: bool
                     conn.commit()
             else:
                 result["failed"] += 1
+                result["why"][why] = result["why"].get(why, 0) + 1
             if not quiet and (done % 50 == 0 or done == len(queue)):
                 rate = done / max(time.monotonic() - started, 1e-9) * 60
                 print(f"  {done}/{len(queue)}  kept {result['kept']}  ~{rate:.0f}/min", flush=True)
@@ -168,8 +185,10 @@ def main(argv: Optional[list[str]] = None) -> int:
                 print(f"\nkept {r['kept']} of {r['attempted']}"
                       + (f" ({r['refreshed']} needed a fresh link first)" if r["refreshed"] else ""))
                 if r["failed"]:
-                    print(f"{r['failed']} could not be saved -- usually a video that no longer "
-                          "exists. Re-running tries them again.")
+                    print(f"{r['failed']} could not be saved:")
+                    for why, n in sorted(r["why"].items(), key=lambda kv: -kv[1]):
+                        print(f"  {n:>4}  {why}")
+                    print("Re-running tries them again.")
             else:
                 print("every thumbnail is already kept.")
         c = counts(conn)
