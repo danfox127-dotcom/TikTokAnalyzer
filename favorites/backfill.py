@@ -33,7 +33,7 @@ from typing import Optional
 
 import httpx
 
-from . import db, tagging, transcript
+from . import db, tagging, thumbnails, transcript
 from .resolve import _is_placeholder_title, resolve
 
 CONCURRENCY = 3       # deliberately low; higher trips TikTok's throttle
@@ -116,18 +116,24 @@ def stats(conn: sqlite3.Connection) -> dict:
 
 async def _resolve_one(
     item: dict, client: httpx.AsyncClient, sem: asyncio.Semaphore
-) -> tuple[dict, Optional[object]]:
+) -> tuple[dict, Optional[object], Optional[tuple[bytes, str]]]:
     async with sem:
         try:
-            return item, await resolve(item["canonical_url"], client)
+            resolved = await resolve(item["canonical_url"], client)
         except Exception:
             # resolve() is written not to raise, but a backfill must not die on
             # one bad row regardless.
-            return item, None
+            return item, None, None
+        # Keep the picture while its link is fresh; see favorites.thumbnails.
+        image = None
+        if resolved.resolve_status == "ok":
+            image = await thumbnails.fetch(resolved.thumbnail_url, client)
+        return item, resolved, image
 
 
 def _write_back(
-    conn: sqlite3.Connection, item: dict, resolved, transcripts: bool = True
+    conn: sqlite3.Connection, item: dict, resolved, transcripts: bool = True,
+    image: Optional[tuple[bytes, str]] = None,
 ) -> bool:
     """Persist one resolution. Returns True if it produced usable metadata."""
     attempts = int(item.get("resolve_attempts") or 0) + 1
@@ -156,7 +162,9 @@ def _write_back(
         title=resolved.title, description=resolved.description,
         note=item.get("note"), transcript=text,
     )
-    db.upsert_item(conn, payload)
+    item_id, _ = db.upsert_item(conn, payload)
+    if image:
+        thumbnails.store(conn, item_id, image, resolved.thumbnail_url)
     return True
 
 
@@ -175,8 +183,8 @@ async def run(
     async with httpx.AsyncClient() as client:
         tasks = [_resolve_one(item, client, sem) for item in queue]
         for coro in asyncio.as_completed(tasks):
-            item, result = await coro
-            if _write_back(conn, item, result, transcripts):
+            item, result, image = await coro
+            if _write_back(conn, item, result, transcripts, image):
                 resolved_n += 1
             done += 1
             if not quiet and (done % 25 == 0 or done == len(queue)):

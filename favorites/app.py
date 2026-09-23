@@ -29,7 +29,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from starlette.concurrency import run_in_threadpool
 
-from . import db, museum, tagging, transcript
+from . import db, museum, tagging, thumbnails, transcript
 from .resolve import browsable_url, extract_url, platform_label, resolve
 
 logger = logging.getLogger(__name__)
@@ -101,6 +101,9 @@ async def capture(
     """
     async with httpx.AsyncClient() as client:
         item = await resolve(shared, client)
+        # Fetched now, while the link is fresh -- a TikTok thumbnail link is
+        # dead within a day or two, and the picture with it.
+        image = await thumbnails.fetch(item.thumbnail_url, client)
 
     if not item.canonical_url:
         raise HTTPException(status_code=400, detail=item.resolve_error or "no URL found")
@@ -119,6 +122,8 @@ async def capture(
     )
 
     item_id, created = await run_in_threadpool(db.upsert_item, conn, payload)
+    if image:
+        await run_in_threadpool(thumbnails.store, conn, item_id, image, item.thumbnail_url)
     filed = None
     if isinstance(collection, str) and collection.strip():
         filed = await run_in_threadpool(db.file_under, conn, item_id, collection, payload["resolved_at"])
@@ -418,6 +423,24 @@ def update_note(
         raise HTTPException(status_code=404, detail="no such item")
     db.set_note(conn, item_id, note.strip())
     return RedirectResponse(f"/item/{item_id}", status_code=303)
+
+
+@app.get("/thumb/{item_id}")
+def thumb(item_id: int, conn: sqlite3.Connection = Depends(get_db)):
+    """The kept picture, or the platform's link if none has been kept yet."""
+    row = thumbnails.get(conn, item_id)
+    if row is not None:
+        return Response(row["data"], media_type=row["content_type"], headers={
+            "Cache-Control": "private, max-age=86400",
+            # Belt and braces: only raster types are ever stored, but nothing
+            # served from here should be able to run as a page.
+            "Content-Security-Policy": "default-src 'none'",
+            "X-Content-Type-Options": "nosniff",
+        })
+    item = db.get_item(conn, item_id)
+    if item is not None and item["thumbnail_url"]:
+        return RedirectResponse(item["thumbnail_url"], status_code=302)
+    raise HTTPException(status_code=404, detail="no thumbnail")
 
 
 @app.get("/healthz")

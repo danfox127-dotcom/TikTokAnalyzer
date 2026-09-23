@@ -99,6 +99,26 @@ rebuilt with the handle. They used to live in separate functions that quietly
 stopped agreeing, and every link in the library 404'd. Now they sit in one
 object, and a test asserts they still match.
 
+### Pictures are kept, not linked
+
+A platform's thumbnail link is not permanent. TikTok signs each one with an
+expiry — on a real library, every one of 738 lapsed on the same day, a day or
+two after it was fetched — and a lapsed link turns a card blank without any
+error to notice.
+
+So the library keeps the picture itself, inside the library file, at the moment
+it is saved or backfilled. The library stays one file you can back up by
+copying, works offline, and keeps a picture even after the original video is
+deleted. For a library resolved before this existed, catch up once:
+
+```bash
+python -m favorites.thumbnails
+```
+
+It keeps a copy of every picture it can. Where a link has already lapsed, it
+asks the platform for a fresh one first — so running it late still recovers
+every video that still exists. `--stats` shows how many are kept.
+
 ### Your note is the best field in the database
 
 Every item has a one-line note — a placard. It is optional, it takes three
@@ -312,6 +332,7 @@ library.
 | `importers/` | One-time backfills: a TikTok export, a YouTube Takeout |
 | `tagging.py` | Hashtags and themes, no model required |
 | `transcript.py` | YouTube captions, where available |
+| `thumbnails.py` | Keeps each picture, because platform links expire |
 | `db.py` | SQLite storage and full-text search |
 | `museum.py` | The digest and the rotating shelves |
 | `app.py` | The web app and the `/save` endpoint |
