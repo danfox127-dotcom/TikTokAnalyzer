@@ -200,3 +200,110 @@ def test_the_registry_knows_a_reel_is_short_form():
     assert fmt(urlparse("https://www.instagram.com/reel/ABC/")) == "short"
     assert fmt(urlparse("https://www.instagram.com/reels/ABC/")) == "short"
     assert fmt(urlparse("https://www.instagram.com/p/ABC/")) is None
+
+
+# --- collections, and Meta's text encoding -----------------------------------
+
+def mangle(text):
+    """What Meta's export does: each UTF-8 byte written as its own character."""
+    return text.encode("utf-8").decode("latin-1")
+
+
+def collection(name, codes, kind="p"):
+    """The layout of a real saved_collections.json entry (values invented)."""
+    items = []
+    for code in codes:
+        url = f"https://www.instagram.com/{kind}/{code}/"
+        items.append({"title": "", "dict": [
+            {"label": "URL", "value": url, "href": url},
+            {"label": "Caption", "value": "…"}, {"label": "Title", "value": ""},
+            {"title": "Owner", "dict": []}, {"title": "Hashtags", "dict": []},
+            {"title": "Brand partner", "dict": []},
+        ]})
+    return {"timestamp": T_2024, "media": [], "fbid": name, "label_values": [
+        {"label": "Name", "value": name},
+        {"label": "Type", "value": "Default"},
+        {"label": "Privacy", "value": "Private"},
+        {"label": "Update time", "timestamp_value": T_2024},
+        {"title": "Media", "dict": items},
+    ]}
+
+
+class TestCollections:
+    def test_read_beside_the_saved_posts_file(self, tmp_path):
+        posts = write(tmp_path, [post(code="A1"), post(code="B2")])
+        write(tmp_path, [collection("Recipes", ["A1", "B2"]), collection("Dogs", ["B2"])],
+              name="saved_collections.json")
+        assert ig.read_collections(posts) == [
+            ("Recipes", ["https://www.instagram.com/p/A1/", "https://www.instagram.com/p/B2/"]),
+            ("Dogs", ["https://www.instagram.com/p/B2/"]),
+        ]
+
+    def test_read_from_the_zip(self, tmp_path):
+        buf = io.BytesIO()
+        with zipfile.ZipFile(buf, "w") as z:
+            z.writestr("saved/saved_posts.json", json.dumps([post(code="A1")]))
+            z.writestr("saved/saved_collections.json", json.dumps([collection("Recipes", ["A1"])]))
+        (tmp_path / "saved.zip").write_bytes(buf.getvalue())
+        assert ig.read_collections(tmp_path / "saved.zip") == [
+            ("Recipes", ["https://www.instagram.com/p/A1/"])]
+
+    def test_no_collections_file_is_simply_no_collections(self, tmp_path):
+        assert ig.read_collections(write(tmp_path, [post()])) == []
+
+    def test_posts_are_filed_under_their_collections(self, conn):
+        posts = [ig._current(post(code="A1")), ig._current(post(code="B2", kind="reel"))]
+        ig.import_saved(conn, posts)
+        stats = ig.import_collections(conn, [
+            ("Recipes", ["https://www.instagram.com/p/A1/", "https://www.instagram.com/reel/B2/"]),
+            ("Dogs", ["https://www.instagram.com/reel/B2/"]),
+        ], {p["url"]: p["saved_at"] for p in posts})
+        assert stats == {"filings": 3, "not_in_library": 0}
+        assert db.collection_counts(conn) == [("Recipes", 2), ("Dogs", 1)]
+        added = conn.execute("SELECT added_at FROM collections LIMIT 1").fetchone()[0]
+        assert added == "2024-06-01T12:00:00+00:00"  # the date you saved it
+
+    def test_a_post_missing_from_the_library_is_counted_not_invented(self, conn):
+        stats = ig.import_collections(conn, [("Recipes", ["https://www.instagram.com/p/ZZ/"])])
+        assert stats == {"filings": 0, "not_in_library": 1}
+        assert db.count(conn) == 0
+
+    def test_end_to_end_with_collections(self, tmp_path, capsys):
+        write(tmp_path, [post(code="A1"), post(code="B2")])
+        write(tmp_path, [collection("Recipes", ["A1"])], name="saved_collections.json")
+        lib = tmp_path / "lib.db"
+        assert ig.main([str(tmp_path / "saved_posts.json"), "--db", str(lib)]) == 0
+        out = capsys.readouterr().out
+        assert "collections: 1" in out and "filed into categories: 1" in out
+        c = db.connect(str(lib))
+        assert db.collection_counts(c) == [("Recipes", 1)]
+        c.close()
+
+
+class TestMetaEncoding:
+    @pytest.mark.parametrize("text", [
+        "don’t", "Café 💛", "— “quoted” …", "naïve résumé", "🍜✨",
+    ])
+    def test_garbled_text_is_repaired(self, text):
+        assert ig._unmangle(mangle(text)) == text
+
+    @pytest.mark.parametrize("text", ["plain ascii", "café", "naïve", "Ünïcödé", ""])
+    def test_correct_text_is_left_alone(self, text):
+        assert ig._unmangle(text) == text
+
+    def test_captions_names_hashtags_and_collections_all_arrive_repaired(self, tmp_path, conn):
+        p = post(code="A1", caption=mangle("Don’t skip this 🍜 #ramen"),
+                 name=mangle("Café Desk"), hashtags=(mangle("ramen"), mangle("café")))
+        path = write(tmp_path, [p])
+        write(tmp_path, [collection(mangle("Weeknight dinners 🍜"), ["A1"])],
+              name="saved_collections.json")
+        posts = ig.read_saved(path)
+        ig.import_saved(conn, posts)
+        ig.import_collections(conn, ig.read_collections(path))
+        row = db.rows_to_dicts(db.recent(conn))[0]
+        assert row["title"] == "Don’t skip this 🍜 #ramen"
+        assert row["creator_name"] == "Café Desk"
+        assert "café" in row["tags"]
+        assert db.collection_counts(conn) == [("Weeknight dinners 🍜", 1)]
+        # and garbling would have broken search for the words around it
+        assert len(db.search(conn, "skip")) == 1

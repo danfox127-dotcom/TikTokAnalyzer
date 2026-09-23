@@ -22,6 +22,18 @@ Two layouts are read:
   "string_map_data": {"Saved on": {"href", "timestamp"}}}]}``, which has the
   link, date and username but no caption.
 
+**Collections** come from ``saved_collections.json`` beside it, and become
+categories of the same name -- the same way YouTube playlists do. A post in no
+collection is "just saved".
+
+**Meta's exports garble every non-ASCII character.** Each byte of the UTF-8 is
+written as if it were a character of its own, so an apostrophe comes out as
+"â€™" and an emoji as four symbols of noise. On a real export that was every
+curly quote, dash and emoji -- 239 strings in the saved posts and 36 in the
+collections, with none stored correctly. Garbled text also defeats search:
+"don't" stored as "donâ€™t" matches nothing anyone types. Every string is
+repaired on read (:func:`_unmangle`).
+
 Run ``--list`` first: it reads the export and imports nothing.
 """
 
@@ -41,25 +53,60 @@ from urllib.parse import urlparse
 
 SOURCE = "instagram-export"
 SAVED_FILE = "saved_posts.json"
+COLLECTIONS_FILE = "saved_collections.json"
 
 
-def _load(path: str | Path) -> Any:
-    """The saved-posts JSON from a file, an unzipped export folder, or its .zip."""
+def _unmangle(text: str) -> str:
+    """Undo Meta's double encoding: UTF-8 bytes written out as Latin-1 characters.
+
+    Only applied when the whole string turns back into valid UTF-8, so text
+    that was stored correctly -- "café" with a real é -- is left as it is.
+    """
+    if not any(0x80 <= ord(c) <= 0xFF for c in text):
+        return text
+    try:
+        return text.encode("latin-1").decode("utf-8")
+    except (UnicodeEncodeError, UnicodeDecodeError):
+        return text
+
+
+def _repair(node: Any) -> Any:
+    if isinstance(node, str):
+        return _unmangle(node)
+    if isinstance(node, list):
+        return [_repair(v) for v in node]
+    if isinstance(node, dict):
+        return {k: _repair(v) for k, v in node.items()}
+    return node
+
+
+def _load(path: str | Path, filename: str = SAVED_FILE, required: bool = True) -> Any:
+    """One export file, from itself, a file beside it, a folder, or the .zip.
+
+    Pointing at saved_posts.json finds saved_collections.json next to it, so
+    either file, the folder or the zip all work as the one argument.
+    """
     p = Path(path).expanduser()
+    raw: Optional[str] = None
     if p.is_file() and p.suffix.lower() == ".zip":
         with zipfile.ZipFile(p) as z:
             for name in z.namelist():
-                if PurePosixPath(name).name == SAVED_FILE:
-                    return json.loads(z.read(name).decode("utf-8"))
-        raise FileNotFoundError(f"no {SAVED_FILE} inside {p}")
-    if p.is_dir():
-        found = sorted(p.rglob(SAVED_FILE))
-        if not found:
-            raise FileNotFoundError(f"no {SAVED_FILE} under {p}")
-        p = found[0]
-    if not p.is_file():
+                if PurePosixPath(name).name == filename:
+                    raw = z.read(name).decode("utf-8")
+                    break
+    elif p.is_dir():
+        found = sorted(p.rglob(filename))
+        raw = found[0].read_text(encoding="utf-8") if found else None
+    elif p.is_file():
+        target = p if p.name == filename else p.with_name(filename)
+        raw = target.read_text(encoding="utf-8") if target.is_file() else None
+    else:
         raise FileNotFoundError(f"nothing at {p}")
-    return json.loads(p.read_text(encoding="utf-8"))
+    if raw is None:
+        if required:
+            raise FileNotFoundError(f"no {filename} in {p}")
+        return None
+    return _repair(json.loads(raw))
 
 
 def _iso(timestamp: Any) -> Optional[str]:
@@ -136,6 +183,34 @@ def read_saved(path: str | Path) -> list[dict]:
     return [r for r in rows if r]
 
 
+def read_collections(path: str | Path) -> list[tuple[str, list[str]]]:
+    """``[(collection name, [post URLs])]``, or [] when there are none.
+
+    Each collection lists its posts under a group titled ``Media``; every item
+    there has a ``URL``. Everything else about the post is already in
+    saved_posts.json.
+    """
+    data = _load(path, COLLECTIONS_FILE, required=False)
+    if not isinstance(data, list):
+        return []
+    out = []
+    for entry in data:
+        if not isinstance(entry, dict):
+            continue
+        name, urls = None, []
+        for lv in entry.get("label_values") or []:
+            if lv.get("label") == "Name":
+                name = (lv.get("value") or "").strip()
+            elif lv.get("label") is None and lv.get("title") == "Media":
+                for item in lv.get("dict") or []:
+                    for f in item.get("dict") or []:
+                        if f.get("label") == "URL" and (f.get("href") or f.get("value")):
+                            urls.append(f.get("href") or f.get("value"))
+        if name:
+            out.append((name, urls))
+    return out
+
+
 def import_saved(conn: sqlite3.Connection, posts: Iterable[dict]) -> dict[str, int]:
     """Insert saved posts. Anything already in the library is left untouched."""
     imported_at = db.now_iso()
@@ -192,6 +267,28 @@ def import_saved(conn: sqlite3.Connection, posts: Iterable[dict]) -> dict[str, i
     return stats
 
 
+def import_collections(
+    conn: sqlite3.Connection, collections: Iterable[tuple[str, list[str]]],
+    saved_at: Optional[dict[str, str]] = None,
+) -> dict[str, int]:
+    """File each post under its collection's name. Posts not in the library are counted."""
+    saved_at = saved_at or {}
+    stats = {"filings": 0, "not_in_library": 0}
+    for name, urls in collections:
+        for url in urls:
+            canonical, _ = canonical_form(url, "instagram")
+            row = conn.execute(
+                "SELECT id FROM items WHERE canonical_url = ?", (canonical,)).fetchone()
+            if row is None:
+                stats["not_in_library"] += 1
+                continue
+            # Meta does not say when a post went into a collection, so the date
+            # you saved it stands in -- filing happens at save time or after.
+            db.file_under(conn, int(row["id"]), name, saved_at.get(url))
+            stats["filings"] += 1
+    return stats
+
+
 def _print_listing(posts: list[dict]) -> None:
     dates = sorted(p["saved_at"] for p in posts if p["saved_at"])
     reels = sum(1 for p in posts if "/reel" in p["url"])
@@ -213,6 +310,7 @@ def main(argv: Optional[list[str]] = None) -> int:
 
     try:
         posts = read_saved(args.export)
+        collections = read_collections(args.export)
     except FileNotFoundError as exc:
         print(f"{exc}. Point this at saved_posts.json, or the folder or .zip it came in.")
         return 1
@@ -221,6 +319,12 @@ def main(argv: Optional[list[str]] = None) -> int:
         return 1
 
     _print_listing(posts)
+    if collections:
+        print(f"\ncollections: {len(collections)}")
+        for name, urls in sorted(collections, key=lambda c: -len(c[1])):
+            print(f"  {name[:40]:<40}  {len(urls):>4}")
+    else:
+        print(f"\ncollections: none found ({COLLECTIONS_FILE} was not beside it)")
     if args.list:
         return 0
 
@@ -228,11 +332,18 @@ def main(argv: Optional[list[str]] = None) -> int:
     print(f"\n{where}")
     try:
         stats = import_saved(conn, posts)
+        filed = import_collections(
+            conn, collections, {p["url"]: p["saved_at"] for p in posts})
         total = db.count(conn)
     finally:
         conn.close()
     print(f"\nposts imported       : {stats['imported']}")
     print(f"already in library   : {stats['already_present']}")
+    if collections:
+        print(f"filed into categories: {filed['filings']}")
+        if filed["not_in_library"]:
+            print(f"  not filed          : {filed['not_in_library']} (in a collection "
+                  "but not in saved posts)")
     for key, label in (("undated", "skipped, no date"), ("not_instagram", "skipped, not Instagram")):
         if stats[key]:
             print(f"{label:<21}: {stats[key]}")

@@ -325,7 +325,9 @@ python -m favorites.importers.instagram_export ~/Downloads/instagram-export --li
 python -m favorites.importers.instagram_export ~/Downloads/instagram-export
 ```
 
-Point it at `saved_posts.json`, the unzipped folder, or the `.zip`.
+Point it at `saved_posts.json`, the `saved` folder, or a `.zip` of it. If
+`saved_collections.json` is beside it, your collections become categories of
+the same name — the same way YouTube playlists do.
 
 **This one arrives ready.** Unlike TikTok's, Instagram's export carries each
 post's caption, author, hashtags and the date you saved it — so imported posts
@@ -338,6 +340,11 @@ learns nothing about an Instagram post.
 their caption and author but no image.
 
 Reels are recorded as short-form video, the same as TikToks and YouTube Shorts.
+
+**Meta's exports garble every accent and emoji** — an apostrophe arrives as
+`â€™`, an emoji as four symbols of noise. The importer repairs this as it reads,
+so captions, names, hashtags and collection names come through as written, and
+stay searchable: `don’t` stored as `donâ€™t` would match nothing anyone types.
 
 ## Privacy
 
