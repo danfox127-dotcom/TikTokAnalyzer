@@ -68,7 +68,7 @@
 
     {% if item.tags or shared %}
       <ul class="theme-pills">
-        {% for tag in item.tags %}<li><a href="/search?q={{ tag }}">#{{ tag }}</a></li>{% endfor %}
+        {% for tag in item.tags %}<li><a href="/search?tag={{ tag | urlencode }}">#{{ tag }}</a></li>{% endfor %}
         {% for term in shared %}<li><a href="/search?q={{ term }}">{{ term }}</a></li>{% endfor %}
       </ul>
     {% endif %}

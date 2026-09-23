@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% from "_card.html" import card %}
+{% block title %}{{ heading }} · Favorites{% endblock %}
+
+{% macro facet_list(facets, filters) %}
+  {% for facet in facets %}
+    <section class="facet">
+      <h3>{{ facet.title }}</h3>
+      {% set shown = 8 if facet.options | length > 10 else facet.options | length %}
+      <ul>
+        {% for o in facet.options[:shown] %}{{ option(o) }}{% endfor %}
+      </ul>
+      {% if facet.options | length > shown %}
+        <details class="facet-more">
+          <summary>{{ facet.options | length - shown }} more</summary>
+          <ul>{% for o in facet.options[shown:] %}{{ option(o) }}{% endfor %}</ul>
+        </details>
+      {% endif %}
+    </section>
+  {% endfor %}
+{% endmacro %}
+
+{% macro option(o) %}
+  <li><a href="{{ o.href }}"{% if o.active %} class="on" aria-current="true"{% endif %}>
+    <span class="opt-label">{{ o.label }}</span><span class="opt-n">{{ o.count }}</span></a></li>
+{% endmacro %}
+
+{% block content %}
+<section class="page-head explore-head">
+  <form class="refine" action="/search" method="get" role="search">
+    <input type="search" name="q" value="{{ filters.q }}" autocomplete="off" spellcheck="false"
+           placeholder="{% if filters.narrowing() %}Search within these{% else %}Search everything you've kept{% endif %}"
+           aria-label="Search">
+    {% for name, value in filters.narrowing().items() %}
+      <input type="hidden" name="{{ name }}" value="{{ value }}">
+    {% endfor %}
+    {% if filters.sort %}<input type="hidden" name="sort" value="{{ filters.sort }}">{% endif %}
+    <button type="submit">Search</button>
+  </form>
+  <h1>{{ heading }}</h1>
+  <p>{{ subheading }}</p>
+
+  {% if chips or filters.q %}
+    <ul class="chips">
+      {% if filters.q %}<li><a href="{{ filters.href(q=None, sort=None) }}" title="Clear the search words">“{{ filters.q }}” <span aria-hidden="true">×</span></a></li>{% endif %}
+      {% for label, href in chips %}
+        <li><a href="{{ href }}" title="Remove this filter">{{ label }} <span aria-hidden="true">×</span></a></li>
+      {% endfor %}
+      {% if (chips | length) + (1 if filters.q else 0) > 1 %}<li class="clear"><a href="/search">Clear all</a></li>{% endif %}
+    </ul>
+  {% endif %}
+</section>
+
+<details class="filters-mobile">
+  <summary>Filters{% if chips %} · {{ chips | length }} on{% endif %}</summary>
+  {{ facet_list(facets, filters) }}
+</details>
+
+<div class="explore">
+  <aside class="filters-side" aria-label="Filters">
+    {{ facet_list(facets, filters) }}
+  </aside>
+
+  <div class="explore-results">
+    {% if items %}
+      <nav class="sorts" aria-label="Order">
+        {% for key, label in sorts.items() if key != 'relevance' or filters.q %}
+          <a href="{{ filters.href(sort=key) }}"{% if filters.order == key %} class="on" aria-current="true"{% endif %}>{{ label }}</a>
+        {% endfor %}
+      </nav>
+      <div class="grid">
+        {% for item in items %}{{ card(item) }}{% endfor %}
+      </div>
+      {% if filters.page > 1 or has_next %}
+        <nav class="pager">
+          {% if filters.page > 1 %}<a href="{{ filters.href(page=filters.page - 1) }}">← Previous</a>{% endif %}
+          <span>Page {{ filters.page }}</span>
+          {% if has_next %}<a href="{{ filters.href(page=filters.page + 1) }}">Next →</a>{% endif %}
+        </nav>
+      {% endif %}
+    {% else %}
+      <div class="nothing-here">
+        <p class="nothing">Nothing matches{% if chips %} all of these together{% endif %}.</p>
+        {% if chips %}<p class="hint">Remove a filter above to widen it.</p>{% endif %}
+      </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

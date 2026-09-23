@@ -301,3 +301,76 @@ button:hover { filter: brightness(1.08); }
   flex: 1; min-width: 0; padding: 8px 12px; border-radius: 10px;
   border: 1px solid var(--line); background: var(--bg); color: var(--text); font-size: 14px;
 }
+
+/* ---- search and filters ----
+   Filters in a column beside the results on a wide screen, folded into one
+   "Filters" drawer above them on a phone. Every option is a plain link, so the
+   back button undoes a filter and any view can be bookmarked. */
+
+.explore-head .refine { display: flex; gap: 8px; margin: 0 0 22px; max-width: 640px; }
+.refine input[type="search"] {
+  flex: 1; min-width: 0; padding: 11px 14px; border-radius: 10px;
+  border: 1px solid var(--line); background: var(--surface); color: var(--text); font: inherit;
+}
+.refine input[type="search"]:focus { outline: 2px solid var(--accent); outline-offset: 1px; border-color: transparent; }
+
+.chips { list-style: none; display: flex; flex-wrap: wrap; gap: 8px; padding: 0; margin: 14px 0 0; }
+.chips a {
+  display: inline-flex; align-items: center; gap: 8px; padding: 5px 12px; border-radius: 999px;
+  font-size: 13.5px; background: color-mix(in srgb, var(--accent) 16%, var(--surface));
+  border: 1px solid color-mix(in srgb, var(--accent) 45%, var(--line));
+}
+.chips a span { color: var(--muted); font-size: 15px; line-height: 1; }
+.chips a:hover span { color: var(--accent); }
+.chips .clear a { background: none; border-color: transparent; color: var(--muted); }
+
+.explore { display: grid; grid-template-columns: 230px minmax(0, 1fr); gap: 36px; align-items: start; }
+.filters-side { position: sticky; top: 84px; max-height: calc(100vh - 100px); overflow-y: auto;
+  padding-right: 6px; scrollbar-width: thin; }
+.filters-mobile { display: none; }
+
+.facet { margin: 0 0 22px; }
+.facet h3 {
+  font-family: var(--serif); font-size: 12px; font-weight: 400; letter-spacing: .14em;
+  text-transform: uppercase; color: var(--accent); margin: 0 0 8px;
+}
+.facet ul { list-style: none; margin: 0; padding: 0; }
+.facet li a {
+  display: flex; justify-content: space-between; gap: 10px; padding: 4px 8px; margin: 0 -8px;
+  border-radius: 7px; font-size: 14px;
+}
+.facet li a:hover { background: var(--surface-2); color: var(--text); }
+.facet li a.on { background: color-mix(in srgb, var(--accent) 18%, var(--surface)); font-weight: 600; }
+.opt-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.opt-n { color: var(--muted); font-variant-numeric: tabular-nums; font-size: 12.5px; flex: none; }
+.facet-more summary { cursor: pointer; color: var(--muted); font-size: 13px; padding: 4px 0; list-style: none; }
+.facet-more summary::-webkit-details-marker { display: none; }
+.facet-more summary::before { content: "+ "; }
+.facet-more[open] summary::before { content: "− "; }
+
+.sorts { display: flex; gap: 6px; flex-wrap: wrap; margin: 0 0 14px; font-size: 13.5px; }
+.sorts a { padding: 4px 11px; border-radius: 999px; color: var(--muted); border: 1px solid transparent; }
+.sorts a.on { color: var(--text); border-color: var(--line); background: var(--surface); }
+.pager { display: flex; align-items: center; gap: 16px; }
+.pager span { color: var(--muted); font-size: 13.5px; }
+.nothing-here { padding: 40px 0; }
+
+@media (max-width: 860px) {
+  .explore { grid-template-columns: 1fr; }
+  .filters-side { display: none; }
+  .filters-mobile {
+    display: block; margin: 0 0 18px; padding: 12px 16px; border-radius: var(--radius);
+    border: 1px solid var(--line); background: var(--surface);
+  }
+  .filters-mobile > summary { cursor: pointer; font-weight: 600; }
+  .filters-mobile[open] > summary { margin-bottom: 14px; }
+  .filters-mobile .facet ul { display: flex; flex-wrap: wrap; gap: 6px; }
+  .filters-mobile .facet li a { margin: 0; border: 1px solid var(--line); border-radius: 999px; padding: 4px 11px; }
+}
+
+/* Two across on a phone. One card per row turns a thousand saves into a very
+   long scroll; at this size a card is still big enough to recognise. */
+@media (max-width: 520px) {
+  .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+  .grid .card-title { font-size: 13.5px; }
+}
