@@ -64,7 +64,7 @@ every platform's terms. It also sets a hard ceiling on what is knowable:
 |---|---|---|---|---|---|
 | YouTube | yes | yes | yes | yes | **yes** |
 | TikTok | caption | yes | yes | yes | no |
-| Instagram | sometimes | sometimes | sometimes | sometimes | no |
+| Instagram | caption | yes | yes | yes | no |
 | Reddit, Bluesky, Vimeo, Spotify | yes | yes | usually | yes | no |
 | Blogs, newsletters, news | yes | usually | usually | yes | n/a |
 
@@ -117,7 +117,25 @@ python -m favorites.thumbnails
 
 It keeps a copy of every picture it can. Where a link has already lapsed, it
 asks the platform for a fresh one first — so running it late still recovers
-every video that still exists. `--stats` shows how many are kept.
+every video that still exists. `--stats` shows how many are kept, per platform.
+
+### Instagram pictures come from the link-preview route
+
+Instagram sends a logged-out browser a page with no picture in it: 20 of 20 on
+a real library, and 20 of 20 of the embed pages news sites use. It sends the
+picture to **link-preview fetchers** — what iMessage, Slack and Facebook use to
+draw the preview when you paste a link — and asked that way, 5 of 5 came back
+with one.
+
+So for Instagram only, the museum reads the page the way a chat app does,
+introducing itself with the same wording iMessage uses. It is doing the same
+job: one preview for one link you chose to keep. The picture is kept at once,
+because Instagram's picture links expire too. In a bulk run Instagram goes one
+post at a time with a pause between each (`bulk_pause` in `platforms.py`),
+about 280 posts in roughly 15 minutes, rather than the usual handful at once.
+
+This is a courtesy Instagram extends, not a promise: if it stops, Instagram
+saves keep their captions and whatever pictures were already kept.
 
 ### Your note is the best field in the database
 
@@ -244,11 +262,6 @@ rows stay in the library with their link and date, and stay off the shelves --
 a wall of untitled URLs is worse than an empty shelf. They still count, and the
 front page tells you how many are outstanding.
 
-### What this does not cover
-
-Instagram. `parsers/instagram.py` does not extract saved posts at all, so an
-Instagram backfill means writing that parser first.
-
 ## Backfilling your YouTube saves from Google Takeout
 
 The same idea as the TikTok export: bring in what you saved before this existed.
@@ -331,13 +344,17 @@ the same name — the same way YouTube playlists do.
 
 **This one arrives ready.** Unlike TikTok's, Instagram's export carries each
 post's caption, author, hashtags and the date you saved it — so imported posts
-are searchable and on the shelves immediately, with no backfill. That matters,
-because Instagram shows a login wall to almost anything that is not a logged-in
-browser, and the lookup that fills in a TikTok or a YouTube video usually
-learns nothing about an Instagram post.
+are searchable and on the shelves immediately, with no backfill.
 
-**What it cannot carry is the picture.** Imported posts show as a card with
-their caption and author but no image.
+**What it cannot carry is the picture.** Fetch those once after importing:
+
+```bash
+python -m favorites.thumbnails
+```
+
+It asks Instagram for each post's preview picture, slowly — see *Instagram
+pictures come from the link-preview route* above. Posts since deleted or made
+private have none to give, and keep their caption card.
 
 Reels are recorded as short-form video, the same as TikToks and YouTube Shorts.
 
