@@ -1,8 +1,8 @@
 """Storage for the favorites library.
 
 One SQLite file holds everything. There is no server-side anything: the
-database lives wherever ``FAVORITES_DB`` points, defaulting to a file next to
-this package.
+database lives wherever ``FAVORITES_DB`` points, defaulting to
+``~/favorites.db`` in your home folder.
 
 Search uses SQLite's built-in FTS5 full-text index. The index is a plain FTS5
 table kept in step by :func:`index_item` rather than an external-content table
@@ -20,7 +20,14 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable, Optional
 
-DEFAULT_DB = Path(__file__).resolve().parent / "favorites.db"
+# The home folder, not the project folder: a default that depends on where the
+# code happens to be checked out is how one person ended up with two libraries
+# -- an import quietly filled one while the museum kept showing the other.
+DEFAULT_DB = Path.home() / "favorites.db"
+
+# Where the default used to be. Still honoured when it is the only library
+# there is, so an existing one is never swapped for an empty museum.
+LEGACY_DB = Path(__file__).resolve().parent / "favorites.db"
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS items (
@@ -132,14 +139,21 @@ def now_iso() -> str:
 def resolve_path(path: str | os.PathLike | None = None) -> str:
     """Which library file a command will use, as an absolute path.
 
-    An explicit path wins, then ``$FAVORITES_DB``, then the file next to this
-    package. Absolute because a relative one silently means a different file
-    depending on which folder the command was run from.
+    An explicit path wins, then ``$FAVORITES_DB``, then ``~/favorites.db`` --
+    or the old in-project default, if that is the only library that exists.
+    Absolute because a relative one silently means a different file depending
+    on which folder the command was run from.
     """
-    target = str(path or os.environ.get("FAVORITES_DB") or DEFAULT_DB)
+    target = str(path or os.environ.get("FAVORITES_DB") or _default())
     if target == ":memory:":
         return target
     return os.path.abspath(os.path.expanduser(target))
+
+
+def _default() -> Path:
+    if not DEFAULT_DB.exists() and LEGACY_DB.exists():
+        return LEGACY_DB
+    return DEFAULT_DB
 
 
 def connect(path: str | os.PathLike | None = None) -> sqlite3.Connection:
@@ -170,7 +184,11 @@ def connect_announced(path: str | os.PathLike | None = None) -> tuple[sqlite3.Co
     conn = connect(target)
     if existed:
         n = count(conn)
-        return conn, f"library: {target}  ({n} {'item' if n == 1 else 'items'})"
+        line = f"library: {target}  ({n} {'item' if n == 1 else 'items'})"
+        if target == str(LEGACY_DB) and not path and not os.environ.get("FAVORITES_DB"):
+            line += (f"\n  This is the old default location. Move it to make it the"
+                     f" default everywhere:  mv \"{target}\" ~/favorites.db")
+        return conn, line
     return conn, (f"library: {target}  (NEW -- created just now. If you expected your "
                   f"existing library, pass --db with its path or set FAVORITES_DB.)")
 

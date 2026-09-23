@@ -27,9 +27,49 @@ class TestResolvePath:
         monkeypatch.setenv("FAVORITES_DB", str(tmp_path / "env.db"))
         assert db.resolve_path() == str(tmp_path / "env.db")
 
-    def test_the_default_is_the_file_beside_the_package(self, monkeypatch):
+    def test_the_default_is_in_the_home_folder(self):
+        # Not beside the code: a default that moves with the checkout is how
+        # one person ended up with two libraries.
+        assert db.DEFAULT_DB == db.Path.home() / "favorites.db"
+
+    @pytest.fixture
+    def defaults(self, tmp_path, monkeypatch):
         monkeypatch.delenv("FAVORITES_DB", raising=False)
-        assert db.resolve_path() == str(db.DEFAULT_DB)
+        home, legacy = tmp_path / "home" / "favorites.db", tmp_path / "project" / "favorites.db"
+        home.parent.mkdir()
+        legacy.parent.mkdir()
+        monkeypatch.setattr(db, "DEFAULT_DB", home)
+        monkeypatch.setattr(db, "LEGACY_DB", legacy)
+        return home, legacy
+
+    def test_with_no_library_anywhere_the_default_is_used(self, defaults):
+        home, _ = defaults
+        assert db.resolve_path() == str(home)
+
+    def test_an_old_library_in_the_project_folder_is_still_found(self, defaults):
+        home, legacy = defaults
+        db.connect(legacy).close()
+        assert db.resolve_path() == str(legacy)
+        conn, line = db.connect_announced()
+        conn.close()
+        assert "old default location" in line and "~/favorites.db" in line
+        assert not home.exists()  # nothing new was created beside it
+
+    def test_once_moved_the_home_folder_one_wins(self, defaults):
+        home, legacy = defaults
+        db.connect(legacy).close()
+        db.connect(home).close()
+        assert db.resolve_path() == str(home)
+        conn, line = db.connect_announced()
+        conn.close()
+        assert "old default" not in line
+
+    def test_a_chosen_library_is_never_second_guessed(self, defaults, monkeypatch):
+        _, legacy = defaults
+        db.connect(legacy).close()
+        conn, line = db.connect_announced(legacy)
+        conn.close()
+        assert "old default" not in line  # it was asked for by name
 
     def test_a_relative_path_is_made_absolute(self, tmp_path, monkeypatch):
         # A relative FAVORITES_DB means a different file in every folder you

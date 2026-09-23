@@ -38,16 +38,21 @@ uvicorn favorites.app:app --reload --port 8000
 ```
 
 Open <http://localhost:8000>. The library is one SQLite file — by default
-`favorites/favorites.db`, or wherever you point `FAVORITES_DB`. Back it up by
-copying that file.
+`favorites.db` in your home folder (`~/favorites.db`), or wherever you point
+`FAVORITES_DB`. Back it up by copying that file.
 
 **Every command says which file it is using.** The server prints a `library:`
 line when it starts, and so does every import and backfill, with how many items
 are in it — or `NEW -- created just now` if there was nothing there. That line
 is the whole defence against ending up with two libraries, where an import
-succeeds into one and the museum keeps showing the other. If you keep the
-library somewhere other than the default, make it permanent so every command
-agrees:
+succeeds into one and the museum keeps showing the other.
+
+The default used to be a file inside the project folder, which is exactly how
+that happened. If an older library is still there and there is none in your
+home folder, it keeps being used, and the `library:` line says how to move it.
+
+If you keep the library somewhere other than the default, make it permanent so
+every command agrees:
 
 ```bash
 echo 'export FAVORITES_DB="$HOME/favorites.db"' >> ~/.zshrc
