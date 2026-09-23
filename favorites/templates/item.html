@@ -8,7 +8,7 @@
 <article class="detail">
   {% if item.thumbnail_url %}
     <div class="detail-thumb">
-      <img src="{{ item.thumbnail_url }}" alt="" referrerpolicy="no-referrer" onerror="this.remove()">
+      <img src="/thumb/{{ item.id }}" alt="" referrerpolicy="no-referrer" onerror="this.remove()">
     </div>
   {% endif %}
 

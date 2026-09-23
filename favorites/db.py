@@ -67,6 +67,17 @@ CREATE TABLE IF NOT EXISTS collections (
 );
 CREATE INDEX IF NOT EXISTS idx_collections_name ON collections(name);
 
+-- The picture itself, kept because the platforms' own links expire (TikTok's
+-- within a day or two). In its own table so that "SELECT * FROM items" never
+-- drags image bytes along with it.
+CREATE TABLE IF NOT EXISTS thumbnails (
+    item_id      INTEGER PRIMARY KEY REFERENCES items(id) ON DELETE CASCADE,
+    content_type TEXT NOT NULL,
+    data         BLOB NOT NULL,
+    source_url   TEXT,
+    fetched_at   TEXT NOT NULL
+);
+
 CREATE VIRTUAL TABLE IF NOT EXISTS items_fts USING fts5(
     item_id UNINDEXED,
     title,
