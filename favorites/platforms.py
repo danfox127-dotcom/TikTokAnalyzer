@@ -45,6 +45,15 @@ Format = Callable[[ParseResult], Optional[str]]
 # short-form, and redirects otherwise. Used when the URL alone cannot tell.
 Probe = Callable[[str], str]
 
+#: How a link-preview fetcher introduces itself -- the wording iMessage uses,
+#: naming the preview robots sites already recognise. The page read is the one
+#: a chat app reads to draw a preview of a pasted link, which is what the
+#: museum is doing: one preview for one link its owner chose to keep.
+LINK_PREVIEW_AGENT = (
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 "
+    "(KHTML, like Gecko) facebookexternalhit/1.1 Facebot Twitterbot/1.0"
+)
+
 
 @dataclass(frozen=True)
 class Platform:
@@ -79,6 +88,17 @@ class Platform:
     #: The oEmbed "title" is the item's whole caption, not a headline. Keeping
     #: it only in the title field loses the tail of it to truncation.
     caption_is_title: bool = False
+
+    #: Who to say is asking when reading the page for its preview tags. Unset
+    #: means the ordinary desktop browser. Some platforms send a logged-out
+    #: browser a page with no preview picture in it, but send the picture to
+    #: link-preview fetchers -- which is how a pasted link gets its preview.
+    preview_agent: Optional[str] = None
+
+    #: Seconds to wait between pages during a bulk run, one page at a time.
+    #: Zero means the normal handful in parallel. Set where the preview route
+    #: is a courtesy worth not leaning on.
+    bulk_pause: float = 0.0
 
 
 # --- identity rules ---------------------------------------------------------
@@ -209,6 +229,10 @@ PLATFORMS: tuple[Platform, ...] = (
         name="instagram", label="Instagram",
         hosts=("instagram.com",), identity=_instagram_identity,
         format_from_url=_instagram_format,
+        # Tested against a real library's saves: as a browser, 20 of 20 pages
+        # (and 20 of 20 embed pages) came back with no picture tag; as a link
+        # previewer, 5 of 5 came back with one, and every picture downloaded.
+        preview_agent=LINK_PREVIEW_AGENT, bulk_pause=2.0,
     ),
     Platform(
         name="reddit", label="Reddit",

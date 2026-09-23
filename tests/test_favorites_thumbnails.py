@@ -168,7 +168,7 @@ class TestCatchingUp:
         respx.get(NEW).mock(return_value=httpx.Response(
             200, content=JPEG, headers={"content-type": "image/jpeg"}))
         r = asyncio.run(thumbnails.run(conn, quiet=True))
-        assert r == {"attempted": 1, "kept": 1, "refreshed": 0, "failed": 0, "why": {}}
+        assert r == {"attempted": 1, "kept": 1, "refreshed": 0, "found": 0, "failed": 0, "why": {}}
         assert thumbnails.get(conn, item_id)["data"] == JPEG
 
     @respx.mock
@@ -192,7 +192,7 @@ class TestCatchingUp:
         respx.get(OLD).mock(return_value=httpx.Response(403))
         respx.route().mock(return_value=httpx.Response(404))
         r = asyncio.run(thumbnails.run(conn, quiet=True))
-        assert r == {"attempted": 1, "kept": 0, "refreshed": 0, "failed": 1,
+        assert r == {"attempted": 1, "kept": 0, "refreshed": 0, "found": 0, "failed": 1,
                      "why": {"unavailable (usually a deleted video)": 1}}
 
     @respx.mock

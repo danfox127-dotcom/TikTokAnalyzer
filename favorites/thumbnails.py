@@ -13,6 +13,11 @@ museum is for. A deleted TikTok still has its placard *and* its picture.
 
 Run ``python -m favorites.thumbnails`` once on an existing library. From then
 on saves and backfills keep their own copies as they go.
+
+Instagram is the odd one out. Its data export carries no pictures, and its page
+sends a logged-out browser no picture either -- only link-preview fetchers get
+one (see ``preview_agent`` in platforms.py). So Instagram saves that have never
+had a picture link are included here too, and asked for one, slowly.
 """
 
 from __future__ import annotations
@@ -25,10 +30,12 @@ from typing import Optional
 
 import httpx
 
-from . import db
+from . import db, platforms
 from .resolve import TIMEOUT, USER_AGENT, resolve
 
 CONCURRENCY = 4
+
+_sleep = asyncio.sleep  # replaced in tests, so a paced run does not take minutes
 
 # A ceiling against something absurd, not a judgement on size. TikTok serves
 # some covers as full-resolution PNGs -- 3.3 MB and 4.3 MB on a real library,
@@ -94,67 +101,124 @@ def get(conn: sqlite3.Connection, item_id: int) -> Optional[sqlite3.Row]:
     ).fetchone()
 
 
+def _ask_again() -> tuple[str, ...]:
+    """Platforms where an item with no picture link may still have a picture.
+
+    Everywhere else, a resolved item with no link has been asked already and
+    had none to give -- asking on every run would only repeat the answer.
+    """
+    return tuple(p.name for p in platforms.PLATFORMS if p.preview_agent)
+
+
+def _wanted(alias: str = "i") -> tuple[str, tuple]:
+    names = _ask_again()
+    has_link = f"({alias}.thumbnail_url IS NOT NULL AND {alias}.thumbnail_url != '')"
+    if not names:
+        return has_link, ()
+    marks = ", ".join("?" * len(names))
+    return f"({has_link} OR {alias}.platform IN ({marks}))", names
+
+
 def missing(conn: sqlite3.Connection, limit: Optional[int] = None) -> list[dict]:
-    """Resolved items with a thumbnail link but no kept copy, newest first."""
+    """Resolved items that could have a picture and have no kept copy, newest first."""
+    wanted, params = _wanted()
     sql = (
-        "SELECT i.id, i.canonical_url, i.thumbnail_url FROM items i"
+        "SELECT i.id, i.platform, i.canonical_url, i.thumbnail_url FROM items i"
         " LEFT JOIN thumbnails t ON t.item_id = i.id"
-        " WHERE t.item_id IS NULL AND i.resolve_status = 'ok'"
-        " AND i.thumbnail_url IS NOT NULL AND i.thumbnail_url != ''"
+        f" WHERE t.item_id IS NULL AND i.resolve_status = 'ok' AND {wanted}"
         " ORDER BY i.saved_at DESC, i.id DESC"
     )
-    params: tuple = ()
     if limit:
         sql += " LIMIT ?"
-        params = (limit,)
+        params = params + (limit,)
     return [dict(r) for r in conn.execute(sql, params).fetchall()]
 
 
+def picture_counts(conn: sqlite3.Connection) -> list[tuple[str, tuple[int, int]]]:
+    """(platform, (kept, could have one)) for each platform, largest first."""
+    wanted, params = _wanted("i")
+    rows = conn.execute(
+        "SELECT i.platform, count(t.item_id), count(*) FROM items i"
+        " LEFT JOIN thumbnails t ON t.item_id = i.id"
+        f" WHERE i.resolve_status = 'ok' AND {wanted}"
+        " GROUP BY i.platform ORDER BY count(*) DESC", params,
+    ).fetchall()
+    return [(r[0], (r[1], r[2])) for r in rows]
+
+
 def counts(conn: sqlite3.Connection) -> dict:
+    wanted, params = _wanted("items")
     with_link = conn.execute(
-        "SELECT count(*) FROM items WHERE resolve_status = 'ok'"
-        " AND thumbnail_url IS NOT NULL AND thumbnail_url != ''").fetchone()[0]
+        f"SELECT count(*) FROM items WHERE resolve_status = 'ok' AND {wanted}", params,
+    ).fetchone()[0]
     kept = conn.execute("SELECT count(*) FROM thumbnails").fetchone()[0]
     return {"with_link": with_link, "kept": kept}
 
 
-async def _one(item: dict, client: httpx.AsyncClient, sem: asyncio.Semaphore):
+async def _one(item: dict, client: httpx.AsyncClient, sem: asyncio.Semaphore,
+               pause: float = 0.0):
     """Try the stored link; if it has lapsed, ask the platform for a fresh one."""
     async with sem:
-        image, why = await fetch_explained(item["thumbnail_url"], client)
-        if image:
-            return item, image, item["thumbnail_url"], False, why
-        if why != "unavailable":
-            # The picture is there and was refused -- asking for a fresh link
-            # would only fetch the same picture and refuse it again.
-            return item, None, None, False, why
         try:
-            fresh = await resolve(item["canonical_url"], client)
-        except Exception:
-            fresh = None
-        if fresh is None or fresh.resolve_status != "ok" or not fresh.thumbnail_url:
+            return await _attempt(item, client)
+        finally:
+            if pause:
+                # Held inside the semaphore, so the pause spaces the requests
+                # out rather than just delaying all of them together.
+                await _sleep(pause)
+
+
+async def _attempt(item: dict, client: httpx.AsyncClient):
+    image, why = await fetch_explained(item["thumbnail_url"], client)
+    if image:
+        return item, image, item["thumbnail_url"], False, why
+    if why not in ("unavailable", "no link"):
+        # The picture is there and was refused -- asking for a fresh link
+        # would only fetch the same picture and refuse it again.
+        return item, None, None, False, why
+    try:
+        fresh = await resolve(item["canonical_url"], client)
+    except Exception:
+        fresh = None
+    if fresh is None or fresh.resolve_status != "ok" or not fresh.thumbnail_url:
+        if item["thumbnail_url"]:
             return item, None, None, True, "unavailable (usually a deleted video)"
-        image, why = await fetch_explained(fresh.thumbnail_url, client)
-        return item, image, fresh.thumbnail_url, True, why
+        return item, None, None, True, "no picture offered (deleted, private, or refused)"
+    image, why = await fetch_explained(fresh.thumbnail_url, client)
+    return item, image, fresh.thumbnail_url, True, why
 
 
 async def run(conn: sqlite3.Connection, limit: Optional[int] = None, quiet: bool = False) -> dict:
     queue = missing(conn, limit)
-    result = {"attempted": len(queue), "kept": 0, "refreshed": 0, "failed": 0, "why": {}}
+    result = {"attempted": len(queue), "kept": 0, "refreshed": 0, "found": 0,
+              "failed": 0, "why": {}}
     if not queue:
         return result
 
+    # A platform with a bulk_pause gets a lane of its own, one page at a time;
+    # everything else shares the usual handful in parallel.
+    lanes: dict[str, tuple[asyncio.Semaphore, float]] = {}
+    shared = (asyncio.Semaphore(CONCURRENCY), 0.0)
+    for item in queue:
+        pause = platforms.get(item["platform"]).bulk_pause
+        if pause and item["platform"] not in lanes:
+            lanes[item["platform"]] = (asyncio.Semaphore(1), pause)
+    if not quiet:
+        for name, (_, pause) in lanes.items():
+            n = sum(1 for item in queue if item["platform"] == name)
+            print(f"  {platforms.get(name).label}: {n} to ask, one at a time"
+                  f" (about {max(1, round(n * (pause + 1.5) / 60))} min)", flush=True)
+
     started = time.monotonic()
-    sem = asyncio.Semaphore(CONCURRENCY)
     async with httpx.AsyncClient() as client:
-        tasks = [_one(item, client, sem) for item in queue]
+        tasks = [_one(item, client, *lanes.get(item["platform"], shared)) for item in queue]
         for done, coro in enumerate(asyncio.as_completed(tasks), 1):
             item, image, source, refreshed, why = await coro
             if image:
                 store(conn, item["id"], image, source)
                 result["kept"] += 1
                 if refreshed:
-                    result["refreshed"] += 1
+                    result["found" if not item["thumbnail_url"] else "refreshed"] += 1
                     # Keep the fresh link too, so the fallback path works.
                     conn.execute("UPDATE items SET thumbnail_url = ? WHERE id = ?",
                                  (source, item["id"]))
@@ -162,7 +226,7 @@ async def run(conn: sqlite3.Connection, limit: Optional[int] = None, quiet: bool
             else:
                 result["failed"] += 1
                 result["why"][why] = result["why"].get(why, 0) + 1
-            if not quiet and (done % 50 == 0 or done == len(queue)):
+            if not quiet and (done % 25 == 0 or done == len(queue)):
                 rate = done / max(time.monotonic() - started, 1e-9) * 60
                 print(f"  {done}/{len(queue)}  kept {result['kept']}  ~{rate:.0f}/min", flush=True)
     return result
@@ -182,8 +246,13 @@ def main(argv: Optional[list[str]] = None) -> int:
         if not args.stats:
             r = asyncio.run(run(conn, args.limit, quiet=args.quiet))
             if r["attempted"]:
+                notes = []
+                if r["refreshed"]:
+                    notes.append(f"{r['refreshed']} needed a fresh link first")
+                if r["found"]:
+                    notes.append(f"{r['found']} got a picture for the first time")
                 print(f"\nkept {r['kept']} of {r['attempted']}"
-                      + (f" ({r['refreshed']} needed a fresh link first)" if r["refreshed"] else ""))
+                      + (f" ({'; '.join(notes)})" if notes else ""))
                 if r["failed"]:
                     print(f"{r['failed']} could not be saved:")
                     for why, n in sorted(r["why"].items(), key=lambda kv: -kv[1]):
@@ -193,6 +262,8 @@ def main(argv: Optional[list[str]] = None) -> int:
                 print("every thumbnail is already kept.")
         c = counts(conn)
         print(f"\nthumbnails kept      : {c['kept']} of {c['with_link']}")
+        for name, n in picture_counts(conn):
+            print(f"  {platforms.get(name).label:<18}: {n[0]} of {n[1]}")
     finally:
         conn.close()
     return 0

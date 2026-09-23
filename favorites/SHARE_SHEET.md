@@ -155,9 +155,10 @@ count and whether transcripts are switched on.
 - **The same video shared twice does not duplicate.** Share links carry a
   session id that differs every time; those are stripped, so both shares
   resolve to the same item. The second one refreshes it and keeps your note.
-- **Instagram saves often arrive with no title or thumbnail.** Instagram serves
-  a login wall to anything that is not a logged-in browser. The link and your
-  note still work.
+- **An Instagram save's title is worded the way Instagram words its link
+  previews**, which is where its picture comes from too, rather than being the
+  bare caption. A private or deleted post has no preview to give; the link and
+  your note still work.
 - **Most things have no transcript.** Only YouTube publishes caption tracks.
   Getting spoken text out of a TikTok would mean downloading the video, which
   its terms do not allow.

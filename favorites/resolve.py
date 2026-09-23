@@ -251,11 +251,13 @@ async def _try_oembed(url: str, platform: str, client: httpx.AsyncClient) -> Opt
         return None
 
 
-async def _try_opengraph(url: str, client: httpx.AsyncClient) -> Optional[dict]:
+async def _try_opengraph(
+    url: str, client: httpx.AsyncClient, user_agent: str = USER_AGENT,
+) -> Optional[dict]:
     try:
         resp = await client.get(
             url, timeout=TIMEOUT, follow_redirects=True,
-            headers={"User-Agent": USER_AGENT, "Accept-Language": "en;q=0.9"},
+            headers={"User-Agent": user_agent, "Accept-Language": "en;q=0.9"},
         )
         if resp.status_code >= 400:
             return None
@@ -396,7 +398,8 @@ async def resolve(shared: str, client: httpx.AsyncClient) -> Resolved:
 
     meta = None
     if item.resolve_status != "ok" or not item.thumbnail_url or not item.title:
-        meta = await _try_opengraph(canonical, client)
+        meta = await _try_opengraph(
+            canonical, client, platforms.get(platform).preview_agent or USER_AGENT)
     if meta:
         item.title = item.title or _clean(meta.get("og:title") or meta.get("twitter:title") or meta.get("__title__"))
         item.description = _clean(meta.get("og:description") or meta.get("twitter:description") or meta.get("description"))
