@@ -95,7 +95,16 @@ def stats(conn: sqlite3.Connection) -> dict:
     ).fetchone()["n"]
     total = sum(by_status.values())
     resolved = by_status.get("ok", 0)
+    # Whether YouTube items are Shorts is learned by asking YouTube, and that
+    # rule was written without a live check. A split that looks wrong for your
+    # own saves -- everything a Short, say -- is the sign it needs revisiting.
+    formats = {
+        (r["f"] or "unknown"): r["n"] for r in conn.execute(
+            "SELECT format AS f, count(*) AS n FROM items"
+            " WHERE platform = 'youtube' AND resolve_status = 'ok' GROUP BY format")
+    }
     return {
+        "youtube_formats": formats,
         "total": total,
         "resolved": resolved,
         "by_status": by_status,
@@ -117,7 +126,9 @@ async def _resolve_one(
             return item, None
 
 
-def _write_back(conn: sqlite3.Connection, item: dict, resolved) -> bool:
+def _write_back(
+    conn: sqlite3.Connection, item: dict, resolved, transcripts: bool = True
+) -> bool:
     """Persist one resolution. Returns True if it produced usable metadata."""
     attempts = int(item.get("resolve_attempts") or 0) + 1
 
@@ -139,7 +150,7 @@ def _write_back(conn: sqlite3.Connection, item: dict, resolved) -> bool:
     payload["resolve_attempts"] = attempts
     payload["resolved_at"] = db.now_iso()
 
-    text = transcript.fetch(resolved.platform, resolved.external_id)
+    text = transcript.fetch(resolved.platform, resolved.external_id) if transcripts else None
     payload["transcript"] = text
     payload["tags"], payload["terms"] = tagging.enrich(
         title=resolved.title, description=resolved.description,
@@ -150,7 +161,8 @@ def _write_back(conn: sqlite3.Connection, item: dict, resolved) -> bool:
 
 
 async def run(
-    conn: sqlite3.Connection, limit: Optional[int], quiet: bool = False
+    conn: sqlite3.Connection, limit: Optional[int], quiet: bool = False,
+    transcripts: bool = True,
 ) -> dict:
     queue = pending(conn, limit)
     if not queue:
@@ -164,7 +176,7 @@ async def run(
         tasks = [_resolve_one(item, client, sem) for item in queue]
         for coro in asyncio.as_completed(tasks):
             item, result = await coro
-            if _write_back(conn, item, result):
+            if _write_back(conn, item, result, transcripts):
                 resolved_n += 1
             done += 1
             if not quiet and (done % 25 == 0 or done == len(queue)):
@@ -185,6 +197,10 @@ def _print_stats(s: dict) -> None:
     print(f"  resolved           : {s['resolved']}  ({s['hit_rate']:.0%})")
     print(f"  still to try       : {s['remaining']}")
     print(f"  given up on        : {s['gave_up']}  (failed {MAX_ATTEMPTS}x)")
+    yf = s.get("youtube_formats") or {}
+    if yf:
+        print(f"YouTube resolved     : {yf.get('short', 0)} Shorts, "
+              f"{yf.get('video', 0)} long videos, {yf.get('unknown', 0)} not yet known")
 
 
 def main(argv: Optional[list[str]] = None) -> int:
@@ -196,6 +212,9 @@ def main(argv: Optional[list[str]] = None) -> int:
     ap.add_argument("--stats", action="store_true", help="report and exit")
     ap.add_argument("--recheck", action="store_true",
                     help="re-test items an earlier run resolved to a placeholder")
+    ap.add_argument("--no-transcripts", action="store_true",
+                    help="skip YouTube caption tracks this run -- one extra request per "
+                         "video, which adds up across a few thousand")
     ap.add_argument("--db", help="library path (default: $FAVORITES_DB)")
     ap.add_argument("--quiet", action="store_true")
     args = ap.parse_args(argv)
@@ -212,7 +231,8 @@ def main(argv: Optional[list[str]] = None) -> int:
         print(f"put back in the queue      : {fixed['requeued']}\n")
 
     limit = None if args.all else args.limit
-    result = asyncio.run(run(conn, limit, quiet=args.quiet))
+    result = asyncio.run(run(conn, limit, quiet=args.quiet,
+                             transcripts=not args.no_transcripts))
 
     if result["attempted"] == 0:
         print("nothing left to resolve.")

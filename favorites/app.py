@@ -76,8 +76,16 @@ def require_token(request: Request) -> None:
         raise HTTPException(status_code=401, detail="bad or missing token")
 
 
-async def capture(shared: str, note: Optional[str], conn: sqlite3.Connection) -> dict:
-    """Resolve a shared link and shelve it. Never raises on a bad link."""
+async def capture(
+    shared: str, note: Optional[str], conn: sqlite3.Connection,
+    collection: Optional[str] = None,
+) -> dict:
+    """Resolve a shared link and shelve it. Never raises on a bad link.
+
+    ``collection`` files it under a category in the same motion -- YouTube's
+    "save to playlist" and TikTok's "add to collection", without a second step.
+    Leaving it out is "just save".
+    """
     async with httpx.AsyncClient() as client:
         item = await resolve(shared, client)
 
@@ -98,6 +106,9 @@ async def capture(shared: str, note: Optional[str], conn: sqlite3.Connection) ->
     )
 
     item_id, created = await run_in_threadpool(db.upsert_item, conn, payload)
+    filed = None
+    if isinstance(collection, str) and collection.strip():
+        filed = await run_in_threadpool(db.file_under, conn, item_id, collection, payload["resolved_at"])
     return {
         "id": item_id,
         "created": created,
@@ -106,6 +117,7 @@ async def capture(shared: str, note: Optional[str], conn: sqlite3.Connection) ->
         "canonical_url": item.canonical_url,
         "resolve_status": item.resolve_status,
         "has_transcript": bool(text),
+        "collection": filed,
     }
 
 
@@ -143,8 +155,20 @@ async def save(
     if not shared:
         raise HTTPException(status_code=400, detail="no URL in request")
 
-    result = await capture(shared, data.get("note"), conn)
+    result = await capture(shared, data.get("note"), conn, data.get("collection"))
     return JSONResponse(result, status_code=201 if result["created"] else 200)
+
+
+@app.get("/collections.json")
+def collections_json(
+    conn: sqlite3.Connection = Depends(get_db), _: None = Depends(require_token),
+):
+    """Your categories, largest first, as plain names.
+
+    Plain names because this feeds an iOS Shortcut's "Choose from List", which
+    shows a list of strings as-is and a list of objects as nothing useful.
+    """
+    return [name for name, _ in db.collection_counts(conn)]
 
 
 @app.get("/share-target")
@@ -241,6 +265,20 @@ def creator(request: Request, key: str, conn: sqlite3.Connection = Depends(get_d
     })
 
 
+@app.get("/collection/{name:path}", response_class=HTMLResponse)
+def collection(request: Request, name: str, conn: sqlite3.Connection = Depends(get_db)):
+    items = db.rows_to_dicts(db.in_collection(conn, name))
+    if not items:
+        raise HTTPException(status_code=404, detail="no such collection")
+    shown = next((c for c in db.collections_for(conn, items[0]["id"])
+                  if c.lower() == name.lower()), name)
+    return templates.TemplateResponse(request, "list.html", {
+        "heading": shown,
+        "subheading": f"{len(items)} {'save' if len(items) == 1 else 'saves'} you filed here",
+        "items": items, "q": "", "total": db.count(conn),
+    })
+
+
 @app.get("/unlabelled", response_class=HTMLResponse)
 def unlabelled(request: Request, conn: sqlite3.Connection = Depends(get_db)):
     items = db.rows_to_dicts(conn.execute(
@@ -331,9 +369,32 @@ def item_page(
     ).fetchall())
     return templates.TemplateResponse(request, "item.html", {
         "item": item, "related": related, "just_saved": bool(saved),
+        "collections": db.collections_for(conn, item_id),
+        "all_collections": [n for n, _ in db.collection_counts(conn)],
         "shared": museum.shared_terms(conn, item),
         "q": "", "total": db.count(conn),
     })
+
+
+@app.post("/item/{item_id}/file")
+def file_item(
+    item_id: int, name: str = Form(""), conn: sqlite3.Connection = Depends(get_db)
+):
+    """File something you "just saved" under a category after the fact."""
+    if db.get_item(conn, item_id) is None:
+        raise HTTPException(status_code=404, detail="no such item")
+    db.file_under(conn, item_id, name, db.now_iso())
+    return RedirectResponse(f"/item/{item_id}", status_code=303)
+
+
+@app.post("/item/{item_id}/unfile")
+def unfile_item(
+    item_id: int, name: str = Form(""), conn: sqlite3.Connection = Depends(get_db)
+):
+    if db.get_item(conn, item_id) is None:
+        raise HTTPException(status_code=404, detail="no such item")
+    db.unfile(conn, item_id, name)
+    return RedirectResponse(f"/item/{item_id}", status_code=303)
 
 
 @app.post("/item/{item_id}/note")

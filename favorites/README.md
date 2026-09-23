@@ -14,7 +14,7 @@ saved items on a schedule. That design does not survive contact with reality:
 
 | Platform | Can an app read your saves? |
 |---|---|
-| YouTube | Yes — playlists and likes, via the Data API |
+| YouTube | Playlists and likes via the Data API — but **not Watch later**, which the API has returned empty since 2016. Takeout has it |
 | Reddit | Yes — saved posts, via OAuth |
 | Pinterest | Yes |
 | X | Bookmarks, on paid API tiers only |
@@ -64,6 +64,14 @@ TikTok.
 When both fail, the item is still saved. The link and your own note are the
 parts that cannot be recovered later anyway.
 
+**Shorts open as Shorts.** A YouTube Short and a long video share one identity
+(`watch?v=<id>`), so the same Short shared from your phone and from a desktop
+files once. But a Short opened at `watch?v=` plays letterboxed in the landscape
+player, so the library remembers which ones are Shorts and links those to the
+Shorts player instead. A `/shorts/` link says so on its face; for anything else,
+resolution asks YouTube once, and if the answer is unclear it leaves the format
+unknown rather than guessing.
+
 ### Adding a platform
 
 Everything a platform needs is one descriptor in `platforms.py`: the hosts it
@@ -106,6 +114,20 @@ from counts the library already holds, which means it works on day one with no
 API key and never invents a fact. `museum.digest()` returns its components
 alongside the prose, so a model can be added later to rewrite the wording
 without having to re-derive any of the numbers.
+
+### Your categories
+
+YouTube's save button and TikTok's favourites both offer the same choice: just
+save it, or file it under something. The library keeps that choice. Anything
+you file under a category — a YouTube playlist, a name picked in the share
+sheet, or one typed on an item's page — gets a page of its own, becomes
+searchable by that name, and can turn up on the front page as a shelf.
+
+Just-saved things (Watch later, a plain favourite) stay uncategorised, and
+every item page has a box to file them later.
+
+That shelf is the only one on the front page you curated yourself rather than
+one the library inferred.
 
 ### How themes are worked out
 
@@ -195,6 +217,70 @@ front page tells you how many are outstanding.
 Instagram. `parsers/instagram.py` does not extract saved posts at all, so an
 Instagram backfill means writing that parser first.
 
+## Backfilling your YouTube saves from Google Takeout
+
+The same idea as the TikTok export: bring in what you saved before this existed.
+
+**1. Request the export.** At <https://takeout.google.com>, click **Deselect
+all**, tick **YouTube and YouTube Music**, then open **All YouTube data
+included**, deselect everything and tick only **playlists**. Leave the rest out
+— the full YouTube export includes every video you ever uploaded. Google emails
+you a link to a `.zip`, sometimes within minutes, sometimes hours later.
+
+**2. Look before importing.**
+
+```bash
+python -m favorites.importers.youtube_takeout ~/Downloads/takeout.zip --list
+```
+
+(Your file will have a longer name.) This reads the export, imports nothing,
+and lists every playlist it found with its size. Takeout's layout has changed
+over the years, so this is the cheapest way to confirm yours reads the way the
+importer expects.
+
+**3. Import, then resolve.**
+
+```bash
+python -m favorites.importers.youtube_takeout ~/Downloads/takeout.zip
+python -m favorites.backfill --limit 100
+```
+
+### How playlists map onto the library
+
+| In YouTube | In the library |
+|---|---|
+| **Watch later** | Just saved — imported, no category |
+| **A playlist you made** | A category of the same name |
+| **Liked videos** | Left out unless you add `--include-likes` — same rule as TikTok's likes |
+
+A video in several playlists is one item, filed under each of them, dated by
+the earliest time you saved it. Use `--only "Watch later"` to bring in just one
+playlist, or `--skip NAME` to leave one out — a long YouTube Music playlist, say.
+
+Importing twice is safe. Anything already in the library is left exactly as it
+is, note and all, and just gains any categories it was missing.
+
+### Transcripts during a big backfill
+
+Every YouTube video that resolves also gets its caption track fetched, which
+makes what was said searchable. That is one extra request per video, and a few
+thousand in a row is the kind of volume YouTube has been known to block. For a
+first large run, consider:
+
+```bash
+python -m favorites.backfill --all --no-transcripts
+```
+
+Transcripts for those items can come later; everything else resolves the same.
+
+### Watch the hit rate
+
+Unavailable YouTube videos — deleted, private, removed — still answer with a
+page, titled ` - YouTube`. Those are treated as unresolved, the same guard that
+caught TikTok's placeholder pages. Old Watch later lists tend to hold a lot of
+them, so a hit rate well under 100% is expected; one at 100% is worth a second
+look.
+
 ## Privacy
 
 The library is a file on your machine. Nothing is uploaded, and the only
@@ -211,6 +297,7 @@ library.
 |---|---|
 | `platforms.py` | What we know about each platform, one descriptor each |
 | `resolve.py` | A shared link → title, creator, thumbnail |
+| `importers/` | One-time backfills: a TikTok export, a YouTube Takeout |
 | `tagging.py` | Hashtags and themes, no model required |
 | `transcript.py` | YouTube captions, where available |
 | `db.py` | SQLite storage and full-text search |

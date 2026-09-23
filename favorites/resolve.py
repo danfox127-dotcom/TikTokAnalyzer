@@ -76,6 +76,9 @@ class Resolved:
     creator_url: Optional[str] = None
     thumbnail_url: Optional[str] = None
     description: Optional[str] = None
+    #: "short" for short-form vertical video, "video" when the platform says it
+    #: is not, None when nobody knows. Only YouTube serves both today.
+    format: Optional[str] = None
     resolve_status: str = "pending"
     resolve_error: Optional[str] = None
     raw: dict = field(default_factory=dict)
@@ -280,6 +283,10 @@ def _placeholder_names(platform: str, site_name: Optional[str] = None) -> set[st
     return names
 
 
+# What sits between a page's own title and the site's name: "Foo - YouTube".
+_TITLE_SEPARATORS = " -\u2013\u2014|\u00b7:"
+
+
 def _is_placeholder_title(
     title: Optional[str], platform: str, site_name: Optional[str] = None
 ) -> bool:
@@ -294,9 +301,49 @@ def _is_placeholder_title(
     if not title:
         return True
     cleaned = re.sub(r"\s+", " ", title).strip().lower()
-    if not cleaned:
+    # YouTube titles its pages "<video> - YouTube", so an unavailable video's
+    # page is titled " - YouTube": the site name with an empty slot in front of
+    # it. Stripping stray separators catches that without touching a real title
+    # that merely ends in the site name.
+    bare = cleaned.strip(_TITLE_SEPARATORS)
+    if not bare:
         return True
-    return cleaned in _placeholder_names(platform, site_name)
+    names = _placeholder_names(platform, site_name)
+    return cleaned in names or bare in names
+
+
+async def _probe_short_form(
+    platform: str, external_id: Optional[str], client: httpx.AsyncClient
+) -> Optional[str]:
+    """Ask the platform whether this is short-form, where the URL could not say.
+
+    Answers "short" on a 200, "video" on a redirect to the long-form player, and
+    None on anything else -- a consent wall, a rate limit, a network error. An
+    unknown format costs nothing (the link falls back to the watch URL); a wrong
+    one would send you to the wrong player, so ambiguity is never guessed at.
+    """
+    probe = platforms.get(platform).short_form_probe
+    if not probe or not external_id:
+        return None
+    url = probe(external_id)
+    try:
+        resp = await client.head(
+            url, follow_redirects=False, timeout=TIMEOUT,
+            headers={"User-Agent": USER_AGENT},
+        )
+        if resp.status_code == 405:
+            resp = await client.get(
+                url, follow_redirects=False, timeout=TIMEOUT,
+                headers={"User-Agent": USER_AGENT},
+            )
+    except Exception as exc:
+        logger.debug("short-form probe failed for %s: %s", url, exc)
+        return None
+    if resp.status_code == 200:
+        return "short"
+    if resp.is_redirect and "/watch" in resp.headers.get("location", ""):
+        return "video"
+    return None
 
 
 def _clean(value: Optional[str]) -> Optional[str]:
@@ -321,12 +368,16 @@ async def resolve(shared: str, client: httpx.AsyncClient) -> Resolved:
     platform = detect_platform(expanded)
     canonical, external_id = canonical_form(expanded, platform)
 
+    from_url = platforms.get(platform).format_from_url
     item = Resolved(
         canonical_url=canonical,
         shared_url=raw_url,
         platform=platform,
         external_id=external_id,
         creator_handle=_handle_from_url(canonical, platform),
+        # Read from the URL as shared, not the canonical form -- canonicalising
+        # a /shorts/ link to watch?v= is exactly what erases the evidence.
+        format=from_url(urlparse(strip_tracking(expanded))) if from_url else None,
     )
 
     data = await _try_oembed(canonical, platform, client)
@@ -382,5 +433,9 @@ async def resolve(shared: str, client: httpx.AsyncClient) -> Resolved:
         item.resolve_status = "unresolved"
         item.resolve_error = item.resolve_error or "no oEmbed or OpenGraph metadata available"
         item.title = item.title or canonical
+    elif item.format is None:
+        # Only for items that resolved: asking whether a deleted video is a
+        # Short spends a request to learn nothing.
+        item.format = await _probe_short_form(platform, external_id, client)
 
     return item

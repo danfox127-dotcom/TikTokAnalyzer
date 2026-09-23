@@ -29,8 +29,31 @@
       </p>
     {% endif %}
 
+    {% if collections %}
+      <ul class="filed">
+        <li class="filed-label">Filed under</li>
+        {% for c in collections %}
+          <li><a href="/collection/{{ c | urlencode }}">{{ c }}</a>
+            <form action="/item/{{ item.id }}/unfile" method="post">
+              <input type="hidden" name="name" value="{{ c }}">
+              <button type="submit" class="unfile" aria-label="Take out of {{ c }}" title="Take out of {{ c }}">×</button>
+            </form></li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+
     <p><a class="open" href="{{ browsable_url(item) }}" target="_blank" rel="noopener noreferrer">
-      Open on {{ platform_label(item.platform) }} ↗</a></p>
+      {% if item.format == 'short' %}Watch the Short{% else %}Open on {{ platform_label(item.platform) }}{% endif %} ↗</a></p>
+
+    <form class="file-form" action="/item/{{ item.id }}/file" method="post">
+      <input type="text" name="name" list="all-collections" autocomplete="off"
+             placeholder="{% if collections %}Also file under…{% else %}File under a category…{% endif %}"
+             aria-label="Category">
+      <datalist id="all-collections">
+        {% for c in all_collections if c not in collections %}<option value="{{ c }}">{% endfor %}
+      </datalist>
+      <button type="submit">File</button>
+    </form>
 
     <form class="note-form" action="/item/{{ item.id }}/note" method="post">
       <label for="note">Your placard</label>

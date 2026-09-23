@@ -280,3 +280,24 @@ button:hover { filter: brightness(1.08); }
   .placard-card { grid-template-columns: 1fr; gap: 20px; padding: 18px; }
   .placard-thumb { max-width: 220px; }
 }
+
+/* Your own categories. Muted like the byline -- the title and the placard stay
+   the loudest things on the page. */
+.filed {
+  list-style: none; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px;
+  margin: 0 0 14px; padding: 0; font-size: 14px; color: var(--muted);
+}
+.filed li { display: inline-flex; align-items: center; gap: 2px; }
+.filed a { color: var(--accent); border-bottom: 1px solid color-mix(in srgb, var(--accent) 40%, transparent); }
+.filed form { display: inline; margin: 0; }
+.unfile {
+  background: none; border: 0; padding: 0 4px; color: var(--muted);
+  font-size: 15px; line-height: 1; cursor: pointer;
+}
+.unfile:hover, .unfile:focus-visible { color: var(--text); filter: none; }
+
+.file-form { display: flex; gap: 8px; margin: 0 0 18px; max-width: 420px; }
+.file-form input {
+  flex: 1; min-width: 0; padding: 8px 12px; border-radius: 10px;
+  border: 1px solid var(--line); background: var(--bg); color: var(--text); font-size: 14px;
+}
