@@ -346,7 +346,8 @@ def main(argv: Optional[list[str]] = None) -> int:
     if args.list:
         return 0
 
-    conn = db.connect(args.db)
+    conn, where = db.connect_announced(args.db)
+    print(f"\n{where}")
     try:
         stats = import_playlists(conn, chosen)
         pending = conn.execute(

@@ -169,11 +169,9 @@ def main(argv: Optional[list[str]] = None) -> int:
                     help="also import the Like List (usually capped and shallow)")
     args = ap.parse_args(argv)
 
-    conn = db.connect(args.db)
-    try:
-        result = import_export(conn, args.export, include_likes=args.include_likes)
-    finally:
-        pass
+    conn, where = db.connect_announced(args.db)
+    print(where + "\n")
+    result = import_export(conn, args.export, include_likes=args.include_likes)
 
     fav = result["favorites"]
     print(f"favourites in export : {result['favorites_in_export']}")
