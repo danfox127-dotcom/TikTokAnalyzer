@@ -15,6 +15,9 @@ Two mechanisms do that, in order:
 What this deliberately does *not* do is download media. That keeps the library
 on the right side of every platform's terms, and it is why transcripts are
 realistically a YouTube-only feature (see :mod:`favorites.transcript`).
+
+What varies between platforms lives in :mod:`favorites.platforms`, one
+descriptor each. This module is about the mechanism, not the catalogue.
 """
 
 from __future__ import annotations
@@ -27,6 +30,9 @@ from typing import Optional
 from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 
 import httpx
+
+from . import platforms
+from .platforms import SHORTENERS
 
 logger = logging.getLogger(__name__)
 
@@ -53,61 +59,6 @@ TRACKING_PARAMS = {
     "rdt", "share_source", "correlation_id", "post_fullname", "type",
     "utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content",
     "utm_name", "utm_id",
-}
-
-# Hosts whose links are redirects and carry no information themselves.
-SHORTENERS = {
-    "vm.tiktok.com", "vt.tiktok.com", "m.tiktok.com", "youtu.be", "redd.it",
-    "t.co", "bit.ly", "tinyurl.com", "buff.ly", "dlvr.it", "trib.al",
-    "lnkd.in", "flip.it", "on.soundcloud.com", "spotify.link", "a.co",
-}
-
-HOST_PLATFORMS = [
-    ("tiktok.com", "tiktok"),
-    # Data-export links are served from tiktokv.com, not tiktok.com. Without
-    # this an imported favourite is filed as a generic web page and its video
-    # id is never extracted.
-    ("tiktokv.com", "tiktok"),
-    ("youtube.com", "youtube"),
-    ("youtu.be", "youtube"),
-    ("instagram.com", "instagram"),
-    ("reddit.com", "reddit"),
-    ("redd.it", "reddit"),
-    ("twitter.com", "x"),
-    ("x.com", "x"),
-    ("bsky.app", "bluesky"),
-    ("threads.net", "threads"),
-    ("threads.com", "threads"),
-    ("vimeo.com", "vimeo"),
-    ("soundcloud.com", "soundcloud"),
-    ("open.spotify.com", "spotify"),
-    ("pinterest.com", "pinterest"),
-    ("linkedin.com", "linkedin"),
-    ("substack.com", "substack"),
-    ("mastodon.social", "mastodon"),
-    ("tumblr.com", "tumblr"),
-]
-
-# No-auth oEmbed endpoints, keyed by platform. Instagram and X are absent on
-# purpose: both now require an app token, so those links fall through to the
-# OpenGraph reader instead of failing on a 401.
-OEMBED_ENDPOINTS = {
-    "tiktok": "https://www.tiktok.com/oembed",
-    "youtube": "https://www.youtube.com/oembed",
-    "vimeo": "https://vimeo.com/api/oembed.json",
-    "soundcloud": "https://soundcloud.com/oembed",
-    "spotify": "https://open.spotify.com/oembed",
-    "reddit": "https://www.reddit.com/oembed",
-    "bluesky": "https://embed.bsky.app/oembed",
-    "pinterest": "https://www.pinterest.com/oembed.json",
-}
-
-PLATFORM_LABELS = {
-    "tiktok": "TikTok", "youtube": "YouTube", "instagram": "Instagram",
-    "reddit": "Reddit", "x": "X", "bluesky": "Bluesky", "threads": "Threads",
-    "vimeo": "Vimeo", "soundcloud": "SoundCloud", "spotify": "Spotify",
-    "pinterest": "Pinterest", "linkedin": "LinkedIn", "substack": "Substack",
-    "mastodon": "Mastodon", "tumblr": "Tumblr", "web": "Web",
 }
 
 
@@ -146,15 +97,14 @@ def extract_url(text: str) -> Optional[str]:
 
 
 def detect_platform(url: str) -> str:
-    host = (urlparse(url).hostname or "").lower().removeprefix("www.")
-    for needle, name in HOST_PLATFORMS:
-        if host == needle or host.endswith("." + needle):
-            return name
-    return "web"
+    return platforms.for_host(urlparse(url).hostname or "").name
 
 
 def platform_label(platform: str) -> str:
-    return PLATFORM_LABELS.get(platform, platform.title())
+    known = platforms.BY_NAME.get(platform)
+    # Not a registered platform: title-case whatever was stored. This keeps an
+    # old row readable after a platform is renamed or removed from the registry.
+    return known.label if known else platform.title()
 
 
 def strip_tracking(url: str) -> str:
@@ -163,8 +113,7 @@ def strip_tracking(url: str) -> str:
     kept = [(k, v) for k, v in parse_qsl(parts.query, keep_blank_values=False)
             if k.lower() not in TRACKING_PARAMS]
     host = (parts.hostname or "").lower().removeprefix("m.").removeprefix("www.")
-    if host.endswith("tiktok.com") or host.endswith("tiktokv.com"):
-        host = "www.tiktok.com"
+    host = platforms.for_host(host).host_canonical or host
     path = parts.path.rstrip("/") or "/"
     return urlunparse((
         parts.scheme or "https", host, path, "", urlencode(kept), "",
@@ -175,40 +124,15 @@ def canonical_form(url: str, platform: str) -> tuple[str, Optional[str]]:
     """Return ``(canonical_url, external_id)``.
 
     The canonical URL is the library's identity for an item: two shares that
-    produce the same canonical URL are the same favourite.
+    produce the same canonical URL are the same favourite. It is *not*
+    necessarily a link anyone can open -- see :func:`browsable_url`.
     """
     cleaned = strip_tracking(url)
-    parts = urlparse(cleaned)
-
-    if platform == "tiktok":
-        vid = re.search(r"/video/(\d+)", parts.path) or re.search(r"/photo/(\d+)", parts.path)
-        if vid:
-            # Identity is the video id alone -- deliberately NOT the @handle.
-            # A data export strips the handle while a share sheet includes it, so
-            # keying on the handle would file the same video twice depending on
-            # how it arrived. The handle is an attribute of the item, not its name.
-            return f"https://www.tiktok.com/video/{vid.group(1)}", vid.group(1)
-
-    if platform == "youtube":
-        vid = dict(parse_qsl(parts.query)).get("v")
-        if not vid:
-            m = re.search(r"/(?:shorts|embed|live|v)/([\w\-]{6,})", parts.path)
-            vid = m.group(1) if m else None
-            if not vid and parts.hostname == "youtu.be":
-                vid = parts.path.lstrip("/") or None
-        if vid:
-            return f"https://www.youtube.com/watch?v={vid}", vid
-
-    if platform == "instagram":
-        m = re.search(r"/(p|reel|reels|tv)/([\w\-]+)", parts.path)
-        if m:
-            kind = "reel" if m.group(1) in {"reel", "reels"} else m.group(1)
-            return f"https://www.instagram.com/{kind}/{m.group(2)}", m.group(2)
-
-    if platform == "x":
-        m = re.search(r"/([\w]+)/status/(\d+)", parts.path)
-        if m:
-            return f"https://x.com/{m.group(1)}/status/{m.group(2)}", m.group(2)
+    identity = platforms.get(platform).identity
+    if identity:
+        found = identity(urlparse(cleaned))
+        if found:
+            return found
 
     return cleaned, None
 
@@ -220,28 +144,22 @@ def browsable_url(item: dict) -> str:
     drops the @handle so that the same video files once whether it arrived from
     an export (handle stripped) or a share sheet (handle present) -- but
     ``tiktok.com/video/<id>`` is not a route TikTok serves, so linking to it
-    404s. The two jobs are separate and need separate values.
-
-    In order of preference: rebuild the real URL from the creator we resolved,
-    fall back to the URL the item actually arrived as (an export's share link
-    redirects correctly), and only then to the identity key.
+    404s. The two jobs are separate and need separate values, which is why a
+    platform descriptor carries both.
     """
     canonical = item.get("canonical_url") or ""
     shared = item.get("shared_url") or ""
 
-    if item.get("platform") != "tiktok":
-        # Every other platform's canonical form is a real, browsable URL, and
-        # it is the tidier of the two. If that ever stops being true for one of
-        # them, it needs a branch here like TikTok's.
+    build = platforms.get(item.get("platform") or "web").link
+    if not build:
+        # This platform's canonical form is already a real, browsable URL, and
+        # it is the tidier of the two.
         return canonical or shared
 
-    handle = (item.get("creator_handle") or "").lstrip("@").strip()
-    external_id = (item.get("external_id") or "").strip()
-    if handle and external_id:
-        return f"https://www.tiktok.com/@{handle}/video/{external_id}"
-    # No handle: the item never resolved. Its original share link still
-    # redirects correctly, which is the best that can be offered.
-    return shared or canonical
+    # The platform rebuilds its own link. Returning None means it could not --
+    # the item never resolved -- and the original share link still redirects
+    # correctly, which is the best that can be offered.
+    return build(item) or shared or canonical
 
 
 async def expand(url: str, client: httpx.AsyncClient) -> str:
@@ -306,19 +224,12 @@ def _handle_from_url(url: str, platform: str) -> Optional[str]:
     m = re.search(r"/@([\w.\-]+)", path)
     if m:
         return "@" + m.group(1)
-    if platform == "x":
-        m = re.search(r"^/([\w]+)/status/", path)
-        if m:
-            return "@" + m.group(1)
-    if platform == "reddit":
-        m = re.search(r"/r/([\w]+)", path)
-        if m:
-            return "r/" + m.group(1)
-    return None
+    from_path = platforms.get(platform).handle
+    return from_path(path) if from_path else None
 
 
 async def _try_oembed(url: str, platform: str, client: httpx.AsyncClient) -> Optional[dict]:
-    endpoint = OEMBED_ENDPOINTS.get(platform)
+    endpoint = platforms.get(platform).oembed
     if not endpoint:
         return None
     try:
@@ -462,9 +373,9 @@ async def resolve(shared: str, client: httpx.AsyncClient) -> Resolved:
         item.resolve_status = "unresolved"
         item.resolve_error = item.resolve_error or "only placeholder metadata available"
 
-    # On TikTok the oEmbed "title" is the caption, so it is both the label and
+    # Where the oEmbed "title" is the whole caption it is both the label and
     # the body text. Keeping it in one field loses the hashtags to truncation.
-    if platform == "tiktok" and item.title and not item.description:
+    if platforms.get(platform).caption_is_title and item.title and not item.description:
         item.description = item.title
 
     if item.resolve_status != "ok":
