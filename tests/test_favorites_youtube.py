@@ -237,6 +237,25 @@ class TestImporting:
         assert "Watch later" in capsys.readouterr().out
         assert not lib.exists()
 
+    def test_a_path_that_is_not_there_yet_says_so_plainly(self, tmp_path, capsys):
+        # Pointing at a folder that is still unzipping used to print a traceback.
+        assert yt.main([str(tmp_path / "Takeout 2"), "--list"]) == 1
+        out = capsys.readouterr().out
+        assert "Nothing at" in out and "still unzipping" in out
+
+    def test_a_half_downloaded_zip_says_so_plainly(self, tmp_path, capsys):
+        partial = tmp_path / "takeout-001.zip"
+        partial.write_bytes(b"PK\x03\x04 not finished")
+        assert yt.main([str(partial), "--list"]) == 1
+        assert "still be downloading" in capsys.readouterr().out
+
+    def test_an_export_with_no_playlists_points_at_the_other_part(self, tmp_path, capsys):
+        # What a split export looks like: the first part is only the index page.
+        (tmp_path / "Takeout").mkdir()
+        (tmp_path / "Takeout" / "archive_browser.html").write_text("<html></html>")
+        assert yt.main([str(tmp_path / "Takeout"), "--list"]) == 1
+        assert "Takeout 2" in capsys.readouterr().out
+
     def test_end_to_end_from_a_folder(self, tmp_path, capsys):
         root = takeout(tmp_path, {
             "playlists/Watch later-videos.csv": new_format((A, "2024-03-01T10:00:00+00:00")),
