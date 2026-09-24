@@ -51,13 +51,23 @@ likeforlike duet stitch greenscreen fy parati viralvideo tiktokviral xyzbca
 """.split())
 
 
+# ...and the endless decorated spellings of the same: #fypシ, #fypage, #foryoupageofficial.
+_NOISE_PREFIXES = ("fyp", "foryou")
+
+
+def is_noise(tag: str) -> bool:
+    """True for a hashtag about reach rather than subject (#fyp, #viral)."""
+    tag = tag.lower().lstrip("#")
+    return tag in TAG_NOISE or tag.startswith(_NOISE_PREFIXES)
+
+
 def hashtags(*texts: Optional[str]) -> list[str]:
     """Hashtags from the given text, lowercased, de-noised, order preserved."""
     seen: list[str] = []
     for text in texts:
         for raw in HASHTAG_RE.findall(text or ""):
             tag = raw.lower()
-            if tag in TAG_NOISE or tag in seen:
+            if is_noise(tag) or tag in seen:
                 continue
             seen.append(tag)
     return seen

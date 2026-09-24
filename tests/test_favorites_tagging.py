@@ -12,6 +12,11 @@ class TestHashtags:
         # Without this every short-form save collapses into one "fyp" theme.
         assert tagging.hashtags("#fyp #viral #housing #foryoupage") == ["housing"]
 
+    def test_decorated_spellings_of_fyp_are_noise_too(self):
+        # #fypシ was the second most common unthemed hashtag in a real library.
+        assert tagging.hashtags("#fypシ #fypage #foryoupageofficial #zoning") == ["zoning"]
+        assert tagging.is_noise("#FYPシ") and not tagging.is_noise("zoning")
+
     def test_duplicates_collapse(self):
         assert tagging.hashtags("#housing", "#Housing") == ["housing"]
 

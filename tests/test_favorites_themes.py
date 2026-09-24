@@ -58,6 +58,40 @@ class TestMatching:
         assert found[0] == "Cities & urbanism"  # zoning (tag) + bike (text)
         assert "News & politics" in found
 
+    def test_a_plural_written_out_starts_a_compound(self):
+        # Folding "huskies" to "husky" used to hide #huskiesofinstagram.
+        assert about(["huskiesofinstagram"]) == ["Dogs"]
+        assert about(["puppiesofinstagram"]) == ["Dogs"]
+        # A four-letter plural is too short to look for: "eats" is in #treats.
+        assert about(["treats"]) == []
+
+    def test_instagrams_explore_page_is_not_travel(self):
+        assert about(["explore", "explorepage"]) == []
+
+    @pytest.mark.parametrize("tag, theme", [
+        # The most common unthemed hashtags in a real library, September 2026.
+        ("photoshop", "Photography & editing"), ("photoshoptricks", "Photography & editing"),
+        ("photoshopediting", "Photography & editing"), ("photography", "Photography & editing"),
+        ("photoediting", "Photography & editing"), ("adobe", "Photography & editing"),
+        ("فوتوشوب", "Photography & editing"),  # Arabic: "Photoshop"
+        ("illustrator", "Art & design"), ("adobeillustrator", "Art & design"),
+        ("digitalart", "Art & design"),
+        ("nyc", "New York"), ("brooklyn", "New York"), ("newyork", "New York"),
+        ("chatgpt", "Science & tech"), ("onlinetools", "Science & tech"),
+        ("websites", "Science & tech"),
+        ("tipsandtricks", "How-to & learning"), ("علمني", "How-to & learning"),  # "teach me"
+        ("somatichealing", "Wellness"), ("potato", "Food & cooking"),
+        ("radiohost", "Marketing & media"),
+    ])
+    def test_a_real_librarys_missing_hashtags(self, tag, theme):
+        assert theme in about([tag])
+
+    def test_new_words_do_not_reach_too_far(self):
+        assert about(["queensland"]) == []           # not Queens, New York
+        assert about(["radiohead"]) == ["Music"]      # not radio
+        assert about(text="caught on camera, what a photo") == []  # hashtags only
+        assert "New York" not in about(text="a manhattan cocktail")
+
     def test_nothing_recognisable_is_no_theme(self):
         assert about(["xyzzy"], text="went sideways") == []
 
@@ -112,7 +146,7 @@ class TestStorage:
         anywhere, tags_only = themes._vocabulary()
         monkeypatch.setattr(themes, "ANYWHERE", anywhere)
         monkeypatch.setattr(themes, "TAG_WORDS", {**anywhere, **tags_only})
-        monkeypatch.setattr(themes, "_COMPOUND", [w for w in {**anywhere, **tags_only} if len(w) >= 4])
+        monkeypatch.setattr(themes, "_COMPOUND", themes._compound_words())
 
         c = db.connect(path)
         assert stored(c, item_id) == ["Sport & fitness"]
@@ -148,6 +182,14 @@ class TestReport:
         assert (r["items"], r["themed"]) == (3, 2)
         assert dict(r["per_theme"]) == {"Dogs": 1, "Cats": 1}
         assert r["unrecognised_hashtags"] == [("zorbing", 2)]
+
+    def test_reach_and_self_naming_hashtags_are_not_listed(self, conn):
+        for n in (1, 2):
+            db.upsert_item(conn, {
+                "canonical_url": f"https://example.com/{n}", "shared_url": "x",
+                "platform": "instagram", "title": "a video", "creator_handle": "@redavisuals",
+                "tags": ["fypシ", "redavisuals", "zorbing"], "resolve_status": "ok"})
+        assert themes.report(conn)["unrecognised_hashtags"] == [("zorbing", 2)]
 
     def test_the_command_prints_it(self, tmp_path, capsys):
         path = tmp_path / "lib.db"
