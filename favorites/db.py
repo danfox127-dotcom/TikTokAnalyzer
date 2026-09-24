@@ -161,7 +161,13 @@ def connect(path: str | os.PathLike | None = None) -> sqlite3.Connection:
     target = resolve_path(path)
     if target != ":memory:":
         Path(target).parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(target)
+    # The web app opens a connection in one worker thread and uses it in
+    # another: FastAPI runs the dependency that opens it and the endpoint that
+    # reads it on separate threadpool threads. SQLite refuses that by default,
+    # which failed most of a page's picture requests at once while any single
+    # one looked fine. Each connection still serves one request at a time,
+    # which is the condition the default check exists to protect.
+    conn = sqlite3.connect(target, check_same_thread=False)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA journal_mode = WAL")
     conn.execute("PRAGMA foreign_keys = ON")
