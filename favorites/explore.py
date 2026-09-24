@@ -35,6 +35,16 @@ SEASONS = {
 
 FORMATS = {"short": "Short-form video", "video": "Long-form video"}
 
+# (label, phrase for the heading, from seconds, up to seconds). Bands a person
+# would say out loud, not equal slices.
+LENGTHS = {
+    "under1": ("Under a minute", "under a minute", 0, 60),
+    "1to3": ("1–3 minutes", "1–3 minutes long", 60, 180),
+    "3to10": ("3–10 minutes", "3–10 minutes long", 180, 600),
+    "10to30": ("10–30 minutes", "10–30 minutes long", 600, 1800),
+    "over30": ("Over 30 minutes", "over 30 minutes long", 1800, None),
+}
+
 SORTS = {"relevance": "Best match", "newest": "Newest saved", "oldest": "Oldest saved"}
 
 # How many options to list for the open-ended facets. The rest are still
@@ -53,6 +63,7 @@ class Filters:
     creator: str = ""
     tag: str = ""
     theme: str = ""
+    length: str = ""
     noted: str = ""
     sort: str = ""
     page: int = 1
@@ -75,6 +86,8 @@ class Filters:
             out = replace(out, season="")
         if out.format and out.format not in FORMATS:
             out = replace(out, format="")
+        if out.length and out.length not in LENGTHS:
+            out = replace(out, length="")
         if out.year and not (out.year.isdigit() and len(out.year) == 4):
             out = replace(out, year="")
         if out.sort and out.sort not in SORTS:
@@ -146,6 +159,10 @@ def _clauses(f: Filters, without: str = "") -> tuple[list[str], list]:
     if f.theme and without != "theme":
         where.append("EXISTS (SELECT 1 FROM json_each(i.themes) WHERE value = ? COLLATE NOCASE)")
         params.append(f.theme)
+    if f.length and without != "length":
+        _, _, lo, hi = LENGTHS[f.length]
+        where.append("i.duration >= ?" + (" AND i.duration < ?" if hi else ""))
+        params.extend([lo, hi] if hi else [lo])
     if f.noted and without != "noted":
         where.append("trim(coalesce(i.note, '')) != ''")
     return where, params
@@ -291,6 +308,15 @@ def facets(conn: sqlite3.Connection, f: Filters) -> list[Facet]:
         "c.name COLLATE NOCASE AS v, count(DISTINCT i.id) AS n, '' AS x",
         joins=" JOIN collections c ON c.item_id = i.id"), limit=TOP["collection"]))
 
+    length_case = "CASE " + " ".join(
+        f"WHEN i.duration >= {lo}" + (f" AND i.duration < {hi}" if hi else "") + f" THEN '{key}'"
+        for key, (_, _, lo, hi) in LENGTHS.items()) + " END"
+    found = {v: (n, x) for v, n, x in _grouped(
+        conn, f, "length", f"{length_case} AS v, count(*) AS n, '' AS x")}
+    out.append(_facet(f, "length", "Length",
+                      [(k, *found[k]) for k in LENGTHS if k in found],
+                      label=lambda v, _: LENGTHS[v][0]))
+
     out.append(_facet(f, "year", "Year saved", _grouped(
         conn, f, "year", "substr(i.saved_at, 1, 4) AS v, count(*) AS n, '' AS x",
         order="v DESC")))
@@ -334,6 +360,7 @@ def chips(f: Filters, found: list[Facet]) -> list[tuple[str, str]]:
             "tag": "#" + value.lstrip("#"),
             "season": SEASONS.get(value, (value,))[0],
             "format": FORMATS.get(value, value),
+            "length": LENGTHS.get(value, (value,))[0],
             "platform": platform_label(value),
             "noted": "Has a note",
         }.get(name, value)
@@ -370,6 +397,8 @@ def describe(f: Filters, found: list[Facet]) -> str:
         parts.append(f"by {label('creator')}")
     if f.collection:
         parts.append(f"filed under {label('collection')}")
+    if f.length:
+        parts.append(LENGTHS[f.length][1])
     when = []
     if f.season:
         when.append(f"{SEASONS[f.season][0].lower()}{'' if f.year else 's'}")

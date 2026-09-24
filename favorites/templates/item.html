@@ -16,6 +16,7 @@
     <p class="eyebrow">
       <span class="chip">{{ platform_label(item.platform) }}</span>
       <span>Saved {{ item.saved_at[:10] }}</span>
+      {% if item.duration %}<span>{{ item.duration | clock }} long</span>{% endif %}
       {% if item.resolve_status != 'ok' %}<span class="warn">unresolved</span>{% endif %}
     </p>
 

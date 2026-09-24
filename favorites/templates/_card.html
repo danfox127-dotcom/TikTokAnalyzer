@@ -6,6 +6,7 @@
            onerror="this.remove()">
     {% endif %}
     <span class="chip">{{ platform_label(item.platform) }}</span>
+    {% if item.duration %}<span class="length" aria-label="Length">{{ item.duration | clock }}</span>{% endif %}
   </a>
   <div class="card-body">
     <a class="card-title" href="/item/{{ item.id }}">{{ item.title or browsable_url(item) }}</a>
