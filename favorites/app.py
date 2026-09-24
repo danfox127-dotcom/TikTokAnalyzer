@@ -29,7 +29,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from starlette.concurrency import run_in_threadpool
 
-from . import db, explore, museum, tagging, thumbnails, transcript
+from . import db, explore, lengths, museum, tagging, thumbnails, transcript
 from .resolve import browsable_url, extract_url, platform_label, resolve
 
 logger = logging.getLogger(__name__)
@@ -54,6 +54,22 @@ templates = Jinja2Templates(directory=str(HERE / "templates"))
 templates.env.globals["platform_label"] = platform_label
 # canonical_url identifies an item; it is not necessarily a link that opens.
 templates.env.globals["browsable_url"] = browsable_url
+
+
+def clock(seconds) -> str:
+    """A video's length the way video sites print it: 0:26, 4:05, 1:28:55."""
+    try:
+        total = int(seconds)
+    except (TypeError, ValueError):
+        return ""
+    if total <= 0:
+        return ""
+    h, rest = divmod(total, 3600)
+    m, s = divmod(rest, 60)
+    return f"{h}:{m:02d}:{s:02d}" if h else f"{m}:{s:02d}"
+
+
+templates.env.filters["clock"] = clock
 
 
 def get_db():
@@ -103,6 +119,10 @@ async def capture(
         # Fetched now, while the link is fresh -- a TikTok thumbnail link is
         # dead within a day or two, and the picture with it.
         image = await thumbnails.fetch(item.thumbnail_url, client)
+        # One more page view, for the one fact no quick lookup carries.
+        duration = None
+        if item.resolve_status == "ok":
+            duration = await lengths.fetch(dataclasses.asdict(item), client)
 
     if not item.canonical_url:
         raise HTTPException(status_code=400, detail=item.resolve_error or "no URL found")
@@ -115,6 +135,7 @@ async def capture(
     payload["note"] = (note or "").strip() or None
     payload["transcript"] = text
     payload["resolved_at"] = db.now_iso()
+    payload["duration"] = duration
     payload["tags"], payload["terms"] = tagging.enrich(
         title=item.title, description=item.description,
         note=payload["note"], transcript=text,

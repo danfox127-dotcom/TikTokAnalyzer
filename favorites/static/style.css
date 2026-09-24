@@ -397,3 +397,10 @@ button:hover { filter: brightness(1.08); }
 @media (max-width: 600px) {
   .browse-row { grid-template-columns: 1fr; gap: 6px; }
 }
+
+/* A video's length, bottom-right of its picture, where video sites put it. */
+.length {
+  position: absolute; right: 8px; bottom: 8px;
+  padding: 2px 7px; border-radius: 6px; font-size: 11.5px; font-variant-numeric: tabular-nums;
+  background: rgba(10, 11, 14, .72); color: #f2efe9; backdrop-filter: blur(6px);
+}

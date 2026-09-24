@@ -57,6 +57,7 @@ CREATE TABLE IF NOT EXISTS items (
     imported_at    TEXT,
     format         TEXT,
     themes         TEXT NOT NULL DEFAULT '[]',
+    duration       INTEGER,
     raw            TEXT
 );
 
@@ -114,7 +115,7 @@ WRITABLE = (
     "creator_name", "creator_handle", "creator_url", "thumbnail_url",
     "description", "transcript", "note", "tags", "terms", "saved_at",
     "resolved_at", "resolve_status", "resolve_error", "resolve_attempts",
-    "source", "imported_at", "format", "raw",
+    "source", "imported_at", "format", "duration", "raw",
 )
 
 # Columns added after the first release. A library created by an earlier version
@@ -126,6 +127,7 @@ MIGRATIONS = {
     "imported_at": "TEXT",
     "format": "TEXT",
     "themes": "TEXT NOT NULL DEFAULT '[]'",
+    "duration": "INTEGER",
 }
 
 
@@ -315,10 +317,12 @@ def upsert_item(conn: sqlite3.Connection, payload: dict) -> tuple[int, bool]:
         created = False
         if not data.get("note") and existing["note"]:
             data.pop("note", None)
-        if data.get("format") is None:
-            # A re-resolve that could not tell (a probe hit a consent wall, say)
-            # must not erase a format an earlier one established.
-            data.pop("format", None)
+        for learned in ("format", "duration"):
+            if data.get(learned) is None:
+                # A re-resolve that could not tell (a probe hit a consent wall,
+                # a page came back without its data) must not erase what an
+                # earlier one established.
+                data.pop(learned, None)
         data.pop("saved_at", None)  # keep the original save date
         assignments = ", ".join(f"{k} = ?" for k in data)
         conn.execute(

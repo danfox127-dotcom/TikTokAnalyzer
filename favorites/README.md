@@ -201,6 +201,7 @@ in the order people reach for them:
 | Themes | What it is about — see below |
 | Hashtags | The creator's own hashtags, minus distribution noise like #fyp |
 | Your categories | Playlists, collections, and anything you filed |
+| Length | Under a minute, 1–3, 3–10, 10–30, over 30 minutes — YouTube and TikTok |
 | Year saved | The day you saved it, by year |
 | Kind | Short-form or long-form video, where known |
 | Season saved | The same day, by season across every year (northern hemisphere; winter is December–February) |
@@ -239,6 +240,22 @@ python -m favorites.themes
 That prints how many saves have a theme, how many each theme holds, and the
 hashtags on your saves that no theme recognises yet. Add the ones that matter
 to `THEMES`; the library re-themes itself the next time anything opens it.
+
+### Video length
+
+No quick lookup or data export says how long a video is, but YouTube's and
+TikTok's own pages do, so the library reads it from there: new saves as they
+are shared, and an existing library once with
+
+```bash
+python -m favorites.lengths
+```
+
+which reads one page at a time with a pause between — about 20 minutes for
+several hundred TikToks. Run it again after a backfill to cover the new ones.
+Instagram's pages do not state a length (none of three on a real library did),
+so Instagram saves have none and sit outside the Length filter rather than
+being guessed at. Cards show the length in the corner, the way video sites do.
 
 ### Hashtags and search words
 

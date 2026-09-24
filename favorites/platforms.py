@@ -22,6 +22,7 @@ be a worse abstraction, not a better one.
 
 from __future__ import annotations
 
+import json
 import re
 from dataclasses import dataclass, field
 from typing import Callable, Optional
@@ -44,6 +45,9 @@ Format = Callable[[ParseResult], Optional[str]]
 # Probe: an external id -> a URL that answers 200 only if the item is
 # short-form, and redirects otherwise. Used when the URL alone cannot tell.
 Probe = Callable[[str], str]
+
+# Length: the HTML of an item's own page -> its length in seconds, or None.
+Length = Callable[[str], Optional[int]]
 
 #: How a link-preview fetcher introduces itself -- the wording iMessage uses,
 #: naming the preview robots sites already recognise. The page read is the one
@@ -99,6 +103,11 @@ class Platform:
     #: Zero means the normal handful in parallel. Set where the preview route
     #: is a courtesy worth not leaning on.
     bulk_pause: float = 0.0
+
+    #: How to read a video's length from its own page. No platform's quick
+    #: lookup (oEmbed) or data export carries it; YouTube's and TikTok's pages
+    #: do. Unset where the page does not say -- Instagram's, on a real library.
+    length_from_page: Optional[Length] = None
 
 
 # --- identity rules ---------------------------------------------------------
@@ -200,6 +209,63 @@ def _reddit_handle(path: str) -> Optional[str]:
     return "r/" + m.group(1) if m else None
 
 
+# --- length rules -----------------------------------------------------------
+
+# Anything outside this is a misread, not a video: a zero, or a number that
+# belongs to something else on the page.
+_MAX_SECONDS = 24 * 3600
+
+
+def _seconds(value) -> Optional[int]:
+    try:
+        n = int(float(value))
+    except (TypeError, ValueError):
+        return None
+    return n if 0 < n <= _MAX_SECONDS else None
+
+
+def _iso_duration(text: str) -> Optional[int]:
+    """``PT1H2M3S`` -> 3723."""
+    m = re.fullmatch(r"P(?:T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?)", text or "")
+    if not m or not any(m.groups()):
+        return None
+    h, mi, s = (int(g or 0) for g in m.groups())
+    return _seconds(h * 3600 + mi * 60 + s)
+
+
+def _youtube_length(page: str) -> Optional[int]:
+    # The player data states the watched video's own length first.
+    m = re.search(r'"lengthSeconds"\s*:\s*"(\d+)"', page)
+    if m:
+        return _seconds(m.group(1))
+    m = re.search(r'itemprop="duration"\s+content="([^"]+)"', page)
+    return _iso_duration(m.group(1)) if m else None
+
+
+def _tiktok_length(page: str) -> Optional[int]:
+    # The page carries its data as JSON. The video's length sits at a known
+    # place in it; the soundtrack's has the same name elsewhere, so the first
+    # "duration" on the page is not necessarily the video's.
+    m = re.search(
+        r'<script[^>]+id="__UNIVERSAL_DATA_FOR_REHYDRATION__"[^>]*>(.*?)</script>', page, re.S)
+    if m:
+        try:
+            data = json.loads(m.group(1))
+            video = (data["__DEFAULT_SCOPE__"]["webapp.video-detail"]
+                     ["itemInfo"]["itemStruct"]["video"])
+            found = _seconds(video.get("duration"))
+            if found:
+                return found
+        except (ValueError, KeyError, TypeError):
+            pass
+    # Older page layouts: the "video" object's own duration, then any.
+    m = re.search(r'"video"\s*:\s*\{[^{}]*?"duration"\s*:\s*(\d+)', page)
+    if m:
+        return _seconds(m.group(1))
+    m = re.search(r'"duration"\s*:\s*(\d+)\s*[,}]', page)
+    return _seconds(m.group(1)) if m else None
+
+
 # --- the registry -----------------------------------------------------------
 
 #: Instagram and X have no entry here on purpose: both now require an app token
@@ -216,7 +282,7 @@ PLATFORMS: tuple[Platform, ...] = (
         oembed="https://www.tiktok.com/oembed",
         host_canonical="www.tiktok.com",
         identity=_tiktok_identity, link=_tiktok_link,
-        caption_is_title=True,
+        caption_is_title=True, length_from_page=_tiktok_length,
     ),
     Platform(
         name="youtube", label="YouTube",
@@ -224,6 +290,7 @@ PLATFORMS: tuple[Platform, ...] = (
         oembed="https://www.youtube.com/oembed",
         identity=_youtube_identity, link=_youtube_link, transcripts=True,
         format_from_url=_youtube_format, short_form_probe=_youtube_short_probe,
+        length_from_page=_youtube_length,
     ),
     Platform(
         name="instagram", label="Instagram",
