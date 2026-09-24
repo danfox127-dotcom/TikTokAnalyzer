@@ -218,6 +218,7 @@ def home(request: Request, conn: sqlite3.Connection = Depends(get_db)):
     return templates.TemplateResponse(request, "museum.html", {
         "shelves": museum.shelves(conn, now=now),
         "digest": museum.digest(conn, days=30, now=now),
+        "browse": museum.browse(conn),
         "total": db.count(conn),
         # A freshly backfilled library is mostly dated URLs. Without saying so,
         # an empty-looking front page over a four-figure item count reads as a
@@ -388,7 +389,6 @@ def item_page(
         "item": item, "related": related, "just_saved": bool(saved),
         "collections": db.collections_for(conn, item_id),
         "all_collections": [n for n, _ in db.collection_counts(conn)],
-        "shared": museum.shared_terms(conn, item),
         "q": "", "total": db.count(conn),
     })
 

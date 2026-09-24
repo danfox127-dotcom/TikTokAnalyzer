@@ -82,7 +82,7 @@ class TestDigestProse:
     def test_a_recurring_theme_is_named(self, conn):
         for i in range(4):
             save(conn, i, tags=["housing"])
-        assert "housing" in museum.digest(conn, now=NOW)["prose"]
+        assert "Cities & urbanism" in museum.digest(conn, now=NOW)["prose"]
 
     def test_creators_new_to_the_library_are_called_out(self, conn):
         save(conn, 1, days_ago=200, creator="Old Hand", handle="@old")
@@ -111,7 +111,7 @@ class TestDigestProse:
         d = museum.digest(conn, now=NOW)
         assert d["count"] == 3
         assert d["platforms"] == [("TikTok", 3)]
-        assert ("housing", 3) in d["themes"]
+        assert ("Cities & urbanism", 3) in d["themes"]
 
 
 class TestShelves:

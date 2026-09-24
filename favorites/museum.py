@@ -21,11 +21,10 @@ import sqlite3
 from collections import Counter
 from datetime import datetime, timedelta, timezone
 from typing import Optional
-from urllib.parse import quote
+from urllib.parse import quote, urlencode
 
 from . import db
 from .resolve import platform_label
-from .tagging import collection_themes
 
 # The museum only arranges items it can actually describe. A backfilled import
 # is a dated URL until it resolves, and a shelf of untitled links is worse than
@@ -97,7 +96,7 @@ def digest(conn: sqlite3.Connection, days: int = 30, now: Optional[datetime] = N
     creators = Counter(
         _creator_label(i) for i in current if _creator_key(i)
     )
-    themes = collection_themes(current, min_items=2, limit=6)
+    themes = theme_counts(current, min_items=2, limit=6)
 
     earlier_keys = {
         row["k"] for row in conn.execute(
@@ -191,6 +190,42 @@ def _digest_prose(d: dict) -> str:
     return " ".join(sentences)
 
 
+def theme_counts(items: list[dict], min_items: int = 1, limit: int = 12) -> list[tuple[str, int]]:
+    """How many of these saves fall under each theme, most first."""
+    counts: Counter[str] = Counter()
+    for item in items:
+        counts.update(set(item.get("themes") or []))
+    return [(t, n) for t, n in counts.most_common() if n >= min_items][:limit]
+
+
+def browse(conn: sqlite3.Connection, per_row: int = 8) -> dict:
+    """The ways into the whole library, for the front page.
+
+    Search and filters are the museum's catalogue, and a catalogue nobody can
+    find is not one: on the first real use the filter page went unnoticed. So
+    the front page offers the same doors directly -- the themes, creators and
+    platforms you hold most of, each a link into the filtered view.
+    """
+    resolved = f"WHERE {RESOLVED}"
+    themes = conn.execute(
+        f"SELECT j.value AS v, count(*) AS n FROM items, json_each(items.themes) j"
+        f" {resolved} GROUP BY v ORDER BY n DESC, v LIMIT ?", (per_row,)).fetchall()
+    creators = conn.execute(
+        f"SELECT coalesce(creator_handle, creator_name) AS k,"
+        f" max(coalesce(creator_name, creator_handle)) AS label, count(*) AS n"
+        f" FROM items {resolved} AND k IS NOT NULL"
+        f" GROUP BY k HAVING n >= 2 ORDER BY n DESC, k LIMIT ?", (per_row,)).fetchall()
+    platforms = conn.execute(
+        f"SELECT platform AS v, count(*) AS n FROM items {resolved}"
+        f" GROUP BY v ORDER BY n DESC").fetchall()
+    return {
+        "themes": [(r["v"], r["n"], f"/search?{urlencode({'theme': r['v']})}") for r in themes],
+        "creators": [(r["label"], r["n"], f"/search?{urlencode({'creator': r['k']})}") for r in creators],
+        "platforms": [(platform_label(r["v"]), r["n"], f"/search?{urlencode({'platform': r['v']})}")
+                      for r in platforms],
+    }
+
+
 def shared_terms(conn: sqlite3.Connection, item: dict, limit: int = 10) -> list[str]:
     """Terms this item has in common with the rest of the library.
 
@@ -268,17 +303,13 @@ def shelves(
     candidates: list[dict] = []
 
     # A themed room.
-    for term, n in collection_themes(everything, min_items=2, limit=8):
-        hits = [
-            i for i in everything
-            if term in (i.get("tags") or []) or term in (i.get("terms") or [])[:8]
-        ][:8]
-        if len(hits) >= 2:
-            candidates.append(_shelf(
-                "theme", term.title(),
-                f"{n} {_plural(n, 'save')} share this thread", hits,
-                href=f"/search?q={term.replace(' ', '+')}",
-            ))
+    for theme, n in theme_counts(everything, min_items=2, limit=8):
+        hits = sorted((i for i in everything if theme in (i.get("themes") or [])),
+                      key=lambda i: i["saved_at"], reverse=True)[:8]
+        candidates.append(_shelf(
+            "theme", theme, f"{n} {_plural(n, 'save')} on this theme", hits,
+            href=f"/search?{urlencode({'theme': theme})}",
+        ))
 
     # A month you were busy.
     months = conn.execute(
