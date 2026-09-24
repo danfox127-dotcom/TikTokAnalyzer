@@ -82,8 +82,12 @@ class TestNarrowing:
         assert ids(conn, library, tag="dumplings") == {"dumplings_winter"}
         assert ids(conn, library, tag="#Dumplings") == {"dumplings_winter"}
 
-    def test_keyword(self, conn, library):
-        assert ids(conn, library, term="salad") == {"salad_summer_tt", "salad_summer_ig"}
+    def test_theme(self, conn, library):
+        # Salads and dumplings are both cooking; zoning and budgets are both politics.
+        assert ids(conn, library, theme="Food & cooking") == {
+            "salad_summer_tt", "salad_summer_ig", "dumplings_winter"}
+        assert ids(conn, library, theme="news & POLITICS") == {"zoning_autumn", "budget_dec"}
+        assert ids(conn, library, theme="Cities & urbanism") == {"zoning_autumn"}
 
     def test_notes(self, conn, library):
         assert ids(conn, library, noted="1") == {"dumplings_winter"}
@@ -157,6 +161,17 @@ class TestTheOptions:
         collection = self.by_name(conn, Filters())["collection"]
         assert [(o.label.lower(), o.count) for o in collection.options] == [("food gifs", 2)]
 
+    def test_themes_are_offered_with_counts(self, conn, library):
+        themes = {o.value: o.count for o in self.by_name(conn, Filters())["theme"].options}
+        assert themes["Food & cooking"] == 3
+
+    def test_creators_and_themes_come_before_when(self, conn, library):
+        order = [facet.name for facet in explore.facets(conn, Filters())]
+        assert order.index("creator") < order.index("theme") < order.index("tag")
+        assert order.index("tag") < order.index("year") < order.index("season")
+        assert order[-2:] == ["season", "noted"]
+        assert "term" not in order  # keywords were noise; themes replace them
+
     def test_a_hashtag_on_a_single_save_is_not_offered(self, conn, library):
         tags = {o.value for o in self.by_name(conn, Filters())["tag"].options}
         assert tags == {"cooking", "localgov"}  # dumplings appears once
@@ -173,6 +188,7 @@ class TestTheHeading:
         ({"tag": "cooking", "season": "summer"}, "Saves tagged #cooking from summers"),
         ({"platform": "tiktok", "season": "summer", "year": "2024"},
          "TikTok saves from summer 2024"),
+        ({"theme": "Dogs", "platform": "instagram"}, "Instagram saves about Dogs"),
         ({"format": "short", "creator": "@citydesk", "noted": "1"},
          "Short-form videos by @citydesk, with your notes"),
     ])

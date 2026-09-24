@@ -20,6 +20,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable, Optional
 
+from . import themes as theme_vocabulary
+
 # The home folder, not the project folder: a default that depends on where the
 # code happens to be checked out is how one person ended up with two libraries
 # -- an import quietly filled one while the museum kept showing the other.
@@ -54,6 +56,7 @@ CREATE TABLE IF NOT EXISTS items (
     source         TEXT NOT NULL DEFAULT 'share',
     imported_at    TEXT,
     format         TEXT,
+    themes         TEXT NOT NULL DEFAULT '[]',
     raw            TEXT
 );
 
@@ -83,6 +86,13 @@ CREATE TABLE IF NOT EXISTS thumbnails (
     data         BLOB NOT NULL,
     source_url   TEXT,
     fetched_at   TEXT NOT NULL
+);
+
+-- Small facts about the library file itself, such as which version of the
+-- theme vocabulary its themes were worked out with.
+CREATE TABLE IF NOT EXISTS meta (
+    key   TEXT PRIMARY KEY,
+    value TEXT
 );
 
 CREATE VIRTUAL TABLE IF NOT EXISTS items_fts USING fts5(
@@ -115,6 +125,7 @@ MIGRATIONS = {
     "source": "TEXT NOT NULL DEFAULT 'share'",
     "imported_at": "TEXT",
     "format": "TEXT",
+    "themes": "TEXT NOT NULL DEFAULT '[]'",
 }
 
 
@@ -174,6 +185,7 @@ def connect(path: str | os.PathLike | None = None) -> sqlite3.Connection:
     conn.executescript(SCHEMA)
     conn.commit()
     migrate(conn)
+    retheme_if_stale(conn)
     return conn
 
 
@@ -197,6 +209,31 @@ def connect_announced(path: str | os.PathLike | None = None) -> tuple[sqlite3.Co
         return conn, line
     return conn, (f"library: {target}  (NEW -- created just now. If you expected your "
                   f"existing library, pass --db with its path or set FAVORITES_DB.)")
+
+
+def retheme_if_stale(conn: sqlite3.Connection) -> int:
+    """Work every item's themes out again if the vocabulary has changed.
+
+    Themes are stored so filters can count them in SQL, which means an edit to
+    the vocabulary would otherwise leave every existing item on the old one.
+    A version stamp in the file makes the edit apply everywhere on the next
+    start, with nothing to run. Returns how many items were re-themed.
+    """
+    row = conn.execute("SELECT value FROM meta WHERE key = 'themes_version'").fetchone()
+    if row is not None and row["value"] == theme_vocabulary.VERSION:
+        return 0
+    filed: dict[int, list[str]] = {}
+    for c in conn.execute("SELECT item_id, name FROM collections"):
+        filed.setdefault(c["item_id"], []).append(c["name"])
+    rows = conn.execute("SELECT id, title, description, note, tags FROM items").fetchall()
+    conn.executemany(
+        "UPDATE items SET themes = ? WHERE id = ?",
+        [(json.dumps(theme_vocabulary.for_row(r, filed.get(r["id"], ()))), r["id"]) for r in rows],
+    )
+    conn.execute("INSERT OR REPLACE INTO meta (key, value) VALUES ('themes_version', ?)",
+                 (theme_vocabulary.VERSION,))
+    conn.commit()
+    return len(rows)
 
 
 def _json_list(value: Any) -> str:
@@ -230,6 +267,8 @@ def index_item(conn: sqlite3.Connection, item_id: int) -> None:
     filed = [r["name"] for r in conn.execute(
         "SELECT name FROM collections WHERE item_id = ?", (item_id,))]
     tags = " ".join(loads_list(row["tags"]) + loads_list(row["terms"]) + filed)
+    conn.execute("UPDATE items SET themes = ? WHERE id = ?",
+                 (json.dumps(theme_vocabulary.for_row(row, filed)), item_id))
     conn.execute("DELETE FROM items_fts WHERE item_id = ?", (item_id,))
     conn.execute(
         "INSERT INTO items_fts (item_id, title, creator, description, note, transcript, tags)"
@@ -420,5 +459,6 @@ def rows_to_dicts(rows: Iterable[sqlite3.Row]) -> list[dict]:
         item = dict(row)
         item["tags"] = loads_list(item.get("tags"))
         item["terms"] = loads_list(item.get("terms"))
+        item["themes"] = loads_list(item.get("themes"))
         out.append(item)
     return out

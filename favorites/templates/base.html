@@ -23,7 +23,10 @@
            aria-label="Search your favorites" autocomplete="off" spellcheck="false">
   </form>
   {% else %}<span class="search" aria-hidden="true"></span>{% endif %}
-  <a class="count" href="/search" title="Everything in the library">{{ total }}</a>
+  {#- A labelled way in. A bare number in a pill was the only door to the
+      filters, and on first real use nobody knew it was one. -#}
+  <a class="count" href="/search" title="Search and filter everything you've kept">
+    <span class="count-label">Browse</span> <span class="count-n">{{ total }}</span></a>
 </header>
 
 <main>

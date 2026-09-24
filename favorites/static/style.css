@@ -374,3 +374,26 @@ button:hover { filter: brightness(1.08); }
   .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
   .grid .card-title { font-size: 13.5px; }
 }
+
+/* ---- the way in ----
+   The masthead pill says what it is, and the front page carries a browse
+   strip: the catalogue's main doors, one click each. */
+.count { display: inline-flex; align-items: center; gap: 8px; color: var(--text); }
+.count:hover { border-color: var(--accent); color: var(--text); }
+.count-label { font-weight: 600; }
+.count-n { color: var(--muted); }
+
+.browse { margin: 40px 0 8px; }
+.browse-row { display: grid; grid-template-columns: 110px minmax(0, 1fr); gap: 12px; align-items: baseline; margin-top: 12px; }
+.browse-row h3 {
+  font-family: var(--serif); font-size: 12px; font-weight: 400; letter-spacing: .14em;
+  text-transform: uppercase; color: var(--accent); margin: 0;
+}
+.browse-row .theme-pills { margin: 0; }
+.browse-all { margin: 18px 0 0; }
+.theme-pills a.is-theme { border-color: color-mix(in srgb, var(--accent) 45%, var(--line));
+  background: color-mix(in srgb, var(--accent) 12%, var(--bg)); }
+
+@media (max-width: 600px) {
+  .browse-row { grid-template-columns: 1fr; gap: 6px; }
+}

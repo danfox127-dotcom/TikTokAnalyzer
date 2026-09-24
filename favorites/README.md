@@ -187,21 +187,23 @@ one the library inferred.
 ## Search and filters
 
 `/search` is the whole library, narrowed as far as you like. With nothing chosen
-it is everything, newest first; the item count in the corner and **Search &
-filter** at the foot of every page both go there.
+it is everything, newest first. **Browse** in the top bar goes there from every
+page, and the front page has a *Browse the collection* strip with your biggest
+themes, creators and platforms, each one click into the filtered view.
 
-Beside the results, every way the library can be cut, each with a count:
+Beside the results, every way the library can be cut, each with a count —
+in the order people reach for them:
 
 | Filter | What it reads |
 |---|---|
 | Platform | Where it came from |
-| Season saved | The day you saved it: winter is December–February (northern hemisphere), across every year |
-| Year saved | The same day, by year |
-| Your categories | Playlists, collections, and anything you filed |
-| Kind | Short-form or long-form video, where known |
-| Hashtags | The creator's own hashtags, minus distribution noise like #fyp |
-| Keywords | Words and phrases from captions, titles, your notes and transcripts |
 | Creators | Who made it |
+| Themes | What it is about — see below |
+| Hashtags | The creator's own hashtags, minus distribution noise like #fyp |
+| Your categories | Playlists, collections, and anything you filed |
+| Year saved | The day you saved it, by year |
+| Kind | Short-form or long-form video, where known |
+| Season saved | The same day, by season across every year (northern hemisphere; winter is December–February) |
 | Your notes | Only the saves you wrote a note on |
 
 Filters combine, and the words in the search box combine with them. Each count
@@ -209,23 +211,42 @@ is what that option would leave *given the other filters*, so choosing 2024
 shows how much of each platform is in 2024 instead of greying the rest out.
 Clicking a chosen option again, or the × on its chip, removes it.
 
-Hashtags and keywords that appear on only one save are left out of the list:
-at that point they describe a video, not a pattern. They are still searchable.
+Hashtags on only one save are left out of the list: at that point they describe
+a video, not a pattern. They are still searchable.
 
-Every view is a web address, so a view worth keeping — *TikTok saves tagged
-#cooking from summers* — can be bookmarked, and the back button undoes a filter.
+Every view is a web address, so a view worth keeping — *TikTok saves about
+Dogs from summers* — can be bookmarked, and the back button undoes a filter.
 Nothing here needs JavaScript.
 
-### How themes are worked out
+### Themes
 
-Hashtags come straight from the caption. Everything else is content words and
-two-word phrases pulled from the title, description, note and transcript.
+A theme is a subject in plain words — *Dogs*, *Food & cooking*, *Cities &
+urbanism* — defined in `favorites/themes.py` by the words that signal it. A
+save joins a theme when its hashtags, its caption or title, your note, or the
+name of a category you filed it under use one of those words. Compound hashtags
+count (`#dogsoftiktok`), and so do your category names (*Sweet sweet puppers*
+is about dogs). Words that mean too many things in a sentence — *work*, *home*,
+*budget*, *train* — count only as hashtags.
 
-On a single item that signal is weak — a ten-word caption is not much to go on.
-It earns its keep across the collection, where a term that recurs in several
-different saves becomes a theme. That is the honest version of "what am I into
-lately": it emerges from repetition rather than from one model's guess about
-one video.
+It is a vocabulary, not a model: local, instant, and it can always say why. The
+cost is that it only knows the words it has been given. To see what it covers
+and what it is missing:
+
+```bash
+python -m favorites.themes
+```
+
+That prints how many saves have a theme, how many each theme holds, and the
+hashtags on your saves that no theme recognises yet. Add the ones that matter
+to `THEMES`; the library re-themes itself the next time anything opens it.
+
+### Hashtags and search words
+
+Hashtags come straight from the caption. The library also pulls content words
+and two-word phrases from the title, description, note and transcript, and
+those make the search box find more. They used to be offered as "keywords" to
+filter by, and on a real library they were noise — "five minutes", "went
+sideways" — so the themes above replaced them.
 
 ## Backfilling your history from a TikTok export
 

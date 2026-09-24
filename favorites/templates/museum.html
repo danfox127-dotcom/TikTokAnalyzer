@@ -37,11 +37,27 @@
   <p class="digest-prose">{{ digest.prose }}</p>
   {% if digest.themes %}
   <ul class="theme-pills">
-    {% for term, n in digest.themes %}
-      <li><a href="/search?q={{ term }}">{{ term }}<span>{{ n }}</span></a></li>
+    {% for theme, n in digest.themes %}
+      <li><a href="/search?theme={{ theme | urlencode }}">{{ theme }}<span>{{ n }}</span></a></li>
     {% endfor %}
   </ul>
   {% endif %}
+</section>
+
+<section class="browse" aria-labelledby="browse-title">
+  <div class="shelf-head">
+    <h2 id="browse-title"><a href="/search">Browse the collection</a></h2>
+    <p>Every save, filtered by who made it, what it's about, where it came from and when.</p>
+  </div>
+  {% for title, row in (("Themes", browse.themes), ("Creators", browse.creators), ("Platforms", browse.platforms)) if row %}
+    <div class="browse-row">
+      <h3>{{ title }}</h3>
+      <ul class="theme-pills">
+        {% for label, n, href in row %}<li><a href="{{ href }}">{{ label }}<span>{{ n }}</span></a></li>{% endfor %}
+      </ul>
+    </div>
+  {% endfor %}
+  <p class="browse-all"><a class="open" href="/search">All {{ total }} saves, with every filter →</a></p>
 </section>
 
 {% for shelf in shelves %}

@@ -39,7 +39,7 @@ SORTS = {"relevance": "Best match", "newest": "Newest saved", "oldest": "Oldest 
 
 # How many options to list for the open-ended facets. The rest are still
 # reachable -- by searching, or from an item's own page.
-TOP = {"creator": 12, "tag": 20, "term": 20, "collection": 30}
+TOP = {"creator": 12, "tag": 20, "theme": 40, "collection": 30}
 
 
 @dataclass(frozen=True)
@@ -52,7 +52,7 @@ class Filters:
     collection: str = ""
     creator: str = ""
     tag: str = ""
-    term: str = ""
+    theme: str = ""
     noted: str = ""
     sort: str = ""
     page: int = 1
@@ -143,9 +143,9 @@ def _clauses(f: Filters, without: str = "") -> tuple[list[str], list]:
     if f.tag and without != "tag":
         where.append("EXISTS (SELECT 1 FROM json_each(i.tags) WHERE value = ?)")
         params.append(f.tag.lower().lstrip("#"))
-    if f.term and without != "term":
-        where.append("EXISTS (SELECT 1 FROM json_each(i.terms) WHERE value = ?)")
-        params.append(f.term.lower())
+    if f.theme and without != "theme":
+        where.append("EXISTS (SELECT 1 FROM json_each(i.themes) WHERE value = ? COLLATE NOCASE)")
+        params.append(f.theme)
     if f.noted and without != "noted":
         where.append("trim(coalesce(i.note, '')) != ''")
     return where, params
@@ -259,11 +259,45 @@ def _facet(f: Filters, name: str, title: str, rows, label=lambda v, extra: v,
 
 
 def facets(conn: sqlite3.Connection, f: Filters) -> list[Facet]:
+    """The filter column, in the order people reach for it.
+
+    Who made it and what it is about come first -- that is how a save is
+    remembered. When you saved it comes after, and the season last: a nice
+    question to be able to ask, not the one you usually arrive with.
+    """
     out: list[Optional[Facet]] = []
 
     out.append(_facet(f, "platform", "Platform", _grouped(
         conn, f, "platform", "i.platform AS v, count(*) AS n, '' AS x"),
         label=lambda v, _: platform_label(v)))
+
+    out.append(_facet(f, "creator", "Creators", _grouped(
+        conn, f, "creator",
+        "coalesce(i.creator_handle, i.creator_name) AS v, count(*) AS n,"
+        " max(coalesce(i.creator_name, '')) AS x"),
+        label=lambda v, name: name or v, limit=TOP["creator"]))
+
+    out.append(_facet(f, "theme", "Themes", _grouped(
+        conn, f, "theme", "j.value AS v, count(DISTINCT i.id) AS n, '' AS x",
+        joins=", json_each(i.themes) j"), limit=TOP["theme"]))
+
+    out.append(_facet(f, "tag", "Hashtags", _grouped(
+        conn, f, "tag", "j.value AS v, count(DISTINCT i.id) AS n, '' AS x",
+        joins=", json_each(i.tags) j"),
+        label=lambda v, _: "#" + v, limit=TOP["tag"]))
+
+    out.append(_facet(f, "collection", "Your categories", _grouped(
+        conn, f, "collection",
+        "c.name COLLATE NOCASE AS v, count(DISTINCT i.id) AS n, '' AS x",
+        joins=" JOIN collections c ON c.item_id = i.id"), limit=TOP["collection"]))
+
+    out.append(_facet(f, "year", "Year saved", _grouped(
+        conn, f, "year", "substr(i.saved_at, 1, 4) AS v, count(*) AS n, '' AS x",
+        order="v DESC")))
+
+    out.append(_facet(f, "format", "Kind", _grouped(
+        conn, f, "format", "i.format AS v, count(*) AS n, '' AS x"),
+        label=lambda v, _: FORMATS.get(v, v)))
 
     season_case = "CASE " + " ".join(
         f"WHEN substr(i.saved_at, 6, 2) IN ({', '.join(repr(m) for m in months)}) THEN '{key}'"
@@ -274,35 +308,6 @@ def facets(conn: sqlite3.Connection, f: Filters) -> list[Facet]:
                       [(k, *seasons[k]) for k in SEASONS if k in seasons],
                       label=lambda v, _: SEASONS[v][0]))
 
-    out.append(_facet(f, "year", "Year saved", _grouped(
-        conn, f, "year", "substr(i.saved_at, 1, 4) AS v, count(*) AS n, '' AS x",
-        order="v DESC")))
-
-    out.append(_facet(f, "collection", "Your categories", _grouped(
-        conn, f, "collection",
-        "c.name COLLATE NOCASE AS v, count(DISTINCT i.id) AS n, '' AS x",
-        joins=" JOIN collections c ON c.item_id = i.id"), limit=TOP["collection"]))
-
-    out.append(_facet(f, "format", "Kind", _grouped(
-        conn, f, "format", "i.format AS v, count(*) AS n, '' AS x"),
-        label=lambda v, _: FORMATS.get(v, v)))
-
-    out.append(_facet(f, "tag", "Hashtags", _grouped(
-        conn, f, "tag", "j.value AS v, count(DISTINCT i.id) AS n, '' AS x",
-        joins=", json_each(i.tags) j"),
-        label=lambda v, _: "#" + v, limit=TOP["tag"]))
-
-    out.append(_facet(f, "term", "Keywords", _grouped(
-        conn, f, "term", "j.value AS v, count(DISTINCT i.id) AS n, '' AS x",
-        joins=", json_each(i.terms) j", order="n DESC, v"),
-        limit=TOP["term"]))
-
-    out.append(_facet(f, "creator", "Creators", _grouped(
-        conn, f, "creator",
-        "coalesce(i.creator_handle, i.creator_name) AS v, count(*) AS n,"
-        " max(coalesce(i.creator_name, '')) AS x"),
-        label=lambda v, name: name or v, limit=TOP["creator"]))
-
     noted_n = conn.execute(
         "SELECT count(*) FROM items i" + _where_sql(
             _clauses(f, without="noted")[0] + ["trim(coalesce(i.note, '')) != ''"]),
@@ -312,10 +317,10 @@ def facets(conn: sqlite3.Connection, f: Filters) -> list[Facet]:
             value="1", label="Has a note", count=int(noted_n),
             href=f.href(noted=None if f.noted else "1"), active=bool(f.noted))]))
 
-    # A keyword or hashtag seen on a single save is noise, not an option;
-    # showing hundreds of them buries the ones that recur.
+    # A hashtag seen on a single save is noise, not an option; showing
+    # hundreds of them buries the ones that recur.
     for facet in out:
-        if facet and facet.name in ("tag", "term"):
+        if facet and facet.name == "tag":
             facet.options = [o for o in facet.options if o.count >= 2 or o.active]
     return [x for x in out if x and x.options]
 
@@ -359,8 +364,8 @@ def describe(f: Filters, found: list[Facet]) -> str:
         parts.append(f"matching “{f.q}”")
     if f.tag:
         parts.append(f"tagged #{f.tag.lstrip('#').lower()}")
-    if f.term:
-        parts.append(f"about “{f.term}”")
+    if f.theme:
+        parts.append(f"about {label('theme')}")
     if f.creator:
         parts.append(f"by {label('creator')}")
     if f.collection:

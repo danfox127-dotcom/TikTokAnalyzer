@@ -66,10 +66,10 @@
       <section class="block"><h3>Description</h3><p>{{ item.description }}</p></section>
     {% endif %}
 
-    {% if item.tags or shared %}
+    {% if item.themes or item.tags %}
       <ul class="theme-pills">
+        {% for theme in item.themes %}<li><a class="is-theme" href="/search?theme={{ theme | urlencode }}">{{ theme }}</a></li>{% endfor %}
         {% for tag in item.tags %}<li><a href="/search?tag={{ tag | urlencode }}">#{{ tag }}</a></li>{% endfor %}
-        {% for term in shared %}<li><a href="/search?q={{ term }}">{{ term }}</a></li>{% endfor %}
       </ul>
     {% endif %}
 
