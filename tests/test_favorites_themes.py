@@ -107,6 +107,34 @@ class TestMatching:
     def test_a_real_librarys_second_round(self, tag, theme):
         assert theme in about([tag])
 
+    @pytest.mark.parametrize("tag, theme", [
+        # The third round.
+        ("cutedog", "Dogs"), ("cutedogs", "Dogs"), ("mydogiscutest", "Dogs"),
+        ("dogslife", "Dogs"), ("siberian", "Dogs"),
+        ("u2", "Music"), ("rock", "Music"), ("pop", "Music"), ("oasis", "Music"),
+        ("brucespringsteen", "Music"), ("kendricklamar", "Music"), ("raptok", "Music"),
+        ("spiderman", "Film & TV"), ("pauliewalnuts", "Film & TV"),
+        ("leftist", "News & politics"), ("eggs", "Food & cooking"),
+        ("appetizer", "Food & cooking"), ("claude", "Science & tech"),
+    ])
+    def test_a_real_librarys_third_round(self, tag, theme):
+        assert theme in about([tag])
+
+    def test_news_is_not_the_plural_of_new(self):
+        # Folding "news" to "new" made every "my new couch" a news story.
+        assert about(text="my new couch") == []
+        assert about(text="breaking news tonight") == ["News & politics"]
+
+    def test_a_four_letter_plural_starts_a_hashtag_but_does_not_end_one(self):
+        assert about(["dogslife"]) == ["Dogs"]
+        assert about(["carsofinstagram"]) == ["Cars & vehicles"]
+        assert about(["hotdogs"]) == []   # not Dogs
+        assert about(["oscars"]) == []    # not Cars
+
+    def test_rock_is_only_rock_on_its_own(self):
+        assert about(["rock"]) == ["Music"]
+        assert about(["rocket"]) == [] and about(["shamrock"]) == []
+
     def test_a_new_york_hashtag_keeps_its_subject(self):
         # Listing #nycsubway under New York once cost it Cities & urbanism.
         assert set(about(["nycsubway"])) == {"New York", "Cities & urbanism"}
@@ -223,9 +251,9 @@ class TestReport:
 
     def test_where_the_unthemed_saves_are(self, conn):
         # Two share a caption word the vocabulary lacks; one has no hashtags.
-        for n, caption, tags in [(1, "The quiltmaking bee at work", ["zorbing"]),
-                                 (2, "quiltmaking at night after work", []),
-                                 (3, "more quiltmaking, finally home from work", []),
+        for n, caption, tags in [(1, "Replying to @someone The quiltmaking bee at work #fypシ", ["zorbing"]),
+                                 (2, "Replying to @guild quiltmaking at night after work #fypシ", []),
+                                 (3, "Replying to @you more quiltmaking, finally home from work #fypシ", []),
                                  (4, "a puppy", [])]:
             db.upsert_item(conn, {
                 "canonical_url": f"https://example.com/{n}", "shared_url": "x",
@@ -234,7 +262,8 @@ class TestReport:
                 "tags": tags, "resolve_status": "ok"})
         r = themes.report(conn)
         assert r["unthemed_without_hashtags"] == 2
-        # Not the hashtag, the creator's name, the preview's wording, "work"
+        # Not the hashtag, #fypシ, TikTok's "Replying to", the creator's
+        # name, the preview's wording, "work"
         # (known, and hashtag-only on purpose) or "puppy" (its save is themed).
         assert r["unthemed_caption_words"] == [("quiltmaking", 3)]
 
