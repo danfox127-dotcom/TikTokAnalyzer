@@ -48,7 +48,7 @@ TAG_NOISE = frozenset("""
 fyp foryou foryoupage foryoupages viral trending explore explorepage reels reel
 shorts short tiktok instagram youtube ig capcut trend follow followme like
 likeforlike duet stitch greenscreen fy parati viralvideo tiktokviral xyzbca
-creatorsearchinsights
+creatorsearchinsights blowthisup
 """.split())
 
 

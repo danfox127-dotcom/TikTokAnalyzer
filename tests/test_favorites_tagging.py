@@ -18,6 +18,7 @@ class TestHashtags:
         assert tagging.is_noise("#FYPシ") and not tagging.is_noise("zoning")
         # TikTok's label for videos made from its search suggestions.
         assert tagging.is_noise("creatorsearchinsights")
+        assert tagging.is_noise("blowthisup")
 
     def test_duplicates_collapse(self):
         assert tagging.hashtags("#housing", "#Housing") == ["housing"]

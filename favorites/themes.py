@@ -38,7 +38,8 @@ from .tagging import STOPWORDS, TOKEN_RE, is_noise
 THEMES: dict[str, str] = {
     "Dogs": """dog dogs puppy puppies pup pups pupper puppers doggo doggos doggy canine
         goldenretriever labrador corgi pitbull husky dachshund poodle beagle
-        greyhound huskies dogsoftiktok dogsofinstagram dogmom doglover #woof""",
+        greyhound huskies cutedog cutedogs mydogiscutest #siberian
+        dogsoftiktok dogsofinstagram dogmom doglover #woof""",
     "Cats": """cat cats kitten kittens kitty catsoftiktok catsofinstagram catmom catlover
         feline meow""",
     "Animals & wildlife": """animal animals wildlife bird birds birding horse horses
@@ -51,17 +52,19 @@ THEMES: dict[str, str] = {
         salad chef kitchen meal meals mealprep restaurant eats snack snacks pizza taco
         tacos bbq barbecue grill grilling vegan vegetarian cuisine spicy delicious yummy
         tasty sushi cheese chocolate homemade airfryer sandwich burger steak tomato
-        tomatoes potato potatoes garlic foodgif foodgifs nycfood nyceats""",
+        tomatoes potato potatoes egg eggs appetizer appetizers garlic foodgif foodgifs nycfood nyceats""",
     "Drinks": """coffee espresso latte cocktail cocktails mixology bartender wine beer
         brewery whiskey tequila matcha boba smoothie #tea #drinks""",
     "Comedy & humour": """funny comedy comedian humor humour joke jokes lol lmao meme
         memes skit skits standup prank pranks satire parody sketch""",
     "Music": """music song songs singer singing guitar piano drums drummer band concert
         rap rapper hiphop jazz dj producer lyrics musician bass vinyl album livemusic
-        radiohead spotify playlist charlixcx taylorswift rollingstone #cover #beat""",
+        radiohead spotify playlist charlixcx taylorswift rollingstone raptok
+        brucespringsteen kendricklamar courtneylove hayleywilliams wolfalice #oasis
+        #u2 #rock #pop #cover #beat""",
     "Dance": """dance dancing dancer choreography ballet tapdance salsa""",
     "Film & TV": """movie movies film films cinema netflix trailer actor actress
-        filmmaking director anime hbomax bluey #hbo #tv #series #show""",
+        filmmaking director anime hbomax bluey sopranos pauliewalnuts spiderman #hbo #tv #series #show""",
     "Books & writing": """book books booktok reading reader novel novels author writing
         writer poetry poem poems bookstagram #library""",
     "Art & design": """artist drawing painting illustration typography graphicdesign
@@ -88,14 +91,14 @@ THEMES: dict[str, str] = {
         ocean sunset sunrise nationalpark waterfall lake river wilderness""",
     "Science & tech": """science tech technology ai coding programming engineering physics
         chemistry biology astronomy nasa robot robotics gadget gadgets computer software
-        chatgpt openai artificialintelligence onlinetools #google #website #websites #apps #space""",
+        chatgpt openai artificialintelligence onlinetools #google #claude #website #websites #apps #space""",
     "How-to & learning": """tutorial howto tips lifehack lifehacks hack hacks learn
         learning education explained facts didyouknow todayilearned
         #tricks علمني""",
     "History": """history historical ancient archaeology museum medieval""",
     "News & politics": """news politics political election government policy localgov
         council vote voting congress senate president protest democracy journalism
-        homeless""",
+        homeless leftist""",
     "Cities & urbanism": """urbanism urbanplanning transit architecture housing zoning
         bike bikes cycling #trains #train subway streetscape walkable nycsubway #city #cities""",
     "New York": """nyc newyork newyorkcity brooklyn bronx harlem statenisland #manhattan
@@ -123,8 +126,15 @@ THEMES: dict[str, str] = {
 _WORD = re.compile(r"[a-z0-9]+")
 
 
+# Words that end in "s" without being plurals, where folding them would make
+# another word: "news" became "new", and every "my new couch" was news.
+_NOT_PLURAL = frozenset({"news"})
+
+
 def _norm(word: str) -> str:
     """Fold simple plurals, so "puppies" and "puppy" are one word."""
+    if word in _NOT_PLURAL:
+        return word
     if len(word) > 4 and word.endswith("ies"):
         return word[:-3] + "y"
     if len(word) > 3 and word.endswith("s") and not word.endswith("ss"):
@@ -150,15 +160,19 @@ for _w, _t in TAGS_ONLY.items():
 
 
 
+# Recognised only as a whole hashtag, never inside one: "rock" is in #rocket
+# and #shamrock.
+_WHOLE_ONLY = frozenset({"rock"})
+
+
 def _compound_words() -> dict[str, set[str]]:
     """Words long enough to recognise inside a compound hashtag.
 
     Shorter ones find themselves everywhere: "art" in #party, "car" in #scary.
     A plural is kept as written as well as folded, because folding changes its
-    start: #huskiesofinstagram begins with "huskies", not "husky". Plurals of
-    four letters stay out ("eats" would find food in #treats and #beats).
+    start: #huskiesofinstagram begins with "huskies", not "husky".
     """
-    table = {w: set(t) for w, t in TAG_WORDS.items() if len(w) >= 4}
+    table = {w: set(t) for w, t in TAG_WORDS.items() if len(w) >= 4 and w not in _WHOLE_ONLY}
     for theme, words in THEMES.items():
         for raw in words.split():
             raw = raw.lstrip("#")
@@ -167,10 +181,26 @@ def _compound_words() -> dict[str, set[str]]:
     return table
 
 
+def _prefix_words() -> dict[str, set[str]]:
+    """Four-letter plurals, recognised only at the start of a hashtag.
+
+    #dogslife and #carsofinstagram start with one; at the end they mislead
+    ("eats" in #treats, "cars" in #oscars, "dogs" in #hotdogs).
+    """
+    table: dict[str, set[str]] = {}
+    for theme, words in THEMES.items():
+        for raw in words.split():
+            raw = raw.lstrip("#")
+            if len(raw) == 4 and raw != _norm(raw):
+                table.setdefault(raw, set()).add(theme)
+    return table
+
+
 _COMPOUND = _compound_words()
+_PREFIXES = _prefix_words()
 
 #: Bumped when the way words are matched changes, as VERSION's hash cannot see it.
-_MATCHING = 2
+_MATCHING = 3
 
 #: Changes whenever the vocabulary or the matching does, so a library
 #: re-themes itself on the next start after an edit here, with nothing to run.
@@ -188,6 +218,9 @@ def _from_tag(tag: str) -> set[str]:
     found: set[str] = set()
     for word, signalled in _COMPOUND.items():
         if tag.startswith(word) or tag.endswith(word) or _norm(tag).endswith(word):
+            found |= signalled
+    for word, signalled in _PREFIXES.items():
+        if tag.startswith(word):
             found |= signalled
     return found
 
@@ -233,13 +266,13 @@ def _caption_words(*texts: Optional[str]) -> set[str]:
     nothing the vocabulary already knows (a hashtag-only word like "work" is
     left out of sentences on purpose, so listing it would only tempt)."""
     words = {w.lower() for text in texts for w in TOKEN_RE.findall(text or "")}
-    return {w for w in words if len(w) >= 4 and not w.isdigit()
+    return {w for w in words if len(w) >= 4 and not w.isdigit() and not is_noise(w)
             and w not in STOPWORDS and w not in _PREVIEW_WORDS and _norm(w) not in TAG_WORDS}
 
 
-# The wording link previews wrap a caption in: "1,204 likes, 31 comments -
-# City Desk on March 3, 2024: ...".
-_PREVIEW_WORDS = frozenset("""likes january february march april june july august
+# The wording link previews wrap a caption in ("1,204 likes, 31 comments -
+# City Desk on March 3, 2024: ..."), and TikTok's "Replying to @someone".
+_PREVIEW_WORDS = frozenset("""likes replying january february march april june july august
 september october november december""".split())
 
 
