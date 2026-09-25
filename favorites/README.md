@@ -198,7 +198,7 @@ in the order people reach for them:
 |---|---|
 | Platform | Where it came from |
 | Creators | Who made it |
-| Themes | What it is about — see below |
+| Themes | What it is about — see below; *Undefined*, at the top, is the saves no theme covers yet |
 | Hashtags | The creator's own hashtags, minus distribution noise like #fyp |
 | Your categories | Playlists, collections, and anything you filed |
 | Length | Under a minute, 1–3, 3–10, 10–30, over 30 minutes — YouTube and TikTok |
@@ -228,6 +228,11 @@ name of a category you filed it under use one of those words. Compound hashtags
 count (`#dogsoftiktok`), and so do your category names (*Sweet sweet puppers*
 is about dogs). Words that mean too many things in a sentence — *work*, *home*,
 *budget*, *train* — count only as hashtags.
+
+Saves no theme recognises are gathered under **Undefined**, first in the Themes
+filter and last in the front page's theme row. It is a to-do list rather than a
+subject: filing one of them under a category you name is often enough to give
+it a theme, because your category names count.
 
 It is a vocabulary, not a model: local, instant, and it can always say why. The
 cost is that it only knows the words it has been given. To see what it covers
