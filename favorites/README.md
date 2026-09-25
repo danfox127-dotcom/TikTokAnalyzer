@@ -237,8 +237,10 @@ and what it is missing:
 python -m favorites.themes
 ```
 
-That prints how many saves have a theme, how many each theme holds, and the
-hashtags on your saves that no theme recognises yet. Add the ones that matter
+That prints how many saves have a theme, how many each theme holds, the
+hashtags on your saves that no theme recognises yet, and -- for the saves with
+no theme -- how many have no hashtags at all and which caption words recur
+among them. Add the ones that matter
 to `THEMES`; the library re-themes itself the next time anything opens it.
 The list leaves out hashtags about reach rather than subject (`#fyp` in all its
 spellings, `#fypシ` included) and creators tagging their own name, which the

@@ -33,7 +33,7 @@ import sqlite3
 from collections import Counter
 from typing import Iterable, Optional
 
-from .tagging import is_noise
+from .tagging import STOPWORDS, TOKEN_RE, is_noise
 
 THEMES: dict[str, str] = {
     "Dogs": """dog dogs puppy puppies pup pups pupper puppers doggo doggos doggy canine
@@ -51,29 +51,30 @@ THEMES: dict[str, str] = {
         salad chef kitchen meal meals mealprep restaurant eats snack snacks pizza taco
         tacos bbq barbecue grill grilling vegan vegetarian cuisine spicy delicious yummy
         tasty sushi cheese chocolate homemade airfryer sandwich burger steak tomato
-        tomatoes potato potatoes garlic foodgif foodgifs""",
+        tomatoes potato potatoes garlic foodgif foodgifs nycfood nyceats""",
     "Drinks": """coffee espresso latte cocktail cocktails mixology bartender wine beer
         brewery whiskey tequila matcha boba smoothie #tea #drinks""",
     "Comedy & humour": """funny comedy comedian humor humour joke jokes lol lmao meme
         memes skit skits standup prank pranks satire parody sketch""",
     "Music": """music song songs singer singing guitar piano drums drummer band concert
         rap rapper hiphop jazz dj producer lyrics musician bass vinyl album livemusic
-        radiohead #cover #beat""",
+        radiohead spotify playlist charlixcx taylorswift rollingstone #cover #beat""",
     "Dance": """dance dancing dancer choreography ballet tapdance salsa""",
     "Film & TV": """movie movies film films cinema netflix trailer actor actress
-        filmmaking director anime #tv #series #show""",
+        filmmaking director anime hbomax bluey #hbo #tv #series #show""",
     "Books & writing": """book books booktok reading reader novel novels author writing
         writer poetry poem poems bookstagram #library""",
     "Art & design": """artist drawing painting illustration typography graphicdesign
         sculpture pottery ceramics calligraphy watercolor sketchbook printmaking
-        illustrator digitalart procreate #art #design #designer #craft #crafts""",
+        illustrator digitalart procreate arttips dailyart artreels artwork arttok
+        diseño #portrait #art #design #designer #craft #crafts""",
     "Photography & editing": """photography photographer photographers photoshop
         lightroom photoediting retouching videoediting capcut #photo #photos
-        #camera #cameras #editing #adobe فوتوشوب""",
+        #camera #cameras #editing #adobe #portrait فوتوشوب""",
     "Fashion & beauty": """fashion outfit outfits ootd makeup beauty skincare hairstyle
         #nails thrift thrifting vintage streetwear sneakers #style #hair""",
     "Home & DIY": """diy decor interiordesign interior renovation furniture cleaning
-        cleantok organization organizing apartment woodworking homedecor #home
+        cleantok organization organizing apartment woodworking homedecor nycapartment #home
         #house""",
     "Gardening & plants": """garden gardening gardener plant plants houseplant houseplants
         flower flowers seeds vegetables compost farm farming homestead #bean #beans""",
@@ -87,32 +88,35 @@ THEMES: dict[str, str] = {
         ocean sunset sunrise nationalpark waterfall lake river wilderness""",
     "Science & tech": """science tech technology ai coding programming engineering physics
         chemistry biology astronomy nasa robot robotics gadget gadgets computer software
-        chatgpt openai onlinetools #website #websites #apps #space""",
+        chatgpt openai artificialintelligence onlinetools #google #website #websites #apps #space""",
     "How-to & learning": """tutorial howto tips lifehack lifehacks hack hacks learn
-        learning education explained facts didyouknow
+        learning education explained facts didyouknow todayilearned
         #tricks علمني""",
     "History": """history historical ancient archaeology museum medieval""",
     "News & politics": """news politics political election government policy localgov
         council vote voting congress senate president protest democracy journalism
         homeless""",
     "Cities & urbanism": """urbanism urbanplanning transit architecture housing zoning
-        bike bikes cycling #trains #train subway streetscape walkable #city #cities""",
+        bike bikes cycling #trains #train subway streetscape walkable nycsubway #city #cities""",
     "New York": """nyc newyork newyorkcity brooklyn bronx harlem statenisland #manhattan
         nyclife nycfood nyceats nyctiktok nycsubway nycapartment""",
     "Money & work": """money finance investing career careers job jobs business
-        entrepreneur productivity economy #budget #budgeting #work""",
+        entrepreneur productivity economy jobsearch jobhunting powerpoint
+        #excel #resume #budget #budgeting #work""",
     "Marketing & media": """marketing socialmedia contentcreator contentcreation branding
         seo advertising copywriting communications newsletter
         radio podcast podcasts broadcasting #content #media #pr""",
     "Parenting & family": """parenting #mom #dad #baby #babies kid kids toddler momlife
-        dadlife #family""",
+        dadlife bluey #parent #parents #family""",
     "Wellness": """mentalhealth therapy anxiety wellness selfcare adhd mindfulness
-        meditation somatic #healing #sleep #health""",
+        meditation somatic vagusnerve nervoussystem thesafemethod #healing #sleep #health""",
     "Gaming": """gaming gamer videogame videogames nintendo playstation xbox minecraft
         fortnite pokemon zelda""",
     "Cars & vehicles": """car cars truck trucks motorcycle motorcycles racing f1 formula1
         jeep #auto""",
     "Satisfying & ASMR": """asmr satisfying oddlysatisfying""",
+    "Nostalgia & retro": """nostalgia nostalgic throwback retro genx millennial millennials
+        #tbt #y2k #grunge""",
     "Language": """language languages linguistics #spanish #french grammar etymology""",
 }
 
@@ -224,12 +228,29 @@ def for_row(row, categories: Iterable[str] = ()) -> list[str]:
 
 # --- the coverage report -----------------------------------------------------
 
+def _caption_words(*texts: Optional[str]) -> set[str]:
+    """Words in a caption that could name a subject: no filler, no numbers,
+    nothing the vocabulary already knows (a hashtag-only word like "work" is
+    left out of sentences on purpose, so listing it would only tempt)."""
+    words = {w.lower() for text in texts for w in TOKEN_RE.findall(text or "")}
+    return {w for w in words if len(w) >= 4 and not w.isdigit()
+            and w not in STOPWORDS and w not in _PREVIEW_WORDS and _norm(w) not in TAG_WORDS}
+
+
+# The wording link previews wrap a caption in: "1,204 likes, 31 comments -
+# City Desk on March 3, 2024: ...".
+_PREVIEW_WORDS = frozenset("""likes january february march april june july august
+september october november december""".split())
+
+
 def report(conn: sqlite3.Connection, top: int = 30) -> dict:
-    rows = conn.execute("SELECT themes, tags, creator_handle FROM items"
+    rows = conn.execute("SELECT themes, tags, creator_name, creator_handle, title, description"
+                        " FROM items"
                         " WHERE resolve_status = 'ok'").fetchall()
     per_theme: Counter[str] = Counter()
     unthemed_tags: Counter[str] = Counter()
-    themed = 0
+    unthemed_words: Counter[str] = Counter()
+    themed = untagged = 0
     for row in rows:
         mine = json.loads(row["themes"] or "[]")
         per_theme.update(mine)
@@ -237,15 +258,25 @@ def report(conn: sqlite3.Connection, top: int = 30) -> dict:
         # A creator tagging their own name (#redavisuals on redavisuals' posts)
         # says who, not what; the Creator filter already covers who.
         own = (row["creator_handle"] or "").lower().lstrip("@")
-        for tag in json.loads(row["tags"] or "[]"):
-            if tag.lower() == own or is_noise(tag):
-                continue
+        tags = [t for t in json.loads(row["tags"] or "[]")
+                if t.lower() != own and not is_noise(t)]
+        for tag in tags:
             if not _from_tag(tag):
                 unthemed_tags[tag] += 1
+        if not mine:
+            untagged += not tags
+            # Less the hashtags (listed above) and the creator's own name.
+            said = _caption_words(row["title"], row["description"])
+            said -= {t.lower() for t in tags} | _caption_words(row["creator_name"], own)
+            unthemed_words.update(said)
     return {
         "items": len(rows), "themed": themed,
         "per_theme": per_theme.most_common(),
         "unrecognised_hashtags": [(t, n) for t, n in unthemed_tags.most_common(top) if n >= 2],
+        # Of the saves with no theme, how many have no hashtag to go on at all,
+        # and the words that recur in their captions -- where the rest are.
+        "unthemed_without_hashtags": untagged,
+        "unthemed_caption_words": [(w, n) for w, n in unthemed_words.most_common(top) if n >= 3],
     }
 
 
@@ -270,6 +301,15 @@ def main(argv: Optional[list[str]] = None) -> int:
         print("\nHashtags on 2+ saves that no theme recognises yet:")
         for tag, n in r["unrecognised_hashtags"]:
             print(f"  {n:>5}  #{tag}")
+    unthemed = r["items"] - r["themed"]
+    if unthemed:
+        print(f"\nOf the {unthemed} saves with no theme, {r['unthemed_without_hashtags']}"
+              " have no hashtags at all, only a caption to go on.")
+    if r["unthemed_caption_words"]:
+        print("Words that recur in their captions (on 3+ saves):")
+        for word, n in r["unthemed_caption_words"]:
+            print(f"  {n:>5}  {word}")
+    if r["unrecognised_hashtags"] or r["unthemed_caption_words"]:
         print("\nWords worth adding go in THEMES in favorites/themes.py;"
               " the library re-themes itself on the next start.")
     return 0
