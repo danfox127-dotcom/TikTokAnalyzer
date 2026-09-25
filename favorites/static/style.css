@@ -343,6 +343,14 @@ button:hover { filter: brightness(1.08); }
 .facet li a.on { background: color-mix(in srgb, var(--accent) 18%, var(--surface)); font-weight: 600; }
 .opt-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .opt-n { color: var(--muted); font-variant-numeric: tabular-nums; font-size: 12.5px; flex: none; }
+/* "Undefined": the saves no theme covers yet. Set apart from the subjects
+   below it -- a to-do list, not a topic. */
+.facet li.undefined { border-bottom: 1px dashed var(--line); padding-bottom: 4px; margin-bottom: 4px; }
+.facet li.undefined .opt-label { font-style: italic; }
+.theme-pills a.undefined { border-style: dashed; font-style: italic; }
+.filters-mobile .facet li.undefined { border-bottom: 0; padding-bottom: 0; margin-bottom: 0; }
+.filters-mobile .facet li.undefined a { border-style: dashed; }
+
 .facet-more summary { cursor: pointer; color: var(--muted); font-size: 13px; padding: 4px 0; list-style: none; }
 .facet-more summary::-webkit-details-marker { display: none; }
 .facet-more summary::before { content: "+ "; }

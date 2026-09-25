@@ -35,6 +35,10 @@ from typing import Iterable, Optional
 
 from .tagging import STOPWORDS, TOKEN_RE, is_noise
 
+#: The one "theme" that is not a subject: the saves no theme recognises yet.
+#: Offered as a filter so they can be found, looked through and filed.
+UNDEFINED = "Undefined"
+
 THEMES: dict[str, str] = {
     "Dogs": """dog dogs puppy puppies pup pups pupper puppers doggo doggos doggy canine
         goldenretriever labrador corgi pitbull husky dachshund poodle beagle

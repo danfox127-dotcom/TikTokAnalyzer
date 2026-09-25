@@ -25,6 +25,7 @@ from urllib.parse import quote, urlencode
 
 from . import db
 from .resolve import platform_label
+from .themes import UNDEFINED
 
 # The museum only arranges items it can actually describe. A backfilled import
 # is a dated URL until it resolves, and a shelf of untitled links is worse than
@@ -218,8 +219,15 @@ def browse(conn: sqlite3.Connection, per_row: int = 8) -> dict:
     platforms = conn.execute(
         f"SELECT platform AS v, count(*) AS n FROM items {resolved}"
         f" GROUP BY v ORDER BY n DESC").fetchall()
+    undefined = conn.execute(
+        f"SELECT count(*) FROM items {resolved}"
+        f" AND json_array_length(coalesce(nullif(themes, ''), '[]')) = 0").fetchone()[0]
+    theme_row = [(r["v"], r["n"], f"/search?{urlencode({'theme': r['v']})}") for r in themes]
+    if undefined:
+        # Last in the row: the saves still waiting for a theme.
+        theme_row.append((UNDEFINED, undefined, f"/search?{urlencode({'theme': UNDEFINED})}"))
     return {
-        "themes": [(r["v"], r["n"], f"/search?{urlencode({'theme': r['v']})}") for r in themes],
+        "themes": theme_row,
         "creators": [(r["label"], r["n"], f"/search?{urlencode({'creator': r['k']})}") for r in creators],
         "platforms": [(platform_label(r["v"]), r["n"], f"/search?{urlencode({'platform': r['v']})}")
                       for r in platforms],

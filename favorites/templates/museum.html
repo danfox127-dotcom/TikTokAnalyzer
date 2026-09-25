@@ -53,7 +53,7 @@
     <div class="browse-row">
       <h3>{{ title }}</h3>
       <ul class="theme-pills">
-        {% for label, n, href in row %}<li><a href="{{ href }}">{{ label }}<span>{{ n }}</span></a></li>{% endfor %}
+        {% for label, n, href in row %}<li><a href="{{ href }}"{% if href.endswith("theme=Undefined") %} class="undefined"{% endif %}>{{ label }}<span>{{ n }}</span></a></li>{% endfor %}
       </ul>
     </div>
   {% endfor %}

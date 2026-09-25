@@ -22,6 +22,7 @@ from typing import Optional
 from urllib.parse import urlencode
 
 from . import db, tagging
+from .themes import UNDEFINED
 from .resolve import platform_label
 
 PAGE_SIZE = 48
@@ -157,8 +158,11 @@ def _clauses(f: Filters, without: str = "") -> tuple[list[str], list]:
         where.append("EXISTS (SELECT 1 FROM json_each(i.tags) WHERE value = ?)")
         params.append(f.tag.lower().lstrip("#"))
     if f.theme and without != "theme":
-        where.append("EXISTS (SELECT 1 FROM json_each(i.themes) WHERE value = ? COLLATE NOCASE)")
-        params.append(f.theme)
+        if f.theme.lower() == UNDEFINED.lower():
+            where.append(_UNTHEMED)
+        else:
+            where.append("EXISTS (SELECT 1 FROM json_each(i.themes) WHERE value = ? COLLATE NOCASE)")
+            params.append(f.theme)
     if f.length and without != "length":
         _, _, lo, hi = LENGTHS[f.length]
         where.append("i.duration >= ?" + (" AND i.duration < ?" if hi else ""))
@@ -227,6 +231,11 @@ class Option:
     count: int
     href: str
     active: bool = False
+    kind: str = ""
+
+
+# Saves no theme recognises yet: the "Undefined" option.
+_UNTHEMED = "json_array_length(coalesce(nullif(i.themes, ''), '[]')) = 0"
 
 
 @dataclass
@@ -275,6 +284,26 @@ def _facet(f: Filters, name: str, title: str, rows, label=lambda v, extra: v,
     return Facet(name=name, title=title, options=options, more=more)
 
 
+def _with_undefined(conn, f: Filters, facet: Optional[Facet]) -> Optional[Facet]:
+    """Put "Undefined" at the top of the themes: the saves no theme covers.
+
+    First, not buried after thirty subjects, because it is a to-do list --
+    the saves worth looking through and filing -- rather than a subject.
+    """
+    where, params = _clauses(f, without="theme")
+    n = conn.execute("SELECT count(*) FROM items i" + _where_sql(where + [_UNTHEMED]),
+                     params).fetchone()[0]
+    active = f.theme.lower() == UNDEFINED.lower()
+    if not n and not active:
+        return facet
+    undefined = Option(value=UNDEFINED, label=UNDEFINED, count=int(n), kind="undefined",
+                       href=f.href(theme=None if active else UNDEFINED), active=active)
+    if facet is None:
+        return Facet(name="theme", title="Themes", options=[undefined])
+    facet.options = [undefined] + [o for o in facet.options if o.value != UNDEFINED]
+    return facet
+
+
 def facets(conn: sqlite3.Connection, f: Filters) -> list[Facet]:
     """The filter column, in the order people reach for it.
 
@@ -294,9 +323,9 @@ def facets(conn: sqlite3.Connection, f: Filters) -> list[Facet]:
         " max(coalesce(i.creator_name, '')) AS x"),
         label=lambda v, name: name or v, limit=TOP["creator"]))
 
-    out.append(_facet(f, "theme", "Themes", _grouped(
+    out.append(_with_undefined(conn, f, _facet(f, "theme", "Themes", _grouped(
         conn, f, "theme", "j.value AS v, count(DISTINCT i.id) AS n, '' AS x",
-        joins=", json_each(i.themes) j"), limit=TOP["theme"]))
+        joins=", json_each(i.themes) j"), limit=TOP["theme"])))
 
     out.append(_facet(f, "tag", "Hashtags", _grouped(
         conn, f, "tag", "j.value AS v, count(DISTINCT i.id) AS n, '' AS x",
@@ -387,12 +416,15 @@ def describe(f: Filters, found: list[Facet]) -> str:
         noun = {"short": "short-form videos", "video": "long-form videos"}[f.format]
     if f.platform:
         noun = f"{platform_label(f.platform)} {noun}"
+    undefined = f.theme.lower() == UNDEFINED.lower()
+    if undefined:
+        noun = f"undefined {noun}"
     parts = [noun]
     if f.q:
         parts.append(f"matching “{f.q}”")
     if f.tag:
         parts.append(f"tagged #{f.tag.lstrip('#').lower()}")
-    if f.theme:
+    if f.theme and not undefined:
         parts.append(f"about {label('theme')}")
     if f.creator:
         parts.append(f"by {label('creator')}")

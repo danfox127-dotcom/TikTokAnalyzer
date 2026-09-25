@@ -251,3 +251,70 @@ class TestThePage:
         item_id = db.search(c, "salad")[0]["id"]
         c.close()
         assert 'href="/search?tag=cooking"' in client.get(f"/item/{item_id}").text
+
+
+class TestUndefined:
+    """The saves no theme recognises yet, offered as "Undefined"."""
+
+    @pytest.fixture
+    def with_unthemed(self, conn, library):
+        library["mystery_tt"] = add(conn, 6, caption="you have to see this one")
+        library["mystery_yt"] = add(conn, 7, platform="youtube", fmt="video",
+                                    caption="tonight, again", creator=("City Desk", "@citydesk"))
+        return library
+
+    def test_it_holds_the_saves_with_no_theme(self, conn, with_unthemed):
+        assert ids(conn, with_unthemed, theme="Undefined") == {"mystery_tt", "mystery_yt"}
+        assert ids(conn, with_unthemed, theme="undefined", platform="youtube") == {"mystery_yt"}
+
+    def test_it_heads_the_themes_with_a_count_that_follows_the_other_filters(self, conn, with_unthemed):
+        themes = {f.name: f for f in explore.facets(conn, Filters())}["theme"].options
+        assert (themes[0].value, themes[0].count, themes[0].kind) == ("Undefined", 2, "undefined")
+        assert [o.value for o in themes[1:]] == ["Food & cooking", "News & politics", "Cities & urbanism"]
+        mine = {f.name: f for f in explore.facets(conn, Filters(platform="tiktok"))}["theme"]
+        assert mine.options[0].count == 1
+
+    def test_choosing_it_and_choosing_it_again(self, conn, with_unthemed):
+        chosen = {f.name: f for f in explore.facets(conn, Filters(theme="Undefined"))}["theme"]
+        assert chosen.active.value == "Undefined"
+        assert chosen.active.href == "/search"
+        # The other themes stay on offer, so you can switch straight to one.
+        assert "Food & cooking" in {o.value for o in chosen.options}
+
+    def test_it_is_not_offered_when_everything_has_a_theme(self, conn, library):
+        themes = {f.name: f for f in explore.facets(conn, Filters())}["theme"].options
+        assert "Undefined" not in {o.value for o in themes}
+
+    @pytest.mark.parametrize("filters, words", [
+        ({"theme": "Undefined"}, "Undefined saves"),
+        ({"theme": "Undefined", "platform": "tiktok"}, "Undefined TikTok saves"),
+        ({"theme": "Undefined", "creator": "@citydesk", "year": "2024"},
+         "Undefined saves by @citydesk from 2024"),
+    ])
+    def test_the_heading(self, filters, words):
+        assert explore.describe(Filters(**filters), []) == words
+
+
+class TestUndefinedOnThePages:
+    @pytest.fixture
+    def client(self, tmp_path, monkeypatch):
+        path = tmp_path / "favorites.db"
+        monkeypatch.setenv("FAVORITES_DB", str(path))
+        monkeypatch.delenv("FAVORITES_TOKEN", raising=False)
+        c = db.connect(str(path))
+        add(c, 1)                                         # themed: Food & cooking
+        add(c, 2, caption="you have to see this one")     # no theme
+        c.close()
+        with TestClient(app) as client:
+            yield client
+
+    def test_the_filter_page_offers_it(self, client):
+        page = client.get("/search").text
+        assert '<li class="undefined"><a href="/search?theme=Undefined">' in page
+        page = client.get("/search", params={"theme": "Undefined"}).text
+        assert "Undefined saves" in page and "you have to see this one" in page
+        assert "Tomato salad" not in page
+
+    def test_the_front_page_ends_the_themes_with_it(self, client):
+        page = client.get("/").text
+        assert 'href="/search?theme=Undefined" class="undefined">Undefined<span>1</span>' in page
