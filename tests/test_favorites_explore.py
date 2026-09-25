@@ -176,6 +176,14 @@ class TestTheOptions:
         tags = {o.value for o in self.by_name(conn, Filters())["tag"].options}
         assert tags == {"cooking", "localgov"}  # dumplings appears once
 
+    def test_reach_hashtags_are_not_offered(self, conn, library):
+        # Saves from before a spelling was known to be noise still carry it.
+        for n in (6, 7):
+            item_id = add(conn, n)
+            conn.execute("UPDATE items SET tags = '[\"fypシ\", \"cooking\"]' WHERE id = ?", (item_id,))
+        tags = {o.value for o in self.by_name(conn, Filters())["tag"].options}
+        assert tags == {"cooking", "localgov"}
+
     def test_unless_it_is_the_one_chosen(self, conn, library):
         tags = {o.value for o in self.by_name(conn, Filters(tag="dumplings"))["tag"].options}
         assert "dumplings" in tags

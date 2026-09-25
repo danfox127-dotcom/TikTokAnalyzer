@@ -33,10 +33,12 @@ import sqlite3
 from collections import Counter
 from typing import Iterable, Optional
 
+from .tagging import is_noise
+
 THEMES: dict[str, str] = {
     "Dogs": """dog dogs puppy puppies pup pups pupper puppers doggo doggos doggy canine
         goldenretriever labrador corgi pitbull husky dachshund poodle beagle
-        greyhound dogsoftiktok dogsofinstagram dogmom doglover #woof""",
+        greyhound huskies dogsoftiktok dogsofinstagram dogmom doglover #woof""",
     "Cats": """cat cats kitten kittens kitty catsoftiktok catsofinstagram catmom catlover
         feline meow""",
     "Animals & wildlife": """animal animals wildlife bird birds birding horse horses
@@ -49,14 +51,14 @@ THEMES: dict[str, str] = {
         salad chef kitchen meal meals mealprep restaurant eats snack snacks pizza taco
         tacos bbq barbecue grill grilling vegan vegetarian cuisine spicy delicious yummy
         tasty sushi cheese chocolate homemade airfryer sandwich burger steak tomato
-        tomatoes garlic foodgif foodgifs""",
+        tomatoes potato potatoes garlic foodgif foodgifs""",
     "Drinks": """coffee espresso latte cocktail cocktails mixology bartender wine beer
         brewery whiskey tequila matcha boba smoothie #tea #drinks""",
     "Comedy & humour": """funny comedy comedian humor humour joke jokes lol lmao meme
         memes skit skits standup prank pranks satire parody sketch""",
     "Music": """music song songs singer singing guitar piano drums drummer band concert
         rap rapper hiphop jazz dj producer lyrics musician bass vinyl album livemusic
-        #cover #beat""",
+        radiohead #cover #beat""",
     "Dance": """dance dancing dancer choreography ballet tapdance salsa""",
     "Film & TV": """movie movies film films cinema netflix trailer actor actress
         filmmaking director anime #tv #series #show""",
@@ -64,7 +66,10 @@ THEMES: dict[str, str] = {
         writer poetry poem poems bookstagram #library""",
     "Art & design": """artist drawing painting illustration typography graphicdesign
         sculpture pottery ceramics calligraphy watercolor sketchbook printmaking
-        #art #design #designer #craft #crafts""",
+        illustrator digitalart procreate #art #design #designer #craft #crafts""",
+    "Photography & editing": """photography photographer photographers photoshop
+        lightroom photoediting retouching videoediting capcut #photo #photos
+        #camera #cameras #editing #adobe فوتوشوب""",
     "Fashion & beauty": """fashion outfit outfits ootd makeup beauty skincare hairstyle
         #nails thrift thrifting vintage streetwear sneakers #style #hair""",
     "Home & DIY": """diy decor interiordesign interior renovation furniture cleaning
@@ -73,7 +78,7 @@ THEMES: dict[str, str] = {
     "Gardening & plants": """garden gardening gardener plant plants houseplant houseplants
         flower flowers seeds vegetables compost farm farming homestead #bean #beans""",
     "Travel": """travel traveling travelling trip vacation hotel beach roadtrip tourism
-        wanderlust backpacking airport flight #explore""",
+        wanderlust backpacking airport flight""",
     "Sport & fitness": """workout gym fitness #running runner yoga exercise training
         sport sports football soccer basketball baseball nba nfl tennis golf climbing
         bouldering cycling skateboarding skateboard surfing swimming frisbee #ultimate
@@ -82,23 +87,27 @@ THEMES: dict[str, str] = {
         ocean sunset sunrise nationalpark waterfall lake river wilderness""",
     "Science & tech": """science tech technology ai coding programming engineering physics
         chemistry biology astronomy nasa robot robotics gadget gadgets computer software
-        #space""",
+        chatgpt openai onlinetools #website #websites #apps #space""",
     "How-to & learning": """tutorial howto tips lifehack lifehacks hack hacks learn
-        learning education explained facts didyouknow""",
+        learning education explained facts didyouknow
+        #tricks علمني""",
     "History": """history historical ancient archaeology museum medieval""",
     "News & politics": """news politics political election government policy localgov
         council vote voting congress senate president protest democracy journalism
         homeless""",
     "Cities & urbanism": """urbanism urbanplanning transit architecture housing zoning
         bike bikes cycling #trains #train subway streetscape walkable #city #cities""",
+    "New York": """nyc newyork newyorkcity brooklyn bronx harlem statenisland #manhattan
+        nyclife nycfood nyceats nyctiktok nycsubway nycapartment""",
     "Money & work": """money finance investing career careers job jobs business
         entrepreneur productivity economy #budget #budgeting #work""",
     "Marketing & media": """marketing socialmedia contentcreator contentcreation branding
-        seo advertising copywriting communications newsletter #content #media #pr""",
+        seo advertising copywriting communications newsletter
+        radio podcast podcasts broadcasting #content #media #pr""",
     "Parenting & family": """parenting #mom #dad #baby #babies kid kids toddler momlife
         dadlife #family""",
     "Wellness": """mentalhealth therapy anxiety wellness selfcare adhd mindfulness
-        meditation #sleep #health""",
+        meditation somatic #healing #sleep #health""",
     "Gaming": """gaming gamer videogame videogames nintendo playstation xbox minecraft
         fortnite pokemon zelda""",
     "Cars & vehicles": """car cars truck trucks motorcycle motorcycles racing f1 formula1
@@ -135,13 +144,34 @@ TAG_WORDS = {**{w: set(t) for w, t in ANYWHERE.items()}}
 for _w, _t in TAGS_ONLY.items():
     TAG_WORDS.setdefault(_w, set()).update(_t)
 
-# Words long enough to recognise inside a compound hashtag. Shorter ones find
-# themselves everywhere: "art" in #party, "car" in #scary.
-_COMPOUND = sorted((w for w in TAG_WORDS if len(w) >= 4), key=len, reverse=True)
 
-#: Changes whenever the vocabulary does, so a library re-themes itself on the
-#: next start after an edit here, with nothing to run.
-VERSION = hashlib.sha1(json.dumps(THEMES, sort_keys=True).encode()).hexdigest()[:12]
+
+def _compound_words() -> dict[str, set[str]]:
+    """Words long enough to recognise inside a compound hashtag.
+
+    Shorter ones find themselves everywhere: "art" in #party, "car" in #scary.
+    A plural is kept as written as well as folded, because folding changes its
+    start: #huskiesofinstagram begins with "huskies", not "husky". Plurals of
+    four letters stay out ("eats" would find food in #treats and #beats).
+    """
+    table = {w: set(t) for w, t in TAG_WORDS.items() if len(w) >= 4}
+    for theme, words in THEMES.items():
+        for raw in words.split():
+            raw = raw.lstrip("#")
+            if len(raw) >= 5 and raw != _norm(raw):
+                table.setdefault(raw, set()).add(theme)
+    return table
+
+
+_COMPOUND = _compound_words()
+
+#: Bumped when the way words are matched changes, as VERSION's hash cannot see it.
+_MATCHING = 2
+
+#: Changes whenever the vocabulary or the matching does, so a library
+#: re-themes itself on the next start after an edit here, with nothing to run.
+VERSION = hashlib.sha1(
+    json.dumps([_MATCHING, THEMES], sort_keys=True).encode()).hexdigest()[:12]
 
 
 def _from_tag(tag: str) -> set[str]:
@@ -152,9 +182,9 @@ def _from_tag(tag: str) -> set[str]:
     if exact:
         return set(exact)
     found: set[str] = set()
-    for word in _COMPOUND:
+    for word, signalled in _COMPOUND.items():
         if tag.startswith(word) or tag.endswith(word) or _norm(tag).endswith(word):
-            found |= TAG_WORDS[word]
+            found |= signalled
     return found
 
 
@@ -195,8 +225,8 @@ def for_row(row, categories: Iterable[str] = ()) -> list[str]:
 # --- the coverage report -----------------------------------------------------
 
 def report(conn: sqlite3.Connection, top: int = 30) -> dict:
-    rows = conn.execute(
-        "SELECT themes, tags FROM items WHERE resolve_status = 'ok'").fetchall()
+    rows = conn.execute("SELECT themes, tags, creator_handle FROM items"
+                        " WHERE resolve_status = 'ok'").fetchall()
     per_theme: Counter[str] = Counter()
     unthemed_tags: Counter[str] = Counter()
     themed = 0
@@ -204,7 +234,12 @@ def report(conn: sqlite3.Connection, top: int = 30) -> dict:
         mine = json.loads(row["themes"] or "[]")
         per_theme.update(mine)
         themed += bool(mine)
+        # A creator tagging their own name (#redavisuals on redavisuals' posts)
+        # says who, not what; the Creator filter already covers who.
+        own = (row["creator_handle"] or "").lower().lstrip("@")
         for tag in json.loads(row["tags"] or "[]"):
+            if tag.lower() == own or is_noise(tag):
+                continue
             if not _from_tag(tag):
                 unthemed_tags[tag] += 1
     return {

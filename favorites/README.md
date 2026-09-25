@@ -240,6 +240,9 @@ python -m favorites.themes
 That prints how many saves have a theme, how many each theme holds, and the
 hashtags on your saves that no theme recognises yet. Add the ones that matter
 to `THEMES`; the library re-themes itself the next time anything opens it.
+The list leaves out hashtags about reach rather than subject (`#fyp` in all its
+spellings, `#fypシ` included) and creators tagging their own name, which the
+Creator filter already covers.
 
 ### Video length
 

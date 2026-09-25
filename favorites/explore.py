@@ -21,7 +21,7 @@ from dataclasses import dataclass, fields, replace
 from typing import Optional
 from urllib.parse import urlencode
 
-from . import db
+from . import db, tagging
 from .resolve import platform_label
 
 PAGE_SIZE = 48
@@ -344,10 +344,11 @@ def facets(conn: sqlite3.Connection, f: Filters) -> list[Facet]:
             href=f.href(noted=None if f.noted else "1"), active=bool(f.noted))]))
 
     # A hashtag seen on a single save is noise, not an option; showing
-    # hundreds of them buries the ones that recur.
+    # hundreds of them buries the ones that recur. So is #fyp in any spelling.
     for facet in out:
         if facet and facet.name == "tag":
-            facet.options = [o for o in facet.options if o.count >= 2 or o.active]
+            facet.options = [o for o in facet.options
+                             if o.active or (o.count >= 2 and not tagging.is_noise(o.value))]
     return [x for x in out if x and x.options]
 
 
