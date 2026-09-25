@@ -16,6 +16,8 @@ class TestHashtags:
         # #fypシ was the second most common unthemed hashtag in a real library.
         assert tagging.hashtags("#fypシ #fypage #foryoupageofficial #zoning") == ["zoning"]
         assert tagging.is_noise("#FYPシ") and not tagging.is_noise("zoning")
+        # TikTok's label for videos made from its search suggestions.
+        assert tagging.is_noise("creatorsearchinsights")
 
     def test_duplicates_collapse(self):
         assert tagging.hashtags("#housing", "#Housing") == ["housing"]

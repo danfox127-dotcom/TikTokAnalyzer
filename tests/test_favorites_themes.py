@@ -86,11 +86,41 @@ class TestMatching:
     def test_a_real_librarys_missing_hashtags(self, tag, theme):
         assert theme in about([tag])
 
+    @pytest.mark.parametrize("tag, theme", [
+        # The second round from the same library.
+        ("artificialintelligence", "Science & tech"), ("google", "Science & tech"),
+        ("powerpoint", "Money & work"), ("exceltips", "Money & work"),
+        ("jobsearch", "Money & work"),
+        ("todayilearned", "How-to & learning"),
+        ("arttips", "Art & design"), ("dailyart", "Art & design"), ("artreels", "Art & design"),
+        ("diseño", "Art & design"),  # Spanish: "design"
+        ("portrait", "Art & design"), ("portrait", "Photography & editing"),
+        ("spotifyplaylist", "Music"), ("charlixcx", "Music"), ("taylorswift", "Music"),
+        ("rollingstone", "Music"),
+        ("hbo", "Film & TV"), ("bluey", "Film & TV"), ("bluey", "Parenting & family"),
+        ("parents", "Parenting & family"),
+        ("vagusnerve", "Wellness"), ("thesafemethod", "Wellness"),
+        ("nostalgia", "Nostalgia & retro"), ("throwback", "Nostalgia & retro"),
+        ("tbt", "Nostalgia & retro"), ("genx", "Nostalgia & retro"),
+        ("grunge", "Nostalgia & retro"),
+    ])
+    def test_a_real_librarys_second_round(self, tag, theme):
+        assert theme in about([tag])
+
+    def test_a_new_york_hashtag_keeps_its_subject(self):
+        # Listing #nycsubway under New York once cost it Cities & urbanism.
+        assert set(about(["nycsubway"])) == {"New York", "Cities & urbanism"}
+        assert set(about(["nycfood"])) == {"New York", "Food & cooking"}
+        assert set(about(["nyceats"])) == {"New York", "Food & cooking"}
+        assert set(about(["nycapartment"])) == {"New York", "Home & DIY"}
+
     def test_new_words_do_not_reach_too_far(self):
         assert about(["queensland"]) == []           # not Queens, New York
         assert about(["radiohead"]) == ["Music"]      # not radio
         assert about(text="caught on camera, what a photo") == []  # hashtags only
         assert "New York" not in about(text="a manhattan cocktail")
+        assert about(text="just google it") == []         # hashtags only
+        assert about(text="you excel at this") == []
 
     def test_nothing_recognisable_is_no_theme(self):
         assert about(["xyzzy"], text="went sideways") == []
@@ -191,6 +221,23 @@ class TestReport:
                 "tags": ["fypシ", "redavisuals", "zorbing"], "resolve_status": "ok"})
         assert themes.report(conn)["unrecognised_hashtags"] == [("zorbing", 2)]
 
+    def test_where_the_unthemed_saves_are(self, conn):
+        # Two share a caption word the vocabulary lacks; one has no hashtags.
+        for n, caption, tags in [(1, "The quiltmaking bee at work", ["zorbing"]),
+                                 (2, "quiltmaking at night after work", []),
+                                 (3, "more quiltmaking, finally home from work", []),
+                                 (4, "a puppy", [])]:
+            db.upsert_item(conn, {
+                "canonical_url": f"https://example.com/{n}", "shared_url": "x",
+                "platform": "instagram", "creator_name": "Quilt Guild",
+                "title": f"1,204 likes - Quilt Guild on March 3, 2024: {caption} #zorbing",
+                "tags": tags, "resolve_status": "ok"})
+        r = themes.report(conn)
+        assert r["unthemed_without_hashtags"] == 2
+        # Not the hashtag, the creator's name, the preview's wording, "work"
+        # (known, and hashtag-only on purpose) or "puppy" (its save is themed).
+        assert r["unthemed_caption_words"] == [("quiltmaking", 3)]
+
     def test_the_command_prints_it(self, tmp_path, capsys):
         path = tmp_path / "lib.db"
         c = db.connect(path)
@@ -202,6 +249,7 @@ class TestReport:
         out = capsys.readouterr().out
         assert "1 of 3 identified saves have at least one theme (33%)" in out
         assert "#zorbing" in out
+        assert "Of the 2 saves with no theme, 0 have no hashtags at all" in out
 
 
 class TestPages:
