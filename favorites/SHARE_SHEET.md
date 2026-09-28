@@ -20,7 +20,13 @@ machine the library runs on.
 If you are only ever saving from the same laptop the app runs on,
 `http://localhost:8000` is fine — skip to the bookmarklet at the bottom.
 
-To save from your phone, the app needs an address the phone can reach:
+**On a Mac, the easy way:** double-click `favorites/start.command`. Switch on
+`FAVORITES_TOKEN` in `~/.favorites.env` (the file it creates on first run,
+with a password already filled in), start it again, and it prints the
+addresses your phone can use — the wi-fi one and, if Tailscale is running,
+the one that works from anywhere. That password is `YOUR-TOKEN` below.
+
+To set it up by hand instead, the app needs an address the phone can reach:
 
 - **Same wi-fi only** — run it with `uvicorn favorites.app:app --host 0.0.0.0
   --port 8000` and use your laptop's local address, e.g.
