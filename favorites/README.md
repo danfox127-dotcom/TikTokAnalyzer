@@ -151,15 +151,33 @@ the difference between a link and a reason.
 ## The front page
 
 A search box is a fine way to find something you already remember, and useless
-for being reminded of something you forgot. So the front page is arranged like
-a small museum:
+for being reminded of something you forgot. So the front page leads with search
+and then behaves like a small museum:
 
+- **Search first.** One question — *What are you looking for?* — and one big
+  field. As you type it suggests saves (with their pictures), rooms, hashtags,
+  creators and dates (`/suggest.json`). Under it, a row of ways in: *On this
+  day*, *Surprise me* (`/surprise`, one save at random) and your biggest rooms.
+- **On this day.** Things you saved on today's date in earlier years, stacked
+  by year. A quiet date widens to the week around it; a date with nothing even
+  then shows nothing. The same hook is a filter on the search page
+  (`?day=09-27`, or `&week=1` for the week around it), a badge on any card
+  saved on this date, and a thread on every item's page.
+- **The catalogue.** Rooms, creators and platforms, one tap each into search.
 - **A digest of the last month.** Not just a count — a comparison. *"Nine saves
   this past month, up from four. Spread across TikTok, YouTube and Instagram.
   Recurring threads: housing, localgov. One creator is new to the library."*
-- **Rotating shelves.** Recently saved, then some combination of a theme, a
-  month, a creator you keep returning to, and *From the vault* — a random
-  handful of things saved more than four months ago.
+- **Rotating shelves**, as swipeable carousels with a description under every
+  picture. Recently saved, then some combination of a theme, a month, a creator
+  you keep returning to, *This time last year* (six weeks either side of today,
+  a year ago) and *From the vault* — a random handful of things saved more than
+  four months ago.
+- **Rooms.** Themes as doorways, each framed by three of its own pictures; every
+  room is on `/rooms`.
+- **On your shelf.** The creators you keep saving, like books on a shelf.
+
+Every item page ends with **Connected by**: its rooms, its creator, the same date
+in other years, its season, and hashtags it shares — each a way on to more saves.
 
 The arrangement is seeded by the date, so it holds still through the day and
 looks different tomorrow.
@@ -187,7 +205,7 @@ one the library inferred.
 ## Search and filters
 
 `/search` is the whole library, narrowed as far as you like. With nothing chosen
-it is everything, newest first. **Browse** in the top bar goes there from every
+it is everything, newest first. **Search** in the top bar goes there from every
 page, and the front page has a *Browse the collection* strip with your biggest
 themes, creators and platforms, each one click into the filtered view.
 
@@ -469,7 +487,9 @@ library.
 | `transcript.py` | YouTube captions, where available |
 | `thumbnails.py` | Keeps each picture, because platform links expire |
 | `db.py` | SQLite storage and full-text search |
-| `museum.py` | The digest and the rotating shelves |
+| `museum.py` | The digest, the rotating shelves and the hooks (On this day, rooms, threads) |
+| `explore.py` | Search and filters, including On this day |
+| `templates/`, `static/` | The pages, in the *Reading Room* design system: `style.css` holds its tokens and components, `museum.js` the little behaviour a plain page cannot do (carousel dots, the phone filter sheet, suggestions, the colour mode). Every page works without it |
 | `app.py` | The web app and the `/save` endpoint |
 
 Tests are in `tests/test_favorites_*.py` and run with the rest of the repo's

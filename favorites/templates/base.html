@@ -4,41 +4,61 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>{% block title %}Favorites{% endblock %}</title>
+{#- Before anything paints: a colour mode you chose on this device, else the
+    device's own setting (the stylesheet handles that case with no script). -#}
+<script>try{var m=localStorage.getItem('rr-mode');if(m==='light'||m==='dark')document.documentElement.setAttribute('data-theme',m)}catch(e){}</script>
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="icon" href="/static/icon.svg" type="image/svg+xml">
-<meta name="theme-color" content="#0f1115">
-<link rel="stylesheet" href="/static/style.css">
+<meta name="theme-color" content="#f4eee3" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#15120e" media="(prefers-color-scheme: dark)">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&display=swap">
+<link rel="stylesheet" href="/static/style.css?v=2">
+<script src="/static/museum.js?v=2" defer></script>
 </head>
-<body>
-<header class="masthead">
-  <a class="wordmark" href="/">
-    <span class="mark" aria-hidden="true"></span>
-    <span>Favorites</span>
-  </a>
-  {#- The search page has its own box, which keeps your filters; this one
-      would silently start over. -#}
-  {% if not own_search %}
-  <form class="search" action="/search" method="get" role="search">
-    <input type="search" name="q" value="{{ q or '' }}" placeholder="Search everything you've kept"
-           aria-label="Search your favorites" autocomplete="off" spellcheck="false">
-  </form>
-  {% else %}<span class="search" aria-hidden="true"></span>{% endif %}
-  {#- A labelled way in. A bare number in a pill was the only door to the
-      filters, and on first real use nobody knew it was one. -#}
-  <a class="count" href="/search" title="Search and filter everything you've kept">
-    <span class="count-label">Browse</span> <span class="count-n">{{ total }}</span></a>
+{% from "_icons.html" import icon %}
+{% set nav = nav|default('') %}
+<body class="rr">
+<div class="rr-app rr-page">
+<header class="rr-masthead">
+  <a class="rr-wordmark" href="/"><span class="dot" aria-hidden="true"></span>Favorites<small>Museum</small></a>
+  <span class="spacer"></span>
+  <nav aria-label="Main">
+    <a href="/"{% if nav == 'home' %} class="is-on" aria-current="page"{% endif %}>Home</a>
+    <a href="/search"{% if nav == 'search' %} class="is-on" aria-current="page"{% endif %}>Search</a>
+    <a href="/rooms"{% if nav == 'rooms' %} class="is-on" aria-current="page"{% endif %}>Rooms</a>
+    <a href="/placards"{% if nav == 'placards' %} class="is-on" aria-current="page"{% endif %}>Placards</a>
+  </nav>
+  <div class="rr-mode" role="group" aria-label="Colour mode">
+    <button type="button" data-mode="light" aria-pressed="false" title="Reading room">{{ icon('sun') }}<span>Day</span></button>
+    <button type="button" data-mode="auto" aria-pressed="true" title="Follow this device">{{ icon('device') }}<span>Auto</span></button>
+    <button type="button" data-mode="dark" aria-pressed="false" title="Evening gallery">{{ icon('moon') }}<span>Evening</span></button>
+  </div>
+  {#- A way to the search page, not a second search box: the search page has
+      its own, which keeps your filters, and this one would silently start over. -#}
+  {% if nav != 'search' %}
+  <a class="rr-btn rr-btn--icon rr-btn--quiet masthead-search" href="/search" aria-label="Search and filter everything you've kept">{{ icon('search') }}</a>
+  {% endif %}
 </header>
 
 <main>
 {% block content %}{% endblock %}
 </main>
 
-<footer class="footer">
-  <span>Your library lives on this machine.</span>
-  <a href="/search">Search &amp; filter</a>
-  <a href="/placards">Write placards</a>
-  <a href="/unlabelled">Unlabelled</a>
+<footer class="rr-footer">
+  <span>Your library lives on this machine{% if total is defined %} · {{ total }} {{ 'save' if total == 1 else 'saves' }}{% endif %}.</span>
+  <a href="/unlabelled">Missing a placard</a>
+  <a href="/surprise">Surprise me</a>
 </footer>
+
+<nav class="rr-tabbar" aria-label="Main">
+  <a href="/"{% if nav == 'home' %} class="is-on" aria-current="page"{% endif %}>{{ icon('home') }}Home</a>
+  <a href="/search"{% if nav == 'search' %} class="is-on" aria-current="page"{% endif %}>{{ icon('search') }}Search</a>
+  <a href="/rooms"{% if nav == 'rooms' %} class="is-on" aria-current="page"{% endif %}>{{ icon('rooms') }}Rooms</a>
+  <a href="/placards"{% if nav == 'placards' %} class="is-on" aria-current="page"{% endif %}>{{ icon('placard') }}Placards</a>
+</nav>
+</div>
 <script>
   if ('serviceWorker' in navigator) { navigator.serviceWorker.register('/sw.js').catch(() => {}); }
 </script>

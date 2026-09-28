@@ -3,18 +3,18 @@
 {% block title %}{{ heading }} · Favorites{% endblock %}
 {% block content %}
 <section class="page-head">
-  <h1>{{ heading }}</h1>
-  {% if subheading %}<p>{{ subheading }}</p>{% endif %}
+  <h1 class="rr-h-l">{{ heading }}</h1>
+  {% if subheading %}<p class="rr-muted">{{ subheading }}</p>{% endif %}
 </section>
 
 {% if items %}
-  <div class="grid">
+  <div class="rr-grid page-grid">
     {% for item in items %}{{ card(item) }}{% endfor %}
   </div>
   {% if has_next is defined and has_next %}
-    <nav class="pager"><a href="/all?page={{ page + 1 }}">Older →</a></nav>
+    <nav class="pager"><a class="rr-btn" href="/all?page={{ page + 1 }}">Older →</a></nav>
   {% endif %}
 {% else %}
-  <p class="nothing">Nothing matches.</p>
+  <div class="rr-empty"><p class="nothing">Nothing matches.</p></div>
 {% endif %}
 {% endblock %}

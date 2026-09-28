@@ -163,7 +163,7 @@ class TestPages:
         # made Jinja resolve dict.items() instead, producing an empty shelf
         # under a correct-looking heading.
         assert "City Desk" in body
-        assert 'class="card' in body
+        assert 'class="rr-slide"' in body
 
     def test_search_finds_a_saved_item(self, client, tiktok_ok):
         client.post("/save", json={"url": "https://www.tiktok.com/@citydesk/video/7123"})
@@ -314,3 +314,31 @@ class TestPlacardRun:
 
     def test_a_missing_item_is_a_404(self, client):
         assert client.post("/placards/99999", data={"note": "x"}).status_code == 404
+
+
+class TestHooks:
+    def test_rooms_surprise_and_suggestions(self, client, tiktok_ok):
+        client.post("/save", json={"url": "https://www.tiktok.com/@citydesk/video/7123"})
+        client.post("/save", json={"url": "https://www.tiktok.com/@citydesk/video/7124"})
+        assert client.get("/rooms").status_code == 200
+        resp = client.get("/surprise", follow_redirects=False)
+        assert resp.status_code == 303 and resp.headers["location"].startswith("/item/")
+        data = client.get("/suggest.json", params={"q": "zoning"}).json()
+        assert data["total"] == 2
+        assert data["groups"][0]["title"] == "Saves"
+        assert data["groups"][0]["rows"][0]["href"].startswith("/item/")
+        assert client.get("/suggest.json", params={"q": "z"}).json()["groups"] == []
+
+    def test_an_empty_library_has_nothing_to_surprise_with(self, client):
+        assert client.get("/surprise", follow_redirects=False).headers["location"] == "/"
+
+    def test_the_front_page_remembers_this_day(self, client, library):
+        from datetime import datetime, timezone
+        today = datetime.now(timezone.utc)
+        db.upsert_item(library, {
+            "canonical_url": "https://example.com/old", "shared_url": "x", "platform": "tiktok",
+            "title": "A year-old keepsake", "resolve_status": "ok",
+            "saved_at": today.replace(year=today.year - 4).isoformat(),
+        })
+        body = client.get("/").text
+        assert "On this day" in body and "4 years ago" in body

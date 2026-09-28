@@ -1,87 +1,120 @@
 {% extends "base.html" %}
-{% from "_card.html" import card %}
+{% from "_card.html" import card, threads %}
+{% from "_icons.html" import icon %}
+{% set nav = 'search' %}
 {% block title %}{{ heading }} · Favorites{% endblock %}
 
-{% macro facet_list(facets, filters) %}
+{#- The filter column on wide screens. Every option is a plain link, so Back
+    undoes a filter and any view can be bookmarked. -#}
+{% macro facet_list(facets, hash='') %}
   {% for facet in facets %}
-    <section class="facet">
-      <h3>{{ facet.title }}</h3>
+    <section class="rr-facet" id="f-{{ facet.name }}{{ '-m' if hash }}">
+      <h3 class="rr-label{% if facet.name == 'theme' %} is-green{% endif %}">{{ facet.title }}</h3>
       {% set shown = 8 if facet.options | length > 10 else facet.options | length %}
-      <ul>
-        {% for o in facet.options[:shown] %}{{ option(o) }}{% endfor %}
-      </ul>
+      <ul>{% for o in facet.options[:shown] %}{{ option(o, hash) }}{% endfor %}</ul>
       {% if facet.options | length > shown %}
         <details class="facet-more">
-          <summary>{{ facet.options | length - shown }} more</summary>
-          <ul>{% for o in facet.options[shown:] %}{{ option(o) }}{% endfor %}</ul>
+          <summary>+ {{ facet.options | length - shown }} more</summary>
+          <ul>{% for o in facet.options[shown:] %}{{ option(o, hash) }}{% endfor %}</ul>
         </details>
       {% endif %}
     </section>
   {% endfor %}
 {% endmacro %}
 
-{% macro option(o) %}
-  <li{% if o.kind %} class="{{ o.kind }}"{% endif %}><a href="{{ o.href }}"{% if o.active %} class="on" aria-current="true"{% endif %}>
-    <span class="opt-label">{{ o.label }}</span><span class="opt-n">{{ o.count }}</span></a></li>
+{% macro option(o, hash='') %}
+  <li{% if o.kind %} class="{{ o.kind }}"{% endif %}><a href="{{ o.href }}{{ hash }}"{% if o.active %} class="is-on" aria-current="true"{% endif %}>
+    <span class="opt-label">{% if o.kind == 'hook' %}{{ icon('calendar') }} {% endif %}{{ o.label }}</span><span class="n">{{ o.count }}</span></a></li>
 {% endmacro %}
 
 {% block content %}
-<section class="page-head explore-head">
-  <form class="refine" action="/search" method="get" role="search">
-    <input type="search" name="q" value="{{ filters.q }}" autocomplete="off" spellcheck="false"
-           placeholder="{% if filters.narrowing() %}Search within these{% else %}Search everything you've kept{% endif %}"
-           aria-label="Search">
-    {% for name, value in filters.narrowing().items() %}
-      <input type="hidden" name="{{ name }}" value="{{ value }}">
-    {% endfor %}
-    {% if filters.sort %}<input type="hidden" name="sort" value="{{ filters.sort }}">{% endif %}
-    <button type="submit">Search</button>
+<section class="explore-head">
+  <form class="rr-search refine" action="/search" method="get" role="search" data-suggest>
+    <label class="rr-search-field">{{ icon('search') }}
+      <input type="search" name="q" value="{{ filters.q }}" autocomplete="off" spellcheck="false"
+             placeholder="{% if filters.narrowing() %}Search within these{% else %}A dish, a creator, a feeling, a date…{% endif %}"
+             aria-label="Search">
+      {% for name, value in filters.narrowing().items() %}
+        <input type="hidden" name="{{ name }}" value="{{ value }}">
+      {% endfor %}
+      {% if filters.sort %}<input type="hidden" name="sort" value="{{ filters.sort }}">{% endif %}
+      <button class="rr-btn rr-btn--primary" type="submit">Search</button>
+    </label>
   </form>
-  <h1>{{ heading }}</h1>
-  <p>{{ subheading }}</p>
+
+  <h1 class="rr-h-l">{{ heading }}</h1>
+  <p class="rr-muted count-line">{{ subheading }}</p>
 
   {% if chips or filters.q %}
-    <ul class="chips">
-      {% if filters.q %}<li><a href="{{ filters.href(q=None, sort=None) }}" title="Clear the search words">“{{ filters.q }}” <span aria-hidden="true">×</span></a></li>{% endif %}
+    <ul class="rr-pills is-scroll chips" aria-label="Active filters">
+      {% if filters.q %}<li><a class="rr-pill is-on" href="{{ filters.href(q=None, sort=None) }}" title="Clear the search words">“{{ filters.q }}” <span class="x" aria-hidden="true">×</span></a></li>{% endif %}
       {% for label, href in chips %}
-        <li><a href="{{ href }}" title="Remove this filter">{{ label }} <span aria-hidden="true">×</span></a></li>
+        <li><a class="rr-pill is-on" href="{{ href }}" title="Remove this filter">{{ label }} <span class="x" aria-hidden="true">×</span></a></li>
       {% endfor %}
-      {% if (chips | length) + (1 if filters.q else 0) > 1 %}<li class="clear"><a href="/search">Clear all</a></li>{% endif %}
+      {% if (chips | length) + (1 if filters.q else 0) > 1 %}<li class="clear"><a class="rr-pill clear-all" href="/search">Clear all</a></li>{% endif %}
     </ul>
   {% endif %}
 </section>
 
-<details class="filters-mobile">
-  <summary>Filters{% if chips %} · {{ chips | length }} on{% endif %}</summary>
-  {{ facet_list(facets, filters) }}
-</details>
+<div class="rr-toolbar">
+  {#- On a phone the filters open as a sheet from the bottom. It is a
+      <details>, so it opens and works with no script at all; museum.js only
+      adds closing on the scrim and keeping it open while you pick. -#}
+  <details class="rr-filters-mobile" id="filters">
+    <summary class="rr-btn">{{ icon('filter') }}Filters{% if chips %} <span class="rr-badge-count">{{ chips | length }}</span>{% endif %}</summary>
+    <div class="rr-sheet-wrap">
+      <a class="rr-sheet-scrim" href="{{ filters.href(page=filters.page) }}" aria-label="Close filters"></a>
+      <div class="rr-sheet" role="dialog" aria-label="Filters">
+        <div class="grab" aria-hidden="true"></div>
+        <header><h2>Filters</h2>
+          <a class="rr-btn rr-btn--icon rr-btn--quiet" href="{{ filters.href(page=filters.page) }}" data-close aria-label="Close">{{ icon('close') }}</a></header>
+        <nav class="tabs" aria-label="Filter groups">
+          {% for facet in facets %}<a href="#f-{{ facet.name }}-m"{% if loop.first %} aria-selected="true"{% endif %}>{{ facet.title }}{% if facet.active %}<sup>1</sup>{% endif %}</a>{% endfor %}
+        </nav>
+        <div class="body">{{ facet_list(facets, '#filters') }}</div>
+        <footer>
+          {% if chips %}<a class="rr-btn rr-btn--quiet" href="{{ filters.href(**dict.fromkeys(filters.narrowing().keys())) }}">Clear</a>{% endif %}
+          <a class="rr-btn rr-btn--primary" href="{{ filters.href(page=filters.page) }}">Show {{ found }} {{ 'save' if found == 1 else 'saves' }}</a>
+        </footer>
+      </div>
+    </div>
+  </details>
+  <span class="grow"></span>
+  {% if items %}
+  <nav class="rr-seg sorts" aria-label="Order">
+    {% for key, label in sorts.items() if key != 'relevance' or filters.q %}
+      <a href="{{ filters.href(sort=key) }}"{% if filters.order == key %} aria-current="true"{% endif %}>{{ label }}</a>
+    {% endfor %}
+  </nav>
+  {% endif %}
+</div>
 
 <div class="explore">
-  <aside class="filters-side" aria-label="Filters">
-    {{ facet_list(facets, filters) }}
+  <aside class="filters-side rr-facets" aria-label="Filters">
+    {{ facet_list(facets) }}
   </aside>
 
   <div class="explore-results">
     {% if items %}
-      <nav class="sorts" aria-label="Order">
-        {% for key, label in sorts.items() if key != 'relevance' or filters.q %}
-          <a href="{{ filters.href(sort=key) }}"{% if filters.order == key %} class="on" aria-current="true"{% endif %}>{{ label }}</a>
-        {% endfor %}
-      </nav>
-      <div class="grid">
+      <div class="rr-grid">
         {% for item in items %}{{ card(item) }}{% endfor %}
       </div>
       {% if filters.page > 1 or has_next %}
-        <nav class="pager">
-          {% if filters.page > 1 %}<a href="{{ filters.href(page=filters.page - 1) }}">← Previous</a>{% endif %}
-          <span>Page {{ filters.page }}</span>
-          {% if has_next %}<a href="{{ filters.href(page=filters.page + 1) }}">Next →</a>{% endif %}
+        <nav class="pager" aria-label="Pages">
+          {% if filters.page > 1 %}<a class="rr-btn" href="{{ filters.href(page=filters.page - 1) }}">{{ icon('left') }}Previous</a>{% endif %}
+          <span class="rr-muted">Page {{ filters.page }}</span>
+          {% if has_next %}<a class="rr-btn" href="{{ filters.href(page=filters.page + 1) }}">Next{{ icon('right') }}</a>{% endif %}
         </nav>
       {% endif %}
+      {% if pull %}{{ threads(pull, 'Keep pulling the thread') }}{% endif %}
     {% else %}
-      <div class="nothing-here">
-        <p class="nothing">Nothing matches{% if chips %} all of these together{% endif %}.</p>
-        {% if chips %}<p class="hint">Remove a filter above to widen it.</p>{% endif %}
+      <div class="rr-empty nothing-here">
+        <h2 class="rr-h-m">Nothing matches{% if chips %} all of these together{% endif %}.</h2>
+        <p>{% if chips %}Remove a filter to widen it — or try something else.{% else %}Try fewer words, or wander instead.{% endif %}</p>
+        <ul class="rr-pills">
+          {% for label, href in chips %}<li><a class="rr-pill is-on" href="{{ href }}">{{ label }} <span class="x" aria-hidden="true">×</span></a></li>{% endfor %}
+          <li><a class="rr-pill is-hook" href="/surprise">{{ icon('shuffle') }}Surprise me</a></li>
+        </ul>
       </div>
     {% endif %}
   </div>

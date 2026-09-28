@@ -21,6 +21,7 @@ import sqlite3
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
+from urllib.parse import urlencode
 
 import httpx
 from fastapi import Depends, FastAPI, Form, HTTPException, Query, Request
@@ -70,6 +71,16 @@ def clock(seconds) -> str:
 
 
 templates.env.filters["clock"] = clock
+templates.env.globals["hook_badge"] = museum.hook_badge
+
+
+def initials(name) -> str:
+    """Two letters for a picture that failed to load: "Marisol Cooks" -> "MC"."""
+    words = [w for w in str(name or "").lstrip("@").replace(".", " ").replace("_", " ").split() if w]
+    return "".join(w[0] for w in words[:2]).upper() or "?"
+
+
+templates.env.filters["initials"] = initials
 
 
 def get_db():
@@ -238,6 +249,9 @@ def home(request: Request, conn: sqlite3.Connection = Depends(get_db)):
     now = datetime.now(timezone.utc)
     return templates.TemplateResponse(request, "museum.html", {
         "shelves": museum.shelves(conn, now=now),
+        "on_this_day": museum.on_this_day(conn, now=now),
+        "rooms": museum.rooms(conn, limit=4, now=now),
+        "creators": museum.creators_shelf(conn, now=now),
         "digest": museum.digest(conn, days=30, now=now),
         "browse": museum.browse(conn),
         "total": db.count(conn),
@@ -265,12 +279,92 @@ def search_page(request: Request, conn: sqlite3.Connection = Depends(get_db)):
         "filters": f,
         "facets": facets,
         "chips": explore.chips(f, facets),
+        "pull": explore.pull(f, facets, items) if items else [],
         "own_search": True,
         "sorts": explore.SORTS,
         "q": f.q,
         "total": total,
         "has_next": f.page * explore.PAGE_SIZE < found,
     })
+
+
+@app.get("/rooms", response_class=HTMLResponse)
+def rooms_page(request: Request, conn: sqlite3.Connection = Depends(get_db)):
+    """Every theme, as a room you can walk into."""
+    found = museum.rooms(conn)
+    undefined = conn.execute(
+        f"SELECT count(*) FROM items WHERE {museum.RESOLVED}"
+        " AND json_array_length(coalesce(nullif(themes, ''), '[]')) = 0").fetchone()[0]
+    return templates.TemplateResponse(request, "rooms.html", {
+        "rooms": found, "undefined": undefined, "q": "", "total": db.count(conn),
+    })
+
+
+@app.get("/surprise")
+def surprise(conn: sqlite3.Connection = Depends(get_db)):
+    """One save at random -- the museum's "show me something"."""
+    row = conn.execute(
+        f"SELECT id FROM items WHERE {museum.RESOLVED} ORDER BY random() LIMIT 1").fetchone()
+    return RedirectResponse(f"/item/{row['id']}" if row else "/", status_code=303)
+
+
+@app.get("/suggest.json")
+def suggest(q: str = Query("", max_length=200), conn: sqlite3.Connection = Depends(get_db)):
+    """What the search box offers as you type: saves, rooms and hashtags, creators, dates.
+
+    Every group is a way into the full search, so a word becomes a filter in
+    one tap. Three of each at most -- this is a doorway, not the results.
+    """
+    q = q.strip()
+    if len(q) < 2:
+        return JSONResponse({"q": q, "groups": []})
+    like = f"%{q}%"
+    groups = []
+
+    saves = explore.results(conn, explore.Filters(q=q, sort="relevance"))[0][:3]
+    if saves:
+        groups.append({"title": "Saves", "rows": [{
+            "kind": "item", "label": i.get("title") or browsable_url(i),
+            "sub": " · ".join(x for x in (i.get("creator_name") or i.get("creator_handle"),
+                                           platform_label(i["platform"])) if x),
+            "href": f"/item/{i['id']}",
+            "thumb": f"/thumb/{i['id']}" if i.get("thumbnail_url") else None,
+        } for i in saves]})
+
+    rooms = conn.execute(
+        "SELECT j.value AS v, count(*) AS n FROM items, json_each(items.themes) j"
+        " WHERE j.value LIKE ? GROUP BY v ORDER BY n DESC LIMIT 2", (like,)).fetchall()
+    tags = conn.execute(
+        "SELECT j.value AS v, count(*) AS n FROM items, json_each(items.tags) j"
+        " WHERE j.value LIKE ? GROUP BY v HAVING n >= 2 ORDER BY n DESC LIMIT 2",
+        (f"%{q.lstrip('#').lower()}%",)).fetchall()
+    rows = [{"kind": "room", "label": r["v"], "sub": f"Room · {r['n']} saves",
+             "href": "/search?" + urlencode({"theme": r["v"]})} for r in rooms]
+    rows += [{"kind": "tag", "label": "#" + r["v"], "sub": f"Hashtag · {r['n']} saves",
+              "href": "/search?" + urlencode({"tag": r["v"]})} for r in tags]
+    if rows:
+        groups.append({"title": "Rooms & hashtags", "rows": rows[:3]})
+
+    creators = conn.execute(
+        "SELECT coalesce(creator_handle, creator_name) AS k,"
+        " max(coalesce(creator_name, creator_handle)) AS label, count(*) AS n FROM items"
+        " WHERE (creator_name LIKE ? OR creator_handle LIKE ?) AND k IS NOT NULL"
+        " GROUP BY k ORDER BY n DESC LIMIT 2", (like, like)).fetchall()
+    rows = [{"kind": "creator", "label": r["label"], "initials": initials(r["label"]),
+             "sub": f"Creator · you have saved {r['n']}",
+             "href": "/search?" + urlencode({"creator": r["k"]})} for r in creators]
+    day = explore.today_key()
+    n = explore.results(conn, explore.Filters(q=q, day=day))[1]
+    if n:
+        rows.append({"kind": "date", "label": f"“{q}” saved on this day",
+                     "sub": f"{explore.day_label(day)} · {n} {'save' if n == 1 else 'saves'}",
+                     "href": "/search?" + urlencode({"q": q, "day": day})})
+    if rows:
+        groups.append({"title": "Creators & dates", "rows": rows[:3]})
+
+    total = explore.results(conn, explore.Filters(q=q))[1]
+    return JSONResponse({"q": q, "total": total, "groups": groups,
+                         "href": "/search?" + urlencode({"q": q})})
 
 
 @app.get("/all")
@@ -406,8 +500,11 @@ def item_page(
         " AND id != ? ORDER BY saved_at DESC LIMIT 6",
         (item.get("creator_handle") or item.get("creator_name"), item_id),
     ).fetchall())
+    room, room_items = museum.same_room(conn, item)
     return templates.TemplateResponse(request, "item.html", {
         "item": item, "related": related, "just_saved": bool(saved),
+        "threads": museum.threads(conn, item),
+        "room": room, "room_items": room_items,
         "collections": db.collections_for(conn, item_id),
         "all_collections": [n for n, _ in db.collection_counts(conn)],
         "q": "", "total": db.count(conn),
