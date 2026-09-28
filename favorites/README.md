@@ -32,6 +32,22 @@ backfill of history.
 
 ## Running it
 
+**On a Mac, double-click `favorites/start.command`.** It updates the code (when
+this is a clean checkout of `main`), keeps a private Python environment in
+`favorites/.venv` up to date, starts the museum and opens it in your browser.
+Leave its window open while you use the museum; close it to stop. It needs
+Python 3.10 or newer — the Mac's built-in one is too old; install one from
+python.org or with `brew install python`. (If macOS refuses to open it the
+first time, right-click it and choose **Open**.)
+
+Its settings live in `~/.favorites.env`, created with notes on the first run:
+`FAVORITES_DB` for which library file to use, and `FAVORITES_TOKEN`, the
+password that lets your phone save to it. Switching the password on is also
+what makes the museum reachable from other devices; the start window then
+prints the addresses to use.
+
+By hand, anywhere:
+
 ```bash
 pip install -r favorites/requirements.txt
 uvicorn favorites.app:app --reload --port 8000
