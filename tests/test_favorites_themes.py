@@ -297,8 +297,12 @@ class TestPages:
         with TestClient(app) as client:
             yield client
 
-    def test_the_masthead_says_browse(self, client):
-        assert '<span class="count-label">Browse</span>' in client.get("/").text
+    def test_the_masthead_names_its_doors(self, client):
+        # A labelled way in to search and filters from every page -- a bare
+        # number in a pill went unnoticed on first real use.
+        page = client.get("/").text
+        assert '<a href="/search">Search</a>' in page
+        assert '<a href="/rooms">Rooms</a>' in page
 
     def test_the_front_page_opens_the_catalogue(self, client):
         page = client.get("/").text

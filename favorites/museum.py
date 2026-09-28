@@ -366,6 +366,22 @@ def shelves(
                 href=f"/creator/{row['k']}",
             ))
 
+    # The same time a year ago: what you were paying attention to the last
+    # time the weather was like this. Six weeks either side, so it is a
+    # season rather than a date, without splitting a winter at New Year.
+    then = now - timedelta(days=365)
+    lastyear = db.rows_to_dicts(conn.execute(
+        f"SELECT * FROM items WHERE {RESOLVED} AND saved_at >= ? AND saved_at < ?"
+        f" ORDER BY saved_at DESC LIMIT 8",
+        ((then - timedelta(days=42)).isoformat(), (then + timedelta(days=42)).isoformat()),
+    ).fetchall())
+    if len(lastyear) >= 3:
+        candidates.append(_shelf(
+            "last_year", "This time last year",
+            f"Around {MONTH_NAMES[then.month - 1]} {then.year}: what you were keeping a year ago",
+            lastyear, href=f"/month/{then.strftime('%Y-%m')}",
+        ))
+
     # Things you have not looked at in a long time. This is the shelf that
     # justifies the whole exercise -- it is the only one that surfaces
     # something you were not already thinking about.
@@ -401,3 +417,225 @@ def shelves(
         out.append(shelf)
 
     return out
+
+
+# --- hooks: the corridors between shelves --------------------------------------
+#
+# Each hook answers "what else?" from a different direction -- the date, the
+# subject, the person, the season -- so that wherever you are in the library
+# there is always a next thing to open.
+
+def _ago(years: int) -> str:
+    return "1 year ago" if years == 1 else f"{years} years ago"
+
+
+def _count_word(n: int) -> str:
+    return f"{n} {_plural(n, 'save')}"
+
+
+def hook_badge(item: dict, now: Optional[datetime] = None) -> Optional[str]:
+    """ "On this day" for a save made on today's date in an earlier year."""
+    now = now or datetime.now(timezone.utc)
+    saved = item.get("saved_at") or ""
+    if saved[5:10] == now.strftime("%m-%d") and saved[:4] < now.strftime("%Y"):
+        return "On this day"
+    return None
+
+
+def on_this_day(conn: sqlite3.Connection, now: Optional[datetime] = None,
+                per_year: int = 8) -> Optional[dict]:
+    """Saves made on today's date in earlier years, newest year first.
+
+    A quiet date widens to the week around it rather than showing an empty
+    diary; a date with nothing even then shows nothing at all.
+    """
+    from .explore import _day_clause, day_label  # explore imports nothing from here
+
+    now = now or datetime.now(timezone.utc)
+    day, year = now.strftime("%m-%d"), now.strftime("%Y")
+
+    def fetch(week: bool) -> list[dict]:
+        clause, params = _day_clause(day, week)
+        return db.rows_to_dicts(conn.execute(
+            f"SELECT i.* FROM items i WHERE i.{RESOLVED} AND {clause}"
+            f" AND substr(i.saved_at, 1, 4) < ? ORDER BY i.saved_at DESC, i.id DESC",
+            (*params, year)).fetchall())
+
+    widened = False
+    found = fetch(False)
+    if len(found) < 2:
+        wider = fetch(True)
+        if len(wider) > len(found):
+            found, widened = wider, True
+    if not found:
+        return None
+    years: dict[str, list[dict]] = {}
+    for item in found:
+        years.setdefault(item["saved_at"][:4], []).append(item)
+    return {
+        "day": day,
+        "label": day_label(day),
+        "month": MONTH_NAMES[now.month - 1][:3],
+        "date": str(now.day),
+        "count": len(found),
+        "widened": widened,
+        "headline": (f"{_count_word(len(found))} from this week"
+                     if widened else _count_word(len(found)))
+                    + (f", across {len(years)} years" if len(years) > 1 else ""),
+        "years": [(y, _ago(int(year) - int(y)), entries[:per_year])
+                  for y, entries in years.items()],
+        "href": f"/search?{urlencode({'day': day, 'week': 1} if widened else {'day': day})}",
+    }
+
+
+def _covers(entries: list[dict], n: int = 3) -> list[dict]:
+    """The newest, then others by different creators, so a door looks like its room."""
+    chosen: list[dict] = []
+    seen: set = set()
+    for item in entries:
+        key = _creator_key(item)
+        if key not in seen:
+            chosen.append(item)
+            seen.add(key)
+        if len(chosen) == n:
+            return chosen
+    for item in entries:
+        if item not in chosen:
+            chosen.append(item)
+        if len(chosen) == n:
+            break
+    return chosen
+
+
+def rooms(conn: sqlite3.Connection, limit: Optional[int] = None,
+          now: Optional[datetime] = None) -> list[dict]:
+    """Every theme as a room: its count, three covers and one true thing about it."""
+    now = now or datetime.now(timezone.utc)
+    month_ago = _cutoff(30, now)
+    rows = conn.execute(
+        f"SELECT j.value AS theme, count(*) AS n FROM items, json_each(items.themes) j"
+        f" WHERE {RESOLVED} GROUP BY theme HAVING n >= 2 ORDER BY n DESC, theme"
+        + (" LIMIT ?" if limit else ""), (limit,) if limit else ()).fetchall()
+    out = []
+    for row in rows:
+        entries = db.rows_to_dicts(conn.execute(
+            f"SELECT * FROM items WHERE {RESOLVED} AND EXISTS"
+            f" (SELECT 1 FROM json_each(items.themes) WHERE value = ?)"
+            f" ORDER BY saved_at DESC, id DESC LIMIT 24", (row["theme"],)).fetchall())
+        fresh = sum(1 for i in entries if i["saved_at"] >= month_ago)
+        creators = Counter(_creator_label(i) for i in entries if _creator_key(i))
+        top = creators.most_common(1)
+        first = conn.execute(
+            f"SELECT min(saved_at) FROM items WHERE {RESOLVED} AND EXISTS"
+            f" (SELECT 1 FROM json_each(items.themes) WHERE value = ?)",
+            (row["theme"],)).fetchone()[0] or ""
+        if fresh:
+            fact = f"{fresh} new this month"
+        elif top and top[0][1] >= 3 and top[0][1] * 5 >= len(entries) * 2:
+            fact = f"Most from {top[0][0]}"
+        else:
+            fact = f"Since {first[:4]}"
+        out.append({
+            "theme": row["theme"], "count": row["n"], "fact": fact,
+            "covers": _covers(entries),
+            "href": f"/search?{urlencode({'theme': row['theme']})}",
+        })
+    return out
+
+
+def creators_shelf(conn: sqlite3.Connection, limit: int = 12,
+                   now: Optional[datetime] = None) -> list[dict]:
+    """Creators you keep coming back to, like books on a shelf: latest cover first."""
+    now = now or datetime.now(timezone.utc)
+    rows = conn.execute(
+        f"SELECT coalesce(creator_handle, creator_name) AS k, count(*) AS n,"
+        f" max(saved_at) AS latest, min(saved_at) AS first FROM items"
+        f" WHERE {RESOLVED} AND k IS NOT NULL GROUP BY k HAVING n >= 2"
+        f" ORDER BY n DESC, latest DESC LIMIT ?", (limit,)).fetchall()
+    out = []
+    for row in rows:
+        latest = _items_where(conn, "coalesce(creator_handle, creator_name) = ?", (row["k"],), limit=1)
+        if not latest:
+            continue
+        try:
+            days = (now - datetime.fromisoformat(row["latest"].replace("Z", "+00:00"))).days
+        except (TypeError, ValueError):
+            days = 9999
+        fact = ("Latest today" if days < 1 else
+                f"Latest {days} {_plural(days, 'day')} ago" if days <= 30 else
+                f"Since {row['first'][:4]}")
+        out.append({"name": _creator_label(latest[0]), "count": row["n"], "fact": fact,
+                    "item": latest[0], "href": f"/creator/{quote(row['k'])}"})
+    return out
+
+
+def threads(conn: sqlite3.Connection, item: dict, limit: int = 5) -> list[dict]:
+    """The ways out of one save: its rooms, its creator, its date, its season, its hashtags.
+
+    Each thread leads to at least one other save (two for the broad ones --
+    a room or a season with a single neighbour is a dead end dressed up).
+    """
+    from .explore import SEASONS, day_label
+
+    out: list[dict] = []
+    me = item.get("id")
+
+    def others(clause: str, params: tuple) -> tuple[int, list[dict]]:
+        n = conn.execute(f"SELECT count(*) FROM items i WHERE i.{RESOLVED} AND i.id != ? AND {clause}",
+                         (me, *params)).fetchone()[0]
+        covers = db.rows_to_dicts(conn.execute(
+            f"SELECT i.* FROM items i WHERE i.{RESOLVED} AND i.id != ? AND {clause}"
+            f" ORDER BY i.saved_at DESC LIMIT 3", (me, *params)).fetchall())
+        return int(n), covers
+
+    def add(label, sub, href, n, covers, minimum):
+        if n >= minimum:
+            out.append({"label": label, "sub": sub, "href": href, "covers": covers})
+
+    for theme in (item.get("themes") or [])[:2]:
+        n, covers = others("EXISTS (SELECT 1 FROM json_each(i.themes) WHERE value = ?)", (theme,))
+        add(theme, f"Room · {_count_word(n)}", f"/search?{urlencode({'theme': theme})}", n, covers, 2)
+
+    key = _creator_key(item)
+    if key:
+        n, covers = others("coalesce(i.creator_handle, i.creator_name) = ?", (key,))
+        add(_creator_label(item), f"Creator · {_count_word(n)} more", f"/creator/{quote(key)}",
+            n, covers, 1)
+
+    saved = item.get("saved_at") or ""
+    if len(saved) >= 10:
+        day = saved[5:10]
+        n, covers = others("substr(i.saved_at, 6, 5) = ? AND substr(i.saved_at, 1, 4) != ?",
+                           (day, saved[:4]))
+        add(f"Saved on {day_label(day)}", f"On this day · {_count_word(n)} in other years",
+            f"/search?{urlencode({'day': day})}", n, covers, 1)
+
+        season = next((k for k, (_, months) in SEASONS.items() if saved[5:7] in months), None)
+        if season:
+            n, covers = others("substr(i.saved_at, 1, 4) = ? AND substr(i.saved_at, 6, 2) IN (?, ?, ?)",
+                               (saved[:4], *SEASONS[season][1]))
+            add(f"{SEASONS[season][0]} {saved[:4]}", f"Season · {_count_word(n)}",
+                f"/search?{urlencode({'season': season, 'year': saved[:4]})}", n, covers, 2)
+
+    tag_counts = []
+    for tag in dict.fromkeys(item.get("tags") or []):
+        n, covers = others("EXISTS (SELECT 1 FROM json_each(i.tags) WHERE value = ?)", (tag,))
+        if n >= 2:
+            tag_counts.append((n, tag, covers))
+    for n, tag, covers in sorted(tag_counts, key=lambda t: -t[0])[:2]:
+        add(f"#{tag}", f"Hashtag · {_count_word(n)}", f"/search?{urlencode({'tag': tag})}", n, covers, 2)
+
+    return out[:limit]
+
+
+def same_room(conn: sqlite3.Connection, item: dict, limit: int = 8) -> tuple[str, list[dict]]:
+    """More from the item's first room, or its creator when it has no room."""
+    themes = item.get("themes") or []
+    if themes:
+        entries = db.rows_to_dicts(conn.execute(
+            f"SELECT * FROM items WHERE {RESOLVED} AND id != ? AND EXISTS"
+            f" (SELECT 1 FROM json_each(items.themes) WHERE value = ?)"
+            f" ORDER BY saved_at DESC LIMIT ?", (item["id"], themes[0], limit)).fetchall())
+        if entries:
+            return themes[0], entries
+    return "", []

@@ -16,8 +16,10 @@ which a year cannot.
 
 from __future__ import annotations
 
+import re
 import sqlite3
 from dataclasses import dataclass, fields, replace
+from datetime import datetime, timezone
 from typing import Optional
 from urllib.parse import urlencode
 
@@ -46,6 +48,34 @@ LENGTHS = {
     "over30": ("Over 30 minutes", "over 30 minutes long", 1800, None),
 }
 
+MONTHS = ["January", "February", "March", "April", "May", "June", "July",
+          "August", "September", "October", "November", "December"]
+
+# "On this day" is a month and day (09-27) matched across every year. The
+# week version reaches three days either side -- close enough to be the same
+# time of year, far enough that a quiet date still turns something up.
+WEEK_REACH = 3
+
+
+def day_label(day: str) -> str:
+    """09-27 -> 27 September."""
+    return f"{int(day[3:])} {MONTHS[int(day[:2]) - 1]}"
+
+
+def today_key(now: Optional[datetime] = None) -> str:
+    return (now or datetime.now(timezone.utc)).strftime("%m-%d")
+
+
+def _valid_day(raw: str) -> bool:
+    if not re.fullmatch(r"\d{2}-\d{2}", raw):
+        return False
+    try:
+        datetime.strptime("2000-" + raw, "%Y-%m-%d")  # a leap year, so 02-29 is fine
+    except ValueError:
+        return False
+    return True
+
+
 SORTS = {"relevance": "Best match", "newest": "Newest saved", "oldest": "Oldest saved"}
 
 # How many options to list for the open-ended facets. The rest are still
@@ -60,6 +90,8 @@ class Filters:
     format: str = ""
     year: str = ""
     season: str = ""
+    day: str = ""    # MM-DD, in any year
+    week: str = ""   # "1": within WEEK_REACH days of ``day`` rather than on it
     collection: str = ""
     creator: str = ""
     tag: str = ""
@@ -91,6 +123,10 @@ class Filters:
             out = replace(out, length="")
         if out.year and not (out.year.isdigit() and len(out.year) == 4):
             out = replace(out, year="")
+        if out.day and not _valid_day(out.day):
+            out = replace(out, day="")
+        if out.week and (out.week != "1" or not out.day):
+            out = replace(out, week="")
         if out.sort and out.sort not in SORTS:
             out = replace(out, sort="")
         if out.noted and out.noted != "1":
@@ -147,6 +183,10 @@ def _clauses(f: Filters, without: str = "") -> tuple[list[str], list]:
         months = SEASONS[f.season][1]
         where.append(f"substr(i.saved_at, 6, 2) IN ({', '.join('?' * len(months))})")
         params.extend(months)
+    if f.day and without != "day":
+        sql, extra = _day_clause(f.day, bool(f.week))
+        where.append(sql)
+        params.extend(extra)
     if f.collection and without != "collection":
         where.append("EXISTS (SELECT 1 FROM collections c WHERE c.item_id = i.id"
                      " AND c.name = ? COLLATE NOCASE)")
@@ -170,6 +210,15 @@ def _clauses(f: Filters, without: str = "") -> tuple[list[str], list]:
     if f.noted and without != "noted":
         where.append("trim(coalesce(i.note, '')) != ''")
     return where, params
+
+
+def _day_clause(day: str, week: bool) -> tuple[str, list]:
+    if week:
+        # Distance in days within a year, wrapping at New Year, measured in a
+        # leap year so 29 February has somewhere to be.
+        gap = "abs(julianday('2000-' || substr(i.saved_at, 6, 5)) - julianday('2000-' || ?))"
+        return f"min({gap}, 366 - {gap}) <= ?", [day, day, WEEK_REACH]
+    return "substr(i.saved_at, 6, 5) = ?", [day]
 
 
 def _where_sql(where: list[str]) -> str:
@@ -304,7 +353,38 @@ def _with_undefined(conn, f: Filters, facet: Optional[Facet]) -> Optional[Facet]
     return facet
 
 
-def facets(conn: sqlite3.Connection, f: Filters) -> list[Facet]:
+def _day_facet(conn, f: Filters, today: str) -> Optional[Facet]:
+    """On this day, and the week around it, in every year you have saved things.
+
+    Offered for today unless another date is chosen, in which case that date
+    is shown (so the chosen option is always visible and removable).
+    """
+    day = f.day or today
+    where, params = _clauses(f, without="day")
+
+    def count(week: bool) -> int:
+        sql, extra = _day_clause(day, week)
+        return int(conn.execute("SELECT count(*) FROM items i" + _where_sql(where + [sql]),
+                                params + extra).fetchone()[0])
+
+    on_day, in_week = count(False), count(True)
+    on = bool(f.day) and not f.week
+    week_on = bool(f.day) and bool(f.week)
+    label = "On this day" if day == today else f"On {day_label(day)}"
+    options = []
+    if on_day or on:
+        options.append(Option(value=day, label=label, count=on_day, kind="hook",
+                              href=f.href(day=None, week=None) if on else f.href(day=day, week=None),
+                              active=on))
+    if in_week > on_day or week_on:
+        options.append(Option(value=day + "~", label="This week, other years" if day == today
+                              else f"Week of {day_label(day)}", count=in_week, kind="hook",
+                              href=f.href(day=None, week=None) if week_on else f.href(day=day, week="1"),
+                              active=week_on))
+    return Facet(name="day", title="On this day", options=options) if options else None
+
+
+def facets(conn: sqlite3.Connection, f: Filters, today: Optional[str] = None) -> list[Facet]:
     """The filter column, in the order people reach for it.
 
     Who made it and what it is about come first -- that is how a save is
@@ -346,6 +426,8 @@ def facets(conn: sqlite3.Connection, f: Filters) -> list[Facet]:
                       [(k, *found[k]) for k in LENGTHS if k in found],
                       label=lambda v, _: LENGTHS[v][0]))
 
+    out.append(_day_facet(conn, f, today or today_key()))
+
     out.append(_facet(f, "year", "Year saved", _grouped(
         conn, f, "year", "substr(i.saved_at, 1, 4) AS v, count(*) AS n, '' AS x",
         order="v DESC")))
@@ -386,6 +468,12 @@ def chips(f: Filters, found: list[Facet]) -> list[tuple[str, str]]:
     labels = {facet.name: facet.active.label for facet in found if facet.active}
     out = []
     for name, value in f.narrowing().items():
+        if name == "week":
+            continue  # part of the day chip
+        if name == "day":
+            label = labels.get(name) or (("Week of " if f.week else "On ") + day_label(value))
+            out.append((label, f.href(day=None, week=None)))
+            continue
         label = labels.get(name) or {
             "tag": "#" + value.lstrip("#"),
             "season": SEASONS.get(value, (value,))[0],
@@ -439,7 +527,41 @@ def describe(f: Filters, found: list[Facet]) -> str:
         when.append(f.year)
     if when:
         parts.append("from " + " ".join(when))
+    if f.day:
+        parts.append(("saved the week of " if f.week else "saved on ") + day_label(f.day))
     text = " ".join(parts)
     if f.noted:
         text += ", with your notes"
     return text[0].upper() + text[1:]
+
+
+def pull(f: Filters, found: list[Facet], items: list[dict], limit: int = 4) -> list[dict]:
+    """Where to go next from a set of results: the biggest rooms and creators
+    inside them, and the same date in other years.
+
+    Each row adds one filter to the current view (so it narrows by a
+    direction you did not think of), with covers taken from the results
+    already on the page.
+    """
+    by_name = {facet.name: facet for facet in found}
+    rows: list[dict] = []
+
+    def covers(test) -> list[dict]:
+        return [i for i in items if test(i)][:3]
+
+    theme = by_name.get("theme")
+    if theme and not f.theme:
+        for o in [o for o in theme.options if not o.kind][:2]:
+            rows.append({"label": o.label, "sub": f"Room · {o.count} of these",
+                         "href": o.href, "covers": covers(lambda i, v=o.value: v in (i.get("themes") or []))})
+    creator = by_name.get("creator")
+    if creator and not f.creator and creator.options and creator.options[0].count >= 2:
+        o = creator.options[0]
+        rows.append({"label": o.label, "sub": f"Creator · {o.count} of these", "href": o.href,
+                     "covers": covers(lambda i, v=o.value: (i.get("creator_handle") or i.get("creator_name")) == v)})
+    day = by_name.get("day")
+    if day and not f.day and day.options:
+        o = day.options[0]
+        rows.append({"label": o.label, "sub": f"{o.count} of these were saved on {day_label(o.value)}",
+                     "href": o.href, "covers": covers(lambda i, v=o.value: (i.get("saved_at") or "")[5:10] == v)})
+    return rows[:limit]

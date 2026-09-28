@@ -225,4 +225,4 @@ class TestShowingIt:
         add(c, 1, duration=26)
         c.close()
         with TestClient(app) as client:
-            assert '<span class="length" aria-label="Length">0:26</span>' in client.get("/search").text
+            assert '<span class="rr-tag is-length" aria-label="Length">0:26</span>' in client.get("/search").text

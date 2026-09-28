@@ -229,3 +229,66 @@ class TestUnresolvedItemsStayOffTheShelves:
         for i in range(6):
             save(conn, i, days_ago=i + 2, resolve_status="ok")
         assert museum.shelves(conn, now=NOW)[0]["kind"] == "recent"
+
+
+def save_on(conn, n, when, **kw):
+    save(conn, n, days_ago=(NOW - when).days, **kw)
+
+
+class TestOnThisDay:
+    def test_todays_date_in_earlier_years_newest_first(self, conn):
+        save_on(conn, 1, NOW.replace(year=2023))
+        save_on(conn, 2, NOW.replace(year=2025))
+        save_on(conn, 3, NOW - timedelta(days=40))
+        found = museum.on_this_day(conn, now=NOW)
+        assert [y for y, _, _ in found["years"]] == ["2025", "2023"]
+        assert found["years"][0][1] == "1 year ago"
+        assert found["headline"] == "2 saves, across 2 years"
+        assert not found["widened"] and found["href"] == "/search?day=09-18"
+
+    def test_today_itself_is_not_a_memory(self, conn):
+        save(conn, 1, days_ago=0)
+        assert museum.on_this_day(conn, now=NOW) is None
+
+    def test_a_quiet_date_widens_to_the_week(self, conn):
+        save_on(conn, 1, NOW.replace(year=2024) - timedelta(days=2))
+        found = museum.on_this_day(conn, now=NOW)
+        assert found["widened"] and found["count"] == 1
+        assert "week=1" in found["href"]
+
+    def test_nothing_even_then_is_nothing(self, conn):
+        save_on(conn, 1, NOW.replace(year=2024) - timedelta(days=30))
+        assert museum.on_this_day(conn, now=NOW) is None
+
+    def test_the_badge_marks_the_same_date(self, conn):
+        assert museum.hook_badge({"saved_at": "2023-09-18T10:00:00"}, NOW) == "On this day"
+        assert museum.hook_badge({"saved_at": "2026-09-18T10:00:00"}, NOW) is None
+        assert museum.hook_badge({"saved_at": "2023-09-17T10:00:00"}, NOW) is None
+
+
+class TestRoomsAndThreads:
+    def test_a_room_needs_two_saves_and_shows_three_covers(self, conn):
+        for n in range(4):
+            save(conn, n, tags=["dog"], creator=f"C{n}", handle=f"@c{n}", days_ago=100 + n)
+        save(conn, 9, tags=["cat"])
+        found = museum.rooms(conn, now=NOW)
+        assert [r["theme"] for r in found] == ["Dogs"]
+        room = found[0]
+        assert room["count"] == 4 and len(room["covers"]) == 3
+        assert len({c["creator_handle"] for c in room["covers"]}) == 3
+        assert room["href"] == "/search?theme=Dogs"
+        assert room["fact"].startswith("Since ")
+
+    def test_threads_lead_somewhere_else(self, conn):
+        for n in range(3):
+            save(conn, n, tags=["dog"], days_ago=1 + n)
+        item = db.rows_to_dicts(conn.execute("SELECT * FROM items ORDER BY id LIMIT 1").fetchall())[0]
+        labels = [t["label"] for t in museum.threads(conn, item)]
+        assert "Dogs" in labels and "City Desk" in labels
+        assert all(t["covers"] and item["id"] not in [c["id"] for c in t["covers"]]
+                   for t in museum.threads(conn, item))
+
+    def test_a_lone_save_has_no_threads(self, conn):
+        save(conn, 1, tags=["dog"])
+        item = db.rows_to_dicts(conn.execute("SELECT * FROM items").fetchall())[0]
+        assert museum.threads(conn, item) == []

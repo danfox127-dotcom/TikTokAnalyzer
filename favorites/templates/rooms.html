@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% from "_card.html" import room %}
+{% from "_icons.html" import icon %}
+{% set nav = 'rooms' %}
+{% block title %}Rooms · Favorites{% endblock %}
+{% block content %}
+<section class="page-head">
+  <p class="rr-label is-green">Rooms</p>
+  <h1 class="rr-h-l">Walk into a theme</h1>
+  <p class="rr-muted">{{ rooms | length }} rooms, arranged by how much you've kept in each. Every save can hang in more than one.</p>
+</section>
+
+{% if rooms %}
+  <div class="rr-rooms rooms-all">{% for r in rooms %}{{ room(r) }}{% endfor %}</div>
+{% else %}
+  <div class="rr-empty"><h2 class="rr-h-m">No rooms yet.</h2><p>A theme becomes a room once two saves share it.</p></div>
+{% endif %}
+
+{% if undefined %}
+  <p class="rr-notice undefined-note">{{ icon('placard') }}<span><b>{{ undefined }} {{ 'save' if undefined == 1 else 'saves' }} no room covers yet.</b>
+    <a href="/search?theme=Undefined">Look through them</a>, or <a href="/placards">write placards</a> so they turn up in search.</span></p>
+{% endif %}
+{% endblock %}

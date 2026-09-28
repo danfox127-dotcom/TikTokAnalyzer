@@ -1,76 +1,147 @@
 {% extends "base.html" %}
-{% from "_card.html" import card %}
+{% from "_card.html" import card, frame, shelf, shelf_head, room %}
+{% from "_icons.html" import icon %}
+{% set nav = 'home' %}
+{% set kickers = {'recent': 'Just in', 'theme': 'A room', 'month': 'A busy month',
+                  'collection': 'Your category', 'creator': 'Someone you return to',
+                  'rediscover': 'From the vault', 'last_year': 'A year ago',
+                  'unlabelled': 'Placards to write'} %}
 {% block content %}
 
 {% if pending and total == pending %}
-  <section class="pending-notice">
-    <h1>{{ pending }} saves imported, none identified yet</h1>
+  <section class="rr-empty pending-notice">
+    <h1 class="rr-h-l">{{ pending }} saves imported, none identified yet</h1>
     <p>Your history is in the library — every link and the date you saved it.
        Titles, creators and thumbnails come from a separate pass, because they
        have to be fetched one at a time.</p>
-    <p class="hint">Run <code>python -m favorites.backfill --limit 100</code> to
+    <p class="rr-notice">{{ icon('clock') }}<span>Run <code>python -m favorites.backfill --limit 100</code> to
        start. Newest first, so the shelves fill in with the things you saved most
-       recently. It resumes where it stops, so run it in batches.</p>
+       recently. It resumes where it stops, so run it in batches.</span></p>
   </section>
 {% elif total == 0 %}
-  <section class="empty">
-    <h1>Nothing here yet.</h1>
+  <section class="rr-empty empty">
+    <p class="rr-label">An empty gallery</p>
+    <h1 class="rr-h-l">Nothing here yet.</h1>
     <p>Share a link into this library and it will be catalogued: title, creator,
        thumbnail, and a transcript where one is legitimately available.</p>
     <p class="hint">Set up one-tap capture from your phone's share sheet —
        see <code>favorites/SHARE_SHEET.md</code>.</p>
-    <form class="quick-save" action="/save" method="post">
-      <input type="url" name="url" placeholder="https://…" required>
-      <input type="text" name="note" placeholder="Why are you keeping this? (optional)">
-      <button type="submit">Save</button>
+    <form class="rr-placard quick-save" action="/save" method="post">
+      <label class="rr-label" for="qs-url">A link</label>
+      <input type="text" inputmode="url" id="qs-url" name="url" placeholder="https://…" required>
+      <label class="rr-label" for="qs-note">Your placard</label>
+      <input type="text" id="qs-note" name="note" placeholder="Why are you keeping this? (optional)">
+      <div class="row"><button class="rr-btn rr-btn--primary" type="submit">Save</button></div>
     </form>
   </section>
 {% else %}
 
-{% if pending %}
-  <p class="pending-strip">{{ pending }} imported {{ "save" if pending == 1 else "saves" }}
-     still to identify — <code>python -m favorites.backfill --all</code></p>
-{% endif %}
-
-<section class="digest">
-  <h1>The last month</h1>
-  <p class="digest-prose">{{ digest.prose }}</p>
-  {% if digest.themes %}
-  <ul class="theme-pills">
-    {% for theme, n in digest.themes %}
-      <li><a href="/search?theme={{ theme | urlencode }}">{{ theme }}<span>{{ n }}</span></a></li>
+{#- The front door: one question and one search field, then the ways in. -#}
+<section class="rr-hero">
+  <p class="rr-label">Your collection · {{ total }} {{ 'save' if total == 1 else 'saves' }}</p>
+  <h1 class="rr-h-xl">What are you looking for?</h1>
+  <form class="rr-search" action="/search" method="get" role="search" data-suggest>
+    <label class="rr-search-field">{{ icon('search') }}
+      <input type="search" name="q" placeholder="A dish, a creator, a feeling, a date…"
+             aria-label="Search your favorites" autocomplete="off" spellcheck="false">
+      <button class="rr-btn rr-btn--primary" type="submit">Search</button>
+    </label>
+  </form>
+  <ul class="rr-pills is-scroll hooks" aria-label="Ways in">
+    {% if on_this_day %}<li><a class="rr-pill is-hook" href="{{ on_this_day.href }}">{{ icon('calendar') }}On this day <span class="n">{{ on_this_day.count }}</span></a></li>{% endif %}
+    <li><a class="rr-pill is-hook" href="/surprise">{{ icon('shuffle') }}Surprise me</a></li>
+    {% for label, n, href in browse.themes[:4] if label != 'Undefined' %}
+      <li><a class="rr-pill is-room" href="{{ href }}">{{ label }} <span class="n">{{ n }}</span></a></li>
     {% endfor %}
   </ul>
-  {% endif %}
 </section>
 
-<section class="browse" aria-labelledby="browse-title">
-  <div class="shelf-head">
-    <h2 id="browse-title"><a href="/search">Browse the collection</a></h2>
-    <p>Every save, filtered by who made it, what it's about, where it came from and when.</p>
+{% if pending %}
+  <p class="rr-notice pending-strip">{{ icon('clock') }}<span>{{ pending }} imported {{ "save" if pending == 1 else "saves" }}
+     still to identify — <code>python -m favorites.backfill --all</code></span></p>
+{% endif %}
+
+
+{% if on_this_day %}
+<section class="rr-otd" aria-labelledby="otd-title">
+  <div class="rr-otd-head">
+    <div class="rr-otd-date" aria-hidden="true"><span class="m">{{ on_this_day.month }}</span><span class="d">{{ on_this_day.date }}</span></div>
+    <div><p class="rr-label">{% if on_this_day.widened %}This week, other years{% else %}On this day{% endif %}</p>
+      <h2 id="otd-title">{{ on_this_day.headline }}</h2></div>
   </div>
-  {% for title, row in (("Themes", browse.themes), ("Creators", browse.creators), ("Platforms", browse.platforms)) if row %}
+  <div class="rr-otd-years">
+  {% for year, ago, entries in on_this_day.years[:3] %}
+    <div class="rr-otd-year">
+      <div class="yr"><b>{{ year }}</b><span>{{ ago }}</span></div>
+      <div class="rr-carousel" role="region" aria-label="{{ year }}">
+        <ul class="rr-track">{% for item in entries %}<li>{{ card(item, 's', note=False) }}</li>{% endfor %}</ul>
+      </div>
+    </div>
+  {% endfor %}
+  </div>
+  <div class="rr-otd-foot">
+    <span class="rr-muted">{% if on_this_day.years | length > 3 %}and more from earlier years{% else %}{{ on_this_day.label }}, every year you've saved something{% endif %}</span>
+    <a href="{{ on_this_day.href }}">See all →</a>
+  </div>
+</section>
+{% endif %}
+
+{#- The catalogue's main doors, one tap each: on first real use nobody found
+    the filters, so the front page offers the same ways in directly. -#}
+<section class="browse" aria-labelledby="browse-title">
+  {{ shelf_head('Browse the collection', kicker='The catalogue', sub="Every save, by what it's about, who made it and where it came from.", href='/search', arrows=False, id='browse-title') }}
+  {% for title, row, cls in (("Rooms", browse.themes, "is-room"), ("Creators", browse.creators, ""), ("Platforms", browse.platforms, "")) if row %}
     <div class="browse-row">
-      <h3>{{ title }}</h3>
-      <ul class="theme-pills">
-        {% for label, n, href in row %}<li><a href="{{ href }}"{% if href.endswith("theme=Undefined") %} class="undefined"{% endif %}>{{ label }}<span>{{ n }}</span></a></li>{% endfor %}
+      <h3 class="rr-label{% if cls %} is-green{% endif %}">{{ title }}</h3>
+      <ul class="rr-pills is-scroll">
+        {% for label, n, href in row %}<li><a class="rr-pill {{ 'is-undefined' if href.endswith('theme=Undefined') else cls }}" href="{{ href }}">{{ label }} <span class="n">{{ n }}</span></a></li>{% endfor %}
       </ul>
     </div>
   {% endfor %}
-  <p class="browse-all"><a class="open" href="/search">All {{ total }} saves, with every filter →</a></p>
 </section>
 
-{% for shelf in shelves %}
-<section class="shelf" data-kind="{{ shelf.kind }}">
-  <div class="shelf-head">
-    <h2>{% if shelf.href %}<a href="{{ shelf.href }}">{{ shelf.title }}</a>{% else %}{{ shelf.title }}{% endif %}</h2>
-    <p>{{ shelf.subtitle }}</p>
-  </div>
-  <div class="rail">
-    {% for item in shelf.entries %}{{ card(item) }}{% endfor %}
-  </div>
+<section class="digest" aria-label="The last month">
+  <p class="rr-label">The last month</p>
+  <p class="digest-prose">{{ digest.prose }}</p>
 </section>
+
+{% for s in shelves[:2] %}
+  {{ shelf(s.title, s.entries, kicker=kickers.get(s.kind, ''), sub=s.subtitle, href=s.href, kind=s.kind) }}
 {% endfor %}
+
+{% if rooms %}
+<section class="rr-shelf" aria-labelledby="rooms-title">
+  <div class="rr-shelf-head">
+    <div><p class="rr-label is-green">Rooms</p><h2 class="rr-h-m" id="rooms-title">Walk into a theme</h2></div>
+    <a class="more" href="/rooms">All rooms</a>
+  </div>
+  <div class="rr-rooms">{% for r in rooms %}{{ room(r) }}{% endfor %}</div>
+</section>
+{% endif %}
+
+{% for s in shelves[2:] %}
+  {{ shelf(s.title, s.entries, kicker=kickers.get(s.kind, ''), sub=s.subtitle, href=s.href, kind=s.kind) }}
+{% endfor %}
+
+{% if creators %}
+<section class="rr-shelf" aria-labelledby="creators-title">
+  <div class="rr-shelf-head"><div><p class="rr-label">Creators you return to</p><h2 class="rr-h-m" id="creators-title">On your shelf</h2></div></div>
+  <div class="rr-spines">
+    {% for c in creators %}
+      <a class="rr-spine" href="{{ c.href }}">
+        <span class="cover">{{ frame(c.item) }}<span class="n">{{ c.count }}</span></span>
+        <b>{{ c.name }}</b><span>{{ c.fact }}</span>
+      </a>
+    {% endfor %}
+  </div>
+  <div class="rr-shelf-board" aria-hidden="true"></div>
+</section>
+{% endif %}
+
+<section class="browse-more">
+  <a class="rr-btn" href="/search">{{ icon('filter') }}All {{ total }} saves, with every filter</a>
+  <a class="rr-btn" href="/surprise">{{ icon('shuffle') }}Surprise me</a>
+</section>
 
 {% endif %}
 {% endblock %}

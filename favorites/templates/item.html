@@ -1,92 +1,90 @@
 {% extends "base.html" %}
-{% from "_card.html" import card %}
+{% from "_card.html" import card, frame, shelf, threads as connected %}
+{% from "_icons.html" import icon %}
 {% block title %}{{ item.title or 'Item' }} · Favorites{% endblock %}
 {% block content %}
 
-{% if just_saved %}<p class="flash">Saved.</p>{% endif %}
+{% if just_saved %}<p class="rr-notice flash">{{ icon('placard') }}<span>Saved. Add a placard below while you remember why.</span></p>{% endif %}
 
-<article class="detail">
-  {% if item.thumbnail_url %}
-    <div class="detail-thumb">
-      <img src="/thumb/{{ item.id }}" alt="" referrerpolicy="no-referrer" onerror="this.remove()">
-    </div>
-  {% endif %}
+<article class="rr-detail detail">
+  <div class="hang">{{ frame(item) }}</div>
 
   <div class="detail-body">
-    <p class="eyebrow">
-      <span class="chip">{{ platform_label(item.platform) }}</span>
-      <span>Saved {{ item.saved_at[:10] }}</span>
-      {% if item.duration %}<span>{{ item.duration | clock }} long</span>{% endif %}
-      {% if item.resolve_status != 'ok' %}<span class="warn">unresolved</span>{% endif %}
-    </p>
-
-    <h1>{{ item.title or browsable_url(item) }}</h1>
-
-    {% if item.creator_name or item.creator_handle %}
-      <p class="byline">
-        <a href="/creator/{{ item.creator_handle or item.creator_name }}">
-          {{ item.creator_name or item.creator_handle }}</a>
-        {% if item.creator_handle and item.creator_name %}<span>{{ item.creator_handle }}</span>{% endif %}
+    <div class="rr-walllabel">
+      <p class="eyebrow">
+        {% set badge = hook_badge(item) %}{% if badge %}<span class="brass">{{ badge }} · {{ item.saved_at[:4] }}</span>{% endif %}
+        <span>{{ platform_label(item.platform) }}</span>
+        {% if item.duration %}<span>{{ item.duration | clock }} long</span>{% endif %}
+        <span>Saved {{ item.saved_at[:10] }}</span>
+        {% if item.resolve_status != 'ok' %}<span class="warn">unresolved</span>{% endif %}
       </p>
-    {% endif %}
 
-    {% if collections %}
-      <ul class="filed">
-        <li class="filed-label">Filed under</li>
-        {% for c in collections %}
-          <li><a href="/collection/{{ c | urlencode }}">{{ c }}</a>
-            <form action="/item/{{ item.id }}/unfile" method="post">
-              <input type="hidden" name="name" value="{{ c }}">
-              <button type="submit" class="unfile" aria-label="Take out of {{ c }}" title="Take out of {{ c }}">×</button>
-            </form></li>
-        {% endfor %}
-      </ul>
-    {% endif %}
+      <h1 class="rr-h-l">{{ item.title or browsable_url(item) }}</h1>
 
-    <p><a class="open" href="{{ browsable_url(item) }}" target="_blank" rel="noopener noreferrer">
-      {% if item.format == 'short' %}Watch the Short{% else %}Open on {{ platform_label(item.platform) }}{% endif %} ↗</a></p>
+      {% if item.creator_name or item.creator_handle %}
+        <p class="byline">by <a href="/creator/{{ (item.creator_handle or item.creator_name) | urlencode }}">{{ item.creator_name or item.creator_handle }}</a>
+          {% if item.creator_handle and item.creator_name %}<span class="rr-muted">{{ item.creator_handle }}</span>{% endif %}</p>
+      {% endif %}
 
-    <form class="file-form" action="/item/{{ item.id }}/file" method="post">
-      <input type="text" name="name" list="all-collections" autocomplete="off"
-             placeholder="{% if collections %}Also file under…{% else %}File under a category…{% endif %}"
-             aria-label="Category">
-      <datalist id="all-collections">
-        {% for c in all_collections if c not in collections %}<option value="{{ c }}">{% endfor %}
-      </datalist>
-      <button type="submit">File</button>
+      {% if item.description and item.description != item.title %}<p class="desc">{{ item.description }}</p>{% endif %}
+
+      {% if item.themes or item.tags %}
+        <ul class="rr-pills theme-pills">
+          {% for theme in item.themes %}<li><a class="rr-pill is-room" href="/search?theme={{ theme | urlencode }}">{{ theme }}</a></li>{% endfor %}
+          {% for tag in item.tags %}<li><a class="rr-pill" href="/search?tag={{ tag | urlencode }}">#{{ tag }}</a></li>{% endfor %}
+        </ul>
+      {% endif %}
+
+      {% if collections %}
+        <ul class="filed">
+          <li class="rr-label is-muted">Filed under</li>
+          {% for c in collections %}
+            <li><a href="/collection/{{ c | urlencode }}">{{ c }}</a>
+              <form action="/item/{{ item.id }}/unfile" method="post">
+                <input type="hidden" name="name" value="{{ c }}">
+                <button type="submit" class="unfile" aria-label="Take out of {{ c }}" title="Take out of {{ c }}">×</button>
+              </form></li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+
+      <div class="actions">
+        <a class="rr-btn rr-btn--primary open" href="{{ browsable_url(item) }}" target="_blank" rel="noopener noreferrer">
+          {% if item.format == 'short' %}Watch the Short{% else %}Open on {{ platform_label(item.platform) }}{% endif %} {{ icon('external') }}</a>
+        <form class="file-form" action="/item/{{ item.id }}/file" method="post">
+          <input type="text" name="name" list="all-collections" autocomplete="off"
+                 placeholder="{% if collections %}Also file under…{% else %}File under a category…{% endif %}"
+                 aria-label="Category">
+          <datalist id="all-collections">
+            {% for c in all_collections if c not in collections %}<option value="{{ c }}">{% endfor %}
+          </datalist>
+          <button class="rr-btn" type="submit">File</button>
+        </form>
+      </div>
+    </div>
+
+    <form class="rr-placard note-form" action="/item/{{ item.id }}/note" method="post">
+      <label class="rr-label" for="note">Your placard</label>
+      <textarea id="note" name="note" rows="2" placeholder="Why did you keep this?">{{ item.note or '' }}</textarea>
+      <div class="row"><button class="rr-btn rr-btn--primary" type="submit">Save note</button>
+        <span class="hint">Notes are searchable, and shown in italic wherever this save appears.</span></div>
     </form>
 
-    <form class="note-form" action="/item/{{ item.id }}/note" method="post">
-      <label for="note">Your placard</label>
-      <textarea id="note" name="note" rows="3"
-        placeholder="Why did you keep this?">{{ item.note or '' }}</textarea>
-      <button type="submit">Save note</button>
-    </form>
-
-    {% if item.description and item.description != item.title %}
-      <section class="block"><h3>Description</h3><p>{{ item.description }}</p></section>
-    {% endif %}
-
-    {% if item.themes or item.tags %}
-      <ul class="theme-pills">
-        {% for theme in item.themes %}<li><a class="is-theme" href="/search?theme={{ theme | urlencode }}">{{ theme }}</a></li>{% endfor %}
-        {% for tag in item.tags %}<li><a href="/search?tag={{ tag | urlencode }}">#{{ tag }}</a></li>{% endfor %}
-      </ul>
-    {% endif %}
+    {% if threads %}{{ connected(threads) }}{% endif %}
 
     {% if item.transcript %}
       <section class="block">
-        <h3>Transcript</h3>
+        <h3 class="rr-label is-muted">Transcript</h3>
         <details><summary>Read it</summary><p class="transcript">{{ item.transcript }}</p></details>
       </section>
     {% endif %}
   </div>
 </article>
 
+{% if room_items %}
+  {{ shelf('More from ' ~ room, room_items, kicker='Same room', href='/search?theme=' ~ (room | urlencode)) }}
+{% endif %}
 {% if related %}
-<section class="shelf">
-  <div class="shelf-head"><h2>More from this creator</h2></div>
-  <div class="rail">{% for r in related %}{{ card(r) }}{% endfor %}</div>
-</section>
+  {{ shelf('More from this creator', related, kicker='Same hands') }}
 {% endif %}
 {% endblock %}

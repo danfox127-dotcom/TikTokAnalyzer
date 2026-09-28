@@ -317,4 +317,51 @@ class TestUndefinedOnThePages:
 
     def test_the_front_page_ends_the_themes_with_it(self, client):
         page = client.get("/").text
-        assert 'href="/search?theme=Undefined" class="undefined">Undefined<span>1</span>' in page
+        assert ('class="rr-pill is-undefined" href="/search?theme=Undefined">Undefined'
+                ' <span class="n">1</span>') in page
+
+
+class TestOnThisDay:
+    """A month and day matched across every year, and the week around it."""
+
+    @pytest.fixture
+    def dated(self, conn):
+        return {
+            "sep27_2023": add(conn, 11, saved="2023-09-27"),
+            "sep27_2025": add(conn, 12, saved="2025-09-27"),
+            "sep29_2024": add(conn, 13, saved="2024-09-29"),
+            "oct20_2024": add(conn, 14, saved="2024-10-20"),
+            "dec30_2022": add(conn, 15, saved="2022-12-30"),
+            "jan02_2024": add(conn, 16, saved="2024-01-02"),
+        }
+
+    def test_the_day_in_every_year(self, conn, dated):
+        assert ids(conn, dated, day="09-27") == {"sep27_2023", "sep27_2025"}
+
+    def test_the_week_reaches_three_days_either_side(self, conn, dated):
+        assert ids(conn, dated, day="09-27", week="1") == {"sep27_2023", "sep27_2025", "sep29_2024"}
+
+    def test_the_week_wraps_at_new_year(self, conn, dated):
+        assert ids(conn, dated, day="12-31", week="1") == {"dec30_2022", "jan02_2024"}
+
+    def test_a_date_that_does_not_exist_is_dropped(self):
+        assert Filters.from_params({"day": "02-30"}).day == ""
+        assert Filters.from_params({"day": "9-27"}).day == ""
+        assert Filters.from_params({"day": "02-29"}).day == "02-29"
+
+    def test_the_week_means_nothing_without_a_day(self):
+        assert Filters.from_params({"week": "1"}).week == ""
+
+    def test_offered_for_today_before_the_years(self, conn, dated):
+        found = explore.facets(conn, Filters(), today="09-27")
+        names = [f.name for f in found]
+        assert names.index("day") < names.index("year")
+        day = next(f for f in found if f.name == "day")
+        assert [(o.label, o.count) for o in day.options] == [
+            ("On this day", 2), ("This week, other years", 3)]
+
+    def test_described_and_removed_as_one_filter(self, conn, dated):
+        f = Filters(day="09-27", week="1")
+        found = explore.facets(conn, f, today="09-27")
+        assert explore.describe(f, found) == "Saves saved the week of 27 September"
+        assert explore.chips(f, found) == [("This week, other years", "/search")]
