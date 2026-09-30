@@ -247,7 +247,8 @@ def plan(playlists: Iterable[Playlist]) -> dict[str, dict]:
     return videos
 
 
-def import_playlists(conn: sqlite3.Connection, playlists: Iterable[Playlist]) -> dict[str, int]:
+def import_playlists(conn: sqlite3.Connection, playlists: Iterable[Playlist],
+                     source: Optional[str] = None) -> dict[str, int]:
     """Insert unresolved items and file them into their collections.
 
     An item already in the library is never overwritten -- it may carry a title
@@ -277,7 +278,7 @@ def import_playlists(conn: sqlite3.Connection, playlists: Iterable[Playlist]) ->
                 "platform": "youtube",
                 "external_id": external_id,
                 "saved_at": entry["saved_at"],
-                "source": entry["source"],
+                "source": source if source and entry["source"] == SOURCE else entry["source"],
                 "imported_at": imported_at,
                 "resolve_status": "pending",
             })

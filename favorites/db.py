@@ -101,6 +101,17 @@ CREATE TABLE IF NOT EXISTS theme_rules (
     PRIMARY KEY (kind, key, theme)
 );
 
+-- Exports the watched folder has imported (favorites/watch.py), so each is
+-- imported once. Keyed by the file's name, size and date.
+CREATE TABLE IF NOT EXISTS imports (
+    key         TEXT PRIMARY KEY,
+    filename    TEXT NOT NULL,
+    platform    TEXT NOT NULL,
+    imported_at TEXT NOT NULL,
+    added       INTEGER NOT NULL DEFAULT 0,
+    detail      TEXT
+);
+
 -- Small facts about the library file itself, such as which version of the
 -- theme vocabulary its themes were worked out with.
 CREATE TABLE IF NOT EXISTS meta (
@@ -223,6 +234,20 @@ def connect_announced(path: str | os.PathLike | None = None) -> tuple[sqlite3.Co
         return conn, line
     return conn, (f"library: {target}  (NEW -- created just now. If you expected your "
                   f"existing library, pass --db with its path or set FAVORITES_DB.)")
+
+
+def get_meta(conn: sqlite3.Connection, key: str) -> Optional[str]:
+    row = conn.execute("SELECT value FROM meta WHERE key = ?", (key,)).fetchone()
+    return row["value"] if row else None
+
+
+def set_meta(conn: sqlite3.Connection, key: str, value: Optional[str]) -> None:
+    """Store a small fact about the library; ``None`` forgets it."""
+    if value is None:
+        conn.execute("DELETE FROM meta WHERE key = ?", (key,))
+    else:
+        conn.execute("INSERT OR REPLACE INTO meta (key, value) VALUES (?, ?)", (key, value))
+    conn.commit()
 
 
 def load_rules(conn: sqlite3.Connection) -> theme_vocabulary.Rules:

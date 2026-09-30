@@ -12,9 +12,13 @@ three years when you have forgotten it exists.
 
 from __future__ import annotations
 
+import asyncio
 import dataclasses
-from collections import Counter
+import json
 import logging
+import socket
+import time
+from collections import Counter
 from contextlib import asynccontextmanager
 import os
 import secrets
@@ -31,7 +35,8 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from starlette.concurrency import run_in_threadpool
 
-from . import blurb, db, explore, lengths, looks, museum, tagging, thumbnails, transcript
+from . import (backfill, blurb, db, explore, google_sync, lengths, looks, museum, tagging,
+               thumbnails, transcript, watch)
 from . import themes as theme_vocabulary
 from .resolve import browsable_url, extract_url, platform_label, resolve
 
@@ -48,7 +53,76 @@ async def lifespan(_: FastAPI):
     conn, where = db.connect_announced()
     conn.close()
     logging.getLogger("uvicorn.error").info(where)
-    yield
+    task = asyncio.create_task(_keep_in_sync())
+    try:
+        yield
+    finally:
+        task.cancel()
+
+
+#: How often the watched folder is looked at, and YouTube is synced.
+SCAN_EVERY = 60
+YOUTUBE_EVERY = 24 * 3600
+
+
+def _scan_now() -> list:
+    folders = watch.folders_from_env()
+    watch.STATUS.folders = [str(f) for f in folders]
+    if not folders:
+        return []
+    conn = db.connect()
+    try:
+        found = watch.scan(conn, folders)
+    finally:
+        conn.close()
+    watch.STATUS.last_scan = db.now_iso()
+    watch.STATUS.found = (found + watch.STATUS.found)[:8]
+    return found
+
+
+async def _fill_in(limit: int = 50) -> None:
+    """Titles and pictures for what just arrived: a first batch, straight away."""
+    conn = db.connect()
+    try:
+        await backfill.run(conn, limit, quiet=True)
+    finally:
+        conn.close()
+
+
+async def _sync_youtube() -> Optional[dict]:
+    conn = db.connect()
+    try:
+        if not (google_sync.configured() and google_sync.connected(conn)):
+            return None
+        return await google_sync.sync(conn)
+    finally:
+        conn.close()
+
+
+async def _keep_in_sync() -> None:
+    """The museum's one background job: watch the folder, sync YouTube daily.
+
+    Both are off until switched on (FAVORITES_WATCH; Google connected), so a
+    plain run -- and every test -- does nothing here but sleep.
+    """
+    log = logging.getLogger("uvicorn.error")
+    last_youtube = 0.0
+    while True:
+        try:
+            found = await run_in_threadpool(_scan_now)
+            added = sum(f.added for f in found)
+            if time.monotonic() - last_youtube > YOUTUBE_EVERY or not last_youtube:
+                result = await _sync_youtube()
+                last_youtube = time.monotonic()
+                added += (result or {}).get("added", 0)
+            if added:
+                log.info("%s new saves arrived; filling in the first 50", added)
+                await _fill_in()
+        except asyncio.CancelledError:
+            raise
+        except Exception:  # never let one bad export stop the watching
+            log.exception("keeping in sync failed; trying again in a minute")
+        await asyncio.sleep(SCAN_EVERY)
 
 
 app = FastAPI(title="Favorites", docs_url=None, redoc_url=None, lifespan=lifespan)
@@ -274,6 +348,7 @@ def home(request: Request, conn: sqlite3.Connection = Depends(get_db)):
         # an empty-looking front page over a four-figure item count reads as a
         # bug rather than as work still in progress.
         "pending": museum.pending_count(conn),
+        "reminders": watch.reminders(conn),
     })
 
 
@@ -687,6 +762,123 @@ def thumb(item_id: int, conn: sqlite3.Connection = Depends(get_db)):
     if item is not None and item["thumbnail_url"]:
         return RedirectResponse(item["thumbnail_url"], status_code=302)
     raise HTTPException(status_code=404, detail="no thumbnail")
+
+
+# ---- keeping it in sync ------------------------------------------------------
+
+def _on_this_mac(request: Request) -> bool:
+    """True for a request from the machine the museum runs on.
+
+    Things that should only happen at the Mac itself -- showing the password,
+    signing in to Google -- check this. A phone on the wi-fi is not the Mac.
+    """
+    host = request.client.host if request.client else ""
+    return host in ("127.0.0.1", "::1") and "x-forwarded-for" not in request.headers
+
+
+def _wifi_address() -> Optional[str]:
+    """This machine's address on the local network, if it has one."""
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+            s.connect(("192.0.2.1", 9))  # no packet is sent; this just picks the route
+            ip = s.getsockname()[0]
+        return None if ip.startswith("127.") else ip
+    except OSError:
+        return None
+
+
+@app.get("/sync", response_class=HTMLResponse)
+def sync_page(request: Request, conn: sqlite3.Connection = Depends(get_db)):
+    """Keep it in sync: exports, the watched folder, YouTube, your phone."""
+    now = datetime.now(timezone.utc)
+    last = watch.last_imports(conn)
+    exports = []
+    for platform in ("tiktok", "instagram", "youtube"):
+        at = last.get(platform)
+        exports.append({"platform": platform, "name": watch.NAMES[platform],
+                        "days": watch._days_since(at["at"], now) if at else None,
+                        "due": bool(at) and watch._days_since(at["at"], now) > watch.DUE_DAYS})
+    recent = conn.execute("SELECT filename, platform, imported_at, added, detail FROM imports"
+                          " ORDER BY imported_at DESC LIMIT 6").fetchall()
+    port = request.url.port or 8000
+    token = os.environ.get("FAVORITES_TOKEN")
+    wifi = _wifi_address() if token else None
+    return templates.TemplateResponse(request, "sync.html", {
+        "exports": exports, "recent": [dict(r) | {"detail": json.loads(r["detail"] or "{}")} for r in recent],
+        "folders": [str(f) for f in watch.folders_from_env()], "status": watch.STATUS,
+        "google": {"configured": google_sync.configured(), "connected": google_sync.connected(conn),
+                   "last": google_sync.last_sync(conn)},
+        "here": _on_this_mac(request), "token": token,
+        "addresses": [f"http://{wifi}:{port}"] if wifi else [],
+        "flash": request.query_params.get("done", ""),
+        "q": "", "total": db.count(conn),
+    })
+
+
+@app.post("/sync/scan")
+async def sync_scan():
+    """Look in the watched folder now, instead of waiting a minute."""
+    found = await run_in_threadpool(_scan_now)
+    if any(f.added for f in found):
+        asyncio.create_task(_fill_in())
+    return RedirectResponse("/sync?done=scanned#folder", status_code=303)
+
+
+@app.post("/sync/snooze")
+def sync_snooze(platform: str = Form(""), next: str = Form("/"),
+                conn: sqlite3.Connection = Depends(get_db)):
+    watch.snooze(conn, platform)
+    return RedirectResponse(_back(next, "/"), status_code=303)
+
+
+def _mac_only(request: Request) -> None:
+    if not _on_this_mac(request):
+        raise HTTPException(status_code=403, detail="do this on the Mac the museum runs on")
+
+
+@app.post("/sync/youtube/connect")
+def youtube_connect(request: Request, conn: sqlite3.Connection = Depends(get_db)):
+    _mac_only(request)
+    if not google_sync.configured():
+        return RedirectResponse("/sync#youtube", status_code=303)
+    port = request.url.port or 8000
+    return RedirectResponse(
+        google_sync.start(conn, f"http://localhost:{port}/sync/youtube/callback"), status_code=303)
+
+
+@app.get("/sync/youtube/callback")
+async def youtube_callback(request: Request, code: str = "", state: str = "", error: str = "",
+                           conn: sqlite3.Connection = Depends(get_db)):
+    _mac_only(request)
+    if error or not code:
+        return RedirectResponse("/sync?done=youtube-cancelled#youtube", status_code=303)
+    try:
+        await google_sync.finish(conn, code, state)
+        result = await google_sync.sync(conn)
+    except (PermissionError, httpx.HTTPError, google_sync.NotConnected):
+        return RedirectResponse("/sync?done=youtube-failed#youtube", status_code=303)
+    if result["added"]:
+        asyncio.create_task(_fill_in())
+    return RedirectResponse("/sync?done=youtube-connected#youtube", status_code=303)
+
+
+@app.post("/sync/youtube/now")
+async def youtube_now(request: Request, conn: sqlite3.Connection = Depends(get_db)):
+    _mac_only(request)
+    try:
+        result = await google_sync.sync(conn)
+    except (httpx.HTTPError, google_sync.NotConnected):
+        return RedirectResponse("/sync?done=youtube-failed#youtube", status_code=303)
+    if result["added"]:
+        asyncio.create_task(_fill_in())
+    return RedirectResponse("/sync?done=youtube-synced#youtube", status_code=303)
+
+
+@app.post("/sync/youtube/disconnect")
+async def youtube_disconnect(request: Request, conn: sqlite3.Connection = Depends(get_db)):
+    _mac_only(request)
+    await google_sync.disconnect(conn)
+    return RedirectResponse("/sync?done=youtube-disconnected#youtube", status_code=303)
 
 
 @app.get("/healthz")
