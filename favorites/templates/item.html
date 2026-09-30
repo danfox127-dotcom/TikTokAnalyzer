@@ -1,18 +1,20 @@
 {% extends "base.html" %}
-{% from "_card.html" import card, frame, shelf, threads as connected %}
+{% from "_card.html" import card, frame, shelf, room_pill, threads as connected %}
 {% from "_icons.html" import icon %}
 {% block title %}{{ item.title or 'Item' }} · Favorites{% endblock %}
+{% block main_class %}is-bands{% endblock %}
 {% block content %}
 
 {% if just_saved %}<p class="rr-notice flash">{{ icon('placard') }}<span>Saved. Add a placard below while you remember why.</span></p>{% endif %}
 
+<section class="rr-band detail-band"><div class="inner">
 <article class="rr-detail detail">
   <div class="hang">{{ frame(item) }}</div>
 
   <div class="detail-body">
     <div class="rr-walllabel">
       <p class="eyebrow">
-        {% set badge = hook_badge(item) %}{% if badge %}<span class="brass">{{ badge }} · {{ item.saved_at[:4] }}</span>{% endif %}
+        {% set badge = hook_badge(item) %}{% if badge %}<span class="hook">📅 {{ badge }} · {{ item.saved_at[:4] }}</span>{% endif %}
         <span>{{ platform_label(item.platform) }}</span>
         {% if item.duration %}<span>{{ item.duration | clock }} long</span>{% endif %}
         <span>Saved {{ item.saved_at[:10] }}</span>
@@ -30,7 +32,7 @@
 
       {% if item.themes or item.tags %}
         <ul class="rr-pills theme-pills">
-          {% for theme in item.themes %}<li><a class="rr-pill is-room" href="/search?theme={{ theme | urlencode }}">{{ theme }}</a></li>{% endfor %}
+          {% for theme in item.themes %}{{ room_pill(theme, '/search?theme=' ~ (theme | urlencode)) }}{% endfor %}
           {% for tag in item.tags %}<li><a class="rr-pill" href="/search?tag={{ tag | urlencode }}">#{{ tag }}</a></li>{% endfor %}
         </ul>
       {% endif %}
@@ -64,7 +66,7 @@
     </div>
 
     <form class="rr-placard note-form" action="/item/{{ item.id }}/note" method="post">
-      <label class="rr-label" for="note">Your placard</label>
+      <label class="rr-label" for="note">📝 Your placard</label>
       <textarea id="note" name="note" rows="2" placeholder="Why did you keep this?">{{ item.note or '' }}</textarea>
       <div class="row"><button class="rr-btn rr-btn--primary" type="submit">Save note</button>
         <span class="hint">Notes are searchable, and shown in italic wherever this save appears.</span></div>
@@ -80,11 +82,13 @@
     {% endif %}
   </div>
 </article>
+</div></section>
 
 {% if room_items %}
-  {{ shelf('More from ' ~ room, room_items, kicker='Same room', href='/search?theme=' ~ (room | urlencode)) }}
+  {%- set lk = look(room) %}
+  {{ shelf('More from ' ~ room, room_items, kicker=lk[2] ~ ' Same room', href='/search?theme=' ~ (room | urlencode), tone=lk[0]) }}
 {% endif %}
 {% if related %}
-  {{ shelf('More from this creator', related, kicker='Same hands') }}
+  {{ shelf('More from this creator', related, kicker='💌 Same hands', tone='lilac' if not room_items or look(room)[0] != 'lilac' else 'mint') }}
 {% endif %}
 {% endblock %}

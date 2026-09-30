@@ -1,7 +1,9 @@
 /* The museum's small amount of behaviour. Every page works without it:
    links filter, forms submit, carousels scroll. This only adds what a
    plain page cannot -- dots that follow a swipe, a filter sheet that stays
-   open while you pick, suggestions as you type, and a remembered colour mode. */
+   open while you pick, suggestions as you type, a remembered colour mode, and
+   two small scroll touches: blocks that rise into view once, and a masthead
+   that takes on the colour of the band beneath it. */
 (function () {
   'use strict';
 
@@ -150,6 +152,39 @@
     document.addEventListener('click', function (e) { if (!form.contains(e.target)) close(); });
   }
 
+  /* ---- motion: subtle, and only in answer to scrolling ----
+     One observer reveals .rr-reveal blocks the first time they come into view;
+     another tints the masthead with the band under it. No scroll listeners,
+     nothing per frame. Content is only hidden once this has run (.rr-motion),
+     so with no script -- or with reduced motion -- everything is simply there. */
+  function motion() {
+    var reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reduce || !('IntersectionObserver' in window)) return;
+    var blocks = document.querySelectorAll('.rr-reveal');
+    if (blocks.length) {
+      document.documentElement.classList.add('rr-motion');
+      var io = new IntersectionObserver(function (entries) {
+        entries.forEach(function (e) { if (e.isIntersecting) { e.target.classList.add('is-in'); io.unobserve(e.target); } });
+      }, { rootMargin: '0px 0px -6% 0px', threshold: 0.01 });
+      blocks.forEach(function (el) { io.observe(el); });
+    }
+    var mast = document.querySelector('.rr-masthead');
+    var bands = document.querySelectorAll('.rr-band');
+    if (mast && bands.length) {
+      var tint = new IntersectionObserver(function (entries) {
+        entries.forEach(function (e) {
+          if (e.isIntersecting) mast.style.setProperty('--here', getComputedStyle(e.target).backgroundColor);
+        });
+      }, { rootMargin: '-64px 0px -88% 0px' });
+      bands.forEach(function (b) { tint.observe(b); });
+      // Back above the first band: the plain wall again.
+      var hero = document.querySelector('.rr-hero');
+      if (hero) new IntersectionObserver(function (entries) {
+        entries.forEach(function (e) { if (e.isIntersecting) mast.style.removeProperty('--here'); });
+      }, { rootMargin: '-64px 0px -88% 0px' }).observe(hero);
+    }
+  }
+
   function init() {
     setMode(stored());
     document.addEventListener('click', function (e) {
@@ -162,6 +197,7 @@
     document.querySelectorAll('.rr-carousel').forEach(carousel);
     document.querySelectorAll('.rr-filters-mobile').forEach(sheet);
     document.querySelectorAll('form[data-suggest]').forEach(suggest);
+    motion();
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
 })();

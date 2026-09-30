@@ -505,7 +505,8 @@ library.
 | `db.py` | SQLite storage and full-text search |
 | `museum.py` | The digest, the rotating shelves and the hooks (On this day, rooms, threads) |
 | `explore.py` | Search and filters, including On this day |
-| `templates/`, `static/` | The pages, in the *Reading Room* design system: `style.css` holds its tokens and components, `museum.js` the little behaviour a plain page cannot do (carousel dots, the phone filter sheet, suggestions, the colour mode). Every page works without it |
+| `looks.py` | Each theme's band colour, icon and emoji |
+| `templates/`, `static/` | The pages, in the *Favorites Museum* design system (version 2, "Sweet Spot"): lavender, candy-colour section bands, round type, subtle scroll motion.: `style.css` holds its tokens and components, `museum.js` the little behaviour a plain page cannot do (carousel dots, the phone filter sheet, suggestions, the colour mode). Every page works without it |
 | `app.py` | The web app and the `/save` endpoint |
 
 Tests are in `tests/test_favorites_*.py` and run with the rest of the repo's

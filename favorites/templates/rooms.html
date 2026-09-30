@@ -5,15 +5,15 @@
 {% block title %}Rooms · Favorites{% endblock %}
 {% block content %}
 <section class="page-head">
-  <p class="rr-label is-green">Rooms</p>
+  <p class="rr-label">🚪 Rooms</p>
   <h1 class="rr-h-l">Walk into a theme</h1>
   <p class="rr-muted">{{ rooms | length }} rooms, arranged by how much you've kept in each. Every save can hang in more than one.</p>
 </section>
 
 {% if rooms %}
-  <div class="rr-rooms rooms-all">{% for r in rooms %}{{ room(r) }}{% endfor %}</div>
+  <div class="rr-rooms rooms-all">{% for r in rooms %}{{ room(r, loop.index0 % 4) }}{% endfor %}</div>
 {% else %}
-  <div class="rr-empty"><h2 class="rr-h-m">No rooms yet.</h2><p>A theme becomes a room once two saves share it.</p></div>
+  <div class="rr-empty"><div class="big" aria-hidden="true">🚪</div><h2 class="rr-h-m">No rooms yet.</h2><p>A theme becomes a room once two saves share it.</p></div>
 {% endif %}
 
 {% if undefined %}

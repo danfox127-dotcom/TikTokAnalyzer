@@ -8,7 +8,7 @@
 <span class="rr-frame{% if not item.thumbnail_url %} is-empty{% endif %}">
   {%- if item.thumbnail_url %}<img src="/thumb/{{ item.id }}" alt="" loading="lazy" referrerpolicy="no-referrer" data-frame>{% endif -%}
   <span class="rr-mat-fallback"><b>{{ who | initials if who else platform_label(item.platform)[:1] }}</b><span>{{ platform_label(item.platform) }}</span></span>
-  {%- set badge = top or hook_badge(item) %}{% if badge %}<span class="rr-tag is-top">{{ badge }}</span>{% endif -%}
+  {%- set badge = top or (('📅 ' ~ hook_badge(item)) if hook_badge(item)) %}{% if badge %}<span class="rr-tag is-top">{{ badge }}</span>{% endif -%}
   <span class="rr-tag is-platform">{{ platform_label(item.platform) }}</span>
   {%- if item.duration %}<span class="rr-tag is-length" aria-label="Length">{{ item.duration | clock }}</span>{% endif -%}
 </span>
@@ -31,9 +31,10 @@
 {% macro slide(item, i, n) %}
 <li class="rr-slide" aria-roledescription="slide" aria-label="{{ i }} of {{ n }}">
   <a href="/item/{{ item.id }}" tabindex="-1" aria-hidden="true">{{ frame(item) }}</a>
-  <div class="cap">
+  {%- set theme = (item.themes or [none])[0] %}{% set lk = look(theme) %}
+  <div class="cap tone-{{ lk[0] }}">
     <div class="meta">
-      <span>{{ (item.themes or [platform_label(item.platform)])[0] }}</span><span class="sep"></span><span>Saved {{ item.saved_at[:4] }}</span>
+      <span>{% if theme %}{{ lk[2] }} {{ theme }}{% else %}{{ platform_label(item.platform) }}{% endif %}</span><span class="sep"></span><span>Saved {{ item.saved_at[:4] }}</span>
     </div>
     <h3><a href="/item/{{ item.id }}">{{ item.title or browsable_url(item) }}</a></h3>
     <p class="by">{{ ((item.creator_name or item.creator_handle) ~ ' · ') if (item.creator_name or item.creator_handle) }}{{ platform_label(item.platform) }}</p>
@@ -66,18 +67,21 @@
 </div>
 {% endmacro %}
 
-{% macro shelf(title, items, kicker='', sub='', href='', kind='', compact=False) %}
-<section class="rr-shelf shelf"{% if kind %} data-kind="{{ kind }}"{% endif %}>
-  {{ shelf_head(title, kicker, sub, href) }}
-  {{ carousel(items, title, compact) }}
-</section>
+{#- A shelf is a band: a full-width field in one of the six tones. -#}
+{% macro shelf(title, items, kicker='', sub='', href='', kind='', compact=False, tone='sky') %}
+<section class="rr-band tone-{{ tone }} rr-shelf shelf"{% if kind %} data-kind="{{ kind }}"{% endif %}><div class="inner">
+  <div class="rr-reveal">{{ shelf_head(title, kicker, sub, href) }}</div>
+  <div class="rr-reveal">{{ carousel(items, title, compact) }}</div>
+</div></section>
 {% endmacro %}
 
-{% macro room(r) %}
-<a class="rr-room" href="{{ r.href }}">
+{% macro room(r, i=0) %}
+{%- set lk = look(r.theme) %}
+<a class="rr-room tone-{{ lk[0] }} rr-reveal" style="--i:{{ i }}" href="{{ r.href }}">
   <span class="door" aria-hidden="true">
     {% for c in r.covers %}<div>{% if c.thumbnail_url %}<img src="/thumb/{{ c.id }}" alt="" loading="lazy" referrerpolicy="no-referrer" data-hide-broken>{% endif %}</div>{% endfor %}
     {% for _ in range(3 - r.covers | length) %}<div></div>{% endfor %}
+    <span class="badge">{{ icon(lk[1]) }}</span>
   </span>
   <span class="plate"><b>{{ r.theme }}</b><span>{{ r.count }}</span></span>
   <p class="sub">{{ r.fact }}</p>
@@ -98,3 +102,9 @@
   </ul>
 </section>
 {% endmacro %}
+
+{#- A theme as a pill in its room's colour, led by its icon. -#}
+{% macro room_pill(theme, href, n=None) %}
+{%- set lk = look(theme) -%}
+<li><a class="rr-pill is-room tone-{{ lk[0] }}" href="{{ href }}">{{ icon(lk[1]) }}{{ theme }}{% if n is not none %} <span class="n">{{ n }}</span>{% endif %}</a></li>
+{%- endmacro %}

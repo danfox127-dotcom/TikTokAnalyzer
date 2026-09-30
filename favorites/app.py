@@ -30,7 +30,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from starlette.concurrency import run_in_threadpool
 
-from . import db, explore, lengths, museum, tagging, thumbnails, transcript
+from . import db, explore, lengths, looks, museum, tagging, thumbnails, transcript
 from .resolve import browsable_url, extract_url, platform_label, resolve
 
 logger = logging.getLogger(__name__)
@@ -72,6 +72,9 @@ def clock(seconds) -> str:
 
 templates.env.filters["clock"] = clock
 templates.env.globals["hook_badge"] = museum.hook_badge
+templates.env.globals["look"] = looks.look
+templates.env.globals["season_look"] = looks.SEASON_LOOK
+templates.env.globals["tones"] = looks.TONES
 
 
 def initials(name) -> str:
