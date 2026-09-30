@@ -342,3 +342,17 @@ class TestHooks:
         })
         body = client.get("/").text
         assert "On this day" in body and "4 years ago" in body
+
+
+class TestLook:
+    def test_the_front_page_is_a_stack_of_colour_bands(self, client, tiktok_ok):
+        client.post("/save", json={"url": "https://www.tiktok.com/@citydesk/video/7123"})
+        body = client.get("/").text
+        assert body.count('class="rr-band tone-') >= 2
+        assert 'class="rr-reveal' in body   # rises into view once scripts run
+        assert "and counting" in body
+
+    def test_pages_load_the_fonts_and_the_script(self, client):
+        body = client.get("/").text
+        assert "family=Fredoka" in body and "family=Nunito" in body
+        assert '/static/museum.js' in body

@@ -22,7 +22,7 @@
 
     <div class="placard-body rr-walllabel">
       {% if item.creator_name or item.creator_handle %}
-        <p class="eyebrow"><span class="brass">{{ item.creator_name or item.creator_handle }}</span><span>{{ platform_label(item.platform) }}</span></p>
+        <p class="eyebrow"><span class="hook">{{ item.creator_name or item.creator_handle }}</span><span>{{ platform_label(item.platform) }}</span></p>
       {% endif %}
 
       {% if item.title %}
@@ -35,7 +35,7 @@
         Watch it on {{ platform_label(item.platform) }} {{ icon('external') }}</a></p>
 
       <form class="rr-placard placard-form" action="/placards/{{ item.id }}" method="post">
-        <label class="rr-label" for="note">Why did you keep this?</label>
+        <label class="rr-label" for="note">📝 Why did you keep this?</label>
         <input type="text" id="note" name="note" autofocus autocomplete="off" placeholder="one line is plenty">
         <input type="hidden" name="all" value="{{ 1 if everything else 0 }}">
         <div class="row">
@@ -50,6 +50,7 @@
 
 {% else %}
 <section class="rr-empty empty">
+  <div class="big" aria-hidden="true">{% if after %}🎉{% else %}✅{% endif %}</div>
   <h1 class="rr-h-l">{% if after %}That's the last one.{% else %}Nothing needs a placard.{% endif %}</h1>
   <p>{{ written }} placard{{ '' if written == 1 else 's' }} written.</p>
   {% if not everything %}
