@@ -356,3 +356,36 @@ class TestLook:
         body = client.get("/").text
         assert "family=Fredoka" in body and "family=Nunito" in body
         assert '/static/museum.js' in body
+
+
+class TestMoreHooks:
+    @pytest.fixture
+    def three(self, client, library):
+        for n in range(3):
+            db.upsert_item(library, {
+                "canonical_url": f"https://example.com/w{n}", "shared_url": "x", "platform": "tiktok",
+                "title": f"Dog video {n} #dog", "tags": ["dog"], "resolve_status": "ok",
+                "saved_at": f"202{4 + n % 2}-0{n + 1}-10T12:00:00+00:00",
+            })
+        return [r[0] for r in library.execute("SELECT id FROM items ORDER BY id").fetchall()]
+
+    def test_wandering_carries_the_trail(self, client, three):
+        resp = client.get(f"/wander/{three[0]}", follow_redirects=False)
+        assert resp.status_code == 303
+        loc = resp.headers["location"]
+        assert loc.startswith("/item/") and f"trail={three[0]}" in loc and "via=" in loc
+        page = client.get(loc).text
+        assert "Wandered here via" in page and "Keep wandering" in page
+
+    def test_junk_in_the_trail_is_ignored(self, client, three):
+        resp = client.get(f"/wander/{three[0]}?trail=abc,,7x,{three[1]}", follow_redirects=False)
+        assert resp.status_code == 303 and "abc" not in resp.headers["location"]
+
+    def test_wander_from_nowhere_starts_somewhere(self, client, three):
+        assert client.get("/wander", follow_redirects=False).headers["location"].startswith("/item/")
+
+    def test_the_year_pages(self, client, three):
+        assert "saves in 2024" in client.get("/year/2024").text
+        assert client.get("/year/1999").status_code == 404
+        assert client.get("/year/abcd").status_code == 404
+        assert client.get("/year").status_code == 200

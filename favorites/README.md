@@ -192,6 +192,17 @@ and then behaves like a small museum:
   room is on `/rooms`.
 - **On your shelf.** The creators you keep saving, like books on a shelf.
 
+- **This week.** How this week compares with last, the room it leaned towards,
+  and one old save worth another look (the same one all week).
+- **This season.** The current season as a room — every autumn (or winter…) you
+  have kept things through — on the front page and first on `/rooms`.
+- **Wander** (`/wander`, and *Keep wandering* on every save). Follows one of the
+  save's threads — its room, creator, date, season or a hashtag — to somewhere
+  you have not just been, and says which thread it took. It never dead-ends.
+- **Your year** (`/year`, `/year/2025`). A Wrapped-style page: top rooms and
+  creators, busiest month, longest saving streak, favourite day, first and latest
+  saves, and how the year compares with the last.
+
 Every item page ends with **Connected by**: its rooms, its creator, the same date
 in other years, its season, and hashtags it shares — each a way on to more saves.
 

@@ -292,3 +292,95 @@ class TestRoomsAndThreads:
         save(conn, 1, tags=["dog"])
         item = db.rows_to_dicts(conn.execute("SELECT * FROM items").fetchall())[0]
         assert museum.threads(conn, item) == []
+
+
+class TestSeasonRoom:
+    def test_this_season_in_every_year(self, conn):
+        # NOW is 18 September: autumn.
+        save_on(conn, 1, NOW.replace(year=2024, month=10, day=3))
+        save_on(conn, 2, NOW.replace(year=2025, month=11, day=20))
+        save_on(conn, 3, NOW - timedelta(days=5))
+        save_on(conn, 4, NOW.replace(year=2025, month=7, day=1))   # summer: not in the room
+        room = museum.season_room(conn, now=NOW)
+        assert room["season"] == "autumn" and room["label"] == "Autumn in your library"
+        assert room["count"] == 3
+        assert [y for y, _ in room["years"]] == ["2026", "2025", "2024"]
+        assert room["sub"] == "3 saves across 3 autumns"
+        assert room["href"] == "/search?season=autumn"
+
+    def test_needs_three_saves(self, conn):
+        save_on(conn, 1, NOW - timedelta(days=5))
+        assert museum.season_room(conn, now=NOW) is None
+
+
+class TestWander:
+    def item(self, conn, n):
+        return db.rows_to_dicts(conn.execute(
+            "SELECT * FROM items WHERE canonical_url LIKE ?", (f"%/{n}",)).fetchall())[0]
+
+    def test_follows_a_thread_somewhere_new(self, conn):
+        for n in range(1, 5):
+            save(conn, n, tags=["dog"], creator=f"C{n}", handle=f"@c{n}", days_ago=n * 40)
+        start = self.item(conn, 1)
+        import random
+        for seed in range(10):
+            nxt, via = museum.wander_next(conn, start, [], random.Random(seed))
+            assert nxt["id"] != start["id"] and via
+
+    def test_never_goes_back_along_the_trail(self, conn):
+        for n in range(1, 4):
+            save(conn, n, tags=["dog"], days_ago=n)
+        a, b, c = (self.item(conn, n) for n in (1, 2, 3))
+        nxt, _ = museum.wander_next(conn, a, [b["id"]])
+        assert nxt["id"] == c["id"]
+
+    def test_an_isolated_save_still_leads_somewhere(self, conn):
+        save(conn, 1, creator="Solo", handle="@solo", tags=["knitting"], days_ago=1)
+        save(conn, 2, creator="Other", handle="@other", tags=["cars"], days_ago=400)
+        nxt, via = museum.wander_next(conn, self.item(conn, 1), [])
+        assert nxt is not None and nxt["id"] == self.item(conn, 2)["id"]
+
+    def test_nothing_else_at_all_is_nowhere(self, conn):
+        save(conn, 1, days_ago=1)
+        assert museum.wander_next(conn, self.item(conn, 1), []) == (None, "")
+
+
+class TestWeek:
+    def test_this_week_against_last_week(self, conn):
+        for n in range(3):
+            save(conn, n, days_ago=1 + n, tags=["dog"])
+        save(conn, 10, days_ago=9)
+        save(conn, 11, days_ago=300)
+        week = museum.week_digest(conn, now=NOW)
+        assert week["count"] == 3 and week["before"] == 1
+        assert week["prose"].startswith("3 saves this week, up from 1 the week before, mostly dogs")
+        assert week["revisit"]["canonical_url"].endswith("/11")
+
+    def test_the_revisit_holds_for_the_week(self, conn):
+        for n in range(20):
+            save(conn, n, days_ago=200 + n)
+        monday = datetime(2026, 9, 14, 9, tzinfo=timezone.utc)
+        picks = {museum.week_digest(conn, now=monday + timedelta(days=d))["revisit"]["id"] for d in range(7)}
+        assert len(picks) == 1
+
+    def test_an_empty_library_has_no_week(self, conn):
+        assert museum.week_digest(conn, now=NOW) is None
+
+
+class TestYear:
+    def test_the_year_in_numbers(self, conn):
+        # A three-day run across the end of August, then two in September.
+        for n, day in enumerate(["2026-08-30", "2026-08-31", "2026-09-01", "2026-09-10", "2026-09-10"]):
+            save_on(conn, n, datetime.fromisoformat(day + "T12:00:00+00:00"),
+                    tags=["dog"] if n < 3 else ["food"], note="kept" if n == 0 else None)
+        save_on(conn, 9, datetime(2025, 3, 1, 12, tzinfo=timezone.utc))
+        r = museum.year_review(conn, "2026", now=NOW)
+        assert r["total"] == 5 and r["last"] == 1 and r["this_year"]
+        assert r["streak"] == 3 and r["days"] == 4
+        assert r["busiest"]["month"] == "September" and r["busiest"]["count"] == 3
+        assert r["rooms"][0]["theme"] == "Dogs"
+        assert r["first"]["saved_at"].startswith("2026-08-30")
+        assert r["notes"] == 1 and r["other_years"] == ["2025"]
+
+    def test_a_year_with_nothing_is_none(self, conn):
+        assert museum.year_review(conn, "2019", now=NOW) is None

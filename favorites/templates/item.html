@@ -13,6 +13,7 @@
 
   <div class="detail-body">
     <div class="rr-walllabel">
+      {% if via %}<p class="wandered"><span class="rr-emoji" aria-hidden="true">🧭</span> Wandered here via <b>{{ via }}</b></p>{% endif %}
       <p class="eyebrow">
         {% set badge = hook_badge(item) %}{% if badge %}<span class="hook">📅 {{ badge }} · {{ item.saved_at[:4] }}</span>{% endif %}
         <span>{{ platform_label(item.platform) }}</span>
@@ -53,6 +54,7 @@
       <div class="actions">
         <a class="rr-btn rr-btn--primary open" href="{{ browsable_url(item) }}" target="_blank" rel="noopener noreferrer">
           {% if item.format == 'short' %}Watch the Short{% else %}Open on {{ platform_label(item.platform) }}{% endif %} {{ icon('external') }}</a>
+        <a class="rr-btn wander-btn" href="{{ wander_href }}">{{ icon('compass') }}Keep wandering</a>
         <form class="file-form" action="/item/{{ item.id }}/file" method="post">
           <input type="text" name="name" list="all-collections" autocomplete="off"
                  placeholder="{% if collections %}Also file under…{% else %}File under a category…{% endif %}"

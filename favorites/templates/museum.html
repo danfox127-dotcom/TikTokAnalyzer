@@ -54,6 +54,9 @@
   </form>
   <ul class="rr-pills is-scroll hooks" aria-label="Ways in">
     {% if on_this_day %}<li><a class="rr-pill is-hook" href="{{ on_this_day.href }}">{{ icon('calendar') }}On this day <span class="n">{{ on_this_day.count }}</span></a></li>{% endif %}
+    <li><a class="rr-pill is-hook" href="/wander">{{ icon('compass') }}Wander</a></li>
+    {% if season %}<li><a class="rr-pill is-room tone-{{ season.tone }}" href="{{ season.href }}">{{ icon(season.icon) }}This {{ season.name | lower }} <span class="n">{{ season.count }}</span></a></li>{% endif %}
+    <li><a class="rr-pill is-hook" href="/year">{{ icon('spark') }}Your {{ year_now }}</a></li>
     <li><a class="rr-pill is-hook" href="/surprise">{{ icon('shuffle') }}Surprise me</a></li>
     {% for label, n, href in browse.themes[:4] if label != 'Undefined' %}{{ room_pill(label, href, n) }}{% endfor %}
   </ul>
@@ -86,6 +89,25 @@
       <span class="rr-muted">{% if on_this_day.years | length > 3 %}and more from earlier years{% else %}{{ on_this_day.label }}, every year you've saved something{% endif %}</span>
       <a href="{{ on_this_day.href }}">See all →</a>
     </div>
+  </div>
+</div></section>
+{% endif %}
+
+{% if week %}
+<section class="rr-band tone-{{ order[ns.i % 6] }}" aria-labelledby="week-title">{% set ns.i = ns.i + 1 %}<div class="inner">
+  <div class="rr-week band-pad">
+    <div class="rr-reveal">
+      <p class="rr-label">🗞️ This week</p>
+      <h2 class="rr-h-m" id="week-title">{{ week.prose }}</h2>
+      {% if week.room %}<ul class="rr-pills" style="margin-top:14px">{{ room_pill(week.room[0], '/search?theme=' ~ (week.room[0] | urlencode), week.room[1]) }}</ul>{% endif %}
+      {% if week.count %}<p class="more-line"><a href="/search?sort=newest">See this week's saves →</a></p>{% endif %}
+    </div>
+    {% if week.revisit %}
+    <div class="revisit rr-reveal" style="--i:1">
+      <p class="rr-label">👀 Worth another look</p>
+      {{ card(week.revisit, 'l', top='Saved ' ~ week.revisit.saved_at[:4]) }}
+    </div>
+    {% endif %}
   </div>
 </div></section>
 {% endif %}
@@ -128,6 +150,10 @@
 </div></section>
 {% endif %}
 
+{% if season %}
+  {{ shelf(season.label, season.entries, kicker=season.emoji ~ ' This season', sub=season.sub, href=season.href, kind='season', tone=order[ns.i % 6]) }}{% set ns.i = ns.i + 1 %}
+{% endif %}
+
 {% for s in shelves[2:] %}
   {{ shelf(s.title, s.entries, kicker=kickers.get(s.kind, ''), sub=s.subtitle, href=s.href, kind=s.kind, tone=order[ns.i % 6]) }}{% set ns.i = ns.i + 1 %}
 {% endfor %}
@@ -146,7 +172,8 @@
   {% endif %}
   <div class="browse-more band-pad rr-reveal"{% if creators %} style="margin-top:36px"{% endif %}>
     <a class="rr-btn" href="/search">{{ icon('filter') }}All {{ total }} saves, with every filter</a>
-    <a class="rr-btn" href="/surprise">{{ icon('shuffle') }}Surprise me</a>
+    <a class="rr-btn" href="/year">{{ icon('spark') }}Your {{ year_now }} so far</a>
+    <a class="rr-btn" href="/wander">{{ icon('compass') }}Go wandering</a>
   </div>
 </div></section>
 

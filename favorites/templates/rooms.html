@@ -11,7 +11,20 @@
 </section>
 
 {% if rooms %}
-  <div class="rr-rooms rooms-all">{% for r in rooms %}{{ room(r, loop.index0 % 4) }}{% endfor %}</div>
+  <div class="rr-rooms rooms-all">
+    {% if season %}
+    <a class="rr-room tone-{{ season.tone }} rr-reveal is-season" href="{{ season.href }}">
+      <span class="door" aria-hidden="true">
+        {% for c in season.covers %}<div>{% if c.thumbnail_url %}<img src="/thumb/{{ c.id }}" alt="" loading="lazy" referrerpolicy="no-referrer" data-hide-broken>{% endif %}</div>{% endfor %}
+        {% for _ in range(3 - season.covers | length) %}<div></div>{% endfor %}
+        <span class="badge">{{ icon(season.icon) }}</span>
+      </span>
+      <span class="plate"><b>{{ season.emoji }} {{ season.label }}</b><span>{{ season.count }}</span></span>
+      <p class="sub">This season's room · {{ season.sub }}</p>
+    </a>
+    {% endif %}
+    {% for r in rooms %}{{ room(r, (loop.index0 + 1) % 4) }}{% endfor %}
+  </div>
 {% else %}
   <div class="rr-empty"><div class="big" aria-hidden="true">🚪</div><h2 class="rr-h-m">No rooms yet.</h2><p>A theme becomes a room once two saves share it.</p></div>
 {% endif %}
