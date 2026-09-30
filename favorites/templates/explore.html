@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "_card.html" import card, threads %}
+{% from "_card.html" import card, salon, threads %}
 {% from "_icons.html" import icon %}
 {% set nav = 'search' %}
 {% block title %}{{ heading }} · Favorites{% endblock %}
@@ -97,9 +97,7 @@
 
   <div class="explore-results">
     {% if items %}
-      <div class="rr-grid">
-        {% for item in items %}{{ card(item) }}{% endfor %}
-      </div>
+      {{ salon(items) }}
       {% if filters.page > 1 or has_next %}
         <nav class="pager" aria-label="Pages">
           {% if filters.page > 1 %}<a class="rr-btn" href="{{ filters.href(page=filters.page - 1) }}">{{ icon('left') }}Previous</a>{% endif %}

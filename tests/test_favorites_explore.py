@@ -258,7 +258,9 @@ class TestUndefined:
 
     @pytest.fixture
     def with_unthemed(self, conn, library):
-        library["mystery_tt"] = add(conn, 6, caption="you have to see this one")
+        # By someone new: a Kitchen Desk save would lean to Food, as theirs all are.
+        library["mystery_tt"] = add(conn, 6, caption="you have to see this one",
+                                    creator=("Someone New", "@someonenew"))
         library["mystery_yt"] = add(conn, 7, platform="youtube", fmt="video",
                                     caption="tonight, again", creator=("City Desk", "@citydesk"))
         return library

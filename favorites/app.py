@@ -13,6 +13,7 @@ three years when you have forgotten it exists.
 from __future__ import annotations
 
 import dataclasses
+from collections import Counter
 import logging
 from contextlib import asynccontextmanager
 import os
@@ -30,7 +31,8 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from starlette.concurrency import run_in_threadpool
 
-from . import db, explore, lengths, looks, museum, tagging, thumbnails, transcript
+from . import blurb, db, explore, lengths, looks, museum, tagging, thumbnails, transcript
+from . import themes as theme_vocabulary
 from .resolve import browsable_url, extract_url, platform_label, resolve
 
 logger = logging.getLogger(__name__)
@@ -75,6 +77,7 @@ templates.env.globals["hook_badge"] = museum.hook_badge
 templates.env.globals["look"] = looks.look
 templates.env.globals["season_look"] = looks.SEASON_LOOK
 templates.env.globals["tones"] = looks.TONES
+templates.env.globals["shape"] = looks.shape
 
 
 def initials(name) -> str:
@@ -84,6 +87,12 @@ def initials(name) -> str:
 
 
 templates.env.filters["initials"] = initials
+templates.env.globals["headline"] = blurb.headline
+templates.env.globals["blurb"] = blurb.blurb
+templates.env.globals["detail"] = blurb.detail
+templates.env.globals["clean_caption"] = blurb.clean_caption
+templates.env.filters["upto"] = blurb.trim
+templates.env.globals["theme_names"] = list(theme_vocabulary.THEMES)
 
 
 def get_db():
@@ -305,6 +314,59 @@ def rooms_page(request: Request, conn: sqlite3.Connection = Depends(get_db)):
         "rooms": found, "undefined": undefined, "q": "", "total": db.count(conn),
         "season": museum.season_room(conn),
     })
+
+
+@app.get("/rooms/tidy", response_class=HTMLResponse)
+def tidy_page(request: Request, conn: sqlite3.Connection = Depends(get_db)):
+    """Tidy the rooms: teach the hashtags it doesn't know, settle its guesses."""
+    report = theme_vocabulary.report(conn, top=24)
+    ids = {i for t, _ in report["unrecognised_hashtags"] for i in report["examples"][t][:3]}
+    hunch_ids, hunch_count = db.hunches(conn, limit=12)
+    ids |= set(hunch_ids)
+    by_id = {i["id"]: i for i in db.rows_to_dicts(conn.execute(
+        f"SELECT * FROM items WHERE id IN ({','.join('?' * len(ids)) or 'NULL'})",
+        tuple(ids)).fetchall())}
+    unknown = []
+    for tag, n in report["unrecognised_hashtags"]:
+        # The rooms its saves are already in are the likeliest answers.
+        near = Counter(t for i in report["examples"][tag] for t in (by_id.get(i) or {}).get("themes", []))
+        unknown.append({"tag": tag, "count": n,
+                        "saves": [by_id[i] for i in report["examples"][tag][:3] if i in by_id],
+                        "likely": [t for t, _ in near.most_common(3)]})
+    undefined = report["items"] - report["themed"]
+    return templates.TemplateResponse(request, "tidy.html", {
+        "unknown": unknown, "hunches": [by_id[i] for i in hunch_ids if i in by_id],
+        "hunch_count": hunch_count, "undefined": undefined,
+        "taught": db.taught_count(conn), "q": "", "total": db.count(conn),
+    })
+
+
+@app.post("/rooms/teach")
+def teach(tag: str = Form(""), theme: str = Form(""), conn: sqlite3.Connection = Depends(get_db)):
+    """Teach a hashtag its room -- or that it is no subject at all."""
+    db.teach_tag(conn, tag, theme or None)
+    return RedirectResponse("/rooms/tidy#hashtags", status_code=303)
+
+
+def _back(to: str, fallback: str) -> str:
+    """Only ever redirect within the museum."""
+    return to if to.startswith("/") and not to.startswith("//") else fallback
+
+
+@app.post("/item/{item_id}/rooms")
+def choose_rooms(
+    item_id: int, room: list[str] = Form([]), whole_creator: int = Form(0),
+    reset: int = Form(0), confirm: int = Form(0), next: str = Form(""),
+    conn: sqlite3.Connection = Depends(get_db),
+):
+    """Put a save in the rooms you chose (and, if asked, all its creator's saves)."""
+    if db.get_item(conn, item_id) is None:
+        raise HTTPException(status_code=404, detail="no such item")
+    if reset:
+        db.reset_rooms(conn, item_id)
+    else:
+        db.set_rooms(conn, item_id, room, whole_creator=bool(whole_creator), confirm=bool(confirm))
+    return RedirectResponse(_back(next, f"/item/{item_id}"), status_code=303)
 
 
 @app.get("/surprise")
@@ -550,7 +612,7 @@ def write_placard(
 def item_page(
     request: Request, item_id: int, saved: int = Query(0),
     trail: str = Query("", max_length=200), via: str = Query("", max_length=120),
-    conn: sqlite3.Connection = Depends(get_db),
+    rooms: int = Query(0), conn: sqlite3.Connection = Depends(get_db),
 ):
     row = db.get_item(conn, item_id)
     if row is None:
@@ -564,6 +626,9 @@ def item_page(
     room, room_items = museum.same_room(conn, item)
     return templates.TemplateResponse(request, "item.html", {
         "item": item, "related": related, "just_saved": bool(saved),
+        "reasons": db.room_reasons(conn, item_id), "rooms_open": bool(rooms),
+        "hand_filed": conn.execute("SELECT 1 FROM theme_rules WHERE kind = 'item' AND key = ?",
+                                   (str(item_id),)).fetchone() is not None,
         "threads": museum.threads(conn, item),
         "room": room, "room_items": room_items,
         # Arrived by wandering: where from, and the way on.

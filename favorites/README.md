@@ -267,34 +267,75 @@ Nothing here needs JavaScript.
 ### Themes
 
 A theme is a subject in plain words — *Dogs*, *Food & cooking*, *Cities &
-urbanism* — defined in `favorites/themes.py` by the words that signal it. A
-save joins a theme when its hashtags, its caption or title, your note, or the
-name of a category you filed it under use one of those words. Compound hashtags
-count (`#dogsoftiktok`), and so do your category names (*Sweet sweet puppers*
-is about dogs). Words that mean too many things in a sentence — *work*, *home*,
-*budget*, *train* — count only as hashtags.
+urbanism* — defined in `favorites/themes.py` by the words that signal it. Each
+save's evidence is weighed:
+
+| Evidence | Counts |
+|---|---|
+| You put it in the room yourself | always wins |
+| You filed everything by its creator there | 4 |
+| A hashtag you taught it, or a word in a category name you chose | 3 |
+| A hashtag that is a vocabulary word (`#dogs`), or splits cleanly into one (`#dogsoftiktok`) | 2 |
+| The creator's handle (`@thepastaqueen`), or most of that creator's other saves being there | 2 |
+| A word in the caption, title or your note; a word said twice in a transcript | 1 |
+
+A save goes in every room with at least half the evidence of its strongest,
+up to three. A caption that brushes past three or more subjects once each
+files nothing: it isn't sure of any of them. A compound hashtag is read only
+when *all* of it splits into known words (`#dogs`+`of`+`tiktok`), which keeps
+`#husband` out of Music and `#snowflake` out of Nature. Words that mean too
+many things in a sentence — *work*, *home*, *budget*, *train* — count only as
+hashtags, and words for where something was said (*radio*, *podcast*) are not
+subjects at all.
 
 Saves no theme recognises are gathered under **Undefined**, first in the Themes
 filter and last in the front page's theme row. It is a to-do list rather than a
-subject: filing one of them under a category you name is often enough to give
-it a theme, because your category names count.
+subject.
+
+**Fixing a room.** Every save's page says why it is in each room ("#concert ·
+'song' in the caption") and has **Change rooms**: tick the rooms it belongs in,
+and optionally *do the same for everything by this creator*. Only the
+difference from what the museum worked out is kept, so improvements to the
+vocabulary still reach it.
+
+**Tidy the rooms** (`/rooms/tidy`) is where a few minutes fix hundreds of saves:
+the hashtags on two or more saves that it doesn't know yet — tap a room to
+teach one, or *Not a subject* to stop it being listed — and the saves it filed
+on a hunch (one word in passing), to confirm or move. Everything you teach is
+kept in the library file (`theme_rules`), and every answer re-sorts the whole
+library at once.
 
 It is a vocabulary, not a model: local, instant, and it can always say why. The
-cost is that it only knows the words it has been given. To see what it covers
-and what it is missing:
+cost is that it only knows the words it has been given — or that you teach it.
+To see what it covers and what it is missing from the command line:
 
 ```bash
 python -m favorites.themes
 ```
 
-That prints how many saves have a theme, how many each theme holds, the
-hashtags on your saves that no theme recognises yet, and -- for the saves with
-no theme -- how many have no hashtags at all and which caption words recur
-among them. Add the ones that matter
-to `THEMES`; the library re-themes itself the next time anything opens it.
+That prints how many saves have a theme, how many each theme holds, how many
+are on a hunch, the hashtags on your saves that no theme recognises yet, and --
+for the saves with no theme -- how many have no hashtags at all and which
+caption words recur among them. Teach them at `/rooms/tidy`, or add words to
+`THEMES`; the library re-themes itself the next time anything opens it.
 The list leaves out hashtags about reach rather than subject (`#fyp` in all its
 spellings, `#fypシ` included) and creators tagging their own name, which the
 Creator filter already covers.
+
+### Captions on labels
+
+The platforms' captions are not written for a label: TikTok's title is the
+whole caption with its hashtag pile, Instagram's is wrapped in "1,204 likes, 31
+comments - …". `favorites/blurb.py` cleans them — no wrapper, no trailing
+hashtags or @mentions, no YouTube chapter lists or "Subscribe" lines — and
+trims at a whole sentence, so a label never stops mid-word. The headline is the
+first sentence; the description carries on from there. The stored text is
+unchanged, so search still finds every hashtag, and each save's page keeps the
+original caption one tap away.
+
+Search results and lists hang as a **salon wall**: each picture keeps its own
+shape (vertical video tall, long-form video wide, Instagram posts square), labels
+run as long as they need to, and saves with your placard stand out.
 
 ### Video length
 

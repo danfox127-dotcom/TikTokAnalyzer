@@ -389,3 +389,83 @@ class TestMoreHooks:
         assert client.get("/year/1999").status_code == 404
         assert client.get("/year/abcd").status_code == 404
         assert client.get("/year").status_code == 200
+
+
+class TestTidyingRooms:
+    @pytest.fixture
+    def saves(self, library):
+        ids = {}
+        for n, (handle, title, tags) in enumerate([
+            ("@pj", "Eddie on the radio", ["pearljam", "socialmedia"]),
+            ("@pj", "Backstage", ["pearljam"]),
+            ("@fan", "A great night", ["pearljam", "concert"]),
+            ("@kay", "a bowl of soup", []),
+        ]):
+            ids[title], _ = db.upsert_item(library, {
+                "canonical_url": f"https://example.com/{n}", "shared_url": "x", "platform": "tiktok",
+                "title": title, "tags": tags, "creator_handle": handle, "resolve_status": "ok",
+                "saved_at": f"2024-0{n + 1}-01T00:00:00+00:00"})
+        return ids
+
+    def themes(self, library, item_id):
+        return db.loads_list(db.get_item(library, item_id)["themes"])
+
+    def test_the_item_page_says_why(self, client, library, saves):
+        page = client.get(f"/item/{saves['Eddie on the radio']}").text
+        assert "Why it's in this room" in page
+        assert "#socialmedia" in page
+        assert 'action="/item/%d/rooms"' % saves["Eddie on the radio"] in page
+
+    def test_choosing_rooms(self, client, library, saves):
+        item_id = saves["Eddie on the radio"]
+        resp = client.post(f"/item/{item_id}/rooms", data={"room": ["Music"]}, follow_redirects=False)
+        assert resp.status_code == 303 and resp.headers["location"] == f"/item/{item_id}"
+        assert self.themes(library, item_id) == ["Music"]
+        page = client.get(f"/item/{item_id}").text
+        assert "you put it here" in page and "Let the museum decide again" in page
+        client.post(f"/item/{item_id}/rooms", data={"reset": "1"})
+        assert self.themes(library, item_id) == ["Marketing & media"]
+
+    def test_choosing_for_the_whole_creator(self, client, library, saves):
+        client.post(f"/item/{saves['Backstage']}/rooms", data={"room": ["Music"], "whole_creator": "1"})
+        assert self.themes(library, saves["Eddie on the radio"])[0] == "Music"
+
+    def test_the_tidy_page_teaches_hashtags(self, client, library, saves):
+        page = client.get("/rooms/tidy").text
+        assert "#pearljam" in page and "on 3 saves" in page
+        resp = client.post("/rooms/teach", data={"tag": "pearljam", "theme": "Music"},
+                           follow_redirects=False)
+        assert resp.headers["location"] == "/rooms/tidy#hashtags"
+        assert self.themes(library, saves["Backstage"]) == ["Music"]
+        assert "#pearljam" not in client.get("/rooms/tidy").text
+
+    def test_settling_a_hunch(self, client, library, saves):
+        item_id = saves["a bowl of soup"]
+        assert self.themes(library, item_id) == ["Food & cooking"]
+        assert f'/item/{item_id}/rooms' in client.get("/rooms/tidy").text
+        client.post(f"/item/{item_id}/rooms", data={"room": ["Food & cooking"], "confirm": "1",
+                                                    "next": "/rooms/tidy#hunches"})
+        assert f'/item/{item_id}/rooms' not in client.get("/rooms/tidy").text
+        assert self.themes(library, item_id) == ["Food & cooking"]
+
+    def test_a_redirect_stays_in_the_museum(self, client, saves):
+        resp = client.post(f"/item/{saves['Backstage']}/rooms",
+                           data={"next": "//evil.example"}, follow_redirects=False)
+        assert resp.headers["location"] == f"/item/{saves['Backstage']}"
+
+    def test_rooms_links_to_tidying(self, client, saves):
+        assert 'href="/rooms/tidy"' in client.get("/rooms").text
+
+
+class TestCleanLabels:
+    def test_a_search_result_shows_the_caption_cleaned(self, client, library):
+        db.upsert_item(library, {
+            "canonical_url": "https://example.com/d", "shared_url": "x", "platform": "tiktok",
+            "title": "Folding dumplings. For the party tonight! #cooking #fyp",
+            "description": "Folding dumplings. For the party tonight! #cooking #fyp",
+            "tags": ["cooking"], "resolve_status": "ok"})
+        page = client.get("/search?theme=Food+%26+cooking").text
+        assert 'class="rr-salon"' in page and 'class="rr-piece is-tall' in page
+        assert ">Folding dumplings</a></h3>" in page
+        assert "For the party tonight!" in page
+        assert "#fyp" not in page.split('class="rr-salon"')[1].split("</main>")[0]

@@ -3,9 +3,9 @@
 {#- A save's picture, hung in a 3:4 frame. The picture is never simply
     dropped: if it fails to load, museum.js marks the frame empty and the mat
     shows the creator's initials and the platform instead of a blank box. -#}
-{% macro frame(item, top=None) -%}
+{% macro frame(item, top=None, shape=None) -%}
 {%- set who = item.creator_name or item.creator_handle -%}
-<span class="rr-frame{% if not item.thumbnail_url %} is-empty{% endif %}">
+<span class="rr-frame{% if shape %} is-{{ shape }}{% endif %}{% if not item.thumbnail_url %} is-empty{% endif %}">
   {%- if item.thumbnail_url %}<img src="/thumb/{{ item.id }}" alt="" loading="lazy" referrerpolicy="no-referrer" data-frame>{% endif -%}
   <span class="rr-mat-fallback"><b>{{ who | initials if who else platform_label(item.platform)[:1] }}</b><span>{{ platform_label(item.platform) }}</span></span>
   {%- set badge = top or (('📅 ' ~ hook_badge(item)) if hook_badge(item)) %}{% if badge %}<span class="rr-tag is-top">{{ badge }}</span>{% endif -%}
@@ -18,11 +18,11 @@
 <article class="card rr-card{% if size %} rr-card--{{ size }}{% endif %}">
   <a href="/item/{{ item.id }}" tabindex="-1" aria-hidden="true">{{ frame(item, top) }}</a>
   <div class="wall">
-    <a class="title" href="/item/{{ item.id }}">{{ item.title or browsable_url(item) }}</a>
+    <a class="title" href="/item/{{ item.id }}">{{ headline(item) or browsable_url(item) }}</a>
     {% if item.creator_name or item.creator_handle %}
       <a class="by" href="/creator/{{ (item.creator_handle or item.creator_name) | urlencode }}">{{ item.creator_name or item.creator_handle }}</a>
     {% endif %}
-    {% if note and item.note %}<p class="note">{{ item.note }}</p>{% endif %}
+    {% if note and item.note %}<p class="note">{{ item.note | upto(120) }}</p>{% endif %}
   </div>
 </article>
 {% endmacro %}
@@ -36,12 +36,33 @@
     <div class="meta">
       <span>{% if theme %}{{ lk[2] }} {{ theme }}{% else %}{{ platform_label(item.platform) }}{% endif %}</span><span class="sep"></span><span>Saved {{ item.saved_at[:4] }}</span>
     </div>
-    <h3><a href="/item/{{ item.id }}">{{ item.title or browsable_url(item) }}</a></h3>
+    <h3><a href="/item/{{ item.id }}">{{ headline(item) or browsable_url(item) }}</a></h3>
     <p class="by">{{ ((item.creator_name or item.creator_handle) ~ ' · ') if (item.creator_name or item.creator_handle) }}{{ platform_label(item.platform) }}</p>
-    {% if item.description and item.description != item.title %}<p class="desc">{{ item.description }}</p>{% endif %}
-    {% if item.note %}<p class="note">{{ item.note }}</p>{% endif %}
+    {% set b = blurb(item, 150) %}{% if b %}<p class="desc">{{ b }}</p>{% endif %}
+    {% if item.note %}<p class="note">{{ item.note | upto(120) }}</p>{% endif %}
   </div>
 </li>
+{% endmacro %}
+
+{#- A piece on a salon wall: the picture in its own shape, then its label in
+    full -- headline, a few whole sentences, your placard. Pieces differ in
+    height, and the wall packs them like a museum hang. -#}
+{% macro piece(item) %}
+{%- set sh = shape(item) %}{% set theme = (item.themes or [none])[0] %}{% set lk = look(theme) %}
+<article class="rr-piece is-{{ sh }}{% if item.note %} is-feature{% endif %}">
+  <a href="/item/{{ item.id }}" tabindex="-1" aria-hidden="true">{{ frame(item, shape=sh) }}</a>
+  <div class="cap tone-{{ lk[0] }}">
+    <div class="meta"><span>{% if theme %}{{ lk[2] }} {{ theme }}{% else %}{{ platform_label(item.platform) }}{% endif %}</span><span class="sep"></span><span>{{ item.saved_at[:4] }}</span></div>
+    <h3><a href="/item/{{ item.id }}">{{ headline(item) or browsable_url(item) }}</a></h3>
+    {% if item.creator_name or item.creator_handle %}<a class="by" href="/creator/{{ (item.creator_handle or item.creator_name) | urlencode }}">{{ item.creator_name or item.creator_handle }}</a>{% endif %}
+    {% set b = blurb(item, 220 if item.note else 140) %}{% if b %}<p class="desc">{{ b }}</p>{% endif %}
+    {% if item.note %}<p class="note">{{ item.note | upto(240) }}</p>{% endif %}
+  </div>
+</article>
+{% endmacro %}
+
+{% macro salon(items) %}
+<div class="rr-salon">{% for item in items %}{{ piece(item) }}{% endfor %}</div>
 {% endmacro %}
 
 {% macro carousel(items, label, compact=False) %}

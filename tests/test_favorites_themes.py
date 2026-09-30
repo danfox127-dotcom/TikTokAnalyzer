@@ -35,7 +35,8 @@ class TestMatching:
 
     def test_plurals_fold(self):
         # Only "corgi" and "hamster" are listed; the plurals fold onto them.
-        assert about(text="two corgis and some hamsters") == ["Dogs", "Animals & wildlife"]
+        assert about(text="two corgis") == ["Dogs"]
+        assert about(text="some hamsters") == ["Animals & wildlife"]
 
     def test_ambiguous_words_count_only_as_hashtags(self):
         # In a sentence "work" and "home" mean too many things.
@@ -200,16 +201,15 @@ class TestStorage:
 
         grown = dict(themes.THEMES, **{"Sport & fitness": themes.THEMES["Sport & fitness"] + " zorbing"})
         monkeypatch.setattr(themes, "THEMES", grown)
-        monkeypatch.setattr(themes, "VERSION", "grown")
-        anywhere, tags_only = themes._vocabulary()
-        monkeypatch.setattr(themes, "ANYWHERE", anywhere)
-        monkeypatch.setattr(themes, "TAG_WORDS", {**anywhere, **tags_only})
-        monkeypatch.setattr(themes, "_COMPOUND", themes._compound_words())
-
-        c = db.connect(path)
-        assert stored(c, item_id) == ["Sport & fitness"]
-        assert db.retheme_if_stale(c) == 0  # done once, not on every open
-        c.close()
+        themes._rebuild()
+        try:
+            c = db.connect(path)
+            assert stored(c, item_id) == ["Sport & fitness"]
+            assert db.retheme_if_stale(c) == 0  # done once, not on every open
+            c.close()
+        finally:
+            monkeypatch.undo()
+            themes._rebuild()
 
     def test_an_older_library_gains_themes_when_opened(self, tmp_path):
         import sqlite3
@@ -316,3 +316,145 @@ class TestPages:
         item_id = c.execute("SELECT id FROM items LIMIT 1").fetchone()[0]
         c.close()
         assert 'href="/search?theme=Dogs"' in client.get(f"/item/{item_id}").text
+
+
+class TestSharperMatching:
+    """Found in a real library, September 2026: saves in rooms they had no business in."""
+
+    @pytest.mark.parametrize("tag", [
+        "husband", "snowflake", "selfish", "beard", "chair", "armchair", "snails",
+        "network", "multimedia", "siriusxmradio", "howardsternpodcast", "cowboy", "goat",
+    ])
+    def test_a_word_hiding_inside_another_is_not_found(self, tag):
+        assert about([tag]) == []
+
+    @pytest.mark.parametrize("tag, theme", [
+        ("dogsoftiktok", "Dogs"), ("easyrecipes", "Food & cooking"), ("travelgram", "Travel"),
+        ("tipsandtricks", "How-to & learning"), ("booktoker", "Books & writing"),
+        ("nycrestaurants", "Food & cooking"), ("sourdoughbread", "Food & cooking"),
+    ])
+    def test_a_compound_that_splits_cleanly_still_is(self, tag, theme):
+        assert theme in about([tag])
+
+    def test_a_compound_names_every_subject_in_it(self):
+        assert set(about(["dogtraining"])) == {"Dogs", "Sport & fitness"}
+
+    def test_homework_is_learning(self):
+        assert about(["homework"]) == ["How-to & learning"]
+
+    def test_the_radio_is_where_it_was_said_not_what_it_is_about(self):
+        caption = "Eddie Vedder talks about the new album on the radio"
+        assert about(["eddievedder", "pearljam", "siriusxm"], caption) == ["Music"]
+        assert "Marketing & media" not in about(["podcast"], "on the podcast")
+
+    def test_a_caption_that_wanders_files_nothing(self):
+        # A song, surfing and the radio, once each: not sure of any of them.
+        assert about(text="on the radio talking about surfing, his new song and a dog") == []
+
+    def test_a_word_in_passing_rides_along_with_a_hashtag(self):
+        assert set(about(["localgov"], "zoning meeting")) == {"News & politics", "Cities & urbanism"}
+
+    def test_a_hashtag_quoted_in_the_caption_counts_once(self):
+        assert about(["localgov"], "zoning meeting #localgov")[:2] == [
+            "News & politics", "Cities & urbanism"]
+
+    def test_a_transcript_counts_what_is_said_more_than_once(self):
+        assert about(text="watch this") == []
+        said = "the guitar, then the guitar again, and the album"
+        assert themes.themes_for([], ["watch this"], transcript=said) == ["Music"]
+        assert themes.themes_for([], ["watch this"], transcript="one guitar") == []
+
+    def test_a_creators_handle_is_read_like_a_hashtag(self):
+        assert themes.themes_for([], ["watch this"], creator="@thepastaqueen") == ["Food & cooking"]
+
+
+class TestWhatYouTaught:
+    def test_a_taught_hashtag_names_its_room(self):
+        rules = themes.Rules(tags={"pearljam": {"Music"}})
+        assert themes.themes_for(["pearljam"], ["on the podcast"], rules=rules) == ["Music"]
+
+    def test_an_ignored_hashtag_says_nothing(self):
+        rules = themes.Rules(ignore={"radiohost"})
+        assert themes.themes_for(["radiohost"], rules=rules) == []
+
+    def test_a_creator_rule_adds_and_removes(self):
+        rules = themes.Rules(creator_add={"pearljam": {"Music"}},
+                             creator_remove={"pearljam": {"Marketing & media"}})
+        assert themes.themes_for(["socialmedia"], creator="@PearlJam", rules=rules) == ["Music"]
+
+    def test_your_choice_for_one_save_wins(self):
+        rules = themes.Rules(item_add={7: {"Music"}}, item_remove={7: {"Dogs"}})
+        assert themes.themes_for(["dogs"], item_id=7, rules=rules) == ["Music"]
+        assert themes.themes_for(["dogs"], item_id=8, rules=rules) == ["Dogs"]
+
+    def test_the_reasons_are_given_in_words(self):
+        rules = themes.Rules(tags={"pearljam": {"Music"}})
+        ev = themes.weigh(["pearljam"], ["live at the concert"], rules=rules)
+        (music,) = themes.explain(ev, themes.decide(ev))
+        assert music["theme"] == "Music"
+        assert music["reasons"] == ["#pearljam (you taught this)", "“concert” in the caption"]
+        assert not music["hunch"]
+        ev = themes.weigh([], ["a concert"])
+        assert themes.explain(ev, themes.decide(ev))[0]["hunch"]
+
+
+def by(conn, n, handle, title="a video", tags=()):
+    item_id, _ = db.upsert_item(conn, {
+        "canonical_url": f"https://example.com/{n}", "shared_url": "x", "platform": "tiktok",
+        "title": title, "tags": list(tags), "creator_handle": handle, "resolve_status": "ok"})
+    return item_id
+
+
+class TestRegulars:
+    def test_a_creators_saves_lean_to_where_most_of_theirs_are(self, conn):
+        for n in range(3):
+            by(conn, n, "@pj", tags=["concert"])
+        odd = by(conn, 9, "@pj", title="backstage, finally")
+        assert stored(conn, odd) == ["Music"]
+        db.retheme(conn)
+        assert stored(conn, odd) == ["Music"]
+
+    def test_two_saves_are_not_a_habit(self, conn):
+        for n in range(2):
+            by(conn, n, "@pj", tags=["concert"])
+        assert stored(conn, by(conn, 9, "@pj", title="backstage")) == []
+
+
+class TestFixingRooms:
+    def test_choosing_rooms_keeps_only_the_difference(self, conn):
+        item_id = by(conn, 1, "@pj", title="Eddie on the radio", tags=["socialmedia", "concert"])
+        assert set(stored(conn, item_id)) == {"Music", "Marketing & media"}
+        db.set_rooms(conn, item_id, ["Music"])
+        assert stored(conn, item_id) == ["Music"]
+        rules = conn.execute("SELECT kind, key, theme, action FROM theme_rules").fetchall()
+        assert [tuple(r) for r in rules] == [("item", str(item_id), "Marketing & media", "remove")]
+        db.reset_rooms(conn, item_id)
+        assert set(stored(conn, item_id)) == {"Music", "Marketing & media"}
+
+    def test_choosing_for_everything_by_the_creator(self, conn):
+        one = by(conn, 1, "@pj", tags=["socialmedia"])
+        two = by(conn, 2, "@pj", tags=["socialmedia", "branding"])
+        db.set_rooms(conn, one, ["Music"], whole_creator=True)
+        assert stored(conn, one) == ["Music"] and stored(conn, two) == ["Music"]
+        # A new save by them arrives already filed.
+        assert stored(conn, by(conn, 3, "@PJ", tags=["seo"])) == ["Music"]
+
+    def test_teaching_a_hashtag_re_files_the_library(self, conn):
+        a = by(conn, 1, "@a", tags=["pearljam"])
+        b = by(conn, 2, "@b", tags=["pearljam", "dogs"])
+        db.teach_tag(conn, "#PearlJam", "Music")
+        assert stored(conn, a) == ["Music"]
+        assert set(stored(conn, b)) == {"Music", "Dogs"}
+        assert themes.report(conn)["unrecognised_hashtags"] == []
+
+    def test_ignoring_a_hashtag_takes_it_off_the_list(self, conn):
+        by(conn, 1, "@a", tags=["siriusxm"])
+        by(conn, 2, "@b", tags=["siriusxm"])
+        assert themes.report(conn)["unrecognised_hashtags"] == [("siriusxm", 2)]
+        db.teach_tag(conn, "siriusxm", None)
+        assert themes.report(conn)["unrecognised_hashtags"] == []
+
+    def test_the_reasons_for_a_save(self, conn):
+        item_id = by(conn, 1, "@a", title="our dog at the beach", tags=["goldenretriever"])
+        reasons = {r["theme"]: r for r in db.room_reasons(conn, item_id)}
+        assert reasons["Dogs"]["reasons"][0] == "#goldenretriever"
