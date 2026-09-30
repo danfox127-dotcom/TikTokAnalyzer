@@ -255,6 +255,9 @@ def home(request: Request, conn: sqlite3.Connection = Depends(get_db)):
         "on_this_day": museum.on_this_day(conn, now=now),
         "rooms": museum.rooms(conn, limit=4, now=now),
         "creators": museum.creators_shelf(conn, now=now),
+        "season": museum.season_room(conn, now=now),
+        "week": museum.week_digest(conn, now=now),
+        "year_now": now.strftime("%Y"),
         "digest": museum.digest(conn, days=30, now=now),
         "browse": museum.browse(conn),
         "total": db.count(conn),
@@ -300,6 +303,7 @@ def rooms_page(request: Request, conn: sqlite3.Connection = Depends(get_db)):
         " AND json_array_length(coalesce(nullif(themes, ''), '[]')) = 0").fetchone()[0]
     return templates.TemplateResponse(request, "rooms.html", {
         "rooms": found, "undefined": undefined, "q": "", "total": db.count(conn),
+        "season": museum.season_room(conn),
     })
 
 
@@ -309,6 +313,59 @@ def surprise(conn: sqlite3.Connection = Depends(get_db)):
     row = conn.execute(
         f"SELECT id FROM items WHERE {museum.RESOLVED} ORDER BY random() LIMIT 1").fetchone()
     return RedirectResponse(f"/item/{row['id']}" if row else "/", status_code=303)
+
+
+def _trail(raw: str) -> list[int]:
+    """The saves a wander has just passed through, newest last, at most eight.
+    Anything that is not a plain id is dropped rather than obeyed."""
+    ids = [int(x) for x in raw.split(",") if x.strip().isdigit()]
+    return ids[-WANDER_TRAIL:]
+
+
+WANDER_TRAIL = 8
+
+
+@app.get("/wander")
+def wander_start(conn: sqlite3.Connection = Depends(get_db)):
+    """Start a wander from any save."""
+    row = conn.execute(
+        f"SELECT id FROM items WHERE {museum.RESOLVED} ORDER BY random() LIMIT 1").fetchone()
+    return RedirectResponse(f"/item/{row['id']}?via=a+surprise" if row else "/", status_code=303)
+
+
+@app.get("/wander/{item_id}")
+def wander(item_id: int, trail: str = Query("", max_length=200),
+           conn: sqlite3.Connection = Depends(get_db)):
+    """Follow one of this save's threads somewhere you have not just been."""
+    row = db.get_item(conn, item_id)
+    if row is None:
+        raise HTTPException(status_code=404, detail="no such item")
+    path = _trail(trail) + [item_id]
+    nxt, via = museum.wander_next(conn, db.rows_to_dicts([row])[0], path)
+    if nxt is None:
+        return RedirectResponse(f"/item/{item_id}", status_code=303)
+    query = urlencode({"trail": ",".join(map(str, path[-WANDER_TRAIL:])), "via": via})
+    return RedirectResponse(f"/item/{nxt['id']}?{query}", status_code=303)
+
+
+@app.get("/year", response_class=HTMLResponse)
+def year_now(request: Request, conn: sqlite3.Connection = Depends(get_db)):
+    return year_page(request, datetime.now(timezone.utc).strftime("%Y"), conn)
+
+
+@app.get("/year/{year}", response_class=HTMLResponse)
+def year_page(request: Request, year: str, conn: sqlite3.Connection = Depends(get_db)):
+    """A year of saves in a few playful numbers."""
+    if not (year.isdigit() and len(year) == 4):
+        raise HTTPException(status_code=404, detail="no such year")
+    review = museum.year_review(conn, year)
+    if review is None:
+        if year == datetime.now(timezone.utc).strftime("%Y"):
+            return templates.TemplateResponse(request, "year.html", {
+                "review": None, "year": year, "q": "", "total": db.count(conn)})
+        raise HTTPException(status_code=404, detail="nothing saved that year")
+    return templates.TemplateResponse(request, "year.html", {
+        "review": review, "year": year, "q": "", "total": db.count(conn)})
 
 
 @app.get("/suggest.json")
@@ -492,6 +549,7 @@ def write_placard(
 @app.get("/item/{item_id}", response_class=HTMLResponse)
 def item_page(
     request: Request, item_id: int, saved: int = Query(0),
+    trail: str = Query("", max_length=200), via: str = Query("", max_length=120),
     conn: sqlite3.Connection = Depends(get_db),
 ):
     row = db.get_item(conn, item_id)
@@ -508,6 +566,9 @@ def item_page(
         "item": item, "related": related, "just_saved": bool(saved),
         "threads": museum.threads(conn, item),
         "room": room, "room_items": room_items,
+        # Arrived by wandering: where from, and the way on.
+        "via": via.strip(),
+        "wander_href": f"/wander/{item_id}" + (f"?{urlencode({'trail': trail})}" if _trail(trail) else ""),
         "collections": db.collections_for(conn, item_id),
         "all_collections": [n for n, _ in db.collection_counts(conn)],
         "q": "", "total": db.count(conn),

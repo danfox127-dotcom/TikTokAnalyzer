@@ -815,3 +815,36 @@ main.is-bands > .rr-band:last-child { padding-bottom: calc(56px + var(--band-ove
 .rr-toolbar { flex-wrap: wrap; row-gap: 10px; }
 .rr-toolbar .rr-seg { max-width: 100%; overflow-x: auto; scrollbar-width: none; }
 .rr-toolbar .rr-seg::-webkit-scrollbar { display: none; }
+
+/* ---- This week ---- */
+.rr-week { display: grid; gap: 28px; align-items: start; }
+.rr-week .rr-h-m { font-size: 24px; line-height: 30px; margin-top: 6px; text-wrap: pretty; }
+.rr-week .more-line { margin: 14px 0 0; font-weight: 800; }
+.rr-week .more-line a { color: var(--accent-ink); }
+.rr-week .revisit { max-width: 260px; }
+.rr-week .revisit .rr-label { margin-bottom: 10px; }
+@container rr (min-width: 760px) { .rr-week { grid-template-columns: minmax(0, 1fr) 240px; gap: 48px; } .rr-week .rr-h-m { font-size: 30px; line-height: 36px; } }
+
+/* ---- Wander ---- */
+.wandered {
+  display: inline-flex; align-items: center; gap: 6px; margin: 0 0 12px; padding: 5px 12px;
+  border-radius: var(--radius-pill); background: var(--band-butter); font: 700 13px/18px var(--font-sans);
+}
+.wandered b { font-weight: 800; }
+
+/* ---- Your year ---- */
+.year-hero .year-compare { margin: 0 0 18px; font: 700 18px/26px var(--font-sans); color: var(--ink-muted); }
+.rr-stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+@container rr (min-width: 760px) { .rr-stats { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; } }
+.rr-stat {
+  display: flex; flex-direction: column; gap: 4px; padding: 18px; border-radius: var(--radius-md);
+  background: var(--wall-raised); box-shadow: var(--shadow-soft); min-width: 0;
+  transition: transform .3s var(--ease-bounce);
+}
+a.rr-stat:hover { transform: translateY(-3px); }
+.rr-stat .em { font-size: 26px; line-height: 1; }
+.rr-stat b { font: 700 24px/28px var(--font-display); overflow-wrap: normal; word-break: normal; hyphens: none; }
+.rr-stat span:last-child { font: 700 13.5px/19px var(--font-sans); color: var(--ink-muted); }
+@container rr (min-width: 760px) { .rr-stat b { font-size: 40px; line-height: 44px; } }
+.bookends { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; max-width: 560px; }
+.bookends .rr-label { margin-bottom: 10px; }

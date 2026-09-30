@@ -639,3 +639,200 @@ def same_room(conn: sqlite3.Connection, item: dict, limit: int = 8) -> tuple[str
         if entries:
             return themes[0], entries
     return "", []
+
+
+# --- more hooks: the season, a wander, the year, the week -----------------------
+
+def _season_of(month: str) -> str:
+    from .explore import SEASONS
+    return next(k for k, (_, months) in SEASONS.items() if month in months)
+
+
+def season_room(conn: sqlite3.Connection, now: Optional[datetime] = None,
+                per_room: int = 8) -> Optional[dict]:
+    """The current season as a room: everything saved in this season, any year.
+
+    A room that changes with the calendar -- in October it is every autumn
+    you have kept things through. Drawn afresh each day, newest first.
+    """
+    from .explore import SEASONS
+    from .looks import SEASON_LOOK
+
+    now = now or datetime.now(timezone.utc)
+    season = _season_of(now.strftime("%m"))
+    months = SEASONS[season][1]
+    clause = "substr(saved_at, 6, 2) IN (?, ?, ?)"
+    ids = [r[0] for r in conn.execute(
+        f"SELECT id FROM items WHERE {RESOLVED} AND {clause}", months).fetchall()]
+    if len(ids) < 3:
+        return None
+    rng = random.Random(f"season:{now.date().isoformat()}")
+    picked = rng.sample(ids, min(per_room, len(ids)))
+    entries = db.rows_to_dicts(conn.execute(
+        f"SELECT * FROM items WHERE id IN ({', '.join('?' * len(picked))})"
+        f" ORDER BY saved_at DESC", picked).fetchall())
+    years = conn.execute(
+        f"SELECT substr(saved_at, 1, 4) AS y, count(*) AS n FROM items WHERE {RESOLVED}"
+        f" AND {clause} GROUP BY y ORDER BY y DESC", months).fetchall()
+    name = SEASONS[season][0]
+    tone, icon, emoji = SEASON_LOOK[season]
+    plural = {"Autumn": "autumns", "Winter": "winters", "Spring": "springs", "Summer": "summers"}[name]
+    return {
+        "season": season, "name": name, "label": f"{name} in your library",
+        "tone": tone, "icon": icon, "emoji": emoji, "count": len(ids),
+        "sub": f"{_count_word(len(ids))} across {len(years)} "
+               + (name.lower() if len(years) == 1 else plural),
+        "years": [(r["y"], r["n"]) for r in years],
+        "entries": entries, "covers": _covers(entries),
+        "href": f"/search?{urlencode({'season': season})}",
+    }
+
+
+def wander_next(conn: sqlite3.Connection, item: dict, trail: list[int],
+                rng: Optional[random.Random] = None) -> tuple[Optional[dict], str]:
+    """Where to wander next from a save: along one of its threads, somewhere new.
+
+    A thread (its room, its creator, its date in other years, its season, a
+    shared hashtag) is picked at random, then a save along it that is not this
+    one and not in the recent trail. If every thread is walked out, anywhere
+    at all -- a wander never dead-ends.
+    """
+    from .explore import SEASONS, day_label
+
+    rng = rng or random.Random()
+    avoid = {item.get("id"), *trail}
+    saved = item.get("saved_at") or ""
+    threads_: list[tuple[str, str, tuple]] = []
+    for theme in item.get("themes") or []:
+        threads_.append((f"same room: {theme}",
+                         "EXISTS (SELECT 1 FROM json_each(i.themes) WHERE value = ?)", (theme,)))
+    key = _creator_key(item)
+    if key:
+        threads_.append((f"also by {_creator_label(item)}",
+                         "coalesce(i.creator_handle, i.creator_name) = ?", (key,)))
+    if len(saved) >= 10:
+        threads_.append((f"also saved on {day_label(saved[5:10])}",
+                         "substr(i.saved_at, 6, 5) = ?", (saved[5:10],)))
+        season = _season_of(saved[5:7])
+        threads_.append((f"also from {SEASONS[season][0].lower()} {saved[:4]}",
+                         "substr(i.saved_at, 1, 4) = ? AND substr(i.saved_at, 6, 2) IN (?, ?, ?)",
+                         (saved[:4], *SEASONS[season][1])))
+    for tag in (item.get("tags") or [])[:6]:
+        threads_.append((f"#{tag}", "EXISTS (SELECT 1 FROM json_each(i.tags) WHERE value = ?)", (tag,)))
+    rng.shuffle(threads_)
+
+    def pick(clause: str, params: tuple) -> Optional[dict]:
+        ids = [r[0] for r in conn.execute(
+            f"SELECT i.id FROM items i WHERE i.{RESOLVED} AND {clause} LIMIT 300", params
+        ).fetchall() if r[0] not in avoid]
+        if not ids:
+            return None
+        row = db.get_item(conn, rng.choice(ids))
+        return db.rows_to_dicts([row])[0] if row else None
+
+    for via, clause, params in threads_:
+        found = pick(clause, params)
+        if found:
+            return found, via
+    found = pick("1 = 1", ())
+    return (found, "a surprise") if found else (None, "")
+
+
+def week_digest(conn: sqlite3.Connection, now: Optional[datetime] = None) -> Optional[dict]:
+    """This week against last week, the room it leaned towards, and one old save
+    worth another look (the same one all week)."""
+    now = now or datetime.now(timezone.utc)
+    start, prev_start = _cutoff(7, now), _cutoff(14, now)
+    week = db.rows_to_dicts(conn.execute(
+        f"SELECT * FROM items WHERE {RESOLVED} AND saved_at >= ? ORDER BY saved_at DESC",
+        (start,)).fetchall())
+    before = conn.execute(
+        f"SELECT count(*) FROM items WHERE {RESOLVED} AND saved_at >= ? AND saved_at < ?",
+        (prev_start, start)).fetchone()[0]
+    old_ids = [r[0] for r in conn.execute(
+        f"SELECT id FROM items WHERE {RESOLVED} AND saved_at < ? ORDER BY id",
+        (_cutoff(120, now),)).fetchall()]
+    iso = now.isocalendar()
+    revisit = None
+    if old_ids:
+        row = db.get_item(conn, random.Random(f"week:{iso[0]}-{iso[1]}").choice(old_ids))
+        revisit = db.rows_to_dicts([row])[0] if row else None
+    if not week and not revisit:
+        return None
+
+    n = len(week)
+    if not n:
+        prose = "A quiet week so far"
+    elif n > before:
+        prose = f"{_count_word(n)} this week, up from {before} the week before"
+    elif n < before:
+        prose = f"{_count_word(n)} this week, down from {before} the week before"
+    else:
+        prose = f"{_count_word(n)} this week, the same as the week before"
+    top = theme_counts(week, min_items=2, limit=1)
+    earlier = {r[0] for r in conn.execute(
+        "SELECT DISTINCT coalesce(creator_handle, creator_name) FROM items WHERE saved_at < ?",
+        (start,)).fetchall()}
+    new_creators = list(dict.fromkeys(
+        _creator_label(i) for i in week if _creator_key(i) and _creator_key(i) not in earlier))[:3]
+    if top:
+        prose += f", mostly {top[0][0].lower()}"
+    prose += "."
+    if new_creators:
+        prose += f" New to the library: {_join(new_creators)}."
+    return {"count": n, "before": before, "prose": prose,
+            "room": top[0] if top else None, "new_creators": new_creators,
+            "entries": week[:8], "revisit": revisit}
+
+
+def year_review(conn: sqlite3.Connection, year: str, now: Optional[datetime] = None) -> Optional[dict]:
+    """A year of saves, told in a few numbers: the Wrapped-style page."""
+    now = now or datetime.now(timezone.utc)
+    items = db.rows_to_dicts(conn.execute(
+        f"SELECT * FROM items WHERE {RESOLVED} AND substr(saved_at, 1, 4) = ?"
+        f" ORDER BY saved_at, id", (year,)).fetchall())
+    if not items:
+        return None
+    this_year = year == now.strftime("%Y")
+    # Last year up to the same date, so a year in progress is compared fairly.
+    until = f"{int(year) - 1}-{now.strftime('%m-%d')}T99" if this_year else f"{int(year) - 1}-12-31T99"
+    last = conn.execute(
+        f"SELECT count(*) FROM items WHERE {RESOLVED} AND substr(saved_at, 1, 4) = ? AND saved_at <= ?",
+        (str(int(year) - 1), until)).fetchone()[0]
+
+    rooms_ = []
+    for theme, n in theme_counts(items, min_items=1, limit=3):
+        inside = [i for i in reversed(items) if theme in (i.get("themes") or [])]
+        rooms_.append({"theme": theme, "count": n, "covers": _covers(inside),
+                       "href": f"/search?{urlencode({'theme': theme, 'year': year})}", "fact": ""})
+    creators = Counter(_creator_key(i) for i in items if _creator_key(i))
+    top_creators = []
+    for key, n in creators.most_common(3):
+        latest = next(i for i in reversed(items) if _creator_key(i) == key)
+        top_creators.append({"name": _creator_label(latest), "count": n, "item": latest,
+                             "href": f"/creator/{quote(key)}"})
+    months = Counter(i["saved_at"][5:7] for i in items)
+    busiest_m, busiest_n = months.most_common(1)[0]
+    days = sorted({i["saved_at"][:10] for i in items})
+    longest = run = 1
+    for a, b in zip(days, days[1:]):
+        gap = (datetime.fromisoformat(b) - datetime.fromisoformat(a)).days
+        run = run + 1 if gap == 1 else 1
+        longest = max(longest, run)
+    weekdays = Counter(datetime.fromisoformat(i["saved_at"][:10]).strftime("%A") for i in items)
+    platforms = Counter(platform_label(i["platform"]) for i in items)
+    other_years = [r[0] for r in conn.execute(
+        f"SELECT DISTINCT substr(saved_at, 1, 4) FROM items WHERE {RESOLVED} ORDER BY 1 DESC").fetchall()
+        if r[0] != year]
+    return {
+        "year": year, "this_year": this_year, "total": len(items), "last": last,
+        "rooms": rooms_, "creators": top_creators,
+        "busiest": {"month": MONTH_NAMES[int(busiest_m) - 1], "count": busiest_n,
+                    "href": f"/month/{year}-{busiest_m}"},
+        "first": items[0], "latest": items[-1],
+        "streak": longest, "days": len(days),
+        "weekday": weekdays.most_common(1)[0],
+        "platforms": platforms.most_common(),
+        "notes": sum(1 for i in items if (i.get("note") or "").strip()),
+        "other_years": other_years,
+    }
