@@ -27,8 +27,9 @@ import argparse
 import json
 import re
 import sqlite3
+import zipfile
 from datetime import datetime, timezone
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Iterable, Optional
 
 from .. import db
@@ -69,9 +70,34 @@ def parse_date(raw: str) -> Optional[str]:
     return naive.replace(tzinfo=timezone.utc).isoformat()
 
 
+#: What TikTok calls the file inside its export: user_data_tiktok.json, or
+#: user_data.json in older ones.
+EXPORT_FILE = re.compile(r"user_data(?:_tiktok)?\.json$", re.I)
+
+
+def _export_text(path: str | Path) -> str:
+    """The export's JSON, from the file itself, the folder it is in, or the .zip."""
+    p = Path(path).expanduser()
+    if p.is_file() and p.suffix.lower() == ".zip":
+        with zipfile.ZipFile(p) as z:
+            for name in z.namelist():
+                if EXPORT_FILE.search(PurePosixPath(name).name):
+                    return z.read(name).decode("utf-8")
+        raise FileNotFoundError(f"no user_data_tiktok.json in {p}")
+    if p.is_dir():
+        for f in sorted(p.rglob("*.json")):
+            if EXPORT_FILE.search(f.name):
+                return f.read_text(encoding="utf-8")
+        raise FileNotFoundError(f"no user_data_tiktok.json in {p}")
+    return p.read_text(encoding="utf-8")
+
+
 def read_export(path: str | Path) -> dict[str, list[dict]]:
-    """Return ``{"favorites": [...], "likes": [...]}`` of ``{date, link}`` rows."""
-    data = json.loads(Path(path).read_text(encoding="utf-8"))
+    """Return ``{"favorites": [...], "likes": [...]}`` of ``{date, link}`` rows.
+
+    ``path`` is user_data_tiktok.json, the folder it came in, or the .zip.
+    """
+    data = json.loads(_export_text(path))
 
     favorites = _first_list(data, [
         ("Likes and Favorites", "Favorite Videos", "FavoriteVideoList"),
@@ -163,7 +189,7 @@ def import_export(
 
 def main(argv: Optional[list[str]] = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    ap.add_argument("export", help="path to user_data_tiktok.json")
+    ap.add_argument("export", help="user_data_tiktok.json, its folder, or the .zip")
     ap.add_argument("--db", help="library path (default: $FAVORITES_DB)")
     ap.add_argument("--include-likes", action="store_true",
                     help="also import the Like List (usually capped and shallow)")

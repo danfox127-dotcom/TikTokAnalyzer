@@ -45,6 +45,16 @@ if [ ! -f "$ENV_FILE" ]; then
 # Without it, only this Mac can open the museum. Use the same value in your
 # phone's Shortcut.
 # FAVORITES_TOKEN="$suggested"
+
+# Folders the museum watches for TikTok, Instagram and Google Takeout exports,
+# importing each the moment it lands. Several: separate them with ":".
+# Downloads is watched unless you change this; set it to "" to watch nothing.
+# FAVORITES_WATCH="$HOME/Downloads"
+
+# YouTube playlists, synced by signing in with Google. The setup steps are on
+# the museum's Keep it in sync page.
+# GOOGLE_CLIENT_ID=""
+# GOOGLE_CLIENT_SECRET=""
 EOF
   chmod 600 "$ENV_FILE"
   say "Created your settings file: $ENV_FILE"
@@ -52,6 +62,8 @@ fi
 set -a
 # shellcheck disable=SC1090
 . "$ENV_FILE"
+# Exports that land in Downloads import themselves (see favorites/watch.py).
+FAVORITES_WATCH="${FAVORITES_WATCH-$HOME/Downloads}"
 set +a
 
 # ---- already running? ------------------------------------------------------

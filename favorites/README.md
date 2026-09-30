@@ -361,6 +361,37 @@ those make the search box find more. They used to be offered as "keywords" to
 filter by, and on a real library they were noise — "five minutes", "went
 sideways" — so the themes above replaced them.
 
+## Keeping it in sync
+
+The platforms don't let another app read your saves, so the museum does the
+next-best things, all on the **Keep it in sync** page (`/sync`, in the footer):
+
+- **The watched folder.** Started with `start.command`, the museum looks in
+  `~/Downloads` every minute for a TikTok, Instagram or Google Takeout export
+  and imports it by itself — favourites and saves only, never likes — then fills
+  in titles and pictures for the first 50. Files are never moved or deleted;
+  each is imported once. Watch other folders (a Google Drive folder, say) with
+  `FAVORITES_WATCH` in `~/.favorites.env`, separated by `:`; set it to `""` to
+  switch watching off. By hand: `python -m favorites.watch ~/Downloads`.
+  The first time, macOS may ask whether Terminal can use your Downloads folder:
+  say OK.
+- **Reminders.** When a platform's last export is more than 60 days old, the
+  front page says so, with a link to request a fresh one ("Later" hides it for
+  30 days). Only platforms you have imported from before.
+- **YouTube, signed in.** Connect Google once and every playlist you made syncs
+  daily, filed under its name. Google closed Watch later and Liked videos to
+  apps in 2016; a Takeout scheduled *every 2 months* to Drive covers Watch
+  later. Setup (about 10 minutes, once): a Google Cloud project with the YouTube
+  Data API on, an OAuth client of type *Desktop app*, and its ID and secret in
+  `~/.favorites.env` as `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`. Publish the
+  consent screen, or Google signs you out every 7 days. Read-only; Disconnect
+  revokes it. Connecting only works on the Mac itself.
+- **Your phone.** The page shows the address and (on the Mac only) the password
+  for the one-tap share-sheet Shortcut in `SHARE_SHEET.md`.
+- **TikTok's sharing tool.** TikTok's Data Portability API can send favourites
+  straight to an app — but only for accounts in the EEA and UK, after an app
+  review. Outside those, the export is the way.
+
 ## Backfilling your history from a TikTok export
 
 The share sheet only captures from today onward. To bring in what you saved

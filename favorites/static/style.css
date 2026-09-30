@@ -949,3 +949,41 @@ a.rr-stat:hover { transform: translateY(-3px); }
 .hunch-piece .settle .more { font: 800 14px/20px var(--font-sans); color: var(--accent-ink); }
 .all-done { font: 700 16px/24px var(--font-sans); }
 .undefined-line { flex-basis: 100%; margin: 0 0 6px; font: 600 15.5px/23px var(--font-sans); }
+
+/* ---- keep it in sync ---- */
+.export-due { margin: 0 16px 24px; align-items: center; background: var(--band-butter); }
+.export-due .msg { flex: 1; }
+.export-due a { color: var(--accent-ink); font-weight: 800; }
+.export-due form { margin: 0; }
+@container rr (min-width: 760px) { .export-due { margin: 0 32px 32px; } }
+.sync-hero .lede { max-width: 660px; margin: 12px 0 0; font: 600 16px/24px var(--font-sans); color: var(--ink-muted); }
+.sync-flash { margin-top: 20px; max-width: 660px; }
+.export-cards { display: grid; gap: 16px; }
+@container rr (min-width: 900px) { .export-cards { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; } }
+.export-card { display: flex; flex-direction: column; gap: 12px; padding: 18px; border-radius: var(--radius-md); background: var(--wall-raised); box-shadow: var(--shadow-soft); min-width: 0; }
+.export-card.is-due { box-shadow: 0 0 0 3px var(--accent), var(--shadow-soft); }
+.export-card header { display: flex; gap: 12px; align-items: center; }
+.export-card .em { display: grid; place-items: center; width: 48px; height: 48px; flex: none; border-radius: 50%; background: var(--band); font-size: 24px; }
+.export-card h3 { margin: 0; font: 600 20px/24px var(--font-display); }
+.export-card .when { margin: 2px 0 0; font: 700 13.5px/18px var(--font-sans); color: var(--ink-muted); }
+.export-card .when b { color: var(--accent-ink); }
+.export-card ol { margin: 0; padding-left: 20px; display: grid; gap: 6px; font: 600 14px/20px var(--font-sans); }
+.export-card .wait { margin: 0; font: italic 600 13.5px/19px var(--font-sans); color: var(--ink-muted); }
+.export-card .rr-btn { align-self: flex-start; margin-top: auto; white-space: normal; text-align: left; padding-top: 8px; padding-bottom: 8px; }
+.folder-body, .yt-body, .phone-body { display: grid; gap: 14px; font: 600 15px/22px var(--font-sans); max-width: 760px; }
+.folder-body form, .yt-body form { margin: 0; }
+.folders, .imports { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.folders li { display: flex; gap: 10px; align-items: center; padding: 10px 14px; border-radius: var(--radius-md); background: var(--wall-raised); overflow-wrap: anywhere; }
+.imports li { overflow-wrap: anywhere; }
+.sync-hero code, .rr-band code { font-size: .92em; background: var(--wall-raised); padding: 1px 7px; border-radius: 6px; overflow-wrap: anywhere; }
+.yt-state { display: flex; gap: 10px; align-items: flex-start; margin: 0; }
+.yt-body .row { display: flex; flex-wrap: wrap; gap: 10px; }
+.setup summary { cursor: pointer; font: 800 15px/22px var(--font-sans); color: var(--accent-ink); }
+.setup ol, .shortcut { margin: 10px 0 0; padding-left: 22px; display: grid; gap: 8px; }
+.setup a { color: var(--accent-ink); font-weight: 800; }
+.small { font-size: 13.5px; line-height: 19px; margin: 0; }
+.phone-facts { margin: 0; display: grid; gap: 10px; padding: 14px 16px; border-radius: var(--radius-md); background: var(--wall-raised); }
+.phone-facts div { display: grid; gap: 2px; }
+.phone-facts dt { font: 800 11.5px/16px var(--font-sans); letter-spacing: .1em; text-transform: uppercase; color: var(--band-ink, var(--ink-muted)); }
+.phone-facts dd { margin: 0; }
+.tt-note p:last-child { max-width: 700px; margin: 10px 0 0; font: 600 15.5px/23px var(--font-sans); }

@@ -469,3 +469,84 @@ class TestCleanLabels:
         assert ">Folding dumplings</a></h3>" in page
         assert "For the party tonight!" in page
         assert "#fyp" not in page.split('class="rr-salon"')[1].split("</main>")[0]
+
+
+class TestKeepingInSync:
+    @pytest.fixture
+    def mac(self, tmp_path, monkeypatch):
+        """A browser on the Mac the museum runs on."""
+        monkeypatch.setenv("FAVORITES_DB", str(tmp_path / "favorites.db"))
+        monkeypatch.delenv("FAVORITES_WATCH", raising=False)
+        monkeypatch.delenv("GOOGLE_CLIENT_ID", raising=False)
+        with TestClient(app, client=("127.0.0.1", 50000)) as c:
+            yield c
+
+    def old_tiktok_import(self, library, days=90):
+        from datetime import datetime, timedelta, timezone
+        at = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
+        db.upsert_item(library, {"canonical_url": "https://www.tiktok.com/@a/video/1", "shared_url": "x",
+                                 "platform": "tiktok", "source": "export", "imported_at": at,
+                                 "saved_at": at, "resolve_status": "pending"})
+
+    def test_the_page(self, mac, library):
+        self.old_tiktok_import(library)
+        page = mac.get("/sync").text
+        assert "Keep it in sync" in page and "Imported 90 days ago" in page
+        assert "Never imported" in page  # Instagram, YouTube
+        assert "Not watching a folder yet" in page
+        assert "One-time setup" in page  # no Google client yet
+        assert "Europe and the UK only" in page
+        assert 'href="/sync"' in mac.get("/rooms").text  # the footer
+
+    def test_the_front_page_reminds_and_can_be_told_later(self, mac, library):
+        self.old_tiktok_import(library)
+        db.upsert_item(library, {"canonical_url": "https://example.com/ok", "shared_url": "x",
+                                 "platform": "tiktok", "title": "a save", "resolve_status": "ok"})
+        assert "since your TikTok export" in mac.get("/").text
+        mac.post("/sync/snooze", data={"platform": "tiktok", "next": "/"})
+        assert "since your TikTok export" not in mac.get("/").text
+
+    def test_the_password_shows_only_on_the_mac(self, mac, client, monkeypatch):
+        monkeypatch.setenv("FAVORITES_TOKEN", "sesame-123")
+        assert "sesame-123" in mac.get("/sync").text
+        page = client.get("/sync").text  # a phone on the wi-fi
+        assert "sesame-123" not in page and "shown only on the Mac" in page
+
+    def test_watching_and_looking_now(self, mac, tmp_path, monkeypatch):
+        import zipfile, os, time, json as j
+        d = tmp_path / "Downloads"
+        d.mkdir()
+        z = d / "TikTok_Data.zip"
+        with zipfile.ZipFile(z, "w") as f:
+            f.writestr("user_data_tiktok.json", j.dumps({"Likes and Favorites": {"Favorite Videos": {
+                "FavoriteVideoList": [{"Date": "2024-05-01 10:00:00",
+                                       "Link": "https://www.tiktokv.com/share/video/7/"}]}}}))
+        os.utime(z, (time.time() - 600,) * 2)
+        monkeypatch.setenv("FAVORITES_WATCH", str(d))
+        import favorites.app as appmod
+        monkeypatch.setattr(appmod, "_fill_in", lambda *a, **k: asyncio_noop())
+        resp = mac.post("/sync/scan", follow_redirects=False)
+        assert resp.headers["location"] == "/sync?done=scanned#folder"
+        page = mac.get("/sync").text
+        assert "Watching 1 folder" in page and "TikTok_Data.zip" in page and "1 new" in page
+
+    def test_google_steps_happen_only_on_the_mac(self, client, mac, monkeypatch):
+        monkeypatch.setenv("GOOGLE_CLIENT_ID", "cid")
+        monkeypatch.setenv("GOOGLE_CLIENT_SECRET", "s")
+        assert client.post("/sync/youtube/connect").status_code == 403
+        resp = mac.post("/sync/youtube/connect", follow_redirects=False)
+        assert resp.headers["location"].startswith("https://accounts.google.com/")
+        assert "redirect_uri=http%3A%2F%2Flocalhost" in resp.headers["location"]
+        assert "Connect Google" in mac.get("/sync").text
+
+    def test_a_cancelled_google_sign_in(self, mac):
+        resp = mac.get("/sync/youtube/callback?error=access_denied", follow_redirects=False)
+        assert resp.headers["location"] == "/sync?done=youtube-cancelled#youtube"
+
+
+async def _noop():
+    return None
+
+
+def asyncio_noop():
+    return _noop()

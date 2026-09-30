@@ -67,6 +67,13 @@
      still to identify — <code>python -m favorites.backfill --all</code></span></p>
 {% endif %}
 
+{% for r in reminders %}
+  <div class="rr-notice export-due">{{ icon('clock') }}<span class="msg">📦 It's been {{ r.days }} days since your {{ r.name }} export.
+    <a href="/sync#exports">Request a fresh one</a> — the museum imports it by itself when it lands.</span>
+    <form action="/sync/snooze" method="post"><input type="hidden" name="platform" value="{{ r.platform }}"><input type="hidden" name="next" value="/">
+      <button class="rr-btn rr-btn--quiet" type="submit" aria-label="Remind me in a month about {{ r.name }}">Later</button></form></div>
+{% endfor %}
+
 {% if on_this_day %}
 <section class="rr-band tone-{{ order[ns.i % 6] }}" aria-labelledby="otd-title">{% set ns.i = ns.i + 1 %}<div class="inner">
   <div class="rr-otd rr-reveal">

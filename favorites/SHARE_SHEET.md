@@ -50,7 +50,8 @@ token (or leave the Authorization header out entirely if you did not set one).
 
 ## iOS — a Shortcut in the share sheet
 
-About three minutes, once.
+About three minutes, once. The museum's **Keep it in sync** page (`/sync`,
+opened on the Mac) shows the exact address and password to use below.
 
 1. Open **Shortcuts** → **+** to create a new shortcut.
 2. Add the action **Get Contents of URL**.
@@ -64,18 +65,26 @@ About three minutes, once.
 5. Tap the **ⓘ** / settings icon → turn on **Show in Share Sheet**.
 6. Under **Share Sheet Types**, leave **URLs** and **Text** enabled and turn
    the rest off.
-7. Name it something short — **Keep** works well, because the name is what you
+7. Add **Get Dictionary Value** (key `title`), then **Show Notification** with
+   the text `Kept ✓` and that value. You see the video's title a second after
+   tapping; if the phone cannot reach the library, Shortcuts stops with a
+   connection error instead — the other thing worth knowing straight away.
+8. Name it something short — **Keep** works well, because the name is what you
    will be tapping.
 
-Now: any app → Share → **Keep**. Done.
+Now: any app → Share → **Keep**. One tap, no typing, nothing to confirm.
 
-### Optional: see that it worked
+**Put Keep first.** In the share sheet, scroll the row of apps to the end →
+**Edit Actions** → add **Keep** to Favourites, so it sits at the top of the
+list instead of below the fold.
 
-By default the shortcut saves silently. To get a confirmation, add two actions
-after **Get Contents of URL**: **Get Dictionary Value** (key `title`), then
-**Show Notification** with that value. You will see the video's title a second
-after tapping. If the phone cannot reach the library, Shortcuts stops with a
-connection error instead — which is the other thing worth knowing straight away.
+### Optional: save what you copied, with a double-tap on the back of the phone
+
+Some apps' share sheets bury Shortcuts. Duplicate **Keep**, name the copy
+**Keep copied**, and put **Get Clipboard** in place of Shortcut Input. Then
+**Settings → Accessibility → Touch → Back Tap → Double Tap → Keep copied**:
+copy a link anywhere, double-tap the back of the phone, and it is saved. (On an
+iPhone with an Action button, you can give it to that instead.)
 
 ### Optional: a second shortcut that files it under a category
 

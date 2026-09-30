@@ -1,0 +1,156 @@
+{% extends "base.html" %}
+{% from "_icons.html" import icon %}
+{% block title %}Keep it in sync · Favorites{% endblock %}
+{% block main_class %}is-bands{% endblock %}
+{% set steps = {
+  'tiktok': {
+    'emoji': '🎵', 'tone': 'pink', 'href': 'https://www.tiktok.com/setting/download-your-data',
+    'wait': 'TikTok takes a few days to prepare it, and sends a notification when it is ready.',
+    'how': ['In the TikTok app: Profile → ☰ → Settings and privacy → Account → Download your data.',
+            'Choose <b>JSON</b> and <b>All data</b>, then Request data.',
+            'When it is ready, download it on this Mac. It lands in Downloads — that is all.']},
+  'instagram': {
+    'emoji': '📸', 'tone': 'peach', 'href': 'https://accountscenter.instagram.com/info_and_permissions/dyi/',
+    'wait': 'Usually ready within a day; Meta emails you a link.',
+    'how': ['Accounts Center → Your information and permissions → Download your information.',
+            'Choose <b>Some of your information</b> → <b>Saved</b>, format <b>JSON</b>, all time.',
+            'Download the file on this Mac when Meta emails you.']},
+  'youtube': {
+    'emoji': '▶️', 'tone': 'sky', 'href': 'https://takeout.google.com/',
+    'wait': 'Set it once and Google repeats it every two months for a year.',
+    'how': ['On Google Takeout: Deselect all, then tick <b>YouTube and YouTube Music</b>.',
+            'Under “All YouTube data included”, keep only <b>playlists</b> (that includes Watch later).',
+            'Frequency: <b>Export every 2 months for 1 year</b>. Destination: <b>Add to Drive</b> — and add your Google Drive’s Takeout folder to the watched folders below.']},
+} %}
+{% block content %}
+
+<section class="rr-hero sync-hero">
+  <p class="rr-label">🔄 Keep it in sync</p>
+  <h1 class="rr-h-xl">New saves find their own way in</h1>
+  <p class="lede">The platforms won't hand your saves to another app, so the museum does the next best
+    thing: it picks up every export the moment you download it, syncs your YouTube playlists by itself,
+    and reminds you when an export is due.</p>
+  {% if flash %}
+    <p class="rr-notice sync-flash">{{ icon('check') }}<span>{{ {
+      'scanned': 'Looked in the watched folder just now.',
+      'youtube-connected': 'YouTube is connected — your playlists are coming in.',
+      'youtube-synced': 'YouTube synced just now.',
+      'youtube-disconnected': 'YouTube disconnected, and the sign-in revoked with Google.',
+      'youtube-cancelled': 'Nothing changed — the Google sign-in was cancelled.',
+      'youtube-failed': 'Google said no this time. Try again, or check the setup steps below.'}.get(flash, 'Done.') }}</span></p>
+  {% endif %}
+</section>
+
+<section class="rr-band tone-mint" id="exports" aria-labelledby="exports-title"><div class="inner">
+  <div class="rr-shelf-head rr-reveal"><div>
+    <p class="rr-label">📦 Your exports</p>
+    <h2 class="rr-h-m" id="exports-title">Request one now and then; the rest is automatic</h2>
+    <p>Download it on this Mac and the museum imports it by itself. Due again after {{ 60 }} days.</p>
+  </div></div>
+  <div class="export-cards band-pad">
+    {% for e in exports %}{% set st = steps[e.platform] %}
+    <article class="export-card tone-{{ st.tone }} rr-reveal{% if e.due %} is-due{% endif %}" style="--i:{{ loop.index0 }}">
+      <header>
+        <span class="em" aria-hidden="true">{{ st.emoji }}</span>
+        <div><h3>{{ e.name }}</h3>
+          <p class="when">{% if e.days is none %}Never imported{% elif e.days == 0 %}Imported today{% elif e.days == 1 %}Imported yesterday{% else %}Imported {{ e.days }} days ago{% endif %}{% if e.due %} · <b>due</b>{% endif %}</p></div>
+      </header>
+      <ol>{% for step in st.how %}<li>{{ step | safe }}</li>{% endfor %}</ol>
+      <p class="wait">{{ st.wait }}</p>
+      <a class="rr-btn{% if e.due or e.days is none %} rr-btn--primary{% endif %}" href="{{ st.href }}" target="_blank" rel="noopener noreferrer">Request {{ "an" if e.name[0] in "AEIOU" else "a" }} {{ e.name }} export {{ icon('external') }}</a>
+    </article>
+    {% endfor %}
+  </div>
+</div></section>
+
+<section class="rr-band tone-butter" id="folder" aria-labelledby="folder-title"><div class="inner">
+  <div class="rr-shelf-head rr-reveal"><div>
+    <p class="rr-label">📂 The watched folder</p>
+    <h2 class="rr-h-m" id="folder-title">{% if folders %}Watching {{ folders | length }} {{ 'folder' if folders | length == 1 else 'folders' }}{% else %}Not watching a folder yet{% endif %}</h2>
+    <p>{% if folders %}Every minute it looks for TikTok, Instagram and Google Takeout exports. It never moves or deletes your files.{% else %}Starting the museum with <code>start.command</code> watches your Downloads folder. To choose others, set <code>FAVORITES_WATCH</code> in <code>~/.favorites.env</code>.{% endif %}</p>
+  </div></div>
+  <div class="band-pad folder-body rr-reveal">
+    {% if folders %}
+      <ul class="folders">{% for f in folders %}<li>{{ icon('home') }}<code>{{ f }}</code></li>{% endfor %}</ul>
+      <form action="/sync/scan" method="post"><button class="rr-btn" type="submit">{{ icon('search') }}Look now</button></form>
+    {% endif %}
+    {% if recent %}
+      <h3 class="rr-label is-muted">Recently imported</h3>
+      <ul class="imports">
+        {% for r in recent %}
+          <li><b>{{ r.filename }}</b> <span class="rr-muted">· {{ r.imported_at[:10] }} ·
+            {% if r.detail.error %}not an export it could read{% else %}{{ r.added }} new{% if r.detail.already %}, {{ r.detail.already }} already here{% endif %}{% endif %}</span></li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+  </div>
+</div></section>
+
+<section class="rr-band tone-sky" id="youtube" aria-labelledby="yt-title"><div class="inner">
+  <div class="rr-shelf-head rr-reveal"><div>
+    <p class="rr-label">▶️ YouTube, signed in</p>
+    <h2 class="rr-h-m" id="yt-title">{% if google.connected %}Your playlists sync every day{% else %}Sync your playlists without exports{% endif %}</h2>
+    <p>Every playlist you made comes in by itself, filed under its name. Google doesn't let apps read Watch later or Liked videos — the scheduled Takeout above covers Watch later.</p>
+  </div></div>
+  <div class="band-pad yt-body rr-reveal">
+    {% if google.connected %}
+      <p class="yt-state">{{ icon('check') }}<span>Connected.{% if google.last %} Last synced {{ google.last.at[:16] | replace('T', ' ') }}: {{ google.last.playlists }} playlists, {{ google.last.videos }} videos, {{ google.last.added }} new.{% endif %}</span></p>
+      {% if here %}
+      <div class="row">
+        <form action="/sync/youtube/now" method="post"><button class="rr-btn rr-btn--primary" type="submit">{{ icon('shuffle') }}Sync now</button></form>
+        <form action="/sync/youtube/disconnect" method="post"><button class="rr-btn" type="submit">Disconnect</button></form>
+      </div>
+      {% endif %}
+    {% elif google.configured %}
+      {% if here %}
+        <form action="/sync/youtube/connect" method="post"><button class="rr-btn rr-btn--primary" type="submit">Connect Google</button></form>
+        <p class="rr-muted small">Google will warn that the app is unverified — it's yours, so that's expected. Choose Advanced → Go to (your app).</p>
+      {% else %}<p>Connect from the Mac the museum runs on.</p>{% endif %}
+    {% else %}
+      <details class="setup"{% if here %} open{% endif %}><summary>One-time setup (about 10 minutes)</summary>
+        <ol>
+          <li>At <a href="https://console.cloud.google.com/projectcreate" target="_blank" rel="noopener noreferrer">Google Cloud</a>, create a project (any name, e.g. “Favorites”).</li>
+          <li>In <b>APIs &amp; Services → Library</b>, switch on <b>YouTube Data API v3</b>.</li>
+          <li>In <b>OAuth consent screen</b>: choose External, fill in the app name and your email, add yourself as a user, then press <b>Publish app</b> (otherwise Google signs you out every 7 days).</li>
+          <li>In <b>Credentials → Create credentials → OAuth client ID</b>, choose <b>Desktop app</b>.</li>
+          <li>Copy its client ID and secret into <code>~/.favorites.env</code>:<br>
+            <code>GOOGLE_CLIENT_ID="…"</code><br><code>GOOGLE_CLIENT_SECRET="…"</code></li>
+          <li>Close the museum's window and double-click <code>start.command</code> again. A Connect button appears here.</li>
+        </ol>
+      </details>
+    {% endif %}
+  </div>
+</div></section>
+
+<section class="rr-band tone-pink" id="phone" aria-labelledby="phone-title"><div class="inner">
+  <div class="rr-shelf-head rr-reveal"><div>
+    <p class="rr-label">📱 Your phone</p>
+    <h2 class="rr-h-m" id="phone-title">Save in one tap, as you scroll</h2>
+    <p>For everything from now on: Share → Favorites, and it's in the museum. No typing.</p>
+  </div></div>
+  <div class="band-pad phone-body rr-reveal">
+    {% if token %}
+      <dl class="phone-facts">
+        <div><dt>Address</dt><dd>{% if addresses %}{% for a in addresses %}<code>{{ a }}</code>{% endfor %}{% else %}<span class="rr-muted">start.command prints it when it starts</span>{% endif %}<br><span class="rr-muted small">From anywhere, use the Tailscale address start.command prints.</span></dd></div>
+        <div><dt>Password</dt><dd>{% if here %}<code>{{ token }}</code>{% else %}<span class="rr-muted">shown only on the Mac</span>{% endif %}</dd></div>
+      </dl>
+    {% else %}
+      <p>Your phone can't reach the museum yet. Switch on <code>FAVORITES_TOKEN</code> in <code>~/.favorites.env</code> and start it again; this section will show what to put in the Shortcut.</p>
+    {% endif %}
+    <ol class="shortcut">
+      <li>In <b>Shortcuts</b>, make a new shortcut and switch on <b>Show in Share Sheet</b> (URLs and Text).</li>
+      <li>Add <b>Get Contents of URL</b>: the address above + <code>/save</code>, method <b>POST</b>, header <code>Authorization</code> = <code>Bearer</code> + the password, JSON field <code>url</code> = <b>Shortcut Input</b>.</li>
+      <li>Add <b>Show Notification</b>: “Kept ✓”. Name it <b>Favorites</b>.</li>
+    </ol>
+    <p class="rr-muted small">Want a note as you save? Add <b>Ask for Input</b> before step 2 and a second field <code>note</code>. Full steps: <code>favorites/SHARE_SHEET.md</code>.</p>
+  </div>
+</div></section>
+
+<section class="rr-band tone-lilac" aria-labelledby="tt-title"><div class="inner">
+  <div class="band-pad rr-reveal tt-note">
+    <p class="rr-label">🇪🇺 TikTok's sharing tool</p>
+    <h2 class="rr-h-m" id="tt-title">Automatic TikTok sync works in Europe and the UK only</h2>
+    <p>TikTok's Data Portability API lets you send your favourites straight to an app you choose — but it only returns data for accounts in the EEA and UK, and apps have to pass TikTok's review. For everyone else the export above is the way. We'll look again if that changes.</p>
+  </div>
+</div></section>
+{% endblock %}
