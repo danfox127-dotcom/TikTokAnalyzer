@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% from "_card.html" import card, frame, shelf, room_pill, threads as connected %}
 {% from "_icons.html" import icon %}
-{% block title %}{{ item.title or 'Item' }} · Favorites{% endblock %}
+{% block title %}{{ headline(item) or 'Item' }} · Favorites{% endblock %}
 {% block main_class %}is-bands{% endblock %}
 {% block content %}
 
@@ -22,14 +22,18 @@
         {% if item.resolve_status != 'ok' %}<span class="warn">unresolved</span>{% endif %}
       </p>
 
-      <h1 class="rr-h-l">{{ item.title or browsable_url(item) }}</h1>
+      <h1 class="rr-h-l">{{ headline(item) or browsable_url(item) }}</h1>
 
       {% if item.creator_name or item.creator_handle %}
         <p class="byline">by <a href="/creator/{{ (item.creator_handle or item.creator_name) | urlencode }}">{{ item.creator_name or item.creator_handle }}</a>
           {% if item.creator_handle and item.creator_name %}<span class="rr-muted">{{ item.creator_handle }}</span>{% endif %}</p>
       {% endif %}
 
-      {% if item.description and item.description != item.title %}<p class="desc">{{ item.description }}</p>{% endif %}
+      {% set b = detail(item) %}{% if b %}<p class="desc">{{ b }}</p>{% endif %}
+      {%- set raw = item.description or item.title %}
+      {% if raw and clean_caption(raw) != raw.strip() %}
+        <details class="original"><summary>The original caption</summary><p>{{ raw }}</p></details>
+      {% endif %}
 
       {% if item.themes or item.tags %}
         <ul class="rr-pills theme-pills">
@@ -37,6 +41,36 @@
           {% for tag in item.tags %}<li><a class="rr-pill" href="/search?tag={{ tag | urlencode }}">#{{ tag }}</a></li>{% endfor %}
         </ul>
       {% endif %}
+
+      <div class="why-here" id="rooms">
+        {% if reasons %}
+          <p class="rr-label is-muted">Why it's in {{ 'this room' if reasons | length == 1 else 'these rooms' }}</p>
+          <ul>
+            {% for r in reasons %}<li><b>{{ look(r.theme)[2] }} {{ r.theme }}</b> — {{ r.reasons | join(' · ') }}{% if r.hunch %} <span class="hunch">a hunch</span>{% endif %}</li>{% endfor %}
+          </ul>
+        {% else %}
+          <p class="rr-muted">Not in a room yet: nothing in its caption or hashtags said clearly enough what it's about.</p>
+        {% endif %}
+        <details class="change-rooms"{% if rooms_open %} open{% endif %}>
+          <summary>{{ icon('filter') }}{% if item.themes %}Change rooms{% else %}Put it in a room{% endif %}</summary>
+          <form action="/item/{{ item.id }}/rooms" method="post">
+            <fieldset>
+              <legend class="rr-label is-muted">Rooms</legend>
+              <div class="room-choices">
+                {% for t in theme_names %}{% set lk = look(t) %}
+                  <label class="choice tone-{{ lk[0] }}"><input type="checkbox" name="room" value="{{ t }}"{% if t in item.themes %} checked{% endif %}><span>{{ lk[2] }} {{ t }}</span></label>
+                {% endfor %}
+              </div>
+            </fieldset>
+            {% set who = item.creator_name or item.creator_handle %}
+            {% if who %}<label class="whole-creator"><input type="checkbox" name="whole_creator" value="1"> Do the same for everything by {{ who }}</label>{% endif %}
+            <div class="row">
+              <button class="rr-btn rr-btn--primary" type="submit">Save rooms</button>
+              {% if hand_filed %}<button class="rr-btn" type="submit" name="reset" value="1">Let the museum decide again</button>{% endif %}
+            </div>
+          </form>
+        </details>
+      </div>
 
       {% if collections %}
         <ul class="filed">

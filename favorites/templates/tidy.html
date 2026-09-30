@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+{% from "_card.html" import frame, piece %}
+{% from "_icons.html" import icon %}
+{% set nav = 'rooms' %}
+{% block title %}Tidy the rooms · Favorites{% endblock %}
+{% block main_class %}is-bands{% endblock %}
+{% block content %}
+
+<section class="rr-hero tidy-hero">
+  <p class="rr-label">🧹 Tidy the rooms</p>
+  <h1 class="rr-h-xl">Teach the museum what things are about</h1>
+  <p class="lede">It sorts saves by what their captions and hashtags say. Tell it what the hashtags it
+    doesn't know mean, and settle the saves it's only guessing about. Every answer re-sorts the whole library.</p>
+  <ul class="rr-stats tidy-stats">
+    <li class="rr-stat"><span class="em" aria-hidden="true">🏷️</span><b>{{ unknown | length }}</b><span>{{ 'hashtag' if unknown | length == 1 else 'hashtags' }} to teach</span></li>
+    <li class="rr-stat"><span class="em" aria-hidden="true">🤔</span><b>{{ hunch_count }}</b><span>{{ 'save' if hunch_count == 1 else 'saves' }} filed on a hunch</span></li>
+    <li class="rr-stat"><span class="em" aria-hidden="true">🎓</span><b>{{ taught }}</b><span>{{ 'thing' if taught == 1 else 'things' }} you've taught it</span></li>
+  </ul>
+</section>
+
+<section class="rr-band tone-sky" id="hashtags" aria-labelledby="tags-title"><div class="inner">
+  <div class="rr-shelf-head rr-reveal"><div>
+    <p class="rr-label">🏷️ Hashtags it doesn't know yet</p>
+    <h2 class="rr-h-m" id="tags-title">What does each of these mean?</h2>
+    <p>The ones on the most saves first. One answer files every save that carries it.</p>
+  </div></div>
+  {% if unknown %}
+  <ul class="teach-list band-pad">
+    {% for u in unknown %}
+    <li class="teach rr-reveal" style="--i:{{ loop.index0 % 6 }}">
+      <div class="covers" aria-hidden="true">{% for i in u.saves %}{{ frame(i) }}{% endfor %}</div>
+      <div class="what">
+        <p class="tag"><a href="/search?tag={{ u.tag | urlencode }}">#{{ u.tag }}</a> <span class="rr-muted">on {{ u.count }} saves</span></p>
+        <div class="answers">
+          {% for t in u.likely %}{% set lk = look(t) %}
+            <form action="/rooms/teach" method="post"><input type="hidden" name="tag" value="{{ u.tag }}"><input type="hidden" name="theme" value="{{ t }}">
+              <button class="rr-pill is-room tone-{{ lk[0] }}" type="submit">{{ icon(lk[1]) }}{{ t }}</button></form>
+          {% endfor %}
+          <form class="pick" action="/rooms/teach" method="post"><input type="hidden" name="tag" value="{{ u.tag }}">
+            <label class="rr-sr" for="t-{{ loop.index }}">Room for #{{ u.tag }}</label>
+            <select id="t-{{ loop.index }}" name="theme">
+              <option value="" disabled selected>Another room…</option>
+              {% for t in theme_names %}<option>{{ t }}</option>{% endfor %}
+            </select>
+            <button class="rr-btn" type="submit">Teach</button></form>
+          <form action="/rooms/teach" method="post"><input type="hidden" name="tag" value="{{ u.tag }}"><input type="hidden" name="theme" value="">
+            <button class="rr-pill is-quiet" type="submit">Not a subject</button></form>
+        </div>
+      </div>
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+    <p class="band-pad all-done rr-reveal">🎉 It knows every hashtag that's on two or more saves.</p>
+  {% endif %}
+</div></section>
+
+<section class="rr-band tone-butter" id="hunches" aria-labelledby="hunch-title"><div class="inner">
+  <div class="rr-shelf-head rr-reveal"><div>
+    <p class="rr-label">🤔 Filed on a hunch</p>
+    <h2 class="rr-h-m" id="hunch-title">Is it right about these?</h2>
+    <p>Each is in a room because of one word in passing. Say yes and it stays for good; say no and it moves out.</p>
+  </div></div>
+  {% if hunches %}
+  <div class="rr-salon hunch-wall band-pad">
+    {% for item in hunches %}
+      <div class="hunch-piece rr-reveal" style="--i:{{ loop.index0 % 6 }}">
+        {{ piece(item) }}
+        <div class="settle">
+          <form action="/item/{{ item.id }}/rooms" method="post">
+            {% for t in item.themes %}<input type="hidden" name="room" value="{{ t }}">{% endfor %}
+            <input type="hidden" name="confirm" value="1"><input type="hidden" name="next" value="/rooms/tidy#hunches">
+            <button class="rr-btn rr-btn--primary" type="submit">{{ icon('check') }}Yes</button></form>
+          <form action="/item/{{ item.id }}/rooms" method="post">
+            <input type="hidden" name="next" value="/rooms/tidy#hunches">
+            <button class="rr-btn" type="submit">Not {{ item.themes[0] if item.themes | length == 1 else 'these' }}</button></form>
+          <a class="more" href="/item/{{ item.id }}?rooms=1#rooms">Choose…</a>
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+  {% if hunch_count > hunches | length %}<p class="band-pad rr-muted more-line">{{ hunch_count - hunches | length }} more after these.</p>{% endif %}
+  {% else %}
+    <p class="band-pad all-done rr-reveal">🎉 Nothing's on a hunch: every room has a hashtag, a category or your say-so behind it.</p>
+  {% endif %}
+</div></section>
+
+<section class="rr-band tone-lilac" aria-label="Saves in no room"><div class="inner">
+  <div class="browse-more band-pad rr-reveal">
+    {% if undefined %}<p class="undefined-line"><b>{{ undefined }} {{ 'save is' if undefined == 1 else 'saves are' }} in no room.</b>
+      Nothing in their captions said clearly what they're about. Open one and put it in a room, or teach the hashtags above.</p>{% endif %}
+    {% if undefined %}<a class="rr-btn rr-btn--primary" href="/search?theme=Undefined">{{ icon('filter') }}Look through them</a>{% endif %}
+    <a class="rr-btn" href="/rooms">{{ icon('home') }}Back to the rooms</a>
+  </div>
+</div></section>
+{% endblock %}

@@ -64,3 +64,19 @@ def look(theme: str | None) -> tuple[str, str, str]:
         return THEME_LOOK[theme]
     tone = TONES[zlib.crc32((theme or "").encode()) % len(TONES)]
     return (tone, "spark", "✨")
+
+
+def shape(item) -> str:
+    """The shape a save's picture keeps on a salon wall: its media's own.
+
+    Vertical video stands tall (3:4), a long-form video or a web page lies
+    wide (16:10), an Instagram post is square. Carousels ignore this and crop
+    everything to 3:4 so a row stays even to swipe.
+    """
+    get = item.get if hasattr(item, "get") else (lambda k: item[k])
+    platform, fmt = get("platform"), get("format")
+    if platform == "tiktok" or fmt == "short":
+        return "tall"
+    if platform == "instagram":
+        return "square"
+    return "wide"

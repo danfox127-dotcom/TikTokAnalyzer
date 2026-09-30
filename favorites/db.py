@@ -89,6 +89,18 @@ CREATE TABLE IF NOT EXISTS thumbnails (
     fetched_at   TEXT NOT NULL
 );
 
+-- What you taught the museum about its rooms: "this save is not Marketing",
+-- "everything by @pearljam is Music", "#eddievedder means Music", "#siriusxm
+-- is no subject at all". Kept apart from items so re-theming never loses them.
+CREATE TABLE IF NOT EXISTS theme_rules (
+    kind       TEXT NOT NULL,   -- 'item', 'creator' or 'tag'
+    key        TEXT NOT NULL,   -- the item id, creator handle or hashtag
+    theme      TEXT NOT NULL,   -- '' for an ignored hashtag
+    action     TEXT NOT NULL,   -- 'add', 'remove' or 'ignore'
+    created_at TEXT,
+    PRIMARY KEY (kind, key, theme)
+);
+
 -- Small facts about the library file itself, such as which version of the
 -- theme vocabulary its themes were worked out with.
 CREATE TABLE IF NOT EXISTS meta (
@@ -213,6 +225,83 @@ def connect_announced(path: str | os.PathLike | None = None) -> tuple[sqlite3.Co
                   f"existing library, pass --db with its path or set FAVORITES_DB.)")
 
 
+def load_rules(conn: sqlite3.Connection) -> theme_vocabulary.Rules:
+    return theme_vocabulary.Rules.from_rows(
+        (r["kind"], r["key"], r["theme"], r["action"])
+        for r in conn.execute("SELECT kind, key, theme, action FROM theme_rules"))
+
+
+_THEME_COLUMNS = ("id, title, description, note, tags, transcript,"
+                  " creator_handle, creator_name")
+
+
+def _filed(conn: sqlite3.Connection) -> dict[int, list[str]]:
+    filed: dict[int, list[str]] = {}
+    for c in conn.execute("SELECT item_id, name FROM collections"):
+        filed.setdefault(c["item_id"], []).append(c["name"])
+    return filed
+
+
+def _key(row) -> str:
+    return theme_vocabulary.creator_key(row["creator_handle"], row["creator_name"])
+
+
+def _leans(rows, filed, rules) -> dict[str, list[str]]:
+    """creator -> the rooms their saves mostly sit in, each save themed alone."""
+    alone: dict[str, list[list[str]]] = {}
+    for r in rows:
+        if _key(r):
+            alone.setdefault(_key(r), []).append(
+                theme_vocabulary.for_row(r, filed.get(r["id"], ()), rules=rules))
+    return {k: theme_vocabulary.lean(v) for k, v in alone.items()}
+
+
+def hunches(conn: sqlite3.Connection, limit: int = 12) -> tuple[list[int], int]:
+    """Saves filed on a hunch -- one word in passing -- newest first, and how many.
+
+    The ones worth a second look: the museum is guessing, and one tap from
+    you settles it for good.
+    """
+    rules = load_rules(conn)
+    filed = _filed(conn)
+    rows = conn.execute(
+        f"SELECT {_THEME_COLUMNS} FROM items WHERE resolve_status = 'ok'"
+        " AND json_array_length(coalesce(nullif(themes, ''), '[]')) > 0"
+        " ORDER BY saved_at DESC").fetchall()
+    leans = _leans(rows, filed, rules)
+    found = []
+    for r in rows:
+        if r["id"] in rules.item_add or r["id"] in rules.item_remove:
+            continue
+        ev = theme_vocabulary.evidence_for_row(
+            r, filed.get(r["id"], ()), rules=rules, regular=leans.get(_key(r), ()))
+        kept = theme_vocabulary.explain(ev, theme_vocabulary.decide(ev))
+        if kept and all(k["hunch"] for k in kept):
+            found.append(r["id"])
+    return found[:limit], len(found)
+
+
+def retheme(conn: sqlite3.Connection) -> int:
+    """Work every item's themes out again. Returns how many items there are.
+
+    Two passes: the first themes each save on its own, which shows which rooms
+    each creator's saves mostly sit in; the second adds that lean, so a save
+    by a creator you keep for their music leans towards Music.
+    """
+    rules = load_rules(conn)
+    filed = _filed(conn)
+    rows = conn.execute(f"SELECT {_THEME_COLUMNS} FROM items").fetchall()
+    leans = _leans(rows, filed, rules)
+    conn.executemany(
+        "UPDATE items SET themes = ? WHERE id = ?",
+        [(json.dumps(theme_vocabulary.for_row(
+            r, filed.get(r["id"], ()), rules=rules, regular=leans.get(_key(r), ()))), r["id"])
+         for r in rows],
+    )
+    conn.commit()
+    return len(rows)
+
+
 def retheme_if_stale(conn: sqlite3.Connection) -> int:
     """Work every item's themes out again if the vocabulary has changed.
 
@@ -224,18 +313,113 @@ def retheme_if_stale(conn: sqlite3.Connection) -> int:
     row = conn.execute("SELECT value FROM meta WHERE key = 'themes_version'").fetchone()
     if row is not None and row["value"] == theme_vocabulary.VERSION:
         return 0
-    filed: dict[int, list[str]] = {}
-    for c in conn.execute("SELECT item_id, name FROM collections"):
-        filed.setdefault(c["item_id"], []).append(c["name"])
-    rows = conn.execute("SELECT id, title, description, note, tags FROM items").fetchall()
-    conn.executemany(
-        "UPDATE items SET themes = ? WHERE id = ?",
-        [(json.dumps(theme_vocabulary.for_row(r, filed.get(r["id"], ()))), r["id"]) for r in rows],
-    )
+    n = retheme(conn)
     conn.execute("INSERT OR REPLACE INTO meta (key, value) VALUES ('themes_version', ?)",
                  (theme_vocabulary.VERSION,))
     conn.commit()
-    return len(rows)
+    return n
+
+
+def _creator_lean(conn: sqlite3.Connection, key: str, item_id: int,
+                  rules: theme_vocabulary.Rules) -> list[str]:
+    """The rooms a creator's *other* saves mostly sit in, each themed alone."""
+    if not key:
+        return []
+    rows = conn.execute(
+        f"SELECT {_THEME_COLUMNS} FROM items WHERE id != ? AND ("
+        " lower(ltrim(coalesce(creator_handle, ''), '@')) = ?"
+        " OR (coalesce(creator_handle, '') = '' AND lower(creator_name) = ?))",
+        (item_id, key, key)).fetchall()
+    if len(rows) < theme_vocabulary.LEAN_MIN:
+        return []
+    filed = _filed(conn)
+    return theme_vocabulary.lean(
+        theme_vocabulary.for_row(r, filed.get(r["id"], ()), rules=rules) for r in rows)
+
+
+def _theme_inputs(conn: sqlite3.Connection, item_id: int, rules=None):
+    row = conn.execute("SELECT * FROM items WHERE id = ?", (item_id,)).fetchone()
+    if row is None:
+        return None
+    rules = load_rules(conn) if rules is None else rules
+    filed = [r["name"] for r in conn.execute(
+        "SELECT name FROM collections WHERE item_id = ?", (item_id,))]
+    regular = _creator_lean(conn, _key(row), item_id, rules)
+    return row, filed, rules, regular
+
+
+def themes_of(conn: sqlite3.Connection, item_id: int) -> list[str]:
+    got = _theme_inputs(conn, item_id)
+    if got is None:
+        return []
+    row, filed, rules, regular = got
+    return theme_vocabulary.for_row(row, filed, rules=rules, regular=regular)
+
+
+def room_reasons(conn: sqlite3.Connection, item_id: int) -> list[dict]:
+    """Why a save is in each of its rooms, in words, for its page."""
+    got = _theme_inputs(conn, item_id)
+    if got is None:
+        return []
+    row, filed, rules, regular = got
+    ev = theme_vocabulary.evidence_for_row(row, filed, rules=rules, regular=regular)
+    return theme_vocabulary.explain(ev, theme_vocabulary.decide(ev))
+
+
+def set_rooms(conn: sqlite3.Connection, item_id: int, chosen: Iterable[str],
+              whole_creator: bool = False, confirm: bool = False) -> None:
+    """Put a save in exactly the rooms you chose.
+
+    Only the difference from what the museum would have worked out is kept,
+    so a later improvement to the vocabulary still reaches the rest. With
+    ``whole_creator`` the difference is kept for everything by its creator.
+    ``confirm`` keeps the rooms you agreed with too, so a guess you checked
+    stays settled.
+    """
+    got = _theme_inputs(conn, item_id)
+    if got is None:
+        return
+    row, filed, rules, regular = got
+    rules.item_add.pop(item_id, None)
+    rules.item_remove.pop(item_id, None)
+    auto = set(theme_vocabulary.for_row(row, filed, rules=rules, regular=regular))
+    chosen = {t for t in chosen if t in theme_vocabulary.THEMES}
+    adds, removes = (chosen if confirm else chosen - auto), auto - chosen
+    key = _key(row)
+    conn.execute("DELETE FROM theme_rules WHERE kind = 'item' AND key = ?", (str(item_id),))
+    kind, rule_key = ("creator", key) if whole_creator and key else ("item", str(item_id))
+    if kind == "creator":
+        conn.execute("DELETE FROM theme_rules WHERE kind = 'creator' AND key = ? AND theme IN"
+                     f" ({','.join('?' * len(adds | removes)) or 'NULL'})",
+                     (key, *(adds | removes)))
+    conn.executemany(
+        "INSERT OR REPLACE INTO theme_rules (kind, key, theme, action, created_at)"
+        " VALUES (?, ?, ?, ?, ?)",
+        [(kind, rule_key, t, "add", now_iso()) for t in adds]
+        + [(kind, rule_key, t, "remove", now_iso()) for t in removes])
+    retheme(conn)
+
+
+def reset_rooms(conn: sqlite3.Connection, item_id: int) -> None:
+    """Forget your choice for one save; the museum works its rooms out again."""
+    conn.execute("DELETE FROM theme_rules WHERE kind = 'item' AND key = ?", (str(item_id),))
+    retheme(conn)
+
+
+def teach_tag(conn: sqlite3.Connection, tag: str, theme: Optional[str]) -> None:
+    """Teach a hashtag: it means ``theme``, or (``None``) it is no subject at all."""
+    tag = theme_vocabulary.tag_key(tag)
+    if not tag or (theme is not None and theme not in theme_vocabulary.THEMES):
+        return
+    conn.execute("DELETE FROM theme_rules WHERE kind = 'tag' AND key = ?", (tag,))
+    conn.execute(
+        "INSERT INTO theme_rules (kind, key, theme, action, created_at) VALUES ('tag', ?, ?, ?, ?)",
+        (tag, theme or "", "add" if theme else "ignore", now_iso()))
+    retheme(conn)
+
+
+def taught_count(conn: sqlite3.Connection) -> int:
+    return conn.execute("SELECT count(*) FROM theme_rules").fetchone()[0]
 
 
 def _json_list(value: Any) -> str:
@@ -270,7 +454,7 @@ def index_item(conn: sqlite3.Connection, item_id: int) -> None:
         "SELECT name FROM collections WHERE item_id = ?", (item_id,))]
     tags = " ".join(loads_list(row["tags"]) + loads_list(row["terms"]) + filed)
     conn.execute("UPDATE items SET themes = ? WHERE id = ?",
-                 (json.dumps(theme_vocabulary.for_row(row, filed)), item_id))
+                 (json.dumps(themes_of(conn, item_id)), item_id))
     conn.execute("DELETE FROM items_fts WHERE item_id = ?", (item_id,))
     conn.execute(
         "INSERT INTO items_fts (item_id, title, creator, description, note, transcript, tags)"

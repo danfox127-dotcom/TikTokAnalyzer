@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "_card.html" import card %}
+{% from "_card.html" import salon %}
 {% block title %}{{ heading }} · Favorites{% endblock %}
 {% block content %}
 <section class="page-head">
@@ -8,9 +8,7 @@
 </section>
 
 {% if items %}
-  <div class="rr-grid page-grid">
-    {% for item in items %}{{ card(item) }}{% endfor %}
-  </div>
+  <div class="page-grid">{{ salon(items) }}</div>
   {% if has_next is defined and has_next %}
     <nav class="pager"><a class="rr-btn" href="/all?page={{ page + 1 }}">Older →</a></nav>
   {% endif %}
