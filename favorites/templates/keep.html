@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% from "_icons.html" import icon %}
+{% block title %}Keep a link · Favorites{% endblock %}
+{% block content %}
+<section class="rr-hero keep-hero">
+  <p class="rr-label">＋ Keep a link</p>
+  <h1 class="rr-h-xl">What did you just find?</h1>
+
+  {% if error %}
+    <p class="rr-notice keep-error">{{ icon('close') }}<span>{{ {
+      'no-link': "That doesn't look like a link. In the app, tap Share → Copy link, then paste it here.",
+      'failed': "Couldn't keep that one just now — check the link and try again.",
+      'password': "That password didn't match. It's FAVORITES_TOKEN in ~/.favorites.env on your Mac."}.get(error, 'Something went wrong.') }}</span></p>
+  {% endif %}
+
+  {% if locked %}
+    <form class="rr-placard keep-form unlock" action="/unlock" method="post">
+      <label class="rr-label" for="pw">🔑 First, the museum's password</label>
+      <p class="hint">Once on this phone, then never again. It's <code>FAVORITES_TOKEN</code> in <code>~/.favorites.env</code> on your Mac (also shown on the Mac at /sync).</p>
+      <input type="password" id="pw" name="password" autocomplete="current-password" required>
+      <input type="hidden" name="next" value="/keep">
+      <div class="row"><button class="rr-btn rr-btn--primary" type="submit">Remember this phone</button></div>
+    </form>
+  {% else %}
+    <form class="rr-placard keep-form" action="/keep" method="post">
+      <label class="rr-label" for="link">🔗 The link</label>
+      <div class="link-row">
+        <input type="url" inputmode="url" id="link" name="url" placeholder="Paste a TikTok, Instagram or YouTube link" required autocomplete="off">
+        <button class="rr-btn paste-btn" type="button" data-paste hidden>{{ icon('placard') }}Paste</button>
+      </div>
+      <label class="rr-label" for="note">📝 Your placard <span class="opt">(optional)</span></label>
+      <input type="text" id="note" name="note" placeholder="Why are you keeping this?">
+      <div class="row"><button class="rr-btn rr-btn--primary" type="submit">{{ icon('plus') }}Keep it</button></div>
+    </form>
+  {% endif %}
+
+  <ol class="keep-how">
+    <li>In TikTok, Instagram or YouTube: <b>Share → Copy link</b>.</li>
+    <li>Come here and tap <b>Paste</b>, then <b>Keep it</b>.</li>
+  </ol>
+  <p class="rr-muted keep-faster">Faster still: a one-tap <b>Keep</b> in your share sheet — on iPhone with a Shortcut, on Android by adding this site to your home screen. Steps on <a href="/sync#phone">Keep it in sync</a>.</p>
+
+  {% if has_password and remembered and not locked %}
+    <form class="forget" action="/lock" method="post"><button class="rr-btn rr-btn--quiet" type="submit">Forget the password on this phone</button></form>
+  {% endif %}
+</section>
+<script>
+  (function () {
+    var b = document.querySelector('[data-paste]'), f = document.getElementById('link');
+    if (!b || !f || !(navigator.clipboard && navigator.clipboard.readText)) return;
+    b.hidden = false;
+    b.addEventListener('click', function () {
+      navigator.clipboard.readText().then(function (t) {
+        var m = (t || '').match(/https?:\/\/\S+/);
+        f.value = m ? m[0] : (t || '').trim();
+        f.focus();
+      }).catch(function () { f.focus(); });
+    });
+  })();
+</script>
+{% endblock %}

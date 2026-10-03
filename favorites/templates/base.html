@@ -14,7 +14,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:ital,wght@0,500;0,600;0,800;1,600&display=swap">
-<link rel="stylesheet" href="/static/style.css?v=4">
+<link rel="stylesheet" href="/static/style.css?v=5">
 <script src="/static/museum.js?v=4" defer></script>
 </head>
 {% from "_icons.html" import icon %}
@@ -48,6 +48,7 @@
 
 <footer class="rr-footer">
   <span>Your library lives on this machine{% if total is defined %} · {{ total }} {{ 'save' if total == 1 else 'saves' }}{% endif %}.</span>
+  <a href="/keep">Keep a link</a>
   <a href="/unlabelled">Missing a placard</a>
   <a href="/surprise">Surprise me</a>
   <a href="/wander">Wander</a>
@@ -59,8 +60,9 @@
 <nav class="rr-tabbar" aria-label="Main">
   <a href="/"{% if nav == 'home' %} class="is-on" aria-current="page"{% endif %}>{{ icon('home') }}Home</a>
   <a href="/search"{% if nav == 'search' %} class="is-on" aria-current="page"{% endif %}>{{ icon('search') }}Search</a>
+  <a class="scoop" href="/surprise" aria-label="Surprise me: a save at random"><span class="ball">{{ icon('shuffle') }}</span>Surprise</a>
   <a href="/rooms"{% if nav == 'rooms' %} class="is-on" aria-current="page"{% endif %}>{{ icon('rooms') }}Rooms</a>
-  <a href="/placards"{% if nav == 'placards' %} class="is-on" aria-current="page"{% endif %}>{{ icon('placard') }}Placards</a>
+  <a href="/keep"{% if nav == 'keep' %} class="is-on" aria-current="page"{% endif %}>{{ icon('plus') }}Keep</a>
 </nav>
 </div>
 <script>
