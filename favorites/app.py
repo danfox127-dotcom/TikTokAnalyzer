@@ -190,15 +190,26 @@ def require_token(request: Request) -> None:
     Set ``FAVORITES_TOKEN`` before putting this on a public address, or the
     save endpoint is an open write to your library.
     """
+    if not unlocked(request):
+        raise HTTPException(status_code=401, detail="bad or missing token")
+
+
+#: Set on a phone's browser once you type the password on the Keep page, so
+#: saving from that browser -- and Android's share sheet -- needs no header.
+KEY_COOKIE = "favorites_key"
+
+
+def unlocked(request: Request) -> bool:
+    """True when this request may save: no password set, or it carries it --
+    as a Bearer header, a ?token=, or the cookie the Keep page sets."""
     expected = os.environ.get("FAVORITES_TOKEN")
     if not expected:
-        return
+        return True
     header = request.headers.get("authorization", "")
     supplied = header[7:] if header.lower().startswith("bearer ") else (
-        request.query_params.get("token") or ""
+        request.query_params.get("token") or request.cookies.get(KEY_COOKIE) or ""
     )
-    if not secrets.compare_digest(supplied, expected):
-        raise HTTPException(status_code=401, detail="bad or missing token")
+    return secrets.compare_digest(supplied, expected)
 
 
 async def capture(
@@ -449,7 +460,55 @@ def surprise(conn: sqlite3.Connection = Depends(get_db)):
     """One save at random -- the museum's "show me something"."""
     row = conn.execute(
         f"SELECT id FROM items WHERE {museum.RESOLVED} ORDER BY random() LIMIT 1").fetchone()
-    return RedirectResponse(f"/item/{row['id']}" if row else "/", status_code=303)
+    return RedirectResponse(f"/item/{row['id']}?surprise=1" if row else "/", status_code=303)
+
+
+# ---- keeping a link from the phone -------------------------------------------
+
+@app.get("/keep", response_class=HTMLResponse)
+def keep_page(request: Request, error: str = "", conn: sqlite3.Connection = Depends(get_db)):
+    """Paste a link and keep it: the way in that needs no Shortcut."""
+    return templates.TemplateResponse(request, "keep.html", {
+        "locked": not unlocked(request), "error": error,
+        "has_password": bool(os.environ.get("FAVORITES_TOKEN")),
+        "remembered": bool(request.cookies.get(KEY_COOKIE)),
+        "q": "", "total": db.count(conn), "nav": "keep",
+    })
+
+
+@app.post("/keep")
+async def keep_link(request: Request, url: str = Form(""), note: str = Form(""),
+                    conn: sqlite3.Connection = Depends(get_db)):
+    if not unlocked(request):
+        return RedirectResponse("/keep", status_code=303)
+    shared = url.strip()
+    if not extract_url(shared):
+        return RedirectResponse("/keep?error=no-link", status_code=303)
+    try:
+        result = await capture(shared, note.strip() or None, conn)
+    except HTTPException:
+        return RedirectResponse("/keep?error=failed", status_code=303)
+    return RedirectResponse(f"/item/{result['id']}?saved=1", status_code=303)
+
+
+@app.post("/unlock")
+def unlock(request: Request, password: str = Form(""), next: str = Form("/keep")):
+    """Remember the password on this browser for a year, so it can save."""
+    expected = os.environ.get("FAVORITES_TOKEN") or ""
+    if not expected or not secrets.compare_digest(password.strip(), expected):
+        return RedirectResponse("/keep?error=password", status_code=303)
+    resp = RedirectResponse(_back(next, "/keep"), status_code=303)
+    resp.set_cookie(KEY_COOKIE, expected, max_age=365 * 24 * 3600, httponly=True,
+                    samesite="lax", secure=request.url.scheme == "https")
+    return resp
+
+
+@app.post("/lock")
+def lock():
+    """Forget the password on this browser."""
+    resp = RedirectResponse("/keep", status_code=303)
+    resp.delete_cookie(KEY_COOKIE)
+    return resp
 
 
 def _trail(raw: str) -> list[int]:
@@ -687,7 +746,7 @@ def write_placard(
 def item_page(
     request: Request, item_id: int, saved: int = Query(0),
     trail: str = Query("", max_length=200), via: str = Query("", max_length=120),
-    rooms: int = Query(0), conn: sqlite3.Connection = Depends(get_db),
+    rooms: int = Query(0), surprise: int = Query(0), conn: sqlite3.Connection = Depends(get_db),
 ):
     row = db.get_item(conn, item_id)
     if row is None:
@@ -702,6 +761,7 @@ def item_page(
     return templates.TemplateResponse(request, "item.html", {
         "item": item, "related": related, "just_saved": bool(saved),
         "reasons": db.room_reasons(conn, item_id), "rooms_open": bool(rooms),
+        "surprise": bool(surprise),
         "hand_filed": conn.execute("SELECT 1 FROM theme_rules WHERE kind = 'item' AND key = ?",
                                    (str(item_id),)).fetchone() is not None,
         "threads": museum.threads(conn, item),

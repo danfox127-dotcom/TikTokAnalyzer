@@ -53,11 +53,12 @@
     </label>
   </form>
   <ul class="rr-pills is-scroll hooks" aria-label="Ways in">
+    <li><a class="rr-pill is-surprise" href="/surprise">{{ icon('shuffle') }}Surprise me</a></li>
+    <li><a class="rr-pill is-hook" href="/keep">{{ icon('plus') }}Keep a link</a></li>
     {% if on_this_day %}<li><a class="rr-pill is-hook" href="{{ on_this_day.href }}">{{ icon('calendar') }}On this day <span class="n">{{ on_this_day.count }}</span></a></li>{% endif %}
     <li><a class="rr-pill is-hook" href="/wander">{{ icon('compass') }}Wander</a></li>
     {% if season %}<li><a class="rr-pill is-room tone-{{ season.tone }}" href="{{ season.href }}">{{ icon(season.icon) }}This {{ season.name | lower }} <span class="n">{{ season.count }}</span></a></li>{% endif %}
     <li><a class="rr-pill is-hook" href="/year">{{ icon('spark') }}Your {{ year_now }}</a></li>
-    <li><a class="rr-pill is-hook" href="/surprise">{{ icon('shuffle') }}Surprise me</a></li>
     {% for label, n, href in browse.themes[:4] if label != 'Undefined' %}{{ room_pill(label, href, n) }}{% endfor %}
   </ul>
 </section>

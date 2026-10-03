@@ -550,3 +550,57 @@ async def _noop():
 
 def asyncio_noop():
     return _noop()
+
+
+class TestKeepingFromThePhone:
+    @pytest.fixture
+    def locked(self, client, monkeypatch):
+        monkeypatch.setenv("FAVORITES_TOKEN", "sesame-123")
+        return client
+
+    def test_the_tab_bar_has_surprise_and_keep(self, client):
+        page = client.get("/").text
+        assert 'class="scoop" href="/surprise"' in page and 'href="/keep"' in page
+
+    def test_a_surprise_offers_another(self, client, library):
+        db.upsert_item(library, {"canonical_url": "https://example.com/s", "shared_url": "x",
+                                 "platform": "tiktok", "title": "a save", "resolve_status": "ok"})
+        resp = client.get("/surprise", follow_redirects=False)
+        assert resp.headers["location"].endswith("?surprise=1")
+        assert "Another surprise" in client.get(resp.headers["location"]).text
+
+    def test_keeping_a_link(self, client, tiktok_ok):
+        assert "Paste a TikTok" in client.get("/keep").text
+        resp = client.post("/keep", data={"url": "https://www.tiktok.com/@citydesk/video/7123",
+                                          "note": "for later"}, follow_redirects=False)
+        assert resp.status_code == 303 and resp.headers["location"].endswith("?saved=1")
+
+    def test_not_a_link(self, client):
+        resp = client.post("/keep", data={"url": "hello"}, follow_redirects=False)
+        assert resp.headers["location"] == "/keep?error=no-link"
+
+    def test_a_password_is_asked_for_once(self, locked, tiktok_ok):
+        assert "Remember this phone" in locked.get("/keep").text
+        resp = locked.post("/keep", data={"url": "https://www.tiktok.com/@citydesk/video/7123"},
+                           follow_redirects=False)
+        assert resp.headers["location"] == "/keep"  # nothing kept yet
+        assert locked.post("/unlock", data={"password": "wrong"},
+                           follow_redirects=False).headers["location"] == "/keep?error=password"
+        resp = locked.post("/unlock", data={"password": "sesame-123"}, follow_redirects=False)
+        assert "favorites_key" in resp.headers["set-cookie"] and "HttpOnly" in resp.headers["set-cookie"]
+        assert "Paste a TikTok" in locked.get("/keep").text
+        resp = locked.post("/keep", data={"url": "https://www.tiktok.com/@citydesk/video/7123"},
+                           follow_redirects=False)
+        assert resp.headers["location"].endswith("?saved=1")
+        # The same cookie lets Android's share sheet save, too.
+        resp = locked.get("/share-target?url=https://www.tiktok.com/@citydesk/video/7124",
+                          follow_redirects=False)
+        assert resp.status_code == 303 and "saved=1" in resp.headers["location"]
+
+    def test_forgetting_the_password(self, locked):
+        locked.post("/unlock", data={"password": "sesame-123"})
+        locked.post("/lock")
+        assert "Remember this phone" in locked.get("/keep").text
+
+    def test_saving_without_it_is_still_refused(self, locked):
+        assert locked.post("/save", json={"url": "https://www.tiktok.com/@a/video/1"}).status_code == 401
