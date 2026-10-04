@@ -22,6 +22,21 @@ ENV_FILE="$HOME/.favorites.env"
 VENV="$ROOT/favorites/.venv"
 
 say()  { printf '%s\n' "$*"; }
+# Run a command, but give up after 3 seconds. Asking Tailscale for its address
+# can wait forever when it is installed but not signed in, and that kept the
+# museum from ever starting.
+quick() {
+  local out pid watcher
+  out="$(mktemp -t favorites.XXXXXX)"
+  "$@" >"$out" 2>/dev/null </dev/null &
+  pid=$!
+  ( sleep 3; kill "$pid" 2>/dev/null ) >/dev/null 2>&1 &
+  watcher=$!
+  wait "$pid" 2>/dev/null
+  kill "$watcher" 2>/dev/null
+  head -n1 "$out"
+  rm -f "$out"
+}
 step() { printf '\n\033[1m%s\033[0m\n' "$*"; }
 fail() { printf '\n\033[31m%s\033[0m\n' "$*"; printf 'Press Return to close.'; read -r _; exit 1; }
 
@@ -124,10 +139,13 @@ step "3. Starting the museum"
 if [ -n "${FAVORITES_TOKEN:-}" ]; then
   HOST="0.0.0.0"
   say "   Open it here:      http://localhost:$PORT"
-  wifi="$( (ipconfig getifaddr en0 || ipconfig getifaddr en1) 2>/dev/null)"
+  wifi="$(quick ipconfig getifaddr en0)"
+  [ -z "$wifi" ] && wifi="$(quick ipconfig getifaddr en1)"
   [ -n "$wifi" ] && say "   On the same wi-fi: http://$wifi:$PORT"
-  ts="$(tailscale ip -4 2>/dev/null | head -n1)"
-  [ -z "$ts" ] && ts="$(/Applications/Tailscale.app/Contents/MacOS/Tailscale ip -4 2>/dev/null | head -n1)"
+  ts=""
+  command -v tailscale >/dev/null 2>&1 && ts="$(quick tailscale ip -4)"
+  [ -z "$ts" ] && [ -x /Applications/Tailscale.app/Contents/MacOS/Tailscale ] &&
+    ts="$(quick /Applications/Tailscale.app/Contents/MacOS/Tailscale ip -4)"
   [ -n "$ts" ] && say "   From anywhere:     http://$ts:$PORT   (Tailscale)"
   say "   Your phone needs the password from $ENV_FILE."
 else
