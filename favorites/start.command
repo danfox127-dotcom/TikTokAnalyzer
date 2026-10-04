@@ -22,6 +22,12 @@ ENV_FILE="$HOME/.favorites.env"
 VENV="$ROOT/favorites/.venv"
 
 say()  { printf '%s\n' "$*"; }
+# This Mac's Tailscale address, if Tailscale is connected: the one address in
+# 100.64.0.0/10 (100.64.x.x to 100.127.x.x).
+tailscale_ip() {
+  ifconfig 2>/dev/null | awk '$1 == "inet" { split($2, o, "."); if (o[1] == 100 && o[2] >= 64 && o[2] <= 127) { print $2; exit } }'
+}
+
 # Run a command, but give up after 3 seconds. Asking Tailscale for its address
 # can wait forever when it is installed but not signed in, and that kept the
 # museum from ever starting.
@@ -142,10 +148,11 @@ if [ -n "${FAVORITES_TOKEN:-}" ]; then
   wifi="$(quick ipconfig getifaddr en0)"
   [ -z "$wifi" ] && wifi="$(quick ipconfig getifaddr en1)"
   [ -n "$wifi" ] && say "   On the same wi-fi: http://$wifi:$PORT"
-  ts=""
-  command -v tailscale >/dev/null 2>&1 && ts="$(quick tailscale ip -4)"
-  [ -z "$ts" ] && [ -x /Applications/Tailscale.app/Contents/MacOS/Tailscale ] &&
-    ts="$(quick /Applications/Tailscale.app/Contents/MacOS/Tailscale ip -4)"
+  # Tailscale's address is always in 100.64.0.0/10. Read it from the network
+  # settings rather than asking the Tailscale app: running the app's own
+  # program opens its window, and may not answer in time.
+  ts="$(tailscale_ip)"
+  [ -z "$ts" ] && command -v tailscale >/dev/null 2>&1 && ts="$(quick tailscale ip -4)"
   [ -n "$ts" ] && say "   From anywhere:     http://$ts:$PORT   (Tailscale)"
   say "   Your phone needs the password from $ENV_FILE."
 else

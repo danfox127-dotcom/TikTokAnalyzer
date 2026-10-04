@@ -19,7 +19,7 @@ from __future__ import annotations
 import re
 import sqlite3
 from dataclasses import dataclass, fields, replace
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 from urllib.parse import urlencode
 
@@ -58,8 +58,15 @@ WEEK_REACH = 3
 
 
 def day_label(day: str) -> str:
-    """09-27 -> 27 September."""
+    """09-27 -> 27 September. The week option's value ("09-27~") reads the same."""
+    day = day.rstrip("~")
     return f"{int(day[3:])} {MONTHS[int(day[:2]) - 1]}"
+
+
+def week_days(day: str) -> set[str]:
+    """The month-days within WEEK_REACH of ``day``, wrapping the new year."""
+    centre = datetime.strptime("2000-" + day.rstrip("~"), "%Y-%m-%d")
+    return {(centre + timedelta(days=k)).strftime("%m-%d") for k in range(-WEEK_REACH, WEEK_REACH + 1)}
 
 
 def today_key(now: Optional[datetime] = None) -> str:
@@ -561,7 +568,14 @@ def pull(f: Filters, found: list[Facet], items: list[dict], limit: int = 4) -> l
                      "covers": covers(lambda i, v=o.value: (i.get("creator_handle") or i.get("creator_name")) == v)})
     day = by_name.get("day")
     if day and not f.day and day.options:
+        # On a day with nothing saved on the date itself, the only option is the
+        # week around it ("10-04~").
         o = day.options[0]
-        rows.append({"label": o.label, "sub": f"{o.count} of these were saved on {day_label(o.value)}",
-                     "href": o.href, "covers": covers(lambda i, v=o.value: (i.get("saved_at") or "")[5:10] == v)})
+        if o.value.endswith("~"):
+            near = week_days(o.value)
+            rows.append({"label": o.label, "sub": f"{o.count} of these were saved the week of {day_label(o.value)}",
+                         "href": o.href, "covers": covers(lambda i: (i.get("saved_at") or "")[5:10] in near)})
+        else:
+            rows.append({"label": o.label, "sub": f"{o.count} of these were saved on {day_label(o.value)}",
+                         "href": o.href, "covers": covers(lambda i, v=o.value: (i.get("saved_at") or "")[5:10] == v)})
     return rows[:limit]

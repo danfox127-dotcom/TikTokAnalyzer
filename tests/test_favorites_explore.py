@@ -367,3 +367,36 @@ class TestOnThisDay:
         found = explore.facets(conn, f, today="09-27")
         assert explore.describe(f, found) == "Saves saved the week of 27 September"
         assert explore.chips(f, found) == [("This week, other years", "/search")]
+
+
+class TestAQuietToday:
+    """Found on a real library, 4 October 2026: nothing saved on today's date in
+    any year, but something two days off -- every search page returned 500,
+    because the "On this day" suggestion read the week's value "10-04~" as a date."""
+
+    @pytest.fixture
+    def near_today(self, conn):
+        from datetime import datetime, timedelta, timezone
+        near = (datetime.now(timezone.utc) - timedelta(days=2)).replace(year=2022)
+        add(conn, 1, saved=near.strftime("%Y-%m-%d"), caption="Folding dumplings #cooking")
+        add(conn, 2, saved="2022-01-15" if near.month != 1 else "2022-06-15",
+            caption="Tomato salad #cooking")
+        return conn
+
+    def test_the_search_page_still_opens(self, near_today, tmp_path, monkeypatch):
+        monkeypatch.setenv("FAVORITES_DB", str(tmp_path / "lib.db"))
+        with TestClient(app) as client:
+            resp = client.get("/search")
+        assert resp.status_code == 200
+        assert "saved the week of" in resp.text
+
+    def test_the_week_row(self, near_today):
+        items, _ = explore.results(near_today, Filters())
+        rows = explore.pull(Filters(), explore.facets(near_today, Filters()), items)
+        [week] = [r for r in rows if "week of" in r["sub"]]
+        assert week["sub"].startswith("1 of these were saved the week of")
+        assert len(week["covers"]) == 1
+
+    def test_a_week_value_reads_as_its_day(self):
+        assert explore.day_label("10-04~") == "4 October"
+        assert explore.week_days("01-02~") >= {"12-30", "01-05"}
