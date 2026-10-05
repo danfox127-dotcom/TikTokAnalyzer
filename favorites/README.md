@@ -1,4 +1,4 @@
-# Favorites
+# Faves
 
 A searchable library of the things you save, across every platform, that you
 never have to file by hand.
@@ -34,8 +34,8 @@ backfill of history.
 
 **On a Mac, double-click `favorites/start.command`.** It updates the code (when
 this is a clean checkout of `main`), keeps a private Python environment in
-`favorites/.venv` up to date, starts the museum and opens it in your browser.
-Leave its window open while you use the museum; close it to stop. It needs
+`favorites/.venv` up to date, starts Faves and opens it in your browser.
+Leave its window open while you use Faves; close it to stop. It needs
 Python 3.10 or newer — the Mac's built-in one is too old; install one from
 python.org or with `brew install python`. (If macOS refuses to open it the
 first time, right-click it and choose **Open**.)
@@ -43,7 +43,7 @@ first time, right-click it and choose **Open**.)
 Its settings live in `~/.favorites.env`, created with notes on the first run:
 `FAVORITES_DB` for which library file to use, and `FAVORITES_TOKEN`, the
 password that lets your phone save to it. Switching the password on is also
-what makes the museum reachable from other devices; the start window then
+what makes Faves reachable from other devices; the start window then
 prints the addresses to use.
 
 By hand, anywhere:
@@ -61,7 +61,7 @@ Open <http://localhost:8000>. The library is one SQLite file — by default
 line when it starts, and so does every import and backfill, with how many items
 are in it — or `NEW -- created just now` if there was nothing there. That line
 is the whole defence against ending up with two libraries, where an import
-succeeds into one and the museum keeps showing the other.
+succeeds into one and Faves keeps showing the other.
 
 The default used to be a file inside the project folder, which is exactly how
 that happened. If an older library is still there and there is none in your
@@ -148,7 +148,7 @@ picture to **link-preview fetchers** — what iMessage, Slack and Facebook use t
 draw the preview when you paste a link — and asked that way, 5 of 5 came back
 with one.
 
-So for Instagram only, the museum reads the page the way a chat app does,
+So for Instagram only, Faves reads the page the way a chat app does,
 introducing itself with the same wording iMessage uses. It is doing the same
 job: one preview for one link you chose to keep. The picture is kept at once,
 because Instagram's picture links expire too. In a bulk run Instagram goes one
@@ -160,7 +160,7 @@ saves keep their captions and whatever pictures were already kept.
 
 ### Your note is the best field in the database
 
-Every item has a one-line note — a placard. It is optional, it takes three
+Every item has a one-line note — a note. It is optional, it takes three
 seconds at save time, and no API will ever give you it. Six months later it is
 the difference between a link and a reason.
 
@@ -168,42 +168,42 @@ the difference between a link and a reason.
 
 A search box is a fine way to find something you already remember, and useless
 for being reminded of something you forgot. So the front page leads with search
-and then behaves like a small museum:
+and then behaves like this:
 
 - **Search first.** One question — *What are you looking for?* — and one big
-  field. As you type it suggests saves (with their pictures), rooms, hashtags,
+  field. As you type it suggests saves (with their pictures), topics, hashtags,
   creators and dates (`/suggest.json`). Under it, a row of ways in: *On this
-  day*, *Surprise me* (`/surprise`, one save at random) and your biggest rooms.
+  day*, *Surprise me* (`/surprise`, one save at random) and your biggest topics.
 - **On this day.** Things you saved on today's date in earlier years, stacked
   by year. A quiet date widens to the week around it; a date with nothing even
   then shows nothing. The same hook is a filter on the search page
   (`?day=09-27`, or `&week=1` for the week around it), a badge on any card
   saved on this date, and a thread on every item's page.
-- **The catalogue.** Rooms, creators and platforms, one tap each into search.
+- **The catalogue.** Topics, creators and platforms, one tap each into search.
 - **A digest of the last month.** Not just a count — a comparison. *"Nine saves
   this past month, up from four. Spread across TikTok, YouTube and Instagram.
   Recurring threads: housing, localgov. One creator is new to the library."*
 - **Rotating shelves**, as swipeable carousels with a description under every
   picture. Recently saved, then some combination of a theme, a month, a creator
   you keep returning to, *This time last year* (six weeks either side of today,
-  a year ago) and *From the vault* — a random handful of things saved more than
+  a year ago) and *Throwbacks* — a random handful of things saved more than
   four months ago.
-- **Rooms.** Themes as doorways, each framed by three of its own pictures; every
-  room is on `/rooms`.
+- **Topics.** Themes as tiles, each framed by three of its own pictures; every
+  topic is on `/topics`.
 - **On your shelf.** The creators you keep saving, like books on a shelf.
 
-- **This week.** How this week compares with last, the room it leaned towards,
+- **This week.** How this week compares with last, the topic it leaned towards,
   and one old save worth another look (the same one all week).
-- **This season.** The current season as a room — every autumn (or winter…) you
-  have kept things through — on the front page and first on `/rooms`.
-- **Wander** (`/wander`, and *Keep wandering* on every save). Follows one of the
-  save's threads — its room, creator, date, season or a hashtag — to somewhere
+- **This season.** The current season as a topic — every autumn (or winter…) you
+  have kept things through — on the front page and first on `/topics`.
+- **Rabbit hole** (`/wander`, and *Keep going* on every save). Follows one of the
+  save's threads — its topic, creator, date, season or a hashtag — to somewhere
   you have not just been, and says which thread it took. It never dead-ends.
-- **Your year** (`/year`, `/year/2025`). A Wrapped-style page: top rooms and
+- **Your year** (`/year`, `/year/2025`). A Wrapped-style page: top topics and
   creators, busiest month, longest saving streak, favourite day, first and latest
   saves, and how the year compares with the last.
 
-Every item page ends with **Connected by**: its rooms, its creator, the same date
+Every item page ends with **Connected by**: its topics, its creator, the same date
 in other years, its season, and hashtags it shares — each a way on to more saves.
 
 The arrangement is seeded by the date, so it holds still through the day and
@@ -272,14 +272,14 @@ save's evidence is weighed:
 
 | Evidence | Counts |
 |---|---|
-| You put it in the room yourself | always wins |
+| You put it in the topic yourself | always wins |
 | You filed everything by its creator there | 4 |
 | A hashtag you taught it, or a word in a category name you chose | 3 |
 | A hashtag that is a vocabulary word (`#dogs`), or splits cleanly into one (`#dogsoftiktok`) | 2 |
 | The creator's handle (`@thepastaqueen`), or most of that creator's other saves being there | 2 |
 | A word in the caption, title or your note; a word said twice in a transcript | 1 |
 
-A save goes in every room with at least half the evidence of its strongest,
+A save goes in every topic with at least half the evidence of its strongest,
 up to three. A caption that brushes past three or more subjects once each
 files nothing: it isn't sure of any of them. A compound hashtag is read only
 when *all* of it splits into known words (`#dogs`+`of`+`tiktok`), which keeps
@@ -292,14 +292,14 @@ Saves no theme recognises are gathered under **Undefined**, first in the Themes
 filter and last in the front page's theme row. It is a to-do list rather than a
 subject.
 
-**Fixing a room.** Every save's page says why it is in each room ("#concert ·
-'song' in the caption") and has **Change rooms**: tick the rooms it belongs in,
+**Fixing a topic.** Every save's page says why it is in each topic ("#concert ·
+'song' in the caption") and has **Change topics**: tick the topics it belongs in,
 and optionally *do the same for everything by this creator*. Only the
-difference from what the museum worked out is kept, so improvements to the
+difference from what Faves worked out is kept, so improvements to the
 vocabulary still reach it.
 
-**Tidy the rooms** (`/rooms/tidy`) is where a few minutes fix hundreds of saves:
-the hashtags on two or more saves that it doesn't know yet — tap a room to
+**Sort things out** (`/topics/sort`) is where a few minutes fix hundreds of saves:
+the hashtags on two or more saves that it doesn't know yet — tap a topic to
 teach one, or *Not a subject* to stop it being listed — and the saves it filed
 on a hunch (one word in passing), to confirm or move. Everything you teach is
 kept in the library file (`theme_rules`), and every answer re-sorts the whole
@@ -316,7 +316,7 @@ python -m favorites.themes
 That prints how many saves have a theme, how many each theme holds, how many
 are on a hunch, the hashtags on your saves that no theme recognises yet, and --
 for the saves with no theme -- how many have no hashtags at all and which
-caption words recur among them. Teach them at `/rooms/tidy`, or add words to
+caption words recur among them. Teach them at `/topics/sort`, or add words to
 `THEMES`; the library re-themes itself the next time anything opens it.
 The list leaves out hashtags about reach rather than subject (`#fyp` in all its
 spellings, `#fypシ` included) and creators tagging their own name, which the
@@ -335,7 +335,7 @@ original caption one tap away.
 
 Search results and lists hang as a **salon wall**: each picture keeps its own
 shape (vertical video tall, long-form video wide, Instagram posts square), labels
-run as long as they need to, and saves with your placard stand out.
+run as long as they need to, and saves with your note stand out.
 
 ### Video length
 
@@ -363,10 +363,10 @@ sideways" — so the themes above replaced them.
 
 ## Keeping it in sync
 
-The platforms don't let another app read your saves, so the museum does the
+The platforms don't let another app read your saves, so Faves does the
 next-best things, all on the **Keep it in sync** page (`/sync`, in the footer):
 
-- **The watched folder.** Started with `start.command`, the museum looks in
+- **The watched folder.** Started with `start.command`, Faves looks in
   `~/Downloads` every minute for a TikTok, Instagram or Google Takeout export
   and imports it by itself — favourites and saves only, never likes — then fills
   in titles and pictures for the first 50. Files are never moved or deleted;
@@ -409,7 +409,7 @@ import cannot produce a title or a creator. It produces dated URLs, and a
 second pass fetches the rest one at a time.
 
 **The date is the part worth having.** Favourites go back years. That history is
-what lets the museum show months, recurring creators and *From the vault*
+what lets Faves show months, recurring creators and *Throwbacks*
 immediately, instead of after six months of collecting.
 
 ### Favourites, not likes
@@ -429,7 +429,7 @@ favourites is a few hours of a script running unattended, not a few hours of
 your attention. Three things make that survivable:
 
 - **Newest first.** Recent videos are likeliest to still exist, and they are what
-  the digest needs. The museum starts working after the first batch.
+  the digest needs. Faves starts working after the first batch.
 - **Resumable.** Progress lives in the database. Stop it, re-run it, do it over a
   week -- it continues where it left off.
 - **It gives up eventually.** An item that fails three times is left alone. A
@@ -586,10 +586,10 @@ library.
 | `transcript.py` | YouTube captions, where available |
 | `thumbnails.py` | Keeps each picture, because platform links expire |
 | `db.py` | SQLite storage and full-text search |
-| `museum.py` | The digest, the rotating shelves and the hooks (On this day, rooms, threads) |
+| `museum.py` | The digest, the rotating shelves and the hooks (On this day, topics, threads) |
 | `explore.py` | Search and filters, including On this day |
 | `looks.py` | Each theme's band colour, icon and emoji |
-| `templates/`, `static/` | The pages, in the *Favorites Museum* design system (version 2, "Sweet Spot"): lavender, candy-colour section bands, round type, subtle scroll motion.: `style.css` holds its tokens and components, `museum.js` the little behaviour a plain page cannot do (carousel dots, the phone filter sheet, suggestions, the colour mode). Every page works without it |
+| `templates/`, `static/` | The pages, in the *Faves* design system (version 2, "Sweet Spot"): lavender, candy-colour section bands, round type, subtle scroll motion.: `style.css` holds its tokens and components, `museum.js` the little behaviour a plain page cannot do (carousel dots, the phone filter sheet, suggestions, the colour mode). Every page works without it |
 | `app.py` | The web app and the `/save` endpoint |
 
 Tests are in `tests/test_favorites_*.py` and run with the rest of the repo's

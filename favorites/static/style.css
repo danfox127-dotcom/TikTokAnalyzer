@@ -498,15 +498,16 @@
 .rr-otd-date .d { display: block; font: 700 28px/36px var(--font-display); }
 .rr-otd-head h2 { margin: 2px 0 0; font: 600 24px/28px var(--font-display); }
 .rr-otd-head p { margin: 2px 0 0; font-size: 14px; color: var(--ink-muted); }
-.rr-otd-year { display: grid; grid-template-columns: 64px minmax(0, 1fr); padding: 0 0 14px; }
-.rr-otd-year > .yr { padding: 4px 0 0 20px; position: relative; }
-.rr-otd-year > .yr b { display: block; font: 700 18px/22px var(--font-display); }
-.rr-otd-year > .yr span { display: block; font: 800 11px/14px var(--font-sans); color: var(--ink-muted); }
-.rr-otd-year .rr-track { padding: 4px 20px 4px 0; scroll-padding: 0; grid-auto-columns: 132px; gap: 10px; }
+.rr-otd-year { padding: 0 0 16px; min-width: 0; }
+/* The year is a header above its row, not a side column: titles get the full width. */
+.rr-otd-year > .yr { display: flex; justify-content: center; align-items: center; gap: 10px; margin: 4px 20px 10px; font: inherit; }
+.rr-otd-year > .yr b { padding: 3px 14px; border-radius: var(--radius-pill); background: var(--band-ink, var(--ink)); color: var(--wall-raised); font: 700 18px/24px var(--font-display); }
+.rr-otd-year > .yr span { font: 800 12px/16px var(--font-sans); letter-spacing: .04em; color: var(--ink-muted); }
+.rr-otd-year .rr-track { padding: 4px 20px; scroll-padding: 0 20px; grid-auto-columns: 140px; gap: 12px; }
 .rr-otd-year .rr-card .title { font-size: 14px; line-height: 18px; }
 .rr-otd-foot { display: flex; justify-content: space-between; gap: 12px; padding: 12px 20px 10px; border-top: 2px dotted var(--rule); font: 700 14px/20px var(--font-sans); }
 .rr-otd-foot a { color: var(--accent-ink); font-weight: 800; }
-@container rr (min-width: 760px) { .rr-otd { margin: 0 32px; } .rr-otd-year .rr-track { grid-auto-columns: 150px; } }
+@container rr (min-width: 760px) { .rr-otd { margin: 0 32px; } .rr-otd-year .rr-track { grid-auto-columns: 156px; } }
 
 /* Theme rooms: a doorway in the room's own colour, framing three of its pictures. */
 .rr-rooms { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; padding: 0 16px; }
@@ -1022,3 +1023,39 @@ a.rr-stat:hover { transform: translateY(-3px); }
 .keep-faster { margin: 12px 0 0; font-size: 14px; line-height: 20px; }
 .keep-faster a { color: var(--accent-ink); font-weight: 800; }
 .forget { margin-top: 18px; }
+
+/* ---------- the front door's big doors: Surprise me, then Keep a link ---------- */
+.rr-bigdoors { display: flex; flex-wrap: wrap; gap: 12px; align-items: stretch; margin-top: 18px; }
+.rr-surprise {
+  flex: 1 1 260px; min-width: 0; display: flex; align-items: center; gap: 14px;
+  padding: 14px 22px; border-radius: var(--radius-md); text-align: left;
+  background: var(--accent); color: var(--on-accent, #fff); border: 2px solid var(--ink);
+  box-shadow: 0 5px 0 var(--ink); transition: transform var(--t-quick) var(--ease-out), box-shadow var(--t-quick) var(--ease-out);
+}
+.rr-surprise .die { font-size: 38px; line-height: 1; transition: transform var(--t-base, .3s) var(--ease-out); font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif; }
+.rr-surprise .t { display: flex; flex-direction: column; min-width: 0; }
+.rr-surprise b { font: 700 26px/30px var(--font-display); }
+.rr-surprise .t span { font: 700 14px/18px var(--font-sans); opacity: .9; }
+.rr-surprise:hover { transform: translateY(-2px); box-shadow: 0 7px 0 var(--ink); }
+.rr-surprise:hover .die { transform: rotate(-20deg) scale(1.08); }
+.rr-surprise:active { transform: translateY(3px); box-shadow: 0 2px 0 var(--ink); }
+.rr-keeplink { flex: 0 1 auto; min-height: 0; }
+@container rr (max-width: 520px) { .rr-keeplink { flex: 1 1 100%; min-height: 46px; } }
+@container rr (min-width: 760px) { .rr-bigdoors { justify-content: center; } .rr-surprise { flex: 0 1 420px; } }
+/* On a phone the home page shows six topics; all eight on a wide screen. */
+@container rr (max-width: 759px) { .rr-rooms > .rr-room:nth-child(n+7) { display: none; } }
+/* Long words, links and handles wrap inside their box instead of spilling out
+   of it: a 40-letter hashtag or a pasted URL in a note breaks where it must. */
+body { overflow-wrap: anywhere; }
+.rr-btn, .rr-pill, .rr-stat b { overflow-wrap: normal; }
+/* A month name is wider than a number: it gets a smaller size so it fits. */
+.rr-stat b.word { font-size: 20px; }
+@container rr (min-width: 760px) { .rr-stat b.word { font-size: 32px; } }
+/* Names wrap rather than end in "…": a topic name is never cut short, and a
+   creator's name gets two lines before it is trimmed. */
+.rr-room .plate { align-items: flex-start; }
+.rr-room .plate b { white-space: normal; overflow: visible; text-overflow: clip; text-wrap: balance; }
+.rr-card .by, .rr-piece .by, .rr-spine b {
+  white-space: normal; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden;
+}
+.rr-facet .opt-label { white-space: normal; overflow: visible; text-overflow: clip; }

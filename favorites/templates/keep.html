@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% from "_icons.html" import icon %}
-{% block title %}Keep a link · Favorites{% endblock %}
+{% block title %}Keep a link · Faves{% endblock %}
 {% block content %}
 <section class="rr-hero keep-hero">
   <p class="rr-label">＋ Keep a link</p>
@@ -15,7 +15,7 @@
 
   {% if locked %}
     <form class="rr-placard keep-form unlock" action="/unlock" method="post">
-      <label class="rr-label" for="pw">🔑 First, the museum's password</label>
+      <label class="rr-label" for="pw">🔑 First, your Faves password</label>
       <p class="hint">Once on this phone, then never again. It's <code>FAVORITES_TOKEN</code> in <code>~/.favorites.env</code> on your Mac (also shown on the Mac at /sync).</p>
       <input type="password" id="pw" name="password" autocomplete="current-password" required>
       <input type="hidden" name="next" value="/keep">
@@ -28,7 +28,7 @@
         <input type="url" inputmode="url" id="link" name="url" placeholder="Paste a TikTok, Instagram or YouTube link" required autocomplete="off">
         <button class="rr-btn paste-btn" type="button" data-paste hidden>{{ icon('placard') }}Paste</button>
       </div>
-      <label class="rr-label" for="note">📝 Your placard <span class="opt">(optional)</span></label>
+      <label class="rr-label" for="note">📝 Your note <span class="opt">(optional)</span></label>
       <input type="text" id="note" name="note" placeholder="Why are you keeping this?">
       <div class="row"><button class="rr-btn rr-btn--primary" type="submit">{{ icon('plus') }}Keep it</button></div>
     </form>

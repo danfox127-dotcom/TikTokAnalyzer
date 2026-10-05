@@ -50,14 +50,14 @@ token (or leave the Authorization header out entirely if you did not set one).
 
 ## The no-setup way: copy, paste, keep
 
-Open the museum on your phone and use the **Keep** tab (bottom right): in
-TikTok, Instagram or YouTube tap **Share → Copy link**, then in the museum tap
-**Paste** and **Keep it**. If the museum has a password, it asks for it once on
+Open Faves on your phone and use the **Keep** tab (bottom right): in
+TikTok, Instagram or YouTube tap **Share → Copy link**, then in Faves tap
+**Paste** and **Keep it**. If Faves has a password, it asks for it once on
 each phone and remembers it.
 
 ## iOS — a Shortcut in the share sheet
 
-About three minutes, once. The museum's **Keep it in sync** page (`/sync`,
+About three minutes, once. Faves' **Keep it in sync** page (`/sync`,
 opened on the Mac) shows the exact address and password to use below.
 
 1. Open **Shortcuts** → **+** to create a new shortcut.

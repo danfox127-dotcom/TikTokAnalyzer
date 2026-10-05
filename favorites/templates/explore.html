@@ -2,7 +2,7 @@
 {% from "_card.html" import card, salon, threads %}
 {% from "_icons.html" import icon %}
 {% set nav = 'search' %}
-{% block title %}{{ heading }} · Favorites{% endblock %}
+{% block title %}{{ heading }} · Faves{% endblock %}
 
 {#- The filter column on wide screens. Every option is a plain link, so Back
     undoes a filter and any view can be bookmarked. -#}
@@ -110,7 +110,7 @@
       <div class="rr-empty nothing-here">
         <div class="big" aria-hidden="true">🍦</div>
         <h2 class="rr-h-m">Nothing matches{% if chips %} all of these together{% endif %}.</h2>
-        <p>{% if chips %}Remove a filter to widen it — or try something else.{% else %}Try fewer words, or wander instead.{% endif %}</p>
+        <p>{% if chips %}Remove a filter to widen it — or try something else.{% else %}Try fewer words, or try a Surprise instead.{% endif %}</p>
         <ul class="rr-pills">
           {% for label, href in chips %}<li><a class="rr-pill is-on" href="{{ href }}">{{ label }} <span class="x" aria-hidden="true">×</span></a></li>{% endfor %}
           <li><a class="rr-pill is-hook" href="/surprise">{{ icon('shuffle') }}Surprise me</a></li>

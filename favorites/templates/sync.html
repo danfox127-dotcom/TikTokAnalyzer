@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% from "_icons.html" import icon %}
-{% block title %}Keep it in sync · Favorites{% endblock %}
+{% block title %}Keep it in sync · Faves{% endblock %}
 {% block main_class %}is-bands{% endblock %}
 {% set steps = {
   'tiktok': {
@@ -27,7 +27,7 @@
 <section class="rr-hero sync-hero">
   <p class="rr-label">🔄 Keep it in sync</p>
   <h1 class="rr-h-xl">New saves find their own way in</h1>
-  <p class="lede">The platforms won't hand your saves to another app, so the museum does the next best
+  <p class="lede">The platforms won't hand your saves to another app, so Faves does the next best
     thing: it picks up every export the moment you download it, syncs your YouTube playlists by itself,
     and reminds you when an export is due.</p>
   {% if flash %}
@@ -45,7 +45,7 @@
   <div class="rr-shelf-head rr-reveal"><div>
     <p class="rr-label">📦 Your exports</p>
     <h2 class="rr-h-m" id="exports-title">Request one now and then; the rest is automatic</h2>
-    <p>Download it on this Mac and the museum imports it by itself. Due again after {{ 60 }} days.</p>
+    <p>Download it on this Mac and Faves imports it by itself. Due again after {{ 60 }} days.</p>
   </div></div>
   <div class="export-cards band-pad">
     {% for e in exports %}{% set st = steps[e.platform] %}
@@ -67,7 +67,7 @@
   <div class="rr-shelf-head rr-reveal"><div>
     <p class="rr-label">📂 The watched folder</p>
     <h2 class="rr-h-m" id="folder-title">{% if folders %}Watching {{ folders | length }} {{ 'folder' if folders | length == 1 else 'folders' }}{% else %}Not watching a folder yet{% endif %}</h2>
-    <p>{% if folders %}Every minute it looks for TikTok, Instagram and Google Takeout exports. It never moves or deletes your files.{% else %}Starting the museum with <code>start.command</code> watches your Downloads folder. To choose others, set <code>FAVORITES_WATCH</code> in <code>~/.favorites.env</code>.{% endif %}</p>
+    <p>{% if folders %}Every minute it looks for TikTok, Instagram and Google Takeout exports. It never moves or deletes your files.{% else %}Starting Faves with <code>start.command</code> watches your Downloads folder. To choose others, set <code>FAVORITES_WATCH</code> in <code>~/.favorites.env</code>.{% endif %}</p>
   </div></div>
   <div class="band-pad folder-body rr-reveal">
     {% if folders %}
@@ -105,17 +105,17 @@
       {% if here %}
         <form action="/sync/youtube/connect" method="post"><button class="rr-btn rr-btn--primary" type="submit">Connect Google</button></form>
         <p class="rr-muted small">Google will warn that the app is unverified — it's yours, so that's expected. Choose Advanced → Go to (your app).</p>
-      {% else %}<p>Connect from the Mac the museum runs on.</p>{% endif %}
+      {% else %}<p>Connect from the Mac Faves runs on.</p>{% endif %}
     {% else %}
       <details class="setup"{% if here %} open{% endif %}><summary>One-time setup (about 10 minutes)</summary>
         <ol>
-          <li>At <a href="https://console.cloud.google.com/projectcreate" target="_blank" rel="noopener noreferrer">Google Cloud</a>, create a project (any name, e.g. “Favorites”).</li>
+          <li>At <a href="https://console.cloud.google.com/projectcreate" target="_blank" rel="noopener noreferrer">Google Cloud</a>, create a project (any name, e.g. “Faves”).</li>
           <li>In <b>APIs &amp; Services → Library</b>, switch on <b>YouTube Data API v3</b>.</li>
           <li>In <b>OAuth consent screen</b>: choose External, fill in the app name and your email, add yourself as a user, then press <b>Publish app</b> (otherwise Google signs you out every 7 days).</li>
           <li>In <b>Credentials → Create credentials → OAuth client ID</b>, choose <b>Desktop app</b>.</li>
           <li>Copy its client ID and secret into <code>~/.favorites.env</code>:<br>
             <code>GOOGLE_CLIENT_ID="…"</code><br><code>GOOGLE_CLIENT_SECRET="…"</code></li>
-          <li>Close the museum's window and double-click <code>start.command</code> again. A Connect button appears here.</li>
+          <li>Close the Faves window and double-click <code>start.command</code> again. A Connect button appears here.</li>
         </ol>
       </details>
     {% endif %}
@@ -126,7 +126,7 @@
   <div class="rr-shelf-head rr-reveal"><div>
     <p class="rr-label">📱 Your phone</p>
     <h2 class="rr-h-m" id="phone-title">Save in one tap, as you scroll</h2>
-    <p>Two ways. Simplest: copy the link in the app, open the museum's <a href="/keep">Keep</a> tab, tap Paste. Fastest: a one-tap <b>Keep</b> in your share sheet, set up below.</p>
+    <p>Two ways. Simplest: copy the link in the app, open the <a href="/keep">Keep</a> tab, tap Paste. Fastest: a one-tap <b>Keep</b> in your share sheet, set up below.</p>
   </div></div>
   <div class="band-pad phone-body rr-reveal">
     {% if token %}
@@ -135,12 +135,12 @@
         <div><dt>Password</dt><dd>{% if here %}<code>{{ token }}</code>{% else %}<span class="rr-muted">shown only on the Mac</span>{% endif %}</dd></div>
       </dl>
     {% else %}
-      <p>Your phone can't reach the museum yet. Switch on <code>FAVORITES_TOKEN</code> in <code>~/.favorites.env</code> and start it again; this section will show what to put in the Shortcut.</p>
+      <p>Your phone can't reach Faves yet. Switch on <code>FAVORITES_TOKEN</code> in <code>~/.favorites.env</code> and start it again; this section will show what to put in the Shortcut.</p>
     {% endif %}
     <ol class="shortcut">
       <li>In <b>Shortcuts</b>, make a new shortcut and switch on <b>Show in Share Sheet</b> (URLs and Text).</li>
       <li>Add <b>Get Contents of URL</b>: the address above + <code>/save</code>, method <b>POST</b>, header <code>Authorization</code> = <code>Bearer</code> + the password, JSON field <code>url</code> = <b>Shortcut Input</b>.</li>
-      <li>Add <b>Show Notification</b>: “Kept ✓”. Name it <b>Favorites</b>.</li>
+      <li>Add <b>Show Notification</b>: “Kept ✓”. Name it <b>Faves</b>.</li>
     </ol>
     <p class="rr-muted small">Want a note as you save? Add <b>Ask for Input</b> before step 2 and a second field <code>note</code>. Full steps: <code>favorites/SHARE_SHEET.md</code>.</p>
   </div>

@@ -2,7 +2,7 @@
 
 The museum's sections are bands in six candy tones, and every room (theme)
 belongs to one of them, so a theme wears the same colour on its door, its
-pills and its slides. Kept in step with the "Favorites Museum" design system.
+pills and its slides. Kept in step with the "Faves" design system.
 """
 
 from __future__ import annotations

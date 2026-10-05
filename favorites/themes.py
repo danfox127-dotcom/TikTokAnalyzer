@@ -582,7 +582,7 @@ def main(argv: Optional[list[str]] = None) -> int:
         print(f"  {n:>5}  {theme}")
     if hunch_count:
         print(f"\n{hunch_count} of them are filed on a hunch (one word in passing):"
-              " settle them at /rooms/tidy.")
+              " settle them at /topics/sort.")
     if r["unrecognised_hashtags"]:
         print("\nHashtags on 2+ saves that no theme recognises yet:")
         for tag, n in r["unrecognised_hashtags"]:

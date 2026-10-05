@@ -392,7 +392,7 @@ def shelves(
     ).fetchall())
     if len(old) >= 3:
         candidates.append(_shelf(
-            "rediscover", "From the vault",
+            "rediscover", "Throwbacks",
             "Saved a while ago, and easy to forget", old,
         ))
 
@@ -400,7 +400,7 @@ def shelves(
     unlabelled = _items_where(conn, "note IS NULL OR trim(note) = ''", ())
     if len(unlabelled) >= 4:
         candidates.append(_shelf(
-            "unlabelled", "Missing a placard",
+            "unlabelled", "Missing a note",
             "No note yet -- a line now saves you guessing later", unlabelled,
             href="/unlabelled",
         ))
@@ -594,7 +594,7 @@ def threads(conn: sqlite3.Connection, item: dict, limit: int = 5) -> list[dict]:
 
     for theme in (item.get("themes") or [])[:2]:
         n, covers = others("EXISTS (SELECT 1 FROM json_each(i.themes) WHERE value = ?)", (theme,))
-        add(theme, f"Room · {_count_word(n)}", f"/search?{urlencode({'theme': theme})}", n, covers, 2)
+        add(theme, f"Topic · {_count_word(n)}", f"/search?{urlencode({'theme': theme})}", n, covers, 2)
 
     key = _creator_key(item)
     if key:
@@ -704,7 +704,7 @@ def wander_next(conn: sqlite3.Connection, item: dict, trail: list[int],
     saved = item.get("saved_at") or ""
     threads_: list[tuple[str, str, tuple]] = []
     for theme in item.get("themes") or []:
-        threads_.append((f"same room: {theme}",
+        threads_.append((f"same topic: {theme}",
                          "EXISTS (SELECT 1 FROM json_each(i.themes) WHERE value = ?)", (theme,)))
     key = _creator_key(item)
     if key:

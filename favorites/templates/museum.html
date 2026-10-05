@@ -2,10 +2,10 @@
 {% from "_card.html" import card, frame, shelf, shelf_head, room, room_pill %}
 {% from "_icons.html" import icon %}
 {% set nav = 'home' %}
-{% set kickers = {'recent': '✨ Just in', 'theme': '🚪 A room', 'month': '🗓️ A busy month',
+{% set kickers = {'recent': '✨ Just in', 'theme': '🚪 A topic', 'month': '🗓️ A busy month',
                   'collection': '🗂️ Your category', 'creator': '💌 Someone you return to',
-                  'rediscover': '🗝️ From the vault', 'last_year': '🍂 A year ago',
-                  'unlabelled': '📝 Placards to write'} %}
+                  'rediscover': '🗝️ Throwbacks', 'last_year': '🍂 A year ago',
+                  'unlabelled': '📝 Notes to write'} %}
 {#- Bands rotate through the six tones down the page, starting warm. -#}
 {% set order = ['butter', 'lilac', 'mint', 'sky', 'peach', 'pink'] %}
 {% set ns = namespace(i=0) %}
@@ -34,7 +34,7 @@
     <form class="rr-placard quick-save" action="/save" method="post">
       <label class="rr-label" for="qs-url">A link</label>
       <input type="text" inputmode="url" id="qs-url" name="url" placeholder="https://…" required>
-      <label class="rr-label" for="qs-note">📝 Your placard</label>
+      <label class="rr-label" for="qs-note">📝 Your note</label>
       <input type="text" id="qs-note" name="note" placeholder="Why are you keeping this? (optional)">
       <div class="row"><button class="rr-btn rr-btn--primary" type="submit">Save</button></div>
     </form>
@@ -48,20 +48,31 @@
   <form class="rr-search" action="/search" method="get" role="search" data-suggest>
     <label class="rr-search-field">{{ icon('search') }}
       <input type="search" name="q" placeholder="A dish, a creator, a feeling, a date…"
-             aria-label="Search your favorites" autocomplete="off" spellcheck="false">
+             aria-label="Search your faves" autocomplete="off" spellcheck="false">
       <button class="rr-btn rr-btn--primary" type="submit">Search</button>
     </label>
   </form>
+  <div class="rr-bigdoors">
+    <a class="rr-surprise" href="/surprise"><span class="die" aria-hidden="true">🎲</span><span class="t"><b>Surprise me</b><span>One save, picked at random</span></span></a>
+    <a class="rr-btn rr-keeplink" href="/keep">{{ icon('plus') }}Keep a link</a>
+  </div>
   <ul class="rr-pills is-scroll hooks" aria-label="Ways in">
-    <li><a class="rr-pill is-surprise" href="/surprise">{{ icon('shuffle') }}Surprise me</a></li>
-    <li><a class="rr-pill is-hook" href="/keep">{{ icon('plus') }}Keep a link</a></li>
     {% if on_this_day %}<li><a class="rr-pill is-hook" href="{{ on_this_day.href }}">{{ icon('calendar') }}On this day <span class="n">{{ on_this_day.count }}</span></a></li>{% endif %}
-    <li><a class="rr-pill is-hook" href="/wander">{{ icon('compass') }}Wander</a></li>
+    <li><a class="rr-pill is-hook" href="/wander">{{ icon('compass') }}Rabbit hole</a></li>
     {% if season %}<li><a class="rr-pill is-room tone-{{ season.tone }}" href="{{ season.href }}">{{ icon(season.icon) }}This {{ season.name | lower }} <span class="n">{{ season.count }}</span></a></li>{% endif %}
     <li><a class="rr-pill is-hook" href="/year">{{ icon('spark') }}Your {{ year_now }}</a></li>
-    {% for label, n, href in browse.themes[:4] if label != 'Undefined' %}{{ room_pill(label, href, n) }}{% endfor %}
   </ul>
 </section>
+
+{% if rooms %}
+<section class="rr-band tone-{{ order[ns.i % 6] }}" aria-labelledby="rooms-title">{% set ns.i = ns.i + 1 %}<div class="inner">
+  <div class="rr-shelf-head rr-reveal">
+    <div><p class="rr-label">🗂️ Topics</p><h2 class="rr-h-m" id="rooms-title">Browse by topic</h2></div>
+    <a class="more" href="/topics">All topics</a>
+  </div>
+  <div class="rr-rooms">{% for r in rooms %}{{ room(r, loop.index0) }}{% endfor %}</div>
+</div></section>
+{% endif %}
 
 {% if pending %}
   <p class="rr-notice pending-strip">{{ icon('clock') }}<span>{{ pending }} imported {{ "save" if pending == 1 else "saves" }}
@@ -70,7 +81,7 @@
 
 {% for r in reminders %}
   <div class="rr-notice export-due">{{ icon('clock') }}<span class="msg">📦 It's been {{ r.days }} days since your {{ r.name }} export.
-    <a href="/sync#exports">Request a fresh one</a> — the museum imports it by itself when it lands.</span>
+    <a href="/sync#exports">Request a fresh one</a> — Faves imports it by itself when it lands.</span>
     <form action="/sync/snooze" method="post"><input type="hidden" name="platform" value="{{ r.platform }}"><input type="hidden" name="next" value="/">
       <button class="rr-btn rr-btn--quiet" type="submit" aria-label="Remind me in a month about {{ r.name }}">Later</button></form></div>
 {% endfor %}
@@ -86,7 +97,7 @@
     <div class="rr-otd-years">
     {% for year, ago, entries in on_this_day.years[:3] %}
       <div class="rr-otd-year">
-        <div class="yr"><b>{{ year }}</b><span>{{ ago }}</span></div>
+        <h3 class="yr"><b>{{ year }}</b><span>{{ ago }}</span></h3>
         <div class="rr-carousel" role="region" aria-label="{{ year }}">
           <ul class="rr-track">{% for item in entries %}<li>{{ card(item, 's', note=False) }}</li>{% endfor %}</ul>
         </div>
@@ -129,7 +140,7 @@
   </div>
   <div class="rr-reveal" style="margin-top:40px">
     {{ shelf_head('Browse the collection', kicker='🗂️ The catalogue', sub="Every save, by what it's about, who made it and where it came from.", href='/search', arrows=False, id='browse-title') }}
-    {% for title, row, kind in (("Rooms", browse.themes, "room"), ("Creators", browse.creators, ""), ("Platforms", browse.platforms, "")) if row %}
+    {% for title, row, kind in (("Topics", browse.themes, "room"), ("Creators", browse.creators, ""), ("Platforms", browse.platforms, "")) if row %}
       <div class="browse-row">
         <h3 class="rr-label">{{ title }}</h3>
         <ul class="rr-pills is-scroll">
@@ -148,15 +159,6 @@
   {{ shelf(s.title, s.entries, kicker=kickers.get(s.kind, ''), sub=s.subtitle, href=s.href, kind=s.kind, tone=order[ns.i % 6]) }}{% set ns.i = ns.i + 1 %}
 {% endfor %}
 
-{% if rooms %}
-<section class="rr-band tone-{{ order[ns.i % 6] }}" aria-labelledby="rooms-title">{% set ns.i = ns.i + 1 %}<div class="inner">
-  <div class="rr-shelf-head rr-reveal">
-    <div><p class="rr-label">🚪 Rooms</p><h2 class="rr-h-m" id="rooms-title">Walk into a theme</h2></div>
-    <a class="more" href="/rooms">All rooms</a>
-  </div>
-  <div class="rr-rooms">{% for r in rooms %}{{ room(r, loop.index0) }}{% endfor %}</div>
-</div></section>
-{% endif %}
 
 {% if season %}
   {{ shelf(season.label, season.entries, kicker=season.emoji ~ ' This season', sub=season.sub, href=season.href, kind='season', tone=order[ns.i % 6]) }}{% set ns.i = ns.i + 1 %}
@@ -168,7 +170,7 @@
 
 <section class="rr-band tone-{{ order[ns.i % 6] }}" aria-label="More ways in">{% set ns.i = ns.i + 1 %}<div class="inner">
   {% if creators %}
-  <div class="rr-shelf-head rr-reveal"><div><p class="rr-label">💌 Creators you return to</p><h2 class="rr-h-m">Your regulars</h2></div></div>
+  <div class="rr-shelf-head rr-reveal"><div><p class="rr-label">💌 Creators you return to</p><h2 class="rr-h-m">Favorite creators</h2></div></div>
   <div class="rr-spines rr-reveal">
     {% for c in creators %}
       <a class="rr-spine" href="{{ c.href }}">
@@ -181,7 +183,7 @@
   <div class="browse-more band-pad rr-reveal"{% if creators %} style="margin-top:36px"{% endif %}>
     <a class="rr-btn" href="/search">{{ icon('filter') }}All {{ total }} saves, with every filter</a>
     <a class="rr-btn" href="/year">{{ icon('spark') }}Your {{ year_now }} so far</a>
-    <a class="rr-btn" href="/wander">{{ icon('compass') }}Go wandering</a>
+    <a class="rr-btn" href="/wander">{{ icon('compass') }}Go down a rabbit hole</a>
   </div>
 </div></section>
 
