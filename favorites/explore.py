@@ -559,7 +559,7 @@ def pull(f: Filters, found: list[Facet], items: list[dict], limit: int = 4) -> l
     theme = by_name.get("theme")
     if theme and not f.theme:
         for o in [o for o in theme.options if not o.kind][:2]:
-            rows.append({"label": o.label, "sub": f"Room · {o.count} of these",
+            rows.append({"label": o.label, "sub": f"Topic · {o.count} of these",
                          "href": o.href, "covers": covers(lambda i, v=o.value: v in (i.get("themes") or []))})
     creator = by_name.get("creator")
     if creator and not f.creator and creator.options and creator.options[0].count >= 2:

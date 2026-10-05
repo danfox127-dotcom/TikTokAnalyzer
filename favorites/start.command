@@ -1,18 +1,18 @@
 #!/bin/bash
-# Start the Favorites museum. On a Mac, double-click this file.
+# Start Faves. On a Mac, double-click this file.
 #
 # Each time it:
 #   1. updates the code, if this is a clean checkout of main (never touches
 #      work in progress);
 #   2. keeps a private Python environment in favorites/.venv up to date;
-#   3. starts the museum and opens it in your browser.
+#   3. starts Faves and opens it in your browser.
 #
 # Your settings live in ~/.favorites.env -- which library file to use, and a
 # password (FAVORITES_TOKEN) that lets your phone save to it. Double-clicking
 # does not read ~/.zshrc, so that file is what keeps the double-click and the
 # Terminal using the same library. It is created, with notes, on first run.
 #
-# Leave the window open while you use the museum; close it to stop.
+# Leave the window open while you use Faves; close it to stop.
 
 set -u
 cd "$(dirname "$0")/.." || exit 1
@@ -30,7 +30,7 @@ tailscale_ip() {
 
 # Run a command, but give up after 3 seconds. Asking Tailscale for its address
 # can wait forever when it is installed but not signed in, and that kept the
-# museum from ever starting.
+# Faves from ever starting.
 quick() {
   local out pid watcher
   out="$(mktemp -t favorites.XXXXXX)"
@@ -46,34 +46,34 @@ quick() {
 step() { printf '\n\033[1m%s\033[0m\n' "$*"; }
 fail() { printf '\n\033[31m%s\033[0m\n' "$*"; printf 'Press Return to close.'; read -r _; exit 1; }
 
-say "Favorites museum"
-say "================"
+say "Faves"
+say "====="
 
 # ---- settings -------------------------------------------------------------
 if [ ! -f "$ENV_FILE" ]; then
   suggested="$(LC_ALL=C tr -dc 'A-Za-z0-9' </dev/urandom 2>/dev/null | head -c 32)"
   cat > "$ENV_FILE" <<EOF
-# Settings for the Favorites museum, read by favorites/start.command.
+# Settings for Faves, read by favorites/start.command.
 # Lines starting with # are switched off. Remove the # to switch one on.
 
 # Which library file to use. Leave it off to use ~/favorites.db.
 # FAVORITES_DB="\$HOME/favorites.db"
 
-# A password so your phone can save to the museum (see favorites/SHARE_SHEET.md).
-# Switch this on and other devices can reach the museum: your phone over the
+# A password so your phone can save to Faves (see favorites/SHARE_SHEET.md).
+# Switch this on and other devices can reach Faves: your phone over the
 # same wi-fi, or from anywhere with Tailscale. The password guards saving;
 # anyone on your wi-fi could still browse, so use it on networks you trust.
-# Without it, only this Mac can open the museum. Use the same value in your
+# Without it, only this Mac can open Faves. Use the same value in your
 # phone's Shortcut.
 # FAVORITES_TOKEN="$suggested"
 
-# Folders the museum watches for TikTok, Instagram and Google Takeout exports,
+# Folders Faves watches for TikTok, Instagram and Google Takeout exports,
 # importing each the moment it lands. Several: separate them with ":".
 # Downloads is watched unless you change this; set it to "" to watch nothing.
 # FAVORITES_WATCH="$HOME/Downloads"
 
 # YouTube playlists, synced by signing in with Google. The setup steps are on
-# the museum's Keep it in sync page.
+# Faves' Keep it in sync page.
 # GOOGLE_CLIENT_ID=""
 # GOOGLE_CLIENT_SECRET=""
 EOF
@@ -90,7 +90,7 @@ set +a
 # ---- already running? ------------------------------------------------------
 if curl -fsS -o /dev/null "http://127.0.0.1:$PORT/healthz" 2>/dev/null; then
   say ""
-  say "The museum is already running: http://localhost:$PORT"
+  say "Faves is already running: http://localhost:$PORT"
   command -v open >/dev/null && open "http://localhost:$PORT"
   exit 0
 fi
@@ -133,7 +133,7 @@ STAMP="$VENV/.requirements.sha"
 if command -v shasum >/dev/null; then want="$(shasum -a 256 "$REQS" | cut -d' ' -f1)"
 else want="$(sha256sum "$REQS" | cut -d' ' -f1)"; fi
 if [ "$(cat "$STAMP" 2>/dev/null)" != "$want" ]; then
-  say "   Installing what the museum needs..."
+  say "   Installing what Faves needs..."
   "$VENV/bin/python" -m pip install --quiet --upgrade pip >/dev/null 2>&1
   "$VENV/bin/python" -m pip install --quiet -r "$REQS" || fail "Installing failed -- see the messages above."
   printf '%s' "$want" > "$STAMP"
@@ -141,7 +141,7 @@ fi
 say "   Ready."
 
 # ---- 3. start --------------------------------------------------------------
-step "3. Starting the museum"
+step "3. Starting Faves"
 if [ -n "${FAVORITES_TOKEN:-}" ]; then
   HOST="0.0.0.0"
   say "   Open it here:      http://localhost:$PORT"
@@ -162,7 +162,7 @@ else
   say "   FAVORITES_TOKEN in $ENV_FILE and start again."
 fi
 say ""
-say "   Leave this window open while you use the museum. Close it to stop."
+say "   Leave this window open while you use Faves. Close it to stop."
 say ""
 
 # Open the browser once the server answers.

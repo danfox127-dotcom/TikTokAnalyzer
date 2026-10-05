@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% from "_card.html" import card, frame, room %}
 {% from "_icons.html" import icon %}
-{% block title %}Your {{ year }} · Favorites{% endblock %}
+{% block title %}Your {{ year }} · Faves{% endblock %}
 {% block main_class %}{% if review %}is-bands{% endif %}{% endblock %}
 {% block content %}
 
@@ -10,7 +10,7 @@
   <div class="big" aria-hidden="true">🌱</div>
   <h1 class="rr-h-l">Nothing saved in {{ year }} yet.</h1>
   <p>Your year starts with the next thing you keep.</p>
-  <p style="margin-top:18px"><a class="rr-btn" href="/wander">{{ icon('compass') }}Go wandering meanwhile</a></p>
+  <p style="margin-top:18px"><a class="rr-btn" href="/wander">{{ icon('compass') }}Go down a rabbit hole meanwhile</a></p>
 </section>
 {% else %}
 {% set r = review %}
@@ -34,17 +34,17 @@
 <section class="rr-band tone-sky" aria-label="In numbers"><div class="inner">
   <div class="rr-stats band-pad">
     <div class="rr-stat rr-reveal" style="--i:0"><span class="em" aria-hidden="true">🔥</span><b>{{ r.streak }}</b><span>{{ 'day' if r.streak == 1 else 'days' }} in a row — your longest saving streak</span></div>
-    <a class="rr-stat rr-reveal" style="--i:1" href="{{ r.busiest.href }}"><span class="em" aria-hidden="true">📈</span><b>{{ r.busiest.month }}</b><span>your busiest month, with {{ r.busiest.count }} {{ 'save' if r.busiest.count == 1 else 'saves' }}</span></a>
+    <a class="rr-stat rr-reveal" style="--i:1" href="{{ r.busiest.href }}"><span class="em" aria-hidden="true">📈</span><b class="word">{{ r.busiest.month }}</b><span>your busiest month, with {{ r.busiest.count }} {{ 'save' if r.busiest.count == 1 else 'saves' }}</span></a>
     <div class="rr-stat rr-reveal" style="--i:2"><span class="em" aria-hidden="true">🗓️</span><b>{{ r.weekday[0] }}s</b><span>when you save the most</span></div>
     <div class="rr-stat rr-reveal" style="--i:3"><span class="em" aria-hidden="true">📱</span><b>{{ r.platforms[0][0] }}</b><span>{{ r.platforms[0][1] }} of {{ r.total }} saves{% if r.platforms | length > 1 %}, then {{ r.platforms[1][0] }}{% endif %}</span></div>
     <div class="rr-stat rr-reveal" style="--i:4"><span class="em" aria-hidden="true">📆</span><b>{{ r.days }}</b><span>{{ 'day' if r.days == 1 else 'different days' }} you kept something</span></div>
-    <a class="rr-stat rr-reveal" style="--i:5" href="/placards"><span class="em" aria-hidden="true">📝</span><b>{{ r.notes }}</b><span>{{ 'placard' if r.notes == 1 else 'placards' }} written{% if r.notes < r.total %} — {{ r.total - r.notes }} still waiting{% endif %}</span></a>
+    <a class="rr-stat rr-reveal" style="--i:5" href="/notes"><span class="em" aria-hidden="true">📝</span><b>{{ r.notes }}</b><span>{{ 'note' if r.notes == 1 else 'notes' }} written{% if r.notes < r.total %} — {{ r.total - r.notes }} still waiting{% endif %}</span></a>
   </div>
 </div></section>
 
 {% if r.rooms %}
 <section class="rr-band tone-butter" aria-labelledby="year-rooms"><div class="inner">
-  <div class="rr-shelf-head rr-reveal"><div><p class="rr-label">🏆 Your top rooms</p><h2 class="rr-h-m" id="year-rooms">What {{ r.year }} was about</h2></div></div>
+  <div class="rr-shelf-head rr-reveal"><div><p class="rr-label">🏆 Your top topics</p><h2 class="rr-h-m" id="year-rooms">What {{ r.year }} was about</h2></div></div>
   <div class="rr-rooms">{% for room_ in r.rooms %}{{ room(room_, loop.index0) }}{% endfor %}</div>
 </div></section>
 {% endif %}
@@ -71,7 +71,7 @@
 <section class="rr-band tone-lilac" aria-label="Keep going"><div class="inner">
   <div class="browse-more band-pad rr-reveal">
     <a class="rr-btn rr-btn--primary" href="/search?year={{ r.year }}">{{ icon('filter') }}Every save from {{ r.year }}</a>
-    <a class="rr-btn" href="/wander">{{ icon('compass') }}Go wandering</a>
+    <a class="rr-btn" href="/wander">{{ icon('compass') }}Go down a rabbit hole</a>
   </div>
 </div></section>
 

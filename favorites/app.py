@@ -125,7 +125,7 @@ async def _keep_in_sync() -> None:
         await asyncio.sleep(SCAN_EVERY)
 
 
-app = FastAPI(title="Favorites", docs_url=None, redoc_url=None, lifespan=lifespan)
+app = FastAPI(title="Faves", docs_url=None, redoc_url=None, lifespan=lifespan)
 app.mount("/static", StaticFiles(directory=HERE / "static"), name="static")
 templates = Jinja2Templates(directory=str(HERE / "templates"))
 templates.env.globals["platform_label"] = platform_label
@@ -347,7 +347,7 @@ def home(request: Request, conn: sqlite3.Connection = Depends(get_db)):
     return templates.TemplateResponse(request, "museum.html", {
         "shelves": museum.shelves(conn, now=now),
         "on_this_day": museum.on_this_day(conn, now=now),
-        "rooms": museum.rooms(conn, limit=4, now=now),
+        "rooms": museum.rooms(conn, limit=8, now=now),
         "creators": museum.creators_shelf(conn, now=now),
         "season": museum.season_room(conn, now=now),
         "week": museum.week_digest(conn, now=now),
@@ -389,9 +389,9 @@ def search_page(request: Request, conn: sqlite3.Connection = Depends(get_db)):
     })
 
 
-@app.get("/rooms", response_class=HTMLResponse)
+@app.get("/topics", response_class=HTMLResponse)
 def rooms_page(request: Request, conn: sqlite3.Connection = Depends(get_db)):
-    """Every theme, as a room you can walk into."""
+    """Every topic, biggest first."""
     found = museum.rooms(conn)
     undefined = conn.execute(
         f"SELECT count(*) FROM items WHERE {museum.RESOLVED}"
@@ -402,9 +402,9 @@ def rooms_page(request: Request, conn: sqlite3.Connection = Depends(get_db)):
     })
 
 
-@app.get("/rooms/tidy", response_class=HTMLResponse)
+@app.get("/topics/sort", response_class=HTMLResponse)
 def tidy_page(request: Request, conn: sqlite3.Connection = Depends(get_db)):
-    """Tidy the rooms: teach the hashtags it doesn't know, settle its guesses."""
+    """Sort things out: teach the hashtags it doesn't know, settle its guesses."""
     report = theme_vocabulary.report(conn, top=24)
     ids = {i for t, _ in report["unrecognised_hashtags"] for i in report["examples"][t][:3]}
     hunch_ids, hunch_count = db.hunches(conn, limit=12)
@@ -427,15 +427,32 @@ def tidy_page(request: Request, conn: sqlite3.Connection = Depends(get_db)):
     })
 
 
-@app.post("/rooms/teach")
+# The old names (rooms, placards) still lead somewhere, for bookmarks and
+# Shortcuts made before the rename.
+OLD_PAGES = {"/rooms": "/topics", "/rooms/tidy": "/topics/sort", "/placards": "/notes"}
+
+
+def _moved(new: str):
+    def go(request: Request):
+        q = request.url.query
+        return RedirectResponse(new + (f"?{q}" if q else ""), status_code=301)
+    return go
+
+
+for _old, _new in OLD_PAGES.items():
+    app.add_api_route(_old, _moved(_new), methods=["GET"], include_in_schema=False)
+
+
+@app.post("/topics/teach")
+@app.post("/rooms/teach", include_in_schema=False)
 def teach(tag: str = Form(""), theme: str = Form(""), conn: sqlite3.Connection = Depends(get_db)):
-    """Teach a hashtag its room -- or that it is no subject at all."""
+    """Teach a hashtag its topic -- or that it is no subject at all."""
     db.teach_tag(conn, tag, theme or None)
-    return RedirectResponse("/rooms/tidy#hashtags", status_code=303)
+    return RedirectResponse("/topics/sort#hashtags", status_code=303)
 
 
 def _back(to: str, fallback: str) -> str:
-    """Only ever redirect within the museum."""
+    """Only ever redirect within the app."""
     return to if to.startswith("/") and not to.startswith("//") else fallback
 
 
@@ -445,7 +462,7 @@ def choose_rooms(
     reset: int = Form(0), confirm: int = Form(0), next: str = Form(""),
     conn: sqlite3.Connection = Depends(get_db),
 ):
-    """Put a save in the rooms you chose (and, if asked, all its creator's saves)."""
+    """Put a save in the topics you chose (and, if asked, all its creator's saves)."""
     if db.get_item(conn, item_id) is None:
         raise HTTPException(status_code=404, detail="no such item")
     if reset:
@@ -594,12 +611,12 @@ def suggest(q: str = Query("", max_length=200), conn: sqlite3.Connection = Depen
         "SELECT j.value AS v, count(*) AS n FROM items, json_each(items.tags) j"
         " WHERE j.value LIKE ? GROUP BY v HAVING n >= 2 ORDER BY n DESC LIMIT 2",
         (f"%{q.lstrip('#').lower()}%",)).fetchall()
-    rows = [{"kind": "room", "label": r["v"], "sub": f"Room · {r['n']} saves",
+    rows = [{"kind": "room", "label": r["v"], "sub": f"Topic · {r['n']} saves",
              "href": "/search?" + urlencode({"theme": r["v"]})} for r in rooms]
     rows += [{"kind": "tag", "label": "#" + r["v"], "sub": f"Hashtag · {r['n']} saves",
               "href": "/search?" + urlencode({"tag": r["v"]})} for r in tags]
     if rows:
-        groups.append({"title": "Rooms & hashtags", "rows": rows[:3]})
+        groups.append({"title": "Topics & hashtags", "rows": rows[:3]})
 
     creators = conn.execute(
         "SELECT coalesce(creator_handle, creator_name) AS k,"
@@ -675,7 +692,7 @@ def unlabelled(request: Request, conn: sqlite3.Connection = Depends(get_db)):
         " ORDER BY saved_at DESC LIMIT 200"
     ).fetchall())
     return templates.TemplateResponse(request, "list.html", {
-        "heading": "Missing a placard",
+        "heading": "Missing a note",
         "subheading": "A line about why you kept it is worth more later than it costs now",
         "items": items, "q": "", "total": db.count(conn),
     })
@@ -693,7 +710,7 @@ def _placard_clause(everything: bool) -> str:
     return base if everything else f"{base} AND {NO_PROSE}"
 
 
-@app.get("/placards", response_class=HTMLResponse)
+@app.get("/notes", response_class=HTMLResponse)
 def placards(
     request: Request,
     after: int = Query(0),
@@ -726,7 +743,8 @@ def placards(
     })
 
 
-@app.post("/placards/{item_id}")
+@app.post("/notes/{item_id}")
+@app.post("/placards/{item_id}", include_in_schema=False)
 def write_placard(
     item_id: int,
     note: str = Form(""),
@@ -739,7 +757,7 @@ def write_placard(
         db.set_note(conn, item_id, note.strip())
     # Advance past this item either way, so a skip does not loop on it.
     suffix = "&all=1" if all else ""
-    return RedirectResponse(f"/placards?after={item_id}{suffix}", status_code=303)
+    return RedirectResponse(f"/notes?after={item_id}{suffix}", status_code=303)
 
 
 @app.get("/item/{item_id}", response_class=HTMLResponse)
@@ -893,7 +911,7 @@ def sync_snooze(platform: str = Form(""), next: str = Form("/"),
 
 def _mac_only(request: Request) -> None:
     if not _on_this_mac(request):
-        raise HTTPException(status_code=403, detail="do this on the Mac the museum runs on")
+        raise HTTPException(status_code=403, detail="do this on the Mac Faves runs on")
 
 
 @app.post("/sync/youtube/connect")
@@ -959,8 +977,8 @@ def manifest():
     listing and no native build.
     """
     return JSONResponse({
-        "name": "Favorites",
-        "short_name": "Favorites",
+        "name": "Faves",
+        "short_name": "Faves",
         "start_url": "/",
         "display": "standalone",
         "background_color": "#0f1115",

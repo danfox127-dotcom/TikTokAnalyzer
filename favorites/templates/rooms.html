@@ -2,13 +2,13 @@
 {% from "_card.html" import room %}
 {% from "_icons.html" import icon %}
 {% set nav = 'rooms' %}
-{% block title %}Rooms · Favorites{% endblock %}
+{% block title %}Topics · Faves{% endblock %}
 {% block content %}
 <section class="page-head">
-  <p class="rr-label">🚪 Rooms</p>
+  <p class="rr-label">🗂️ Topics</p>
   <h1 class="rr-h-l">Walk into a theme</h1>
-  <p class="rr-muted">{{ rooms | length }} rooms, arranged by how much you've kept in each. Every save can hang in more than one.</p>
-  <p class="tidy-link"><a class="rr-btn" href="/rooms/tidy">{{ icon('filter') }}Something in the wrong room? Tidy the rooms</a></p>
+  <p class="rr-muted">{{ rooms | length }} topics, biggest first. A save can belong to more than one.</p>
+  <p class="tidy-link"><a class="rr-btn" href="/topics/sort">{{ icon('filter') }}Something in the wrong topic? Sort things out</a></p>
 </section>
 
 {% if rooms %}
@@ -21,17 +21,17 @@
         <span class="badge">{{ icon(season.icon) }}</span>
       </span>
       <span class="plate"><b>{{ season.emoji }} {{ season.label }}</b><span>{{ season.count }}</span></span>
-      <p class="sub">This season's room · {{ season.sub }}</p>
+      <p class="sub">This season's topic · {{ season.sub }}</p>
     </a>
     {% endif %}
     {% for r in rooms %}{{ room(r, (loop.index0 + 1) % 4) }}{% endfor %}
   </div>
 {% else %}
-  <div class="rr-empty"><div class="big" aria-hidden="true">🚪</div><h2 class="rr-h-m">No rooms yet.</h2><p>A theme becomes a room once two saves share it.</p></div>
+  <div class="rr-empty"><div class="big" aria-hidden="true">🚪</div><h2 class="rr-h-m">No topics yet.</h2><p>A topic appears once two saves share it.</p></div>
 {% endif %}
 
 {% if undefined %}
-  <p class="rr-notice undefined-note">{{ icon('placard') }}<span><b>{{ undefined }} {{ 'save' if undefined == 1 else 'saves' }} no room covers yet.</b>
-    <a href="/search?theme=Undefined">Look through them</a>, or <a href="/placards">write placards</a> so they turn up in search.</span></p>
+  <p class="rr-notice undefined-note">{{ icon('placard') }}<span><b>{{ undefined }} {{ 'save' if undefined == 1 else 'saves' }} without a topic yet.</b>
+    <a href="/search?theme=Undefined">Look through them</a>, or <a href="/notes">write notes</a> so they turn up in search.</span></p>
 {% endif %}
 {% endblock %}

@@ -1,11 +1,11 @@
 {% extends "base.html" %}
 {% from "_card.html" import card, frame, shelf, room_pill, threads as connected %}
 {% from "_icons.html" import icon %}
-{% block title %}{{ headline(item) or 'Item' }} · Favorites{% endblock %}
+{% block title %}{{ headline(item) or 'Item' }} · Faves{% endblock %}
 {% block main_class %}is-bands{% endblock %}
 {% block content %}
 
-{% if just_saved %}<p class="rr-notice flash">{{ icon('placard') }}<span>Saved. Add a placard below while you remember why.</span></p>{% endif %}
+{% if just_saved %}<p class="rr-notice flash">{{ icon('placard') }}<span>Saved. Add a note below while you remember why.</span></p>{% endif %}
 
 <section class="rr-band detail-band"><div class="inner">
 <article class="rr-detail detail">
@@ -13,7 +13,7 @@
 
   <div class="detail-body">
     <div class="rr-walllabel">
-      {% if via %}<p class="wandered"><span class="rr-emoji" aria-hidden="true">🧭</span> Wandered here via <b>{{ via }}</b></p>{% endif %}
+      {% if via %}<p class="wandered"><span class="rr-emoji" aria-hidden="true">🐇</span> Down the rabbit hole via <b>{{ via }}</b></p>{% endif %}
       <p class="eyebrow">
         {% set badge = hook_badge(item) %}{% if badge %}<span class="hook">📅 {{ badge }} · {{ item.saved_at[:4] }}</span>{% endif %}
         <span>{{ platform_label(item.platform) }}</span>
@@ -44,18 +44,18 @@
 
       <div class="why-here" id="rooms">
         {% if reasons %}
-          <p class="rr-label is-muted">Why it's in {{ 'this room' if reasons | length == 1 else 'these rooms' }}</p>
+          <p class="rr-label is-muted">Why it's in {{ 'this topic' if reasons | length == 1 else 'these topics' }}</p>
           <ul>
             {% for r in reasons %}<li><b>{{ look(r.theme)[2] }} {{ r.theme }}</b> — {{ r.reasons | join(' · ') }}{% if r.hunch %} <span class="hunch">a hunch</span>{% endif %}</li>{% endfor %}
           </ul>
         {% else %}
-          <p class="rr-muted">Not in a room yet: nothing in its caption or hashtags said clearly enough what it's about.</p>
+          <p class="rr-muted">No topic yet: nothing in its caption or hashtags said clearly enough what it's about.</p>
         {% endif %}
         <details class="change-rooms"{% if rooms_open %} open{% endif %}>
-          <summary>{{ icon('filter') }}{% if item.themes %}Change rooms{% else %}Put it in a room{% endif %}</summary>
+          <summary>{{ icon('filter') }}{% if item.themes %}Change topics{% else %}Give it a topic{% endif %}</summary>
           <form action="/item/{{ item.id }}/rooms" method="post">
             <fieldset>
-              <legend class="rr-label is-muted">Rooms</legend>
+              <legend class="rr-label is-muted">Topics</legend>
               <div class="room-choices">
                 {% for t in theme_names %}{% set lk = look(t) %}
                   <label class="choice tone-{{ lk[0] }}"><input type="checkbox" name="room" value="{{ t }}"{% if t in item.themes %} checked{% endif %}><span>{{ lk[2] }} {{ t }}</span></label>
@@ -65,8 +65,8 @@
             {% set who = item.creator_name or item.creator_handle %}
             {% if who %}<label class="whole-creator"><input type="checkbox" name="whole_creator" value="1"> Do the same for everything by {{ who }}</label>{% endif %}
             <div class="row">
-              <button class="rr-btn rr-btn--primary" type="submit">Save rooms</button>
-              {% if hand_filed %}<button class="rr-btn" type="submit" name="reset" value="1">Let the museum decide again</button>{% endif %}
+              <button class="rr-btn rr-btn--primary" type="submit">Save topics</button>
+              {% if hand_filed %}<button class="rr-btn" type="submit" name="reset" value="1">Let Faves decide again</button>{% endif %}
             </div>
           </form>
         </details>
@@ -89,7 +89,7 @@
         <a class="rr-btn rr-btn--primary open" href="{{ browsable_url(item) }}" target="_blank" rel="noopener noreferrer">
           {% if item.format == 'short' %}Watch the Short{% else %}Open on {{ platform_label(item.platform) }}{% endif %} {{ icon('external') }}</a>
         {% if surprise %}<a class="rr-btn rr-btn--primary surprise-again" href="/surprise">{{ icon('shuffle') }}Another surprise</a>{% endif %}
-        <a class="rr-btn wander-btn" href="{{ wander_href }}">{{ icon('compass') }}Keep wandering</a>
+        <a class="rr-btn wander-btn" href="{{ wander_href }}">{{ icon('compass') }}Keep going</a>
         <form class="file-form" action="/item/{{ item.id }}/file" method="post">
           <input type="text" name="name" list="all-collections" autocomplete="off"
                  placeholder="{% if collections %}Also file under…{% else %}File under a category…{% endif %}"
@@ -103,7 +103,7 @@
     </div>
 
     <form class="rr-placard note-form" action="/item/{{ item.id }}/note" method="post">
-      <label class="rr-label" for="note">📝 Your placard</label>
+      <label class="rr-label" for="note">📝 Your note</label>
       <textarea id="note" name="note" rows="2" placeholder="Why did you keep this?">{{ item.note or '' }}</textarea>
       <div class="row"><button class="rr-btn rr-btn--primary" type="submit">Save note</button>
         <span class="hint">Notes are searchable, and shown in italic wherever this save appears.</span></div>
@@ -123,7 +123,7 @@
 
 {% if room_items %}
   {%- set lk = look(room) %}
-  {{ shelf('More from ' ~ room, room_items, kicker=lk[2] ~ ' Same room', href='/search?theme=' ~ (room | urlencode), tone=lk[0]) }}
+  {{ shelf('More from ' ~ room, room_items, kicker=lk[2] ~ ' Same topic', href='/search?theme=' ~ (room | urlencode), tone=lk[0]) }}
 {% endif %}
 {% if related %}
   {{ shelf('More from this creator', related, kicker='💌 Same hands', tone='lilac' if not room_items or look(room)[0] != 'lilac' else 'mint') }}

@@ -252,13 +252,13 @@ class TestPlacardRun:
 
     def test_only_items_with_no_prose_are_queued_by_default(self, client, library):
         self.stock(library)
-        body = client.get("/placards").text
+        body = client.get("/notes").text
         assert "<strong>2</strong> left to label" in body
-        assert "1 placard written" in body
+        assert "1 note written" in body
 
     def test_widening_includes_everything_unlabelled(self, client, library):
         self.stock(library)
-        body = client.get("/placards?all=1").text
+        body = client.get("/notes?all=1").text
         assert "<strong>3</strong> left to label" in body
 
     def test_an_item_with_no_caption_says_so_rather_than_showing_blank(self, client, library):
@@ -268,25 +268,25 @@ class TestPlacardRun:
             "platform": "tiktok", "external_id": "7001",
             "title": None, "terms": [], "resolve_status": "ok",
         })
-        assert "the picture is all there is" in client.get("/placards").text
+        assert "the picture is all there is" in client.get("/notes").text
 
     def test_writing_a_placard_advances_to_the_next_item(self, client, library):
         self.stock(library)
-        first = client.get("/placards").text
+        first = client.get("/notes").text
         assert "7001" in first  # its thumbnail/link carry the id
 
         item_id = db.rows_to_dicts(db.recent(library, limit=10))[-1]["id"]
-        resp = client.post(f"/placards/{item_id}", data={"note": "made me laugh"},
+        resp = client.post(f"/notes/{item_id}", data={"note": "made me laugh"},
                            follow_redirects=False)
         assert resp.status_code == 303
-        assert resp.headers["location"] == f"/placards?after={item_id}"
+        assert resp.headers["location"] == f"/notes?after={item_id}"
         assert db.get_item(library, item_id)["note"] == "made me laugh"
 
     def test_a_written_placard_is_immediately_searchable(self, client, library):
         # The whole point: these items had no findable text before.
         self.stock(library)
         item_id = db.rows_to_dicts(db.recent(library, limit=10))[-1]["id"]
-        client.post(f"/placards/{item_id}", data={"note": "referendum explainer"},
+        client.post(f"/notes/{item_id}", data={"note": "referendum explainer"},
                     follow_redirects=False)
         assert len(db.search(library, "referendum")) == 1
 
@@ -294,33 +294,40 @@ class TestPlacardRun:
         self.stock(library)
         ids = [i["id"] for i in db.rows_to_dicts(db.recent(library, limit=10))]
         first = min(ids)
-        body = client.get(f"/placards?after={first}").text
-        assert f"/placards/{first}" not in body
+        body = client.get(f"/notes?after={first}").text
+        assert f"/notes/{first}" not in body
 
     def test_an_empty_note_skips_rather_than_storing_blank(self, client, library):
         self.stock(library)
         item_id = db.rows_to_dicts(db.recent(library, limit=10))[-1]["id"]
-        client.post(f"/placards/{item_id}", data={"note": "   "},
+        client.post(f"/notes/{item_id}", data={"note": "   "},
                     follow_redirects=False)
         assert not (db.get_item(library, item_id)["note"] or "").strip()
 
     def test_the_end_of_the_run_says_so(self, client, library):
         self.stock(library)
         highest = max(i["id"] for i in db.rows_to_dicts(db.recent(library, limit=10)))
-        assert "That's the last one." in client.get(f"/placards?after={highest}").text
+        assert "That's the last one." in client.get(f"/notes?after={highest}").text
 
     def test_an_empty_library_is_not_an_error(self, client):
-        assert "Nothing needs a placard." in client.get("/placards").text
+        assert "Nothing needs a note." in client.get("/notes").text
 
     def test_a_missing_item_is_a_404(self, client):
-        assert client.post("/placards/99999", data={"note": "x"}).status_code == 404
+        assert client.post("/notes/99999", data={"note": "x"}).status_code == 404
 
 
 class TestHooks:
+    def test_the_old_addresses_still_lead_somewhere(self, client):
+        for old, new in (("/rooms", "/topics"), ("/rooms/tidy", "/topics/sort"),
+                         ("/placards?all=1", "/notes?all=1")):
+            resp = client.get(old, follow_redirects=False)
+            assert (resp.status_code, resp.headers["location"]) == (301, new)
+        assert client.post("/placards/99999", data={"note": "x"}).status_code == 404
+
     def test_rooms_surprise_and_suggestions(self, client, tiktok_ok):
         client.post("/save", json={"url": "https://www.tiktok.com/@citydesk/video/7123"})
         client.post("/save", json={"url": "https://www.tiktok.com/@citydesk/video/7124"})
-        assert client.get("/rooms").status_code == 200
+        assert client.get("/topics").status_code == 200
         resp = client.get("/surprise", follow_redirects=False)
         assert resp.status_code == 303 and resp.headers["location"].startswith("/item/")
         data = client.get("/suggest.json", params={"q": "zoning"}).json()
@@ -375,7 +382,7 @@ class TestMoreHooks:
         loc = resp.headers["location"]
         assert loc.startswith("/item/") and f"trail={three[0]}" in loc and "via=" in loc
         page = client.get(loc).text
-        assert "Wandered here via" in page and "Keep wandering" in page
+        assert "Down the rabbit hole via" in page and "Keep going" in page
 
     def test_junk_in_the_trail_is_ignored(self, client, three):
         resp = client.get(f"/wander/{three[0]}?trail=abc,,7x,{three[1]}", follow_redirects=False)
@@ -412,7 +419,7 @@ class TestTidyingRooms:
 
     def test_the_item_page_says_why(self, client, library, saves):
         page = client.get(f"/item/{saves['Eddie on the radio']}").text
-        assert "Why it's in this room" in page
+        assert "Why it's in this topic" in page
         assert "#socialmedia" in page
         assert 'action="/item/%d/rooms"' % saves["Eddie on the radio"] in page
 
@@ -422,7 +429,7 @@ class TestTidyingRooms:
         assert resp.status_code == 303 and resp.headers["location"] == f"/item/{item_id}"
         assert self.themes(library, item_id) == ["Music"]
         page = client.get(f"/item/{item_id}").text
-        assert "you put it here" in page and "Let the museum decide again" in page
+        assert "you put it here" in page and "Let Faves decide again" in page
         client.post(f"/item/{item_id}/rooms", data={"reset": "1"})
         assert self.themes(library, item_id) == ["Marketing & media"]
 
@@ -431,21 +438,21 @@ class TestTidyingRooms:
         assert self.themes(library, saves["Eddie on the radio"])[0] == "Music"
 
     def test_the_tidy_page_teaches_hashtags(self, client, library, saves):
-        page = client.get("/rooms/tidy").text
+        page = client.get("/topics/sort").text
         assert "#pearljam" in page and "on 3 saves" in page
-        resp = client.post("/rooms/teach", data={"tag": "pearljam", "theme": "Music"},
+        resp = client.post("/topics/teach", data={"tag": "pearljam", "theme": "Music"},
                            follow_redirects=False)
-        assert resp.headers["location"] == "/rooms/tidy#hashtags"
+        assert resp.headers["location"] == "/topics/sort#hashtags"
         assert self.themes(library, saves["Backstage"]) == ["Music"]
-        assert "#pearljam" not in client.get("/rooms/tidy").text
+        assert "#pearljam" not in client.get("/topics/sort").text
 
     def test_settling_a_hunch(self, client, library, saves):
         item_id = saves["a bowl of soup"]
         assert self.themes(library, item_id) == ["Food & cooking"]
-        assert f'/item/{item_id}/rooms' in client.get("/rooms/tidy").text
+        assert f'/item/{item_id}/rooms' in client.get("/topics/sort").text
         client.post(f"/item/{item_id}/rooms", data={"room": ["Food & cooking"], "confirm": "1",
-                                                    "next": "/rooms/tidy#hunches"})
-        assert f'/item/{item_id}/rooms' not in client.get("/rooms/tidy").text
+                                                    "next": "/topics/sort#hunches"})
+        assert f'/item/{item_id}/rooms' not in client.get("/topics/sort").text
         assert self.themes(library, item_id) == ["Food & cooking"]
 
     def test_a_redirect_stays_in_the_museum(self, client, saves):
@@ -454,7 +461,7 @@ class TestTidyingRooms:
         assert resp.headers["location"] == f"/item/{saves['Backstage']}"
 
     def test_rooms_links_to_tidying(self, client, saves):
-        assert 'href="/rooms/tidy"' in client.get("/rooms").text
+        assert 'href="/topics/sort"' in client.get("/topics").text
 
 
 class TestCleanLabels:
@@ -496,7 +503,7 @@ class TestKeepingInSync:
         assert "Not watching a folder yet" in page
         assert "One-time setup" in page  # no Google client yet
         assert "Europe and the UK only" in page
-        assert 'href="/sync"' in mac.get("/rooms").text  # the footer
+        assert 'href="/sync"' in mac.get("/topics").text  # the footer
 
     def test_the_front_page_reminds_and_can_be_told_later(self, mac, library):
         self.old_tiktok_import(library)
