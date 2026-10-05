@@ -126,25 +126,54 @@
   <div class="rr-shelf-head rr-reveal"><div>
     <p class="rr-label">📱 Your phone</p>
     <h2 class="rr-h-m" id="phone-title">Save in one tap, as you scroll</h2>
-    <p>Two ways. Simplest: copy the link in the app, open the <a href="/keep">Keep</a> tab, tap Paste. Fastest: a one-tap <b>Keep</b> in your share sheet, set up below.</p>
+    <p>Two ways. Simplest: copy the link in the app, open the <a href="/keep">Keep</a> tab here, tap Paste. Fastest: a one-tap <b>Keep</b> in your share sheet, set up below.</p>
   </div></div>
   <div class="band-pad phone-body rr-reveal">
     {% if token %}
-      <dl class="phone-facts">
-        <div><dt>Address</dt><dd>{% if addresses %}{% for a in addresses %}<code>{{ a }}</code>{% endfor %}{% else %}<span class="rr-muted">start.command prints it when it starts</span>{% endif %}<br><span class="rr-muted small">From anywhere, use the Tailscale address start.command prints.</span></dd></div>
-        <div><dt>Password</dt><dd>{% if here %}<code>{{ token }}</code>{% else %}<span class="rr-muted">shown only on the Mac</span>{% endif %}</dd></div>
-      </dl>
+      {% set use = anywhere or at_home %}
+      <div class="phone-facts">
+        <p class="rr-label">What to type in the Shortcut</p>
+        <dl>
+        <div><dt>The address (URL)</dt>
+          <dd>{% if use %}<span class="copyable"><code>{{ use }}/save</code><button class="rr-btn rr-btn--quiet copy-btn" type="button" data-copy="{{ use }}/save" hidden>Copy</button></span>
+              <span class="rr-muted small">{% if anywhere %}Your Tailscale address: it works at home and away, wherever your phone has Tailscale switched on.{% else %}Tailscale isn't on on this Mac, so this is your home wi-fi address: it only works while your phone is on the same wi-fi. Switch Tailscale on and reload this page for one that works anywhere.{% endif %}</span>
+              {% if anywhere and at_home %}<span class="rr-muted small">Not this one: <code>{{ at_home }}</code> is the home-wi-fi-only address.</span>{% endif %}
+            {% else %}<span class="rr-muted">Couldn't tell this Mac's address. start.command prints it when it starts.</span>{% endif %}</dd></div>
+        {% if here %}
+        <div><dt>Header name</dt>
+          <dd><span class="copyable"><code>Authorization</code><button class="rr-btn rr-btn--quiet copy-btn" type="button" data-copy="Authorization" hidden>Copy</button></span></dd></div>
+        <div><dt>Header value (your password)</dt>
+          <dd><span class="copyable"><code>Bearer {{ token }}</code><button class="rr-btn rr-btn--quiet copy-btn" type="button" data-copy="Bearer {{ token }}" hidden>Copy</button></span>
+              <span class="rr-muted small">“Bearer”, one space, then the password.</span></dd></div>
+        {% else %}
+        <div><dt>The password</dt>
+          <dd><span class="rr-muted">It's shown only on the Mac, so it never travels to another screen.</span></dd></div>
+        {% endif %}
+        </dl>
+      </div>
     {% else %}
       <p>Your phone can't reach Faves yet. Switch on <code>FAVORITES_TOKEN</code> in <code>~/.favorites.env</code> and start it again; this section will show what to put in the Shortcut.</p>
     {% endif %}
     <ol class="shortcut">
-      <li>In <b>Shortcuts</b>, make a new shortcut and switch on <b>Show in Share Sheet</b> (URLs and Text).</li>
-      <li>Add <b>Get Contents of URL</b>: the address above + <code>/save</code>, method <b>POST</b>, header <code>Authorization</code> = <code>Bearer</code> + the password, JSON field <code>url</code> = <b>Shortcut Input</b>.</li>
-      <li>Add <b>Show Notification</b>: “Kept ✓”. Name it <b>Faves</b>.</li>
+      <li>In <b>Shortcuts</b>, tap <b>+</b>. Add the action <b>Get Contents of URL</b> and paste the address above as its URL.</li>
+      <li>Tap the arrow beside it: <b>Method</b> POST. <b>Headers</b>: add one, with the name and value above. <b>Request Body</b>: JSON, with one Text field, key <code>url</code>, value <b>Shortcut Input</b>.</li>
+      <li>Add <b>Show Notification</b> with the text “Kept ✓”.</li>
+      <li>Tap the <b>ⓘ</b> at the bottom: switch on <b>Show in Share Sheet</b>, then name the shortcut <b>Keep</b>.</li>
     </ol>
-    <p class="rr-muted small">Want a note as you save? Add <b>Ask for Input</b> before step 2 and a second field <code>note</code>. Full steps: <code>favorites/SHARE_SHEET.md</code>.</p>
+    <p class="rr-muted small">Then in TikTok, Instagram or YouTube: Share → <b>Keep</b>. Want a note as you save? Add <b>Ask for Input</b> before step 1 and a second field <code>note</code>. Full steps: <code>favorites/SHARE_SHEET.md</code>.</p>
   </div>
 </div></section>
+<script>
+  document.querySelectorAll('[data-copy]').forEach(function (b) {
+    if (!navigator.clipboard) return;
+    b.hidden = false;
+    b.addEventListener('click', function () {
+      navigator.clipboard.writeText(b.getAttribute('data-copy')).then(function () {
+        b.textContent = 'Copied ✓'; setTimeout(function () { b.textContent = 'Copy'; }, 1600);
+      });
+    });
+  });
+</script>
 
 <section class="rr-band tone-lilac" aria-labelledby="tt-title"><div class="inner">
   <div class="band-pad rr-reveal tt-note">

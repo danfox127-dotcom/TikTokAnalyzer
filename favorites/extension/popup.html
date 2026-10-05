@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Keep in Faves</title><link rel="stylesheet" href="faves.css">
+<style>
+  body { width: 340px; padding: 16px; }
+  .page { margin: 12px 0 0; padding: 12px; border-radius: 16px; background: var(--raised); box-shadow: 0 3px 0 var(--rule); }
+  .page b { display: block; font: 600 16px/21px var(--display); }
+  .page span { display: block; margin-top: 2px; font-size: 12.5px; color: var(--muted); }
+  #keep { width: 100%; margin-top: 14px; min-height: 52px; font: 700 20px/24px var(--display); }
+  .foot { display: flex; justify-content: space-between; margin-top: 12px; font-size: 13px; }
+</style></head>
+<body>
+  <h1><img src="icons/icon-48.png" alt="">Keep in Faves</h1>
+  <div class="page"><b id="title">This page</b><span id="url"></span></div>
+  <label for="note">Why keep this? <span style="text-transform:none;letter-spacing:0;font-weight:600">(optional)</span></label>
+  <textarea id="note" rows="2" placeholder="A note for future you"></textarea>
+  <button class="btn btn--primary" id="keep" type="button">Keep</button>
+  <p class="msg" id="msg" role="status"></p>
+  <div class="foot"><a href="#" id="open" hidden>Open in Faves →</a><span></span><a href="#" id="settings">Settings</a></div>
+  <script type="module" src="popup.js"></script>
+</body>
+</html>

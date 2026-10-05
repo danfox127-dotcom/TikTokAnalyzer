@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Faves settings</title><link rel="stylesheet" href="faves.css">
+<style>
+  body { padding: 32px 16px; }
+  main { max-width: 520px; margin: 0 auto; padding: 24px; border-radius: 24px; background: var(--raised); box-shadow: 0 4px 0 var(--rule); }
+  .row { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 20px; }
+  ol { margin: 18px 0 0; padding-left: 20px; color: var(--muted); font-size: 14px; }
+  li { margin: 4px 0; }
+</style></head>
+<body><main>
+  <h1><img src="icons/icon-48.png" alt="">Faves settings</h1>
+  <p class="hint">Both are on your Mac's <b>Keep it in sync</b> page in Faves, under “Your phone”.</p>
+  <form id="form">
+    <label for="address">Address</label>
+    <input id="address" placeholder="http://100.101.102.103:8000" autocomplete="off" spellcheck="false" required>
+    <p class="hint">The Tailscale one (starts with <code>100.</code>) works anywhere. On the Mac itself, <code>http://localhost:8000</code> works too.</p>
+    <label for="password">Password</label>
+    <input id="password" type="password" autocomplete="off" placeholder="The FAVORITES_TOKEN">
+    <p class="hint">Just the password: no “Bearer”. Leave it empty if Faves has none.</p>
+    <div class="row"><button class="btn btn--primary" type="submit">Save and test</button></div>
+  </form>
+  <p class="msg" id="msg" role="status"></p>
+  <ol>
+    <li>Click the Faves icon in the toolbar to keep the page you're on, with an optional note.</li>
+    <li>Right-click any link (a TikTok in a feed, say) → <b>Keep link in Faves</b>.</li>
+    <li>Or press <b>⌘⇧K</b> (Ctrl+Shift+K on Windows) to keep the page without a click.</li>
+  </ol>
+</main>
+<script type="module" src="options.js"></script>
+</body>
+</html>

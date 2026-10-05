@@ -865,6 +865,23 @@ def _wifi_address() -> Optional[str]:
         return None
 
 
+def _tailscale_address() -> Optional[str]:
+    """This machine's Tailscale address (100.64.0.0/10), if Tailscale is on.
+
+    The same no-packet trick as above, aimed at Tailscale's own resolver: the
+    route to it goes out through Tailscale, so the address picked is ours there.
+    Never runs the tailscale command, which can hang when it is not signed in.
+    """
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+            s.connect(("100.100.100.100", 53))
+            ip = s.getsockname()[0]
+    except OSError:
+        return None
+    first, second = (int(x) for x in ip.split(".")[:2])
+    return ip if first == 100 and 64 <= second <= 127 else None
+
+
 @app.get("/sync", response_class=HTMLResponse)
 def sync_page(request: Request, conn: sqlite3.Connection = Depends(get_db)):
     """Keep it in sync: exports, the watched folder, YouTube, your phone."""
@@ -881,13 +898,15 @@ def sync_page(request: Request, conn: sqlite3.Connection = Depends(get_db)):
     port = request.url.port or 8000
     token = os.environ.get("FAVORITES_TOKEN")
     wifi = _wifi_address() if token else None
+    tailscale = _tailscale_address() if token else None
     return templates.TemplateResponse(request, "sync.html", {
         "exports": exports, "recent": [dict(r) | {"detail": json.loads(r["detail"] or "{}")} for r in recent],
         "folders": [str(f) for f in watch.folders_from_env()], "status": watch.STATUS,
         "google": {"configured": google_sync.configured(), "connected": google_sync.connected(conn),
                    "last": google_sync.last_sync(conn)},
         "here": _on_this_mac(request), "token": token,
-        "addresses": [f"http://{wifi}:{port}"] if wifi else [],
+        "anywhere": f"http://{tailscale}:{port}" if tailscale else None,
+        "at_home": f"http://{wifi}:{port}" if wifi else None,
         "flash": request.query_params.get("done", ""),
         "q": "", "total": db.count(conn),
     })
@@ -981,9 +1000,14 @@ def manifest():
         "short_name": "Faves",
         "start_url": "/",
         "display": "standalone",
-        "background_color": "#0f1115",
-        "theme_color": "#0f1115",
-        "icons": [{"src": "/static/icon.svg", "sizes": "any", "type": "image/svg+xml"}],
+        "background_color": "#eee8fc",
+        "theme_color": "#eee8fc",
+        "icons": [
+            {"src": "/static/icon-192.png", "sizes": "192x192", "type": "image/png"},
+            {"src": "/static/icon-512.png", "sizes": "512x512", "type": "image/png"},
+            {"src": "/static/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable"},
+            {"src": "/static/icon.svg", "sizes": "any", "type": "image/svg+xml"},
+        ],
         "share_target": {
             "action": "/share-target",
             "method": "GET",
