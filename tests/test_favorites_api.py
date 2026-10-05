@@ -519,6 +519,25 @@ class TestKeepingInSync:
         page = client.get("/sync").text  # a phone on the wi-fi
         assert "sesame-123" not in page and "shown only on the Mac" in page
 
+    def test_the_shortcut_gets_the_tailscale_address(self, mac, monkeypatch):
+        import favorites.app as appmod
+        monkeypatch.setenv("FAVORITES_TOKEN", "sesame-123")
+        monkeypatch.setattr(appmod, "_wifi_address", lambda: "192.168.1.20")
+        monkeypatch.setattr(appmod, "_tailscale_address", lambda: "100.101.102.103")
+        page = mac.get("/sync").text
+        assert 'data-copy="http://100.101.102.103:8000/save"' in page
+        assert 'data-copy="Bearer sesame-123"' in page
+        assert "home-wi-fi-only address" in page and "http://192.168.1.20:8000" in page
+
+    def test_without_tailscale_it_says_the_address_is_home_only(self, mac, monkeypatch):
+        import favorites.app as appmod
+        monkeypatch.setenv("FAVORITES_TOKEN", "sesame-123")
+        monkeypatch.setattr(appmod, "_wifi_address", lambda: "192.168.1.20")
+        monkeypatch.setattr(appmod, "_tailscale_address", lambda: None)
+        page = mac.get("/sync").text
+        assert 'data-copy="http://192.168.1.20:8000/save"' in page
+        assert "Tailscale isn't on on this Mac" in page
+
     def test_watching_and_looking_now(self, mac, tmp_path, monkeypatch):
         import zipfile, os, time, json as j
         d = tmp_path / "Downloads"
@@ -611,3 +630,15 @@ class TestKeepingFromThePhone:
 
     def test_saving_without_it_is_still_refused(self, locked):
         assert locked.post("/save", json={"url": "https://www.tiktok.com/@a/video/1"}).status_code == 401
+
+
+def test_the_home_screen_icon(client):
+    m = client.get("/manifest.webmanifest").json()
+    assert m["name"] == "Faves" and m["theme_color"] == "#eee8fc"
+    sizes = {i["sizes"] for i in m["icons"]}
+    assert {"192x192", "512x512"} <= sizes and any(i.get("purpose") == "maskable" for i in m["icons"])
+    for i in m["icons"]:
+        assert client.get(i["src"]).status_code == 200
+    page = client.get("/topics").text
+    assert '<link rel="apple-touch-icon" href="/static/icon-180.png">' in page
+    assert client.get("/static/icon-180.png").headers["content-type"] == "image/png"

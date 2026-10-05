@@ -18,7 +18,7 @@ machine the library runs on.
 ## First: can your phone reach the app?
 
 If you are only ever saving from the same laptop the app runs on,
-`http://localhost:8000` is fine — skip to the bookmarklet at the bottom.
+`http://localhost:8000` is fine — skip to the Chrome extension near the bottom.
 
 **On a Mac, the easy way:** double-click `favorites/start.command`. Switch on
 `FAVORITES_TOKEN` in `~/.favorites.env` (the file it creates on first run,
@@ -43,8 +43,16 @@ export FAVORITES_TOKEN="pick-a-long-random-string"
 uvicorn favorites.app:app --host 0.0.0.0 --port 8000
 ```
 
-Below, replace `YOUR-ADDRESS` with that base address and `YOUR-TOKEN` with the
-token (or leave the Authorization header out entirely if you did not set one).
+**Which address? The Tailscale one, everywhere.** It starts with `100.` (for
+example `100.101.102.103:8000`) and works on your phone and laptop at home
+and away, as long as Tailscale is on on both ends. The `192.168…` address
+only works on your home wi-fi. Both start with plain `http://`, not
+`https://`. Faves' **Keep it in sync** page (`/sync`, opened on the Mac)
+shows the right one, ready to copy.
+
+Below, replace `YOUR-ADDRESS` with that address including the port (e.g.
+`100.101.102.103:8000`) and `YOUR-TOKEN` with the password (or leave the
+Authorization header out entirely if you did not set one).
 
 ---
 
@@ -62,7 +70,7 @@ opened on the Mac) shows the exact address and password to use below.
 
 1. Open **Shortcuts** → **+** to create a new shortcut.
 2. Add the action **Get Contents of URL**.
-3. Set the URL to `https://YOUR-ADDRESS/save`.
+3. Set the URL to `http://YOUR-ADDRESS/save`.
 4. Tap **Show More** and set:
    - **Method**: `POST`
    - **Headers**: add `Authorization` = `Bearer YOUR-TOKEN` *(skip if no token)*
@@ -101,7 +109,7 @@ one-tap save, and **Keep in…** asks where.
 
 1. Duplicate **Keep** and rename the copy **Keep in…**.
 2. At the top, add **Get Contents of URL** with the URL
-   `https://YOUR-ADDRESS/collections.json` (method `GET`, same
+   `http://YOUR-ADDRESS/collections.json` (method `GET`, same
    `Authorization` header). It returns your categories, largest first.
 3. Add **Choose from List** (prompt: *File under*).
 4. In the existing save step, add a JSON field `collection` set to
@@ -127,13 +135,14 @@ no note beats no save.
 
 ## Android — install the page, and it becomes a share target
 
-1. Open `https://YOUR-ADDRESS` in Chrome.
+1. Open your `https://….ts.net` address (see the note below) in Chrome.
 2. Menu → **Add to Home screen** (or **Install app**).
 3. Open it once from the home screen icon.
 
-It now appears in the system share sheet. Android requires HTTPS for this, so
-a Tailscale or similar address is needed — a plain `http://192.168…` will not
-register.
+It now appears in the system share sheet. Android requires HTTPS for this,
+and the plain `http://100.…` address is not HTTPS. Tailscale can give the Mac
+an HTTPS name: run `tailscale serve --bg 8000` on the Mac and use the
+`https://….ts.net` address it prints.
 
 If you set a token, Android's share sheet cannot attach a header, so the app
 must be started without `FAVORITES_TOKEN` or reached over a network you trust.
@@ -144,22 +153,35 @@ there.
 
 ---
 
-## Desktop — a bookmarklet
+## Desktop — the Chrome extension
+
+For Chrome, Edge, Arc and Brave. Install it once from `favorites/extension`;
+its [README](extension/README.md) has the two-minute steps. Then:
+
+- click the Faves icon in the toolbar to keep the page you're on, with an
+  optional note;
+- right-click any link → **Keep link in Faves**;
+- or press **⌘⇧K** (Ctrl+Shift+K) to keep the page without a click.
+
+It asks for the same address and password as the Shortcut.
+
+### Or a bookmarklet (any browser, no install)
 
 Make a new bookmark, put it on the bookmarks bar, and set its URL to:
 
 ```javascript
-javascript:(function(){fetch('https://YOUR-ADDRESS/save',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer YOUR-TOKEN'},body:JSON.stringify({url:location.href,note:prompt('Why keep this?')||''})}).then(r=>r.ok?alert('Kept.'):alert('Failed: '+r.status)).catch(e=>alert('Failed: '+e))})()
+javascript:(function(){fetch('http://YOUR-ADDRESS/save',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer YOUR-TOKEN'},body:JSON.stringify({url:location.href,note:prompt('Why keep this?')||''})}).then(r=>r.ok?alert('Kept.'):alert('Failed: '+r.status)).catch(e=>alert('Failed: '+e))})()
 ```
 
-One click on any page.
+Browsers block it on `https://` pages that talk to a plain `http://` address,
+which is most pages, and that is why the extension exists.
 
 ---
 
 ## Checking it works
 
 ```bash
-curl -X POST https://YOUR-ADDRESS/save \
+curl -X POST http://YOUR-ADDRESS/save \
   -H 'Content-Type: application/json' \
   -H 'Authorization: Bearer YOUR-TOKEN' \
   -d '{"url":"https://www.youtube.com/watch?v=dQw4w9WgXcQ","note":"testing"}'

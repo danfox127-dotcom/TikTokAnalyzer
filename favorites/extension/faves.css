@@ -1,0 +1,39 @@
+/* The Faves look, for the extension's two small pages. */
+@import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@600;700&family=Nunito:wght@600;800&display=swap');
+:root {
+  --wall: #eee8fc; --raised: #fbf9ff; --ink: #2b1b4d; --muted: #6b5c8c; --rule: #d9cff3;
+  --accent: #c8332b; --on-accent: #fff; --good: #17704f; --bad: #a8286f;
+  --display: "Fredoka", "Baloo 2", "Arial Rounded MT Bold", system-ui, sans-serif;
+  --sans: "Nunito", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --wall: #1a1433; --raised: #251d45; --ink: #f4efff; --muted: #b9addb; --rule: #3a2f63;
+          --accent: #ff8b7c; --on-accent: #2b1b4d; --good: #6ddca9; --bad: #ff8fc8; }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--wall); color: var(--ink); font: 600 15px/21px var(--sans); overflow-wrap: anywhere; }
+h1 { display: flex; align-items: center; gap: 10px; margin: 0; font: 700 22px/26px var(--display); }
+h1 img { width: 26px; height: 26px; }
+label { display: block; margin: 14px 0 6px; font: 800 11.5px/16px var(--sans); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+input, textarea {
+  width: 100%; padding: 10px 12px; border-radius: 14px; border: 2px solid var(--ink);
+  background: var(--raised); color: var(--ink); font: 600 15px/20px var(--sans);
+}
+textarea { resize: vertical; min-height: 60px; }
+input:focus, textarea:focus { outline: 3px solid var(--accent); outline-offset: 1px; }
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 0 20px;
+  border-radius: 999px; border: 2px solid var(--ink); background: var(--raised); color: var(--ink);
+  font: 800 15px/20px var(--sans); cursor: pointer; box-shadow: 0 3px 0 var(--ink); transition: transform .12s, box-shadow .12s;
+}
+.btn:hover { transform: translateY(-1px); box-shadow: 0 4px 0 var(--ink); }
+.btn:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--ink); }
+.btn--primary { background: var(--accent); color: var(--on-accent); }
+.btn[disabled] { opacity: .6; cursor: progress; }
+.btn.done { opacity: 1; cursor: default; box-shadow: 0 1px 0 var(--ink); transform: translateY(2px); }
+.hint { margin: 6px 0 0; font-size: 13px; line-height: 18px; color: var(--muted); }
+.msg { margin: 12px 0 0; padding: 10px 12px; border-radius: 14px; background: var(--raised); }
+.msg.good { color: var(--good); } .msg.bad { color: var(--bad); }
+.msg:empty { display: none; }
+code { padding: 1px 6px; border-radius: 6px; background: var(--raised); font-size: 13px; }
+a { color: var(--accent); font-weight: 800; }
