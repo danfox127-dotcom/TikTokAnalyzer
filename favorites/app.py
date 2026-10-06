@@ -291,6 +291,9 @@ async def save(
         data = {k: v for k, v in form.items()}
     if not data:
         data = dict(request.query_params)
+    # Shortcuts keeps whatever capitals you typed: "URL", "Note" and "url",
+    # "note" mean the same thing here.
+    data = {str(k).strip().lower(): v for k, v in data.items()}
 
     shared = ""
     for key in ("url", "text", "link", "title", "shared"):
@@ -299,7 +302,9 @@ async def save(
             shared = value
             break
     if not shared:
-        raise HTTPException(status_code=400, detail="no URL in request")
+        raise HTTPException(status_code=400, detail=(
+            "Nothing to keep: no link came with this. Share a link to the shortcut "
+            "(pressing ▶︎ in the Shortcuts editor sends nothing)."))
 
     result = await capture(shared, data.get("note"), conn, data.get("collection"))
     return JSONResponse(result, status_code=201 if result["created"] else 200)
