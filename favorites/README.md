@@ -181,6 +181,7 @@ and then behaves like this:
   (`?day=09-27`, or `&week=1` for the week around it), a badge on any card
   saved on this date, and a thread on every item's page.
 - **The catalogue.** Topics, creators and platforms, one tap each into search.
+- **A creator, everywhere.** A creator's page (`/search?creator=@handle`) gathers their saves from every platform, matching handles in any capitals, and offers "Find them on TikTok · Instagram · YouTube" links. The links are built from a pattern (an idea borrowed from Sherlock's profile table) and never looked up.
 - **A digest of the last month.** Not just a count — a comparison. *"Nine saves
   this past month, up from four. Spread across TikTok, YouTube and Instagram.
   Recurring threads: housing, localgov. One creator is new to the library."*
