@@ -365,4 +365,12 @@ def load_cached() -> dict[str, Site]:
             "runs; check the internet connection and start it again."
         )
     # Sherlock first, so its names and addresses lead when both lists know a site.
-    return merge(*reversed(pairs))
+    sites = merge(*reversed(pairs))
+    for key, name in DISPLAY_NAMES.items():
+        if key in sites:
+            sites[key].name = name
+    return sites
+
+
+# Names the lists have fallen behind on.
+DISPLAY_NAMES = {"x.com": "X (Twitter)", "threads.com": "Threads"}

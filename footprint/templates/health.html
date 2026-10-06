@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}Footprint — site health{% endblock %}
+{% block body %}
+<section class="hero">
+  <p class="kicker">Site health</p>
+  <h1>Which sites tell the <span class="accent">truth</span> today?</h1>
+  <p class="lede">Once a day, the first time you use Footprint, every site is tested in the background:
+    an account known to exist should be found, and a made-up name should not. Sites that fail are set
+    aside — skipped in searches — until they pass again. Each site's time limit comes from how fast it
+    usually answers.</p>
+  <form method="post" action="/health/run" class="form-actions">
+    <button class="btn" type="submit" {% if status.running %}disabled{% endif %}>
+      {% if status.running %}Checking… {{ status.progress.done }}/{{ status.progress.total }}{% else %}Re-check now{% endif %}
+    </button>
+    {% if status.last_run %}<span class="sub" style="color:var(--dim)">Last checked {{ status.last_run.replace('T', ' ')[:16] }} UTC</span>{% endif %}
+  </form>
+  {% if status.progress.note %}<div class="note">{{ status.progress.note }}</div>{% endif %}
+</section>
+
+<h2>{{ rows|length }} sites{% if state %} · {{ state.replace('_', ' ') }}{% endif %}</h2>
+<div class="state-filter">
+  <a href="/health"{% if not state %} class="on"{% endif %}>All</a>
+  {% for s, n in counts|dictsort %}
+    <a href="/health?state={{ s }}"{% if state == s %} class="on"{% endif %}>{{ s.replace('_', ' ') }} · {{ n }}</a>
+  {% endfor %}
+</div>
+<div class="table-wrap"><table class="rows">
+  <thead><tr><th>Site</th><th>State</th><th>Recipe</th><th>Usual answer</th><th>Time limit</th><th>Checked</th></tr></thead>
+  <tbody>
+  {% for r in rows %}
+    <tr>
+      <td>{{ r.name }}{% if r.big %} <span class="badge confirmed">big</span>{% endif %}
+        <div style="color:var(--faint);font-size:11px">{{ r.key }}</div></td>
+      <td><span class="st {{ r.state }}">{{ r.state.replace('_', ' ') }}</span>
+        <div style="color:var(--dim);font-size:11px">{{ r.detail }}</div></td>
+      <td>{{ r.recipe }}{% if r.two_sided %} · two signs{% elif r.recipe != '—' %} · one sign{% endif %}</td>
+      <td>{% if r.typical_ms %}{{ r.typical_ms }} ms{% else %}—{% endif %}</td>
+      <td>{{ '%.1f' % r.timeout }} s{% if r.slow %} · slow lane{% endif %}</td>
+      <td>{{ (r.checked or '—').replace('T', ' ')[:16] }}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table></div>
+{% if status.running %}<script>setTimeout(function(){location.reload()}, 4000)</script>{% endif %}
+{% endblock %}

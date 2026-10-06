@@ -40,6 +40,8 @@ TIMEOUT = 12.0
 CONCURRENCY = 8
 PER_HOST = 2
 EVERY = timedelta(hours=24)
+# After a run spoiled by a network problem, try again sooner than tomorrow.
+RETRY = timedelta(hours=1)
 # More than this share failing at once means our connection, not the sites.
 NETWORK_TROUBLE = 0.6
 
@@ -110,7 +112,9 @@ async def run(sites: dict[str, Site], conn: sqlite3.Connection, client: httpx.As
               timeout: float = TIMEOUT) -> Progress:
     """Test every recipe of every site, and save the verdicts."""
     progress = progress or Progress()
-    jobs = [(site, probe) for site in sites.values() for probe in site.probes]
+    # Adult sites are only ever contacted when a search asks for them, never in
+    # the background: on a work laptop that traffic would be hard to explain.
+    jobs = [(site, probe) for site in sites.values() if not site.nsfw for probe in site.probes]
     progress.running, progress.done, progress.total = True, 0, len(jobs)
     progress.started_at = store.now_iso()
     gate = asyncio.Semaphore(concurrency)
@@ -130,14 +134,19 @@ async def run(sites: dict[str, Site], conn: sqlite3.Connection, client: httpx.As
     try:
         rows = await asyncio.gather(*(one(s, p) for s, p in jobs))
         failing = sum(1 for r in rows if r[2] in ("too_slow", "unreachable"))
+        now = datetime.now(timezone.utc).replace(microsecond=0)
         if len(rows) >= 20 and failing / len(rows) > NETWORK_TROUBLE:
             progress.note = (f"{failing} of {len(rows)} checks got no answer, which looks like a "
-                             f"network problem rather than broken sites. Kept the previous results.")
+                             f"network problem rather than broken sites. Kept the previous results "
+                             f"and will try again in an hour.")
+            next_run = now + RETRY
         else:
             store.save_health(conn, rows)
             progress.note = None
+            next_run = now + EVERY
         progress.counts = summary(sites, store.health(conn))
-        store.set_meta(conn, "health_last_run", store.now_iso())
+        store.set_meta(conn, "health_last_run", now.isoformat())
+        store.set_meta(conn, "health_next_run", next_run.isoformat())
         store.set_meta(conn, "health_summary", json.dumps(progress.to_dict()))
     finally:
         progress.running = False
@@ -159,18 +168,20 @@ def site_state(site: Site, rows: Optional[dict]) -> tuple[str, str]:
 def summary(sites: dict[str, Site], health: dict) -> dict[str, int]:
     counts: dict[str, int] = {}
     for site in sites.values():
+        if site.nsfw:
+            continue
         state, _ = site_state(site, health.get(site.key))
         counts[state] = counts.get(state, 0) + 1
     return counts
 
 
 def due(conn: sqlite3.Connection, now: Optional[datetime] = None) -> bool:
-    last = store.get_meta(conn, "health_last_run")
-    if not last:
+    next_run = store.get_meta(conn, "health_next_run")
+    if not next_run:
         return True
     now = now or datetime.now(timezone.utc)
     try:
-        return now - datetime.fromisoformat(last) >= EVERY
+        return now >= datetime.fromisoformat(next_run)
     except ValueError:
         return True
 

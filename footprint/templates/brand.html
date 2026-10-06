@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block title %}Footprint — brand consistency report{% endblock %}
+{% block body %}
+<section class="hero">
+  <p class="kicker">Brand consistency report</p>
+  <h1>Is it <span class="accent">one brand</span> everywhere?</h1>
+  <p class="lede">Your website is the source of truth: profiles it links to (or that link back to it) are
+    yours. Every other account with your handle is scored against them. You get what's yours, what's
+    taken, what's free, what doesn't match — and a <code>sameAs</code> block for your site's structured
+    data, which search engines and AI assistants use to tie your accounts to you.</p>
+  <form id="brand-form" autocomplete="off">
+    <div class="form-grid">
+      <div class="field"><label for="b-name">Brand name</label>
+        <input id="b-name" name="name" placeholder="Harbor Coffee" maxlength="120"></div>
+      <div class="field"><label for="b-site">Official website</label>
+        <input id="b-site" name="site" placeholder="harbor.coffee" required maxlength="300"></div>
+      <div class="field"><label for="b-handles">Handles</label>
+        <input id="b-handles" name="handles" placeholder="@harborcoffee, @harbor_coffee" required maxlength="300">
+        <small>Up to 5, separated by commas</small></div>
+    </div>
+    <div class="form-actions">
+      <label class="opt"><input type="radio" name="scope" value="big" checked> Big platforms</label>
+      <label class="opt"><input type="radio" name="scope" value="all"> Everywhere ({{ status.sites }} sites)</label>
+      <button class="btn" type="submit" id="b-go">Build report</button>
+    </div>
+  </form>
+</section>
+
+<section id="b-run" hidden aria-live="polite">
+  <div class="meter">
+    <div class="meter-bar"><span id="b-fill"></span></div>
+    <div class="meter-stats">
+      <span id="b-phase">Reading the website…</span>
+      <span><b id="b-answered">0</b> answered</span>
+      <span class="found"><b id="b-found">0</b> found</span>
+    </div>
+  </div>
+  <div id="b-website" class="panel" hidden>
+    <p class="title" id="b-site-title"></p>
+    <p class="sub" id="b-site-sub"></p>
+    <div class="chips" id="b-site-links"></div>
+  </div>
+  <div id="b-report" hidden>
+    <h2>At a glance</h2>
+    <div class="counts" id="b-counts"></div>
+    <h2>What to fix</h2>
+    <ul class="findings" id="b-findings"></ul>
+    <h2>Platform by platform</h2>
+    <div class="table-wrap"><table class="rows">
+      <thead><tr><th>Platform</th><th>Account</th><th>Verdict</th><th>Why</th></tr></thead>
+      <tbody id="b-rows"></tbody>
+    </table></div>
+    <h2>When your accounts post</h2>
+    <div class="panel">
+      <p class="sub" id="b-tz-summary"></p>
+      <div id="b-tz-chart" hidden>
+        <div class="clock" id="b-tz-bars"></div>
+        <div class="clock-labels" id="b-tz-labels"></div>
+      </div>
+    </div>
+    <h2>sameAs for your website</h2>
+    <div class="panel">
+      <p class="sub">Paste this into your home page's <code>&lt;head&gt;</code>. Untick anything that isn't yours.</p>
+      <div class="picks" id="b-picks"></div>
+      <div class="code"><pre id="b-jsonld"></pre><button class="btn small" type="button" id="b-copy">Copy</button></div>
+    </div>
+    <div class="form-actions">
+      <a class="btn ghost" id="b-download" href="#">Download report (HTML)</a>
+      <a class="btn ghost" id="b-json" href="#">Download data (JSON)</a>
+    </div>
+  </div>
+</section>
+{% endblock %}

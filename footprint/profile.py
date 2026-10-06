@@ -46,12 +46,15 @@ MASTODON = {"mastodon.social", "mastodon.online", "mstdn.social", "mas.to", "fos
 
 LOGIN_WALL = re.compile(r"/(accounts/)?(login|signin|sign_in|auth)\b", re.I)
 
+# Links in a bio: full addresses; bare ones with a path (brand.coffee/shop);
+# and bare domains on common endings (marisol.kitchen would be missed, but
+# "e.g." and "i.e." aren't taken for links).
 URL_RE = re.compile(
     r"(?:https?://[^\s<>\"'()]+)"
-    r"|(?:\b(?:www\.)?[a-z0-9-]+(?:\.[a-z0-9-]+)*\."
+    r"|(?:(?<![@\w.-])(?:www\.)?[a-z0-9-]+(?:\.[a-z0-9-]+)*\.[a-z]{2,24}/[^\s<>\"'()]*)"
+    r"|(?:(?<![@\w.-])(?:www\.)?[a-z0-9-]+(?:\.[a-z0-9-]+)*\."
     r"(?:com|net|org|io|co|ee|me|app|dev|ly|link|bio|page|xyz|uk|us|ca|de|fr|au|tv|gg|fm|so|ai|"
-    r"studio|shop|store|blog|social)"
-    r"/[^\s<>\"'()]*)",
+    r"studio|shop|store|blog|social)\b(?![.@\w]))",
     re.I,
 )
 

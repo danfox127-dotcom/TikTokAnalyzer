@@ -216,8 +216,16 @@ async def read_website(url: str, sites: dict[str, Site], client: httpx.AsyncClie
 
 # ------------------------------------------------------------------- report --
 
-HOW_WORDS = {"sameAs": "listed in your website's sameAs", "rel=me": "linked from your website (rel=me)",
-             "link": "linked from your website"}
+HOW_WORDS = {"sameAs": "Listed in your website's sameAs", "rel=me": "Linked from your website (rel=me)",
+             "link": "Linked from your website"}
+
+# What a row says when there is no account to show, in plain words. The exact
+# evidence stays alongside as ``detail``.
+PLAIN = {
+    ("free", "confirmed"): "No account with this handle (both signs agree)",
+    ("free", "likely"): "No account with this handle (this site has only one sign to check)",
+    ("not_allowed", ""): "This platform doesn't allow handles like this one",
+}
 
 ROW_WORDS = {
     "confirmed": "Confirmed ours", "probably": "Probably ours", "possibly": "Possibly ours — check",
@@ -235,8 +243,10 @@ def _website_profile(website: Website, brand_name: str) -> Profile:
 
 
 def _links_back(p: Profile, domain: str) -> bool:
-    return any(match.link_host(l) == domain or match.link_host(l).endswith("." + domain)
-               for l in p.links)
+    """Does the profile link to the website -- or at least name it in its bio?"""
+    if any(match.link_host(l) == domain or match.link_host(l).endswith("." + domain) for l in p.links):
+        return True
+    return bool(domain and p.bio and re.search(r"(?<![\w.-])" + re.escape(domain) + r"\b", p.bio, re.I))
 
 
 def _days_since(iso_time: Optional[str], now: datetime) -> Optional[int]:
@@ -276,7 +286,7 @@ def build(brand_name: str, handles: list[str], website: Website, results: list[d
             evidence: list[str] = []
             if linked:
                 status = "confirmed"
-                evidence.append(HOW_WORDS[linked["how"]].capitalize())
+                evidence.append(HOW_WORDS[linked["how"]])
             elif p is not None and _links_back(p, website.domain):
                 status = "confirmed"
                 evidence.append(f"Links back to {website.domain}")
@@ -309,11 +319,11 @@ def build(brand_name: str, handles: list[str], website: Website, results: list[d
                 continue
             listed = True
             if r["status"] == "not_found":
-                status, evidence = "dead_link", [HOW_WORDS[w["how"]].capitalize()]
+                status, evidence = "dead_link", [HOW_WORDS[w["how"]]]
             else:
                 # The website says it's ours; the platform just wouldn't say.
                 status = "confirmed"
-                evidence = [HOW_WORDS[w["how"]].capitalize(),
+                evidence = [HOW_WORDS[w["how"]],
                             f"Couldn't check the platform itself: {r.get('reason', '')}"]
             rows.append(dict(site=site, name=r["name"], username=r["username"], url=w["url"],
                              status=status, label=ROW_WORDS[status], confidence=r.get("confidence", ""),
@@ -323,10 +333,11 @@ def build(brand_name: str, handles: list[str], website: Website, results: list[d
             continue
         main = next((r for r in site_results if r["username"] == primary), site_results[0])
         status = {"not_found": "free", "cant_exist": "not_allowed"}.get(main["status"], "unknown")
+        confidence = main.get("confidence", "")
         rows.append(dict(site=site, name=main["name"], username=main["username"], url=main["url"],
-                         status=status, label=ROW_WORDS[status], confidence=main.get("confidence", ""),
-                         evidence=[], reason=main.get("reason", ""), big=main.get("big", False),
-                         profile=None))
+                         status=status, label=ROW_WORDS[status], confidence=confidence, evidence=[],
+                         reason=PLAIN.get((status, confidence), main.get("reason", "")),
+                         detail=main.get("reason", ""), big=main.get("big", False), profile=None))
 
     findings = consistency(website, rows, ours, now)
     posting = time_hint([t for p in ours for t in p.post_times], [p.name for p in ours if p.post_times])
@@ -356,7 +367,9 @@ def consistency(website: Website, rows: list[dict], ours: list[Profile], now: da
     names: dict[str, list[str]] = {}
     for p in ours:
         if p.display_name:
-            names.setdefault(match.fold(p.display_name), []).append(p.name)
+            sites_named = names.setdefault(match.fold(p.display_name), [])
+            if p.name not in sites_named:
+                sites_named.append(p.name)
     shown = {match.fold(p.display_name): p.display_name for p in ours if p.display_name}
     if len(names) == 1:
         add("good", f"Same name everywhere: “{next(iter(shown.values()))}”")
@@ -395,10 +408,12 @@ def consistency(website: Website, rows: list[dict], ours: list[Profile], now: da
     elif len(places) == 1:
         add("good", f"One location: {next(iter(places.values()))[0].split(' (')[0]}")
 
-    handles = {}
+    handles: dict[str, list[str]] = {}
     for r in rows:
         if r["status"] in ("confirmed", "probably"):
-            handles.setdefault(r["username"].casefold(), []).append(r["name"])
+            on = handles.setdefault(r["username"].casefold(), [])
+            if r["name"] not in on:
+                on.append(r["name"])
     if len(handles) > 1:
         add("info", "Different handles on different platforms",
             "; ".join(f"@{h} on {', '.join(v)}" for h, v in handles.items()))

@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ r.brand.name or r.brand.domain }} — brand consistency report</title>
+{#- Self-contained on purpose: no fonts, scripts or pictures from anywhere else,
+    so the file opens the same way in an email attachment years from now. -#}
+<style>
+  :root { --ink:#16181b; --dim:#5b636c; --line:#e3ded3; --bg:#fbf9f4; --card:#fff;
+          --green:#18774a; --amber:#9a5b00; --blue:#0b6a96; --faint:#9aa1a8; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink);
+         font:15px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+  .page { max-width: 980px; margin: 0 auto; padding: 40px 16px 60px; }
+  .kicker { text-transform: uppercase; letter-spacing:.16em; font-size:11px; color:var(--blue); margin:0; }
+  h1 { font-size: 34px; line-height:1.1; margin: 8px 0 6px; }
+  .meta { color:var(--dim); font-size:13px; margin:0 0 26px; }
+  h2 { font-size: 13px; text-transform: uppercase; letter-spacing:.14em; color:var(--dim);
+       border-bottom:1px solid var(--line); padding-bottom:8px; margin: 34px 0 14px; }
+  .counts { display:flex; flex-wrap:wrap; gap:8px; }
+  .count { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:10px 14px; min-width:120px; }
+  .count b { display:block; font-size:24px; }
+  .count span { font-size:11px; text-transform:uppercase; letter-spacing:.08em; color:var(--dim); }
+  .findings { list-style:none; padding:0; margin:0; display:grid; gap:8px; }
+  .findings li { background:var(--card); border:1px solid var(--line); border-left:4px solid var(--blue); border-radius:8px; padding:10px 12px; }
+  .findings li.good { border-left-color:var(--green); }
+  .findings li.warn { border-left-color:var(--amber); }
+  .findings .d { color:var(--dim); font-size:13px; }
+  table { width:100%; border-collapse:collapse; background:var(--card); border:1px solid var(--line); border-radius:10px; overflow:hidden; font-size:13px; }
+  th, td { text-align:left; padding:10px 12px; border-bottom:1px solid var(--line); vertical-align:top; }
+  th { font-size:11px; text-transform:uppercase; letter-spacing:.08em; color:var(--dim); font-weight:600; }
+  .acct { display:flex; gap:10px; align-items:flex-start; }
+  .acct img { width:34px; height:34px; border-radius:50%; object-fit:cover; border:1px solid var(--line); }
+  .pill { display:inline-block; font-size:11px; padding:2px 8px; border-radius:999px; border:1px solid currentColor; white-space:nowrap; }
+  .confirmed, .probably { color:var(--green); }
+  .possibly, .taken, .dead_link { color:var(--amber); }
+  .free { color:var(--blue); }
+  .unknown, .not_allowed { color:var(--faint); }
+  ul.ev { margin:4px 0 0; padding-left:16px; color:var(--dim); font-size:12px; }
+  .small { color:var(--dim); font-size:12px; }
+  .clock { display:grid; grid-template-columns:repeat(24,1fr); gap:3px; align-items:end; height:80px; margin-top:10px; }
+  .clock span { background:var(--blue); opacity:.75; border-radius:2px 2px 0 0; min-height:2px; }
+  .clock span.quiet { background:var(--amber); opacity:.5; }
+  .labels { display:grid; grid-template-columns:repeat(24,1fr); font-size:9px; color:var(--faint); text-align:center; }
+  pre { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:14px; overflow-x:auto; font-size:12px; }
+  footer { margin-top:40px; color:var(--faint); font-size:11px; }
+  @media print { body { background:#fff; } .page { padding:0; } h2 { break-after: avoid; } tr { break-inside: avoid; } }
+  @media (max-width: 640px) { table, thead, tbody, tr, td, th { display:block; } thead { display:none; }
+    td { border-bottom:0; padding:4px 12px; } tr { border-bottom:1px solid var(--line); padding:8px 0; } }
+</style>
+</head>
+<body>
+<div class="page">
+  <p class="kicker">Brand consistency report</p>
+  <h1>{{ r.brand.name or r.brand.domain }}</h1>
+  <p class="meta">Website {{ r.brand.domain }} · handles {% for h in r.brand.handles %}@{{ h }}{% if not loop.last %}, {% endif %}{% endfor %}
+    · {{ 'big platforms' if r.scope == 'big' else 'every site' }} · {{ (r.created_at or '').replace('T', ' ')[:16] }} UTC</p>
+
+  <h2>At a glance</h2>
+  <div class="counts">
+    {% for key, label in [('confirmed','Confirmed ours'),('probably','Probably ours'),('possibly','Possibly ours'),
+                          ('taken','Taken by others'),('free','Free to claim'),('dead_link','Dead links')] %}
+      {% if r.counts[key] %}<div class="count"><b class="{{ key }}">{{ r.counts[key] }}</b><span>{{ label }}</span></div>{% endif %}
+    {% endfor %}
+  </div>
+
+  <h2>What to fix</h2>
+  <ul class="findings">
+    {% for f in r.findings %}
+      <li class="{{ f.level }}"><div><strong>{{ f.title }}</strong></div>{% if f.detail %}<div class="d">{{ f.detail }}</div>{% endif %}</li>
+    {% else %}
+      <li class="good"><strong>Nothing to fix that this report can see.</strong></li>
+    {% endfor %}
+  </ul>
+
+  <h2>Platform by platform</h2>
+  <table>
+    <thead><tr><th>Platform</th><th>Account</th><th>Verdict</th><th>Why</th></tr></thead>
+    <tbody>
+    {% for row in r.rows %}
+      <tr>
+        <td>{{ row.name }}</td>
+        <td><div class="acct">
+          {% if row.profile and row.profile.photo_thumb %}<img src="{{ row.profile.photo_thumb }}" alt="">{% endif %}
+          <div><a href="{{ row.url }}">@{{ row.username }}</a>
+            {% if row.profile and row.profile.display_name %}<div class="small">{{ row.profile.display_name }}</div>{% endif %}
+            {% if row.profile and row.profile.location %}<div class="small">📍 {{ row.profile.location }}</div>{% endif %}
+          </div></div></td>
+        <td><span class="pill {{ row.status }}">{{ row.label }}</span></td>
+        <td>{% if row.evidence %}<ul class="ev">{% for e in row.evidence %}<li>{{ e }}</li>{% endfor %}</ul>
+            {% else %}<span class="small">{{ row.reason }}</span>{% endif %}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+
+  <h2>When the accounts post</h2>
+  <p class="small">{{ r.posting.summary }}</p>
+  {% if r.posting.posts >= 30 %}
+    {% set peak = (r.posting.histogram|max) or 1 %}
+    <div class="clock">
+      {% for n in r.posting.histogram %}
+        {% set h = loop.index0 %}
+        {% set q = r.posting.quiet_utc %}
+        {% set quiet = q and ((q[0] <= q[1] and q[0] <= h < q[1]) or (q[0] > q[1] and (h >= q[0] or h < q[1]))) %}
+        <span class="{{ 'quiet' if quiet else '' }}" style="height: {{ (100 * n / peak)|round(1) }}%" title="{{ '%02d' % h }}:00 UTC · {{ n }}"></span>
+      {% endfor %}
+    </div>
+    <div class="labels">{% for h in range(24) %}<span>{{ h if h % 3 == 0 else '' }}</span>{% endfor %}</div>
+    <p class="small">Public posts by hour, UTC. Amber: the quietest five hours. A guess, never a location.</p>
+  {% endif %}
+
+  <h2>sameAs for the website</h2>
+  <p class="small">Paste into the home page's &lt;head&gt;. It lists the profiles this report counts as yours.</p>
+  <pre>{{ r.jsonld }}</pre>
+
+  <footer>Made with Footprint. Account checks use the Sherlock (MIT) and WhatsMyName (CC BY-SA 4.0) site
+    lists. Only public information was read; verdicts are evidence, not proof.</footer>
+</div>
+</body>
+</html>

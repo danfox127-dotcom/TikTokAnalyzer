@@ -89,6 +89,17 @@ class TestRun:
         assert "made-up names" in planned["liar.test"].skip.reason
 
     @respx.mock
+    async def test_adult_sites_are_never_contacted_in_the_background(self, conn):
+        respx.get(url__regex=r"https://good\.test/.*").mock(side_effect=_honest)
+        adult = respx.get(url__regex=r"https://adult\.test/.*").mock(side_effect=_honest)
+        sites = {"good.test": _site("good.test"), "adult.test": _site("adult.test")}
+        sites["adult.test"].nsfw = True
+        async with httpx.AsyncClient() as client:
+            progress = await health.run(sites, conn, client)
+        assert not adult.called
+        assert progress.counts == {"working": 1}
+
+    @respx.mock
     async def test_a_working_second_recipe_rescues_a_site(self, conn):
         broken = _probe("two.test", id="whatsmyname:two", url="https://two.test/api/{account}")
         backup = Probe(source="sherlock", id="sherlock:two", url="https://two.test/{account}",
@@ -126,10 +137,20 @@ class TestRun:
 class TestDaily:
     def test_due_when_never_run_or_a_day_old(self, conn):
         assert health.due(conn)
-        store.set_meta(conn, "health_last_run", store.now_iso())
+        tomorrow = datetime.now(timezone.utc) + timedelta(hours=24)
+        store.set_meta(conn, "health_next_run", tomorrow.isoformat())
         assert not health.due(conn)
-        later = datetime.now(timezone.utc) + timedelta(hours=25)
-        assert health.due(conn, now=later)
+        assert health.due(conn, now=tomorrow + timedelta(minutes=1))
+
+    @pytest.mark.asyncio
+    @respx.mock
+    async def test_a_network_problem_retries_within_the_hour(self, conn):
+        sites = {f"s{i}.test": _site(f"s{i}.test") for i in range(25)}
+        respx.get(url__regex=r".*").mock(side_effect=httpx.ConnectError("offline"))
+        async with httpx.AsyncClient() as client:
+            await health.run(sites, conn, client)
+        in_90_minutes = datetime.now(timezone.utc) + timedelta(minutes=90)
+        assert health.due(conn, now=in_90_minutes)
 
     @pytest.mark.asyncio
     @respx.mock
