@@ -651,3 +651,15 @@ def test_save_takes_any_capitals_and_explains_an_empty_share(client, tiktok_ok):
     assert "for later" in item
     empty = client.post("/save", json={"url": ""})
     assert empty.status_code == 400 and "Nothing to keep" in empty.json()["detail"]
+
+
+def test_the_chrome_extension_downloads_from_the_sync_page(client):
+    import io, json as j, zipfile
+    resp = client.get("/extension.zip")
+    assert resp.status_code == 200 and resp.headers["content-type"] == "application/zip"
+    assert "faves-extension.zip" in resp.headers["content-disposition"]
+    with zipfile.ZipFile(io.BytesIO(resp.content)) as z:
+        names = z.namelist()
+        assert "faves-extension/manifest.json" in names and "faves-extension/icons/icon-128.png" in names
+        assert j.loads(z.read("faves-extension/manifest.json"))["name"] == "Faves"
+    assert 'href="/extension.zip"' in client.get("/sync").text

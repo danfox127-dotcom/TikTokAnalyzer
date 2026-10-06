@@ -175,6 +175,23 @@
   });
 </script>
 
+<section class="rr-band tone-sky" id="computer" aria-labelledby="computer-title"><div class="inner">
+  <div class="rr-shelf-head rr-reveal"><div>
+    <p class="rr-label">💻 Your computer</p>
+    <h2 class="rr-h-m" id="computer-title">Keep any page in Chrome, in one click</h2>
+    <p>The Faves extension works in Chrome, Edge, Arc and Brave. Click its icon to keep the page you're on, right-click a link to keep that, or press ⌘⇧K.</p>
+  </div></div>
+  <div class="band-pad phone-body rr-reveal">
+    <p><a class="rr-btn rr-btn--primary" href="/extension.zip" download>{{ icon('plus') }}Download the Chrome extension</a></p>
+    <ol class="shortcut">
+      <li>Open the download to unzip it, and move the <b>faves-extension</b> folder somewhere it can stay, like Documents. Chrome keeps using it from there.</li>
+      <li>In Chrome, go to <code>chrome://extensions</code> and switch on <b>Developer mode</b> (top right).</li>
+      <li>Click <b>Load unpacked</b> and choose the <b>faves-extension</b> folder. Then pin Faves from the puzzle-piece icon.</li>
+      <li>In the settings page that opens, enter the address above <b>without</b> <code>/save</code>{% if anywhere or at_home %} (<code>{{ anywhere or at_home }}</code>){% endif %} and just the password, without “Bearer”. Click <b>Save and test</b>, then <b>Allow</b>.</li>
+    </ol>
+  </div>
+</div></section>
+
 <section class="rr-band tone-lilac" aria-labelledby="tt-title"><div class="inner">
   <div class="band-pad rr-reveal tt-note">
     <p class="rr-label">🇪🇺 TikTok's sharing tool</p>

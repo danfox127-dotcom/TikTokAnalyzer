@@ -155,7 +155,8 @@ there.
 
 ## Desktop — the Chrome extension
 
-For Chrome, Edge, Arc and Brave. Install it once from `favorites/extension`;
+For Chrome, Edge, Arc and Brave. Download it from the **Keep it in sync** page
+(**Your computer** → *Download the Chrome extension*) and install it once;
 its [README](extension/README.md) has the two-minute steps. Then:
 
 - click the Faves icon in the toolbar to keep the page you're on, with an
