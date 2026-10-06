@@ -642,3 +642,12 @@ def test_the_home_screen_icon(client):
     page = client.get("/topics").text
     assert '<link rel="apple-touch-icon" href="/static/icon-180.png">' in page
     assert client.get("/static/icon-180.png").headers["content-type"] == "image/png"
+
+
+def test_save_takes_any_capitals_and_explains_an_empty_share(client, tiktok_ok):
+    resp = client.post("/save", json={"URL": "https://www.tiktok.com/@citydesk/video/7123", "Note": "for later"})
+    assert resp.status_code == 201
+    item = client.get(f"/item/{resp.json()['id']}").text
+    assert "for later" in item
+    empty = client.post("/save", json={"url": ""})
+    assert empty.status_code == 400 and "Nothing to keep" in empty.json()["detail"]
