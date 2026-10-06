@@ -1,0 +1,23 @@
+{
+  "manifest_version": 3,
+  "name": "Faves",
+  "short_name": "Faves",
+  "version": "1.0.0",
+  "description": "Keep the page you're on — or any link — in your Faves library, in one click.",
+  "icons": { "16": "icons/icon-16.png", "32": "icons/icon-32.png", "48": "icons/icon-48.png", "128": "icons/icon-128.png" },
+  "action": {
+    "default_title": "Keep in Faves",
+    "default_popup": "popup.html",
+    "default_icon": { "16": "icons/icon-16.png", "32": "icons/icon-32.png" }
+  },
+  "options_page": "options.html",
+  "background": { "service_worker": "background.js", "type": "module" },
+  "permissions": ["activeTab", "contextMenus", "storage", "notifications"],
+  "optional_host_permissions": ["http://*/*", "https://*/*"],
+  "commands": {
+    "keep-tab": {
+      "suggested_key": { "default": "Ctrl+Shift+K", "mac": "Command+Shift+K" },
+      "description": "Keep this page in Faves"
+    }
+  }
+}

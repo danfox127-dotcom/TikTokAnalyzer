@@ -18,6 +18,8 @@ import json
 import logging
 import socket
 import time
+import io
+import zipfile
 from collections import Counter
 from contextlib import asynccontextmanager
 import os
@@ -990,6 +992,23 @@ def healthz(conn: sqlite3.Connection = Depends(get_db)):
         "items": db.count(conn),
         "transcripts_enabled": transcript.available(),
     }
+
+
+@app.get("/extension.zip")
+def extension_zip():
+    """The Chrome extension, zipped, so any computer can install it from here.
+
+    It carries no secrets: the address and password are typed into it once
+    it is installed. Unzipped, it is one folder, ``faves-extension``.
+    """
+    folder = HERE / "extension"
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
+        for f in sorted(folder.rglob("*")):
+            if f.is_file() and not f.name.startswith("."):
+                z.write(f, "faves-extension/" + f.relative_to(folder).as_posix())
+    return Response(buf.getvalue(), media_type="application/zip",
+                    headers={"Content-Disposition": "attachment; filename=faves-extension.zip"})
 
 
 @app.get("/manifest.webmanifest")
