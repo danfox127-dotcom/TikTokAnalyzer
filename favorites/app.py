@@ -39,6 +39,7 @@ from starlette.concurrency import run_in_threadpool
 
 from . import (backfill, blurb, db, explore, google_sync, lengths, looks, museum, tagging,
                thumbnails, transcript, watch)
+from . import profiles
 from . import themes as theme_vocabulary
 from .resolve import browsable_url, extract_url, platform_label, resolve
 
@@ -378,6 +379,12 @@ def search_page(request: Request, conn: sqlite3.Connection = Depends(get_db)):
     facets = explore.facets(conn, f)
     total = db.count(conn)
     noun = ("result", "results") if (f.q or f.narrowing()) else ("save", "saves")
+    elsewhere, saved_on = [], []
+    if f.creator:
+        saved_on = [r[0] for r in conn.execute(
+            "SELECT platform FROM items WHERE lower(coalesce(creator_handle, creator_name)) = lower(?)"
+            " GROUP BY platform ORDER BY count(*) DESC, platform", (f.creator,))]
+        elsewhere = profiles.links(f.creator, saved_on)
     return templates.TemplateResponse(request, "explore.html", {
         "heading": explore.describe(f, facets),
         "subheading": f"{found} {noun[0] if found == 1 else noun[1]}"
@@ -388,6 +395,8 @@ def search_page(request: Request, conn: sqlite3.Connection = Depends(get_db)):
         "facets": facets,
         "chips": explore.chips(f, facets),
         "pull": explore.pull(f, facets, items) if items else [],
+        "elsewhere": elsewhere,
+        "saved_on": [profiles.PROFILES[p][0] for p in saved_on if p in profiles.PROFILES],
         "own_search": True,
         "sorts": explore.SORTS,
         "q": f.q,

@@ -199,7 +199,8 @@ def _clauses(f: Filters, without: str = "") -> tuple[list[str], list]:
                      " AND c.name = ? COLLATE NOCASE)")
         params.append(f.collection)
     if f.creator and without != "creator":
-        where.append("coalesce(i.creator_handle, i.creator_name) = ?")
+        # One creator across platforms: @Marisol on Instagram is @marisol on TikTok.
+        where.append("lower(coalesce(i.creator_handle, i.creator_name)) = lower(?)")
         params.append(f.creator)
     if f.tag and without != "tag":
         where.append("EXISTS (SELECT 1 FROM json_each(i.tags) WHERE value = ?)")
@@ -406,7 +407,7 @@ def facets(conn: sqlite3.Connection, f: Filters, today: Optional[str] = None) ->
 
     out.append(_facet(f, "creator", "Creators", _grouped(
         conn, f, "creator",
-        "coalesce(i.creator_handle, i.creator_name) AS v, count(*) AS n,"
+        "lower(coalesce(i.creator_handle, i.creator_name)) AS v, count(*) AS n,"
         " max(coalesce(i.creator_name, '')) AS x"),
         label=lambda v, name: name or v, limit=TOP["creator"]))
 
@@ -565,7 +566,7 @@ def pull(f: Filters, found: list[Facet], items: list[dict], limit: int = 4) -> l
     if creator and not f.creator and creator.options and creator.options[0].count >= 2:
         o = creator.options[0]
         rows.append({"label": o.label, "sub": f"Creator · {o.count} of these", "href": o.href,
-                     "covers": covers(lambda i, v=o.value: (i.get("creator_handle") or i.get("creator_name")) == v)})
+                     "covers": covers(lambda i, v=o.value: (i.get("creator_handle") or i.get("creator_name") or "").lower() == v.lower())})
     day = by_name.get("day")
     if day and not f.day and day.options:
         # On a day with nothing saved on the date itself, the only option is the

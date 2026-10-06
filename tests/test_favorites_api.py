@@ -663,3 +663,26 @@ def test_the_chrome_extension_downloads_from_the_sync_page(client):
         assert "faves-extension/manifest.json" in names and "faves-extension/icons/icon-128.png" in names
         assert j.loads(z.read("faves-extension/manifest.json"))["name"] == "Faves"
     assert 'href="/extension.zip"' in client.get("/sync").text
+
+
+def test_one_creator_across_platforms_and_where_to_find_them(client, library):
+    from favorites import profiles
+    assert profiles.bare("@Marisol.Cooks") == "marisol.cooks"
+    assert profiles.bare("u/stairwellreader") is None and profiles.bare("The Sidewalk Letter") is None
+    links = profiles.links("@Marisol.Cooks", ["instagram"])
+    assert links[0] == {"platform": "instagram", "label": "Instagram", "emoji": "📸",
+                        "href": "https://www.instagram.com/marisol.cooks/", "saved": True}
+    assert {l["href"] for l in links} >= {"https://www.tiktok.com/@marisol.cooks",
+                                          "https://www.youtube.com/@marisol.cooks"}
+
+    for url, platform, handle in (("https://www.tiktok.com/@marisol.cooks/video/1", "tiktok", "@marisol.cooks"),
+                                  ("https://www.instagram.com/p/AAA/", "instagram", "@Marisol.Cooks")):
+        db.upsert_item(library, {"canonical_url": url, "shared_url": url, "platform": platform,
+                                 "creator_handle": handle, "creator_name": "Marisol Cooks",
+                                 "title": "Dumplings", "resolve_status": "ok"})
+    page = client.get("/search?creator=%40marisol.cooks").text
+    assert "2 results" in page
+    assert "You've saved from them on Instagram and TikTok." in page
+    assert 'href="https://www.youtube.com/@marisol.cooks"' in page
+    facet = client.get("/search").text
+    assert facet.count("creator=%40marisol.cooks") >= 1 and "creator=%40Marisol.Cooks" not in facet
