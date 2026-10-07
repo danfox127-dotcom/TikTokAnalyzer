@@ -1,0 +1,11 @@
+# Footprint. Install with:
+#   pip install -r footprint/requirements.txt
+
+fastapi
+uvicorn[standard]
+httpx
+jinja2
+
+# Compares profile photos and makes the small pictures in brand reports.
+# Remove this line and everything still works, minus photo matching.
+Pillow

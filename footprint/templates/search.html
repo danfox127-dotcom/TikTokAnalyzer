@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block title %}Footprint — where does a name exist?{% endblock %}
+{% block body %}
+<section class="hero">
+  <p class="kicker">Username search</p>
+  <h1>Where does <span class="accent" id="hero-name">a name</span> exist?</h1>
+  <form id="search-form" autocomplete="off">
+    <div class="searchbar">
+      <span class="at" aria-hidden="true">@</span>
+      <input id="u" name="u" value="{{ u }}" placeholder="username" required maxlength="100"
+             spellcheck="false" autocapitalize="off" aria-label="Username">
+      <button class="btn" type="submit" id="go">Search</button>
+    </div>
+    <div class="options" role="group" aria-label="Where to look">
+      <label class="opt"><input type="radio" name="scope" value="big" checked> Big platforms
+        <small>{{ status.big }} · a few seconds</small></label>
+      <label class="opt"><input type="radio" name="scope" value="all"> Everywhere
+        <small>{{ status.sites }} sites</small></label>
+      <label class="opt"><input type="checkbox" name="nsfw" value="1"> Include adult sites</label>
+    </div>
+  </form>
+</section>
+
+<section id="run" hidden aria-live="polite">
+  <div class="meter">
+    <div class="meter-bar"><span id="meter-fill"></span></div>
+    <div class="meter-stats">
+      <span><b id="m-answered">0</b> / <span id="m-total">0</span> answered</span>
+      <span><b id="m-time">0.0</b> s</span>
+      <span class="found"><b id="m-found">0</b> found</span>
+      <span class="unclear"><b id="m-unclear">0</b> unclear</span>
+      <span id="m-phase"></span>
+    </div>
+  </div>
+
+  <h2>Big platforms</h2>
+  <div id="big" class="tiles"></div>
+
+  <div id="more-wrap" hidden>
+    <h2>Everywhere else — found</h2>
+    <div id="more" class="tiles"></div>
+  </div>
+
+  <section id="same" class="panel" hidden>
+    <p class="title">Same person?</p>
+    <p class="sub">Accounts with the same name aren't always the same person. Points come from what the
+      profiles say about themselves — links to each other, shared links, matching photos, names, bios,
+      location. 60+ is very likely, 30–59 possibly.</p>
+    <p id="same-main"></p>
+    <div id="same-grid" class="match-grid"></div>
+  </section>
+
+  <section id="tz" class="panel" hidden>
+    <p class="title">Time zone <span class="guess">a guess</span></p>
+    <p class="sub" id="tz-summary"></p>
+    <div id="tz-chart" hidden>
+      <div class="clock" id="tz-bars"></div>
+      <div class="clock-labels" id="tz-labels"></div>
+      <p class="sub" style="margin-top:8px">Public posts by hour, in UTC. The amber hours are the quietest
+        stretch, read as night-time. Based on <span id="tz-n"></span>.</p>
+    </div>
+  </section>
+
+  <details class="drawer" id="d-unclear"><summary>Unclear <span class="n">0</span>
+    <small>— a bot wall, a refusal, a timeout, or a page that looked like neither answer</small></summary>
+    <div class="body"><ul class="reasons"></ul></div></details>
+  <details class="drawer" id="d-not_found"><summary>Not found <span class="n">0</span></summary>
+    <div class="body chips"></div></details>
+  <details class="drawer" id="d-cant_exist"><summary>Can't exist here <span class="n">0</span>
+    <small>— the site doesn't allow names like this, so it wasn't asked</small></summary>
+    <div class="body chips"></div></details>
+  <details class="drawer" id="d-skipped"><summary>Set aside by the health check <span class="n">0</span>
+    <small>— these sites are currently giving wrong answers</small></summary>
+    <div class="body"><ul class="reasons"></ul></div></details>
+</section>
+{% endblock %}

@@ -2,7 +2,8 @@ streamlit
 fastapi
 uvicorn[standard]
 python-multipart
-jinja2                  # server-rendered templates in favorites/
+jinja2                  # server-rendered templates in favorites/ and footprint/
+Pillow                  # footprint/ compares profile photos
 httpx
 pytest
 pytest-asyncio

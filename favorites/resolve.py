@@ -222,6 +222,17 @@ class _MetaReader(HTMLParser):
             self.title += data
 
 
+def parse_meta(html: str) -> tuple[dict[str, str], str]:
+    """A page's OpenGraph/Twitter meta tags (keys lower-cased) and its ``<title>``.
+
+    Only the head matters, and some pages are enormous, so only the first
+    400 KB is read. Footprint reads profile pages with this too.
+    """
+    reader = _MetaReader()
+    reader.feed(html[:400_000])
+    return reader.meta, reader.title.strip()
+
+
 def _handle_from_url(url: str, platform: str) -> Optional[str]:
     path = urlparse(url or "").path
     m = re.search(r"/@([\w.\-]+)", path)
@@ -264,13 +275,10 @@ async def _try_opengraph(
         ctype = resp.headers.get("content-type", "")
         if "html" not in ctype and ctype:
             return None
-        reader = _MetaReader()
-        # Only the head matters, and some pages are enormous.
-        reader.feed(resp.text[:400_000])
-        meta = reader.meta
-        if not meta and not reader.title:
+        meta, title = parse_meta(resp.text)
+        if not meta and not title:
             return None
-        meta["__title__"] = reader.title.strip()
+        meta["__title__"] = title
         return meta
     except Exception as exc:
         logger.debug("opengraph read failed for %s: %s", url, exc)

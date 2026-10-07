@@ -73,6 +73,19 @@ it has its own dependencies (`favorites/requirements.txt`).
 - [`favorites/README.md`](favorites/README.md) -- what it does, what each platform gives you, and how to run it
 - [`favorites/SHARE_SHEET.md`](favorites/SHARE_SHEET.md) -- one-tap saving from iOS or Android, with no app to install
 
+### `footprint/` -- where a username or a brand exists, and how sure we are
+
+A faster, more careful take on [Sherlock](https://github.com/sherlock-project/sherlock):
+results fill in live as each site answers, the big platforms come first, every
+verdict says how confident it is and why, and broken sites are re-tested and set
+aside daily. It also reads public profiles, scores whether accounts are the same
+person or brand, gives a broad time-zone hint, and builds a **brand consistency
+report** with a ready-to-paste `sameAs` block. Double-click
+`footprint/start.command` on a Mac. It has its own dependencies
+(`footprint/requirements.txt`).
+
+- [`footprint/README.md`](footprint/README.md) -- what it does, what each verdict means, and what location can and can't show
+
 ## 🌐 Community & Hosting
 
 Want to host this as a private or public web app? We've included a **Streamlit** wrapper ready for deployment.

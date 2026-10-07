@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>{% block title %}Footprint{% endblock %}</title>
+<script>try{var m=localStorage.getItem('fp-mode');if(m==='light'||m==='dark')document.documentElement.setAttribute('data-theme',m)}catch(e){}</script>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%2308090b'/%3E%3Ccircle cx='16' cy='16' r='6' fill='%2339e6ff'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap">
+<link rel="stylesheet" href="/static/footprint.css?v=1">
+<script src="/static/footprint.js?v=1" defer></script>
+</head>
+<body data-page="{{ page }}">
+<div class="wrap">
+<header class="mast">
+  <a class="mark" href="/"><span class="pulse" aria-hidden="true"></span>Footprint</a>
+  <nav aria-label="Main">
+    <a href="/"{% if page == 'search' %} class="on" aria-current="page"{% endif %}>Search</a>
+    <a href="/brand"{% if page == 'brand' %} class="on" aria-current="page"{% endif %}>Brand report</a>
+    <a href="/health"{% if page == 'health' %} class="on" aria-current="page"{% endif %}>Site health</a>
+  </nav>
+  <span class="spacer"></span>
+  <a href="/health" class="chip-status{% if status.running %} running{% endif %}" id="health-chip"
+     title="The daily health check re-tests every site and sets aside the ones giving wrong answers">
+    <span class="led" aria-hidden="true"></span>
+    {% if status.running %}
+      Checking sites… {{ status.progress.done }}/{{ status.progress.total }}
+    {% elif status.tested %}
+      {{ status.working }} sites working · {{ status.set_aside }} set aside
+    {% else %}
+      {{ status.sites }} sites · not health-checked yet
+    {% endif %}
+  </a>
+  <div class="mode" role="group" aria-label="Colour mode">
+    <button type="button" data-mode="light" aria-pressed="false">Day</button>
+    <button type="button" data-mode="auto" aria-pressed="true">Auto</button>
+    <button type="button" data-mode="dark" aria-pressed="false">Night</button>
+  </div>
+</header>
+{% if status.load_error %}<div class="error-box">{{ status.load_error }}</div>{% endif %}
+{% block body %}{% endblock %}
+<footer class="foot">
+  Site lists from <a href="https://github.com/sherlock-project/sherlock">Sherlock</a> (MIT) and
+  <a href="https://github.com/WebBreacher/WhatsMyName">WhatsMyName</a> (CC BY-SA 4.0), downloaded
+  to this computer. Footprint reads only what platforms show anyone, never signs in, and keeps
+  nothing about the people you look up beyond the brand reports you make.
+</footer>
+</div>
+</body>
+</html>
