@@ -41,7 +41,12 @@ python.org or with `brew install python`. (If macOS refuses to open it the
 first time, right-click it and choose **Open**.)
 
 While it runs, a plugged-in Mac stays awake, and if Faves stops with an
-error it starts again in the same window.
+error it starts again in the same window (it gives up, and says why, after
+three failed starts in a row). If an older copy of Faves is stuck on port 8000
+-- still holding it but no longer answering, which the phone sees as a white
+screen -- `start.command` stops that copy and takes over. If some other program
+has the port, it names it; set `FAVORITES_PORT` in `~/.favorites.env` to use
+another.
 
 **Always on.** Double-click `favorites/always-on.command` once and the Faves
 window opens by itself whenever you log in to the Mac, so your phone can

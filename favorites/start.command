@@ -53,6 +53,51 @@ quick() {
 step() { printf '\n\033[1m%s\033[0m\n' "$*"; }
 fail() { printf '\n\033[31m%s\033[0m\n' "$*"; printf 'Press Return to close.'; read -r _; exit 1; }
 
+# Is Faves answering on its port? Never wait more than a few seconds: a stuck
+# copy accepts the connection and then says nothing.
+answering() { curl -fsS --max-time 5 -o /dev/null "http://127.0.0.1:$PORT/healthz" 2>/dev/null; }
+
+# Whatever is listening on Faves' port, as "PID command line" -- or nothing.
+port_holder() {
+  local pid
+  command -v lsof >/dev/null 2>&1 || return 0
+  pid="$(lsof -nP -iTCP:"$PORT" -sTCP:LISTEN -t 2>/dev/null | head -n1)"
+  [ -n "$pid" ] && printf '%s %s\n' "$pid" "$(ps -o command= -p "$pid" 2>/dev/null)"
+  return 0
+}
+
+# Make sure the port is free before starting. An older copy of Faves that has
+# stopped answering (the phone sees a white screen) is stopped; anything else
+# on the port is named, so you know what to quit.
+free_the_port() {
+  local holder pid cmd
+  holder="$(port_holder)"
+  [ -z "$holder" ] && return 0
+  if answering; then
+    say ""
+    say "Faves is already running in another window, so this one isn't needed."
+    say "You can close this window."
+    exit 0
+  fi
+  pid="${holder%% *}"; cmd="${holder#* }"
+  case "$cmd" in
+    *favorites.app:app*)
+      say "   An older copy of Faves (process $pid) is stuck and not answering."
+      say "   Stopping it, so this one can take over..."
+      kill "$pid" 2>/dev/null
+      for _ in 1 2 3 4 5 6 7 8 9 10; do kill -0 "$pid" 2>/dev/null || return 0; sleep 0.5; done
+      kill -9 "$pid" 2>/dev/null
+      sleep 1
+      return 0 ;;
+    *)
+      fail "Faves can't start: port $PORT is already in use by another program:
+   $cmd   (process $pid)
+Quit that program and double-click start.command again. Or give Faves a
+different port: add the line  FAVORITES_PORT=8001  to $ENV_FILE
+(and then use :8001 instead of :8000 on your phone)." ;;
+  esac
+}
+
 say "Faves"
 say "====="
 
@@ -93,9 +138,11 @@ set -a
 # Exports that land in Downloads import themselves (see favorites/watch.py).
 FAVORITES_WATCH="${FAVORITES_WATCH-$HOME/Downloads}"
 set +a
+# The settings file may choose the port.
+PORT="${FAVORITES_PORT:-$PORT}"
 
 # ---- already running? ------------------------------------------------------
-if curl -fsS -o /dev/null "http://127.0.0.1:$PORT/healthz" 2>/dev/null; then
+if answering; then
   say ""
   say "Faves is already running: http://localhost:$PORT"
   [ -z "$AT_LOGIN" ] && command -v open >/dev/null && open "http://localhost:$PORT"
@@ -175,7 +222,7 @@ say ""
 # Open the browser once the server answers.
 (
   for _ in $(seq 1 40); do
-    if curl -fsS -o /dev/null "http://127.0.0.1:$PORT/healthz" 2>/dev/null; then
+    if answering; then
       [ -z "$AT_LOGIN" ] && command -v open >/dev/null && open "http://localhost:$PORT"
       exit 0
     fi
@@ -188,11 +235,29 @@ say ""
 command -v caffeinate >/dev/null 2>&1 && caffeinate -s -w $$ &
 
 # If Faves stops with an error, start it again; a clean stop (Ctrl-C) ends here.
+# If it can't even start three times running, stop and say so rather than
+# trying forever.
+failed_starts=0
 while :; do
+  free_the_port
+  started=$(date +%s)
   "$VENV/bin/python" -m uvicorn favorites.app:app --host "$HOST" --port "$PORT"
   code=$?
   [ "$code" -eq 0 ] && exit 0
   say ""
+  if answering; then
+    say "Faves is already running in another window, so this one isn't needed."
+    say "You can close this window."
+    exit 0
+  fi
+  if [ $(( $(date +%s) - started )) -lt 60 ]; then
+    failed_starts=$((failed_starts + 1))
+  else
+    failed_starts=0
+  fi
+  if [ "$failed_starts" -ge 3 ]; then
+    fail "Faves couldn't start (code $code), three times in a row. The messages above say why."
+  fi
   say "Faves stopped unexpectedly (code $code). Starting it again in 10 seconds..."
   say "(Close this window to stop it for good.)"
   sleep 10
