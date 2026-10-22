@@ -90,7 +90,9 @@ every command agrees:
 echo 'export FAVORITES_DB="$HOME/favorites.db"' >> ~/.zshrc
 ```
 
-Then set up one-tap capture from your phone: **[SHARE_SHEET.md](SHARE_SHEET.md)**,
+Then set up one-tap capture from your phone: **[SHARE_SHEET.md](SHARE_SHEET.md)**
+(the Keep it in sync page installs ready-made iPhone shortcuts, and an inbox in
+iCloud Drive catches links shared while the Mac is away),
 and from Chrome on your computer: **[the Faves extension](extension/README.md)**.
 
 ## What you get per platform

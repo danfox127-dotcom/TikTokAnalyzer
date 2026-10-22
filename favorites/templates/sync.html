@@ -125,8 +125,8 @@
 <section class="rr-band tone-pink" id="phone" aria-labelledby="phone-title"><div class="inner">
   <div class="rr-shelf-head rr-reveal"><div>
     <p class="rr-label">📱 Your phone</p>
-    <h2 class="rr-h-m" id="phone-title">Save in one tap, as you scroll</h2>
-    <p>Two ways. Simplest: copy the link in the app, open the <a href="/keep">Keep</a> tab here, tap Paste. Fastest: a one-tap <b>Keep</b> in your share sheet, set up below.</p>
+    <h2 class="rr-h-m" id="phone-title">Save from any app, in a tap or two</h2>
+    <p>TikTok's and Instagram's own share panels only list their partner apps, so Faves lives one tap further, in your iPhone's share sheet: <b>Share → More</b> in TikTok, <b>Share → Share to…</b> in Instagram. Or skip the share sheet: copy the link, then double-tap the back of your phone.</p>
   </div></div>
   <div class="band-pad phone-body rr-reveal">
     {% if always_on %}
@@ -135,6 +135,42 @@
       <p class="rr-notice always-on">{{ icon('clock') }}<span><b>White screen on your phone?</b> That means Faves isn't running on the Mac. Double-click <code>always-on.command</code> (next to <code>start.command</code>) once, and Faves opens by itself whenever you log in.</span></p>
     {% endif %}
     <p class="rr-muted small">Your phone can only reach Faves while the Mac is awake with the Faves window open. A closed laptop lid still sleeps: leave it open, or turn on System Settings → Battery → Options → <i>Prevent automatic sleeping on power adapter when the display is off</i>.</p>
+    {% if token and not unlocked %}
+      <p class="rr-notice">{{ icon('placard') }}<span>To install the shortcuts on this phone, first <a href="/keep">unlock it on the Keep page</a> (once), then come back here.</span></p>
+    {% elif token and not can_sign %}
+      <p class="rr-notice">{{ icon('clock') }}<span>This Mac can't prepare ready-made shortcuts (that needs macOS 12 or later, signed in to iCloud). Use <b>Build it yourself</b> below.</span></p>
+    {% endif %}
+  </div>
+  {% set ready = token and unlocked and can_sign %}
+  <div class="export-cards band-pad phone-cards">
+    <article class="export-card tone-pink rr-reveal" style="--i:0">
+      <header><span class="em" aria-hidden="true">📤</span><div><h3>Save to Faves</h3><p class="when">In any app's share sheet</p></div></header>
+      <ol>
+        <li>{% if ready %}Tap <b>Install</b> below, then <b>Add Shortcut</b>.{% else %}Install it (or build it yourself, below).{% endif %}</li>
+        <li>Pin it: open any share sheet, scroll the list of actions to the end, tap <b>Edit Actions</b>, then the <b>+</b> next to <b>Save to Faves</b>.</li>
+        <li>Then: <b>Share → Save to Faves</b>. That's it.</li>
+      </ol>
+      {% if ready %}<a class="rr-btn rr-btn--primary" href="/shortcuts/save-to-faves.shortcut">{{ icon('plus') }}Install Save to Faves</a>{% endif %}
+    </article>
+    <article class="export-card tone-peach rr-reveal" style="--i:1">
+      <header><span class="em" aria-hidden="true">👆</span><div><h3>Copy link, double-tap</h3><p class="when">No share sheet at all</p></div></header>
+      <ol>
+        <li>{% if ready %}Tap <b>Install</b> below, then <b>Add Shortcut</b>.{% else %}Install “Save copied link”.{% endif %}</li>
+        <li>On the phone: <b>Settings → Accessibility → Touch → Back Tap → Double Tap → Save copied link</b>.</li>
+        <li>Then in TikTok or Instagram: <b>Copy link</b>, and double-tap the back of your phone.</li>
+      </ol>
+      {% if ready %}<a class="rr-btn" href="/shortcuts/save-copied-link.shortcut">{{ icon('plus') }}Install Save copied link</a>{% endif %}
+    </article>
+    <article class="export-card tone-mint rr-reveal" style="--i:2">
+      <header><span class="em" aria-hidden="true">🛟</span><div><h3>The safety net</h3>
+        <p class="when">{% if inbox.found %}Faves can see your inbox{% if inbox.rescued %} · <b>{{ inbox.rescued }} rescued</b>{% endif %}{% else %}No inbox on this Mac yet{% endif %}</p></div></header>
+      <p class="wait">Both shortcuts write each link to <b>Faves inbox.txt</b> in iCloud Drive before sending it, which works even with no connection. Faves reads the inbox every minute and saves anything that didn't arrive, with the date you shared it.</p>
+      {% if inbox.recent %}<ul class="inbox-recent">{% for l in inbox.recent[:3] %}<li><code>{{ l }}</code></li>{% endfor %}</ul>{% endif %}
+      {% if here and not inbox.found %}<p class="wait">It appears after your first save with the new shortcut. If macOS asks whether Terminal may use iCloud Drive, choose Allow.</p>{% endif %}
+    </article>
+  </div>
+  <div class="band-pad phone-body rr-reveal">
+    <details class="setup"{% if not ready %} open{% endif %}><summary>Build it yourself</summary>
     {% if token %}
       {% set use = anywhere or at_home %}
       <div class="phone-facts">
@@ -161,12 +197,14 @@
       <p>Your phone can't reach Faves yet. Switch on <code>FAVORITES_TOKEN</code> in <code>~/.favorites.env</code> and start it again; this section will show what to put in the Shortcut.</p>
     {% endif %}
     <ol class="shortcut">
-      <li>In <b>Shortcuts</b>, tap <b>+</b>. Add the action <b>Get Contents of URL</b> and paste the address above as its URL.</li>
-      <li>Tap the arrow beside it: <b>Method</b> POST. <b>Headers</b>: add one, with the name and value above. <b>Request Body</b>: JSON, with one Text field, key <code>url</code>, value <b>Shortcut Input</b>.</li>
-      <li>Add <b>Show Notification</b> with the text “Kept ✓”.</li>
-      <li>Tap the <b>ⓘ</b> at the bottom: switch on <b>Show in Share Sheet</b>, then name the shortcut <b>Keep</b>.</li>
+      <li>In <b>Shortcuts</b>, tap <b>+</b>. Add a <b>Text</b> action containing <b>Current Date</b> (tap it: Date Format <b>ISO 8601</b>, include time), a tab, and <b>Shortcut Input</b>.</li>
+      <li>Add <b>Append to Text File</b>: append that Text to <code>Faves inbox.txt</code> (in the Shortcuts folder), on a new line. This is the safety net.</li>
+      <li>Add <b>Get Contents of URL</b> and paste the address above as its URL. Tap the arrow beside it: <b>Method</b> POST. <b>Headers</b>: add one, with the name and value above. <b>Request Body</b>: JSON, with one Text field, key <code>url</code>, value <b>Shortcut Input</b>.</li>
+      <li>Add <b>Show Notification</b> with the text “Saved to Faves ✓”.</li>
+      <li>Tap the <b>ⓘ</b> at the bottom: switch on <b>Show in Share Sheet</b>, then name the shortcut <b>Save to Faves</b>.</li>
     </ol>
-    <p class="rr-muted small">Then in TikTok, Instagram or YouTube: Share → <b>Keep</b>. Want a note as you save? Add <b>Ask for Input</b> before step 1 and a second field <code>note</code>. Full steps: <code>favorites/SHARE_SHEET.md</code>.</p>
+    <p class="rr-muted small">For Back Tap, duplicate it, name the copy <b>Save copied link</b>, and use <b>Get Clipboard</b> in place of Shortcut Input. Full steps: <code>favorites/SHARE_SHEET.md</code>.</p>
+    </details>
   </div>
 </div></section>
 <script>

@@ -63,51 +63,74 @@ TikTok, Instagram or YouTube tap **Share → Copy link**, then in Faves tap
 **Paste** and **Keep it**. If Faves has a password, it asks for it once on
 each phone and remembers it.
 
-## iOS — a Shortcut in the share sheet
+## iOS — Save to Faves, in one tap
 
-About three minutes, once. Faves' **Keep it in sync** page (`/sync`,
-opened on the Mac) shows the exact address and password to use below.
+**Why not in TikTok's or Instagram's own share panel?** Those panels are
+built by the apps and only list their partners. Faves sits one tap further,
+in the iPhone's own share sheet: **Share → More** in TikTok, **Share →
+Share to…** in Instagram. (Even there, the top row of app icons is only for
+App Store apps; shortcuts are in the list underneath, and you can pin one to
+the top of it.)
+
+### The easy way: install the ready-made shortcuts
+
+On the phone, open Faves → **Keep it in sync** → **Your phone**. (Unlock the
+phone on the **Keep** tab first, once.) Two buttons install shortcuts that
+already know your address and password:
+
+- **Save to Faves** — then **Share → Save to Faves** in any app. Pin it: in
+  any share sheet, scroll the list of actions to the end → **Edit Actions** →
+  tap **+** next to Save to Faves.
+- **Save copied link** — give it to Back Tap: **Settings → Accessibility →
+  Touch → Back Tap → Double Tap → Save copied link**. Then in TikTok or
+  Instagram, tap **Copy link** (it's in their own panel) and double-tap the
+  back of the phone.
+
+The Mac signs these with macOS's own `shortcuts sign`, which needs macOS 12
+or later and the Mac signed in to iCloud. Without that, the page shows the
+build-it-yourself steps below.
+
+### The safety net: the inbox
+
+Both shortcuts first add the link to **Faves inbox.txt** in iCloud Drive's
+Shortcuts folder, then send it to Faves. Writing the file needs no
+connection, so a link shared while the Mac is asleep, off, or out of reach is
+not lost: iCloud carries the file to the Mac, and Faves reads it every minute
+and saves whatever never arrived, with the date you shared it. Links that did
+arrive are skipped. (The first time, macOS may ask whether Terminal may use
+iCloud Drive: choose **Allow**.) To read a different file, set
+`FAVORITES_INBOX` in `~/.favorites.env`.
+
+### Building it yourself
+
+About five minutes, once. Faves' **Keep it in sync** page (`/sync`, opened
+on the Mac) shows the exact address and password to use below.
 
 1. Open **Shortcuts** → **+** to create a new shortcut.
-2. Add the action **Get Contents of URL**.
-3. Set the URL to `http://YOUR-ADDRESS/save`.
-4. Tap **Show More** and set:
+2. Add a **Text** action containing **Current Date** (tap it: Date Format
+   **ISO 8601**, include time), a tab, and **Shortcut Input**.
+3. Add **Append to Text File**: append that Text to `Faves inbox.txt` (in the
+   Shortcuts folder), making a new line. That's the safety net.
+4. Add **Get Contents of URL** with the URL `http://YOUR-ADDRESS/save`, and
+   tap **Show More**:
    - **Method**: `POST`
    - **Headers**: add `Authorization` = `Bearer YOUR-TOKEN` *(skip if no token)*
-   - **Request Body**: `JSON`
-   - Add a field: type **Text**, key `url`, value **Shortcut Input**
-     (tap the value box and pick it from the variable bar).
-5. Tap the **ⓘ** / settings icon → turn on **Show in Share Sheet**.
-6. Under **Share Sheet Types**, leave **URLs** and **Text** enabled and turn
-   the rest off.
-7. Add **Get Dictionary Value** (key `title`), then **Show Notification** with
-   the text `Kept ✓` and that value. You see the video's title a second after
-   tapping; if the phone cannot reach the library, Shortcuts stops with a
-   connection error instead — the other thing worth knowing straight away.
-8. Name it something short — **Keep** works well, because the name is what you
-   will be tapping.
+   - **Request Body**: `JSON`, one **Text** field, key `url`, value
+     **Shortcut Input** (pick it from the variable bar).
+5. Add **Show Notification** with the text `Saved to Faves ✓`.
+6. Tap the **ⓘ** → turn on **Show in Share Sheet**, with **URLs** and
+   **Text** as the types, and name it **Save to Faves**.
 
-Now: any app → Share → **Keep**. One tap, no typing, nothing to confirm.
-
-**Put Keep first.** In the share sheet, scroll the row of apps to the end →
-**Edit Actions** → add **Keep** to Favourites, so it sits at the top of the
-list instead of below the fold.
-
-### Optional: save what you copied, with a double-tap on the back of the phone
-
-Some apps' share sheets bury Shortcuts. Duplicate **Keep**, name the copy
-**Keep copied**, and put **Get Clipboard** in place of Shortcut Input. Then
-**Settings → Accessibility → Touch → Back Tap → Double Tap → Keep copied**:
-copy a link anywhere, double-tap the back of the phone, and it is saved. (On an
-iPhone with an Action button, you can give it to that instead.)
+For Back Tap, duplicate it, name the copy **Save copied link**, and put **Get
+Clipboard** first, using it everywhere Shortcut Input was.
 
 ### Optional: a second shortcut that files it under a category
 
 YouTube's save button asks whether to just save or to pick a playlist. The same
-choice here is two shortcuts side by side in the share sheet: **Keep** stays the
-one-tap save, and **Keep in…** asks where.
+choice here is two shortcuts side by side in the share sheet: **Save to Faves** stays the
+one-tap save, and **Save to Faves in…** asks where.
 
-1. Duplicate **Keep** and rename the copy **Keep in…**.
+1. Duplicate **Save to Faves** and rename the copy **Save to Faves in…**.
 2. At the top, add **Get Contents of URL** with the URL
    `http://YOUR-ADDRESS/collections.json` (method `GET`, same
    `Authorization` header). It returns your categories, largest first.

@@ -39,7 +39,7 @@ from starlette.concurrency import run_in_threadpool
 
 from . import (backfill, blurb, db, explore, google_sync, lengths, looks, museum, tagging,
                thumbnails, transcript, watch)
-from . import profiles
+from . import inbox, profiles, shortcuts
 from . import themes as theme_vocabulary
 from .resolve import browsable_url, extract_url, platform_label, resolve
 
@@ -102,6 +102,34 @@ async def _sync_youtube() -> Optional[dict]:
         conn.close()
 
 
+async def _read_inbox() -> int:
+    """Save the links the phone's inbox holds that never reached Faves."""
+    log = logging.getLogger("uvicorn.error")
+    text = await run_in_threadpool(inbox.read)
+    inbox.STATUS.last_read = db.now_iso()
+    if not text:
+        return 0
+    conn = db.connect()
+    rescued = 0
+    try:
+        for line in inbox.pending(conn, text):
+            if not inbox.already_saved(conn, line.link):
+                try:
+                    await capture(line.link, line.note, conn, saved_at=line.saved_at)
+                except HTTPException as exc:  # not a link anything can be made of
+                    log.warning("inbox: couldn't save %s (%s)", line.link, exc.detail)
+                else:
+                    rescued += 1
+                    inbox.STATUS.recent = ([line.link] + inbox.STATUS.recent)[:8]
+            inbox.mark(conn, line)
+    finally:
+        conn.close()
+    if rescued:
+        inbox.STATUS.rescued += rescued
+        log.info("inbox: saved %s link(s) shared while Faves was away", rescued)
+    return rescued
+
+
 async def _keep_in_sync() -> None:
     """The museum's one background job: watch the folder, sync YouTube daily.
 
@@ -114,6 +142,7 @@ async def _keep_in_sync() -> None:
         try:
             found = await run_in_threadpool(_scan_now)
             added = sum(f.added for f in found)
+            await _read_inbox()
             if time.monotonic() - last_youtube > YOUTUBE_EVERY or not last_youtube:
                 result = await _sync_youtube()
                 last_youtube = time.monotonic()
@@ -217,7 +246,7 @@ def unlocked(request: Request) -> bool:
 
 async def capture(
     shared: str, note: Optional[str], conn: sqlite3.Connection,
-    collection: Optional[str] = None,
+    collection: Optional[str] = None, saved_at: Optional[str] = None,
 ) -> dict:
     """Resolve a shared link and shelve it. Never raises on a bad link.
 
@@ -246,6 +275,9 @@ async def capture(
     payload["note"] = (note or "").strip() or None
     payload["transcript"] = text
     payload["resolved_at"] = db.now_iso()
+    if saved_at:
+        # When it was really shared (the phone's inbox), not when it arrived.
+        payload["saved_at"] = saved_at
     payload["duration"] = duration
     payload["tags"], payload["terms"] = tagging.enrich(
         title=item.title, description=item.description,
@@ -925,8 +957,51 @@ def sync_page(request: Request, conn: sqlite3.Connection = Depends(get_db)):
         "anywhere": f"http://{tailscale}:{port}" if tailscale else None,
         "at_home": f"http://{wifi}:{port}" if wifi else None,
         "flash": request.query_params.get("done", ""),
+        "can_sign": shortcuts.can_sign(), "unlocked": unlocked(request),
+        "shortcut_links": SHORTCUT_SLUGS, "inbox": inbox.STATUS, "inbox_path": str(inbox.path()),
         "q": "", "total": db.count(conn),
     })
+
+
+#: The ready-made shortcuts, by the address they download from.
+SHORTCUT_SLUGS = {"save-to-faves": "Save to Faves", "save-copied-link": "Save copied link"}
+
+
+def _phone_address(request: Request) -> str:
+    """The address a phone should use for Faves: Tailscale's when it is on (it
+    works anywhere), else the one this request came in on, else the wi-fi one."""
+    port = request.url.port or 8000
+    tailscale = _tailscale_address()
+    if tailscale:
+        return f"http://{tailscale}:{port}"
+    host = request.url.hostname or ""
+    if host not in ("localhost", "127.0.0.1", "::1", ""):
+        return f"{request.url.scheme}://{host}:{port}"
+    wifi = _wifi_address()
+    return f"http://{wifi}:{port}" if wifi else f"http://localhost:{port}"
+
+
+@app.get("/shortcuts/{slug}.shortcut")
+async def shortcut_file(slug: str, request: Request):
+    """A ready-made shortcut for the phone, with the address and password in it.
+
+    Only for a device that is unlocked (the Keep page remembers the password),
+    because the file carries the password.
+    """
+    name = SHORTCUT_SLUGS.get(slug)
+    if name is None:
+        raise HTTPException(status_code=404, detail="no such shortcut")
+    if not unlocked(request):
+        raise HTTPException(status_code=401, detail="Unlock this phone on the Keep page first.")
+    address = _phone_address(request)
+    password = os.environ.get("FAVORITES_TOKEN") or None
+    try:
+        data = await run_in_threadpool(shortcuts.signed, name, address, password)
+    except shortcuts.CannotSign as exc:
+        return Response(f"{exc}\n\nThe Keep it in sync page has the steps to build it yourself.",
+                        status_code=503, media_type="text/plain; charset=utf-8")
+    return Response(data, media_type="application/octet-stream",
+                    headers={"Content-Disposition": f'attachment; filename="{name}.shortcut"'})
 
 
 @app.post("/sync/scan")
