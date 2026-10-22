@@ -74,7 +74,12 @@ switch_on() {
   say "  - closing a laptop's lid. Leave it open, or plugged into a screen."
   say ""
   say "macOS may show a 'Background Items Added' notice. That's this."
-  if ! curl -fsS -o /dev/null "http://127.0.0.1:$PORT/healthz" 2>/dev/null; then
+  if curl -fsS --max-time 5 -o /dev/null "http://127.0.0.1:$PORT/healthz" 2>/dev/null; then
+    :  # already running
+  elif pgrep -f 'favorites/start[.]command' >/dev/null 2>&1; then
+    say ""
+    say "Faves is already starting in another window -- leave that one open."
+  else
     say ""
     say "Faves isn't running right now, so opening it..."
     open -a Terminal "$OPENER"
