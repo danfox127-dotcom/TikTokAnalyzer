@@ -129,6 +129,12 @@
     <p>Two ways. Simplest: copy the link in the app, open the <a href="/keep">Keep</a> tab here, tap Paste. Fastest: a one-tap <b>Keep</b> in your share sheet, set up below.</p>
   </div></div>
   <div class="band-pad phone-body rr-reveal">
+    {% if always_on %}
+      <p class="rr-notice always-on">{{ icon('check') }}<span><b>Always on.</b> The Faves window opens by itself when you log in to the Mac, and a plugged-in Mac stays awake while it runs.</span></p>
+    {% else %}
+      <p class="rr-notice always-on">{{ icon('clock') }}<span><b>White screen on your phone?</b> That means Faves isn't running on the Mac. Double-click <code>always-on.command</code> (next to <code>start.command</code>) once, and Faves opens by itself whenever you log in.</span></p>
+    {% endif %}
+    <p class="rr-muted small">Your phone can only reach Faves while the Mac is awake with the Faves window open. A closed laptop lid still sleeps: leave it open, or turn on System Settings → Battery → Options → <i>Prevent automatic sleeping on power adapter when the display is off</i>.</p>
     {% if token %}
       {% set use = anywhere or at_home %}
       <div class="phone-facts">

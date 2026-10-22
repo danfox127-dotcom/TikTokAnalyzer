@@ -197,6 +197,12 @@ count and whether transcripts are switched on.
 
 ## Things that will look like bugs and are not
 
+- **A white screen when you open the Faves icon on your phone.** Faves isn't
+  running on the Mac: it restarted, it's asleep, or the Faves window was
+  closed. Double-click `start.command`, then swipe the Faves app closed on the
+  phone and open it again. To stop it happening, double-click
+  `always-on.command` once: the Faves window then opens by itself whenever
+  you log in. (A closed laptop lid still sends the Mac to sleep.)
 - **The same video shared twice does not duplicate.** Share links carry a
   session id that differs every time; those are stripped, so both shares
   resolve to the same item. The second one refreshes it and keeps your note.
