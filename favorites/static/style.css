@@ -1072,3 +1072,7 @@ body { overflow-wrap: anywhere; }
 .elsewhere .rr-pills { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; padding: 0; }
 .elsewhere .rr-pills li { flex: none; }
 .elsewhere .rr-pill .rr-icon { width: 14px; height: 14px; opacity: .7; }
+/* Your phone: the three ways to save, and the inbox's latest rescues. */
+.phone-cards { margin-top: 4px; }
+.inbox-recent { margin: 0; padding: 0; list-style: none; display: grid; gap: 4px; }
+.inbox-recent code { display: block; font-size: 12.5px; overflow-wrap: anywhere; }

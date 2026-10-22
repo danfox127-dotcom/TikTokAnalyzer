@@ -112,6 +112,13 @@ CREATE TABLE IF NOT EXISTS imports (
     detail      TEXT
 );
 
+-- Lines of the phone's inbox file (favorites/inbox.py) already dealt with,
+-- by a hash of the line, so each shared link is looked at once.
+CREATE TABLE IF NOT EXISTS inbox_seen (
+    line_hash TEXT PRIMARY KEY,
+    seen_at   TEXT NOT NULL
+);
+
 -- Small facts about the library file itself, such as which version of the
 -- theme vocabulary its themes were worked out with.
 CREATE TABLE IF NOT EXISTS meta (
