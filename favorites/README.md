@@ -40,6 +40,17 @@ Python 3.10 or newer — the Mac's built-in one is too old; install one from
 python.org or with `brew install python`. (If macOS refuses to open it the
 first time, right-click it and choose **Open**.)
 
+While it runs, a plugged-in Mac stays awake, and if Faves stops with an
+error it starts again in the same window.
+
+**Always on.** Double-click `favorites/always-on.command` once and the Faves
+window opens by itself whenever you log in to the Mac, so your phone can
+always reach it. Double-click it again to switch that off. (It is a
+LaunchAgent that opens `start.command` in Terminal, so Faves keeps Terminal's
+permission to read your Downloads folder.) **A white screen on the phone's
+Faves icon means Faves isn't running on the Mac**: the Mac restarted or is
+asleep, or the window was closed.
+
 Its settings live in `~/.favorites.env`, created with notes on the first run:
 `FAVORITES_DB` for which library file to use, and `FAVORITES_TOKEN`, the
 password that lets your phone save to it. Switching the password on is also

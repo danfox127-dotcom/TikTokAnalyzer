@@ -519,6 +519,16 @@ class TestKeepingInSync:
         page = client.get("/sync").text  # a phone on the wi-fi
         assert "sesame-123" not in page and "shown only on the Mac" in page
 
+    def test_always_on_or_the_white_screen_hint(self, mac, tmp_path, monkeypatch):
+        monkeypatch.setenv("HOME", str(tmp_path))
+        page = mac.get("/sync").text
+        assert "White screen on your phone?" in page and "always-on.command" in page
+        agent = tmp_path / "Library" / "LaunchAgents" / "app.faves.plist"
+        agent.parent.mkdir(parents=True)
+        agent.write_text("<plist/>")
+        page = mac.get("/sync").text
+        assert "<b>Always on.</b>" in page and "White screen on your phone?" not in page
+
     def test_the_shortcut_gets_the_tailscale_address(self, mac, monkeypatch):
         import favorites.app as appmod
         monkeypatch.setenv("FAVORITES_TOKEN", "sesame-123")

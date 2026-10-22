@@ -921,6 +921,7 @@ def sync_page(request: Request, conn: sqlite3.Connection = Depends(get_db)):
         "google": {"configured": google_sync.configured(), "connected": google_sync.connected(conn),
                    "last": google_sync.last_sync(conn)},
         "here": _on_this_mac(request), "token": token,
+        "always_on": (Path.home() / "Library" / "LaunchAgents" / "app.faves.plist").exists(),
         "anywhere": f"http://{tailscale}:{port}" if tailscale else None,
         "at_home": f"http://{wifi}:{port}" if wifi else None,
         "flash": request.query_params.get("done", ""),

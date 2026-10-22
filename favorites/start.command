@@ -12,12 +12,19 @@
 # does not read ~/.zshrc, so that file is what keeps the double-click and the
 # Terminal using the same library. It is created, with notes, on first run.
 #
-# Leave the window open while you use Faves; close it to stop.
+# Leave the window open while you use Faves; close it to stop. If Faves
+# itself stops with an error, it starts again in the same window. While it
+# runs, a plugged-in Mac stays awake (caffeinate), so your phone can reach it.
+#
+# To have this window open by itself whenever you log in, double-click
+# always-on.command once.
 
 set -u
 cd "$(dirname "$0")/.." || exit 1
 ROOT="$(pwd)"
 PORT="${FAVORITES_PORT:-8000}"
+# Set when always-on opens this at login: no browser tab then.
+AT_LOGIN="${FAVES_AT_LOGIN:-}"
 ENV_FILE="$HOME/.favorites.env"
 VENV="$ROOT/favorites/.venv"
 
@@ -91,7 +98,7 @@ set +a
 if curl -fsS -o /dev/null "http://127.0.0.1:$PORT/healthz" 2>/dev/null; then
   say ""
   say "Faves is already running: http://localhost:$PORT"
-  command -v open >/dev/null && open "http://localhost:$PORT"
+  [ -z "$AT_LOGIN" ] && command -v open >/dev/null && open "http://localhost:$PORT"
   exit 0
 fi
 
@@ -169,11 +176,24 @@ say ""
 (
   for _ in $(seq 1 40); do
     if curl -fsS -o /dev/null "http://127.0.0.1:$PORT/healthz" 2>/dev/null; then
-      command -v open >/dev/null && open "http://localhost:$PORT"
+      [ -z "$AT_LOGIN" ] && command -v open >/dev/null && open "http://localhost:$PORT"
       exit 0
     fi
     sleep 0.5
   done
 ) &
 
-exec "$VENV/bin/python" -m uvicorn favorites.app:app --host "$HOST" --port "$PORT"
+# A sleeping Mac is a white screen on the phone: keep a plugged-in Mac awake
+# for as long as this window runs (on battery it sleeps as usual).
+command -v caffeinate >/dev/null 2>&1 && caffeinate -s -w $$ &
+
+# If Faves stops with an error, start it again; a clean stop (Ctrl-C) ends here.
+while :; do
+  "$VENV/bin/python" -m uvicorn favorites.app:app --host "$HOST" --port "$PORT"
+  code=$?
+  [ "$code" -eq 0 ] && exit 0
+  say ""
+  say "Faves stopped unexpectedly (code $code). Starting it again in 10 seconds..."
+  say "(Close this window to stop it for good.)"
+  sleep 10
+done
