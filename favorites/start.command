@@ -12,6 +12,10 @@
 # does not read ~/.zshrc, so that file is what keeps the double-click and the
 # Terminal using the same library. It is created, with notes, on first run.
 #
+# Double-clicking it while Faves is already running updates the code and, if
+# the running Faves is now behind, restarts it on the new version -- so a
+# double-click always means "give me the latest Faves".
+#
 # Leave the window open while you use Faves; close it to stop. If Faves
 # itself stops with an error, it starts again in the same window. While it
 # runs, a plugged-in Mac stays awake (caffeinate), so your phone can reach it.
@@ -66,6 +70,22 @@ port_holder() {
   return 0
 }
 
+# Stop a Faves process: politely, then firmly.
+stop_faves() {
+  kill "$1" 2>/dev/null
+  for _ in 1 2 3 4 5 6 7 8 9 10; do kill -0 "$1" 2>/dev/null || return 0; sleep 0.5; done
+  kill -9 "$1" 2>/dev/null
+  sleep 1
+}
+
+# The code on disk, and the code the running Faves started with (empty when
+# unknown: not a git checkout, or a Faves from before it reported this).
+code_version() { git rev-parse HEAD 2>/dev/null; }
+running_version() {
+  curl -fsS --max-time 5 "http://127.0.0.1:$PORT/healthz" 2>/dev/null |
+    sed -n 's/.*"version":"\([0-9A-Za-z]*\)".*/\1/p'
+}
+
 # Make sure the port is free before starting. An older copy of Faves that has
 # stopped answering (the phone sees a white screen) is stopped; anything else
 # on the port is named, so you know what to quit.
@@ -84,10 +104,7 @@ free_the_port() {
     *favorites.app:app*)
       say "   An older copy of Faves (process $pid) is stuck and not answering."
       say "   Stopping it, so this one can take over..."
-      kill "$pid" 2>/dev/null
-      for _ in 1 2 3 4 5 6 7 8 9 10; do kill -0 "$pid" 2>/dev/null || return 0; sleep 0.5; done
-      kill -9 "$pid" 2>/dev/null
-      sleep 1
+      stop_faves "$pid"
       return 0 ;;
     *)
       fail "Faves can't start: port $PORT is already in use by another program:
@@ -141,14 +158,6 @@ set +a
 # The settings file may choose the port.
 PORT="${FAVORITES_PORT:-$PORT}"
 
-# ---- already running? ------------------------------------------------------
-if answering; then
-  say ""
-  say "Faves is already running: http://localhost:$PORT"
-  [ -z "$AT_LOGIN" ] && command -v open >/dev/null && open "http://localhost:$PORT"
-  exit 0
-fi
-
 # ---- 1. update the code ----------------------------------------------------
 step "1. Checking for updates"
 if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
@@ -164,6 +173,23 @@ if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
   fi
 else
   say "   Not a git checkout -- skipping."
+fi
+
+# ---- already running? ------------------------------------------------------
+# Up to date: nothing to do but open it. Behind the code just updated (or too
+# old to say): get the new version ready, then swap it in.
+RESTART=""
+if answering; then
+  have="$(code_version)"; runs="$(running_version)"
+  if [ -z "$have" ] || [ "$runs" = "$have" ]; then
+    say ""
+    say "Faves is already running: http://localhost:$PORT"
+    [ -z "$AT_LOGIN" ] && command -v open >/dev/null && open "http://localhost:$PORT"
+    exit 0
+  fi
+  say ""
+  say "   Faves is running an older version -- restarting it with the update..."
+  RESTART=1
 fi
 
 # ---- 2. Python -------------------------------------------------------------
@@ -196,6 +222,12 @@ say "   Ready."
 
 # ---- 3. start --------------------------------------------------------------
 step "3. Starting Faves"
+if [ -n "$RESTART" ]; then
+  holder="$(port_holder)"
+  case "${holder#* }" in
+    *favorites.app:app*) stop_faves "${holder%% *}"; say "   Stopped the older version." ;;
+  esac
+fi
 if [ -n "${FAVORITES_TOKEN:-}" ]; then
   HOST="0.0.0.0"
   say "   Open it here:      http://localhost:$PORT"
@@ -241,7 +273,7 @@ failed_starts=0
 while :; do
   free_the_port
   started=$(date +%s)
-  "$VENV/bin/python" -m uvicorn favorites.app:app --host "$HOST" --port "$PORT"
+  FAVES_VERSION="$(code_version)" "$VENV/bin/python" -m uvicorn favorites.app:app --host "$HOST" --port "$PORT"
   code=$?
   [ "$code" -eq 0 ] && exit 0
   say ""

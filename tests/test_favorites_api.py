@@ -225,7 +225,8 @@ class TestPages:
     def test_healthz_reports_the_library_size(self, client, tiktok_ok):
         client.post("/save", json={"url": "https://www.tiktok.com/@citydesk/video/7123"})
         body = client.get("/healthz").json()
-        assert body == {"ok": True, "items": 1, "transcripts_enabled": body["transcripts_enabled"]}
+        assert body == {"ok": True, "items": 1, "transcripts_enabled": body["transcripts_enabled"],
+                        "version": None}
 
 
 class TestPlacardRun:
@@ -696,3 +697,9 @@ def test_one_creator_across_platforms_and_where_to_find_them(client, library):
     assert 'href="https://www.youtube.com/@marisol.cooks"' in page
     facet = client.get("/search").text
     assert facet.count("creator=%40marisol.cooks") >= 1 and "creator=%40Marisol.Cooks" not in facet
+
+
+def test_healthz_says_which_code_it_started_with(client, monkeypatch):
+    assert client.get("/healthz").json()["version"] is None
+    monkeypatch.setenv("FAVES_VERSION", "c48c40e")
+    assert client.get("/healthz").json()["version"] == "c48c40e"

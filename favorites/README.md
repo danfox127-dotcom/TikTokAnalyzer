@@ -40,6 +40,12 @@ Python 3.10 or newer — the Mac's built-in one is too old; install one from
 python.org or with `brew install python`. (If macOS refuses to open it the
 first time, right-click it and choose **Open**.)
 
+Double-clicking it while Faves is already running updates the code and, if
+the running Faves is behind, restarts it on the new version, so a double-click
+always gives you the latest Faves (a running server keeps its old code in
+memory but reads its page templates fresh, which is how an update made a page
+fail with "Internal Server Error" until a restart).
+
 While it runs, a plugged-in Mac stays awake, and if Faves stops with an
 error it starts again in the same window (it gives up, and says why, after
 three failed starts in a row). If an older copy of Faves is stuck on port 8000
