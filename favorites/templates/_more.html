@@ -1,0 +1,35 @@
+{% from "_icons.html" import icon %}
+
+{#- Everything that isn't a tab. On a phone it opens as a sheet from the tab
+    bar's More; /more shows the same list as a page, with no script. -#}
+{% macro more_links() %}
+<ul class="rr-more-list">
+  <li><a href="/keep">{{ icon('plus') }}<span class="t"><b>Keep a link</b><span>Paste a link to save it</span></span></a></li>
+  <li><a href="/shuffle?theme=Undefined&amp;order=newest">{{ icon('rooms') }}<span class="t"><b>Give saves a topic</b><span>Swipe through the ones without one</span></span></a></li>
+  <li><a href="/notes">{{ icon('note') }}<span class="t"><b>Notes</b><span>Write why you kept things</span></span></a></li>
+  <li><a href="/topics/sort">{{ icon('filter') }}<span class="t"><b>Sort things out</b><span>Teach Faves what hashtags mean</span></span></a></li>
+  <li><a href="/year">{{ icon('spark') }}<span class="t"><b>Your year</b><span>Your saves in a few numbers</span></span></a></li>
+  <li><a href="/wander">{{ icon('compass') }}<span class="t"><b>Rabbit hole</b><span>Follow one save to the next</span></span></a></li>
+  <li><a href="/sync">{{ icon('sync') }}<span class="t"><b>Keep it in sync</b><span>Exports, your phone, YouTube</span></span></a></li>
+</ul>
+<div class="rr-more-mode">
+  <p class="rr-label is-muted">Colours</p>
+  <div class="rr-mode" role="group" aria-label="Colour mode">
+    <button type="button" data-mode="light" aria-pressed="false">{{ icon('sun') }}<span>Day</span></button>
+    <button type="button" data-mode="auto" aria-pressed="true">{{ icon('device') }}<span>Auto</span></button>
+    <button type="button" data-mode="dark" aria-pressed="false">{{ icon('moon') }}<span>Night</span></button>
+  </div>
+</div>
+{% endmacro %}
+
+{#- A bottom sheet: a modal <dialog>, so it sits above everything and Escape
+    closes it. museum.js opens it, closes it on the scrim, and lets it be
+    pulled down to close. -#}
+{% macro sheet(name, title) %}
+<dialog class="rr-sheet-dialog" id="{{ name }}-sheet" aria-labelledby="{{ name }}-sheet-title">
+  <div class="grab" aria-hidden="true"></div>
+  <header><h2 id="{{ name }}-sheet-title">{{ title }}</h2>
+    <form method="dialog"><button class="rr-btn rr-btn--icon rr-btn--quiet" aria-label="Close">{{ icon('close') }}</button></form></header>
+  {{ caller() }}
+</dialog>
+{% endmacro %}

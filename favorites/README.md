@@ -198,7 +198,7 @@ and then behaves like this:
 - **Search first.** One question — *What are you looking for?* — and one big
   field. As you type it suggests saves (with their pictures), topics, hashtags,
   creators and dates (`/suggest.json`). Under it, a row of ways in: *On this
-  day*, *Surprise me* (`/surprise`, one save at random) and your biggest topics.
+  day*, *Surprise me* (Shuffle, below) and your biggest topics.
 - **On this day.** Things you saved on today's date in earlier years, stacked
   by year. A quiet date widens to the week around it; a date with nothing even
   then shows nothing. The same hook is a filter on the search page
@@ -240,6 +240,41 @@ from counts the library already holds, which means it works on day one with no
 API key and never invents a fact. `museum.digest()` returns its components
 alongside the prose, so a model can be added later to rewrite the wording
 without having to re-derive any of the numbers.
+
+## On your phone
+
+Added to the home screen, Faves opens with no browser around it: no Back
+button, no address bar. So it carries its own.
+
+- **Tabs:** Home · Search · **Shuffle** · Topics · **More**. More is a sheet
+  holding everything else — Keep a link, Give saves a topic, Notes, Sort things
+  out, Your year, Rabbit hole, Keep it in sync, and Day/Night. (`/more` is the
+  same list as a page.)
+- **Back goes where you came from.** Every page below the tabs has a Back in
+  the top bar, named for the page before it — "‹ Undefined saves", say, after
+  opening a save from that list. Each page notes itself on a trail kept for the
+  visit (`sessionStorage`); a tab's own page starts the trail afresh. With no
+  script, Back is a plain link to the page's parent.
+- **Saving stays put.** Topics, notes and categories on a save's page are saved
+  in place, so Back (and the iPhone's edge swipe) still goes to the list you
+  came from, and a list you return to is redrawn if something on it changed.
+- **Search results keep coming** as you scroll, and the Filters/sort bar rides
+  along under the top bar.
+- **Shuffle** (`/shuffle`) is your saves one screen at a time, flicked up like a
+  reel: the picture on a blurred wash of itself, its label, and *Watch*,
+  *Topics*, *Note* and *Details* within a thumb's reach. It is the phone's own
+  scrolling, snapping a screen at a time, with no gesture code.
+  - It takes the same filters as search, so any list has **Swipe through these**
+    (in its own order); the tab deals everything at random.
+  - A shuffle is seeded (`?seed=`), and the address follows the card on screen
+    (`&at=`), so reloading — or coming back from a save's page — lands on the
+    same card. More cards load as you near the end (`/shuffle/cards`).
+  - **Untagged saves** (`/shuffle?theme=Undefined&order=newest`) come with the
+    topics to tap, most-used first. Tap one or two, *Done*, and it moves on to
+    the next; the counter in the top bar goes down as you go.
+- Touch details: every tap target is at least 44 points, fields are 16px so iOS
+  doesn't zoom in on them, sheets pull down to close, and pages crossfade where
+  the browser supports it (iOS 18.2 and later).
 
 ### Your categories
 
@@ -615,7 +650,7 @@ library.
 | `museum.py` | The digest, the rotating shelves and the hooks (On this day, topics, threads) |
 | `explore.py` | Search and filters, including On this day |
 | `looks.py` | Each theme's band colour, icon and emoji |
-| `templates/`, `static/` | The pages, in the *Faves* design system (version 2, "Sweet Spot"): lavender, candy-colour section bands, round type, subtle scroll motion.: `style.css` holds its tokens and components, `museum.js` the little behaviour a plain page cannot do (carousel dots, the phone filter sheet, suggestions, the colour mode). Every page works without it |
+| `templates/`, `static/` | The pages, in the *Faves* design system (version 2, "Sweet Spot"): lavender, candy-colour section bands, round type, subtle scroll motion.: `style.css` holds its tokens and components, `museum.js` the little behaviour a plain page cannot do (carousel dots, the phone filter sheet, suggestions, the colour mode, Back's trail, sheets, saving in place, Shuffle's feed). Every page works without it |
 | `app.py` | The web app and the `/save` endpoint |
 
 Tests are in `tests/test_favorites_*.py` and run with the rest of the repo's

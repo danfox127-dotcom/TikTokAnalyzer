@@ -595,9 +595,10 @@ class TestKeepingFromThePhone:
         monkeypatch.setenv("FAVORITES_TOKEN", "sesame-123")
         return client
 
-    def test_the_tab_bar_has_surprise_and_keep(self, client):
+    def test_the_tab_bar_has_shuffle_and_keep_is_under_more(self, client):
         page = client.get("/").text
-        assert 'class="scoop" href="/surprise"' in page and 'href="/keep"' in page
+        assert 'class="scoop" href="/shuffle"' in page
+        assert '<a href="/more" data-sheet-open="more">' in page and '<a href="/keep">' in page
 
     def test_a_surprise_offers_another(self, client, library):
         db.upsert_item(library, {"canonical_url": "https://example.com/s", "shared_url": "x",

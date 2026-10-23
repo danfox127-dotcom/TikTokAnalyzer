@@ -2,6 +2,7 @@
 {% from "_card.html" import frame, piece %}
 {% from "_icons.html" import icon %}
 {% set nav = 'rooms' %}
+{% set back = '/topics' %}{% set back_label = 'Topics' %}
 {% block title %}Sort things out · Faves{% endblock %}
 {% block main_class %}is-bands{% endblock %}
 {% block content %}
@@ -89,7 +90,8 @@
   <div class="browse-more band-pad rr-reveal">
     {% if undefined %}<p class="undefined-line"><b>{{ undefined }} {{ 'save is' if undefined == 1 else 'saves are' }} without a topic.</b>
       Nothing in their captions said clearly what they're about. Open one and give it a topic, or teach the hashtags above.</p>{% endif %}
-    {% if undefined %}<a class="rr-btn rr-btn--primary" href="/search?theme=Undefined">{{ icon('filter') }}Look through them</a>{% endif %}
+    {% if undefined %}<a class="rr-btn rr-btn--primary" href="/shuffle?theme=Undefined&amp;order=newest">{{ icon('up') }}Swipe through and give them topics</a>
+      <a class="rr-btn" href="/search?theme=Undefined">{{ icon('filter') }}Look through them</a>{% endif %}
     <a class="rr-btn" href="/topics">{{ icon('home') }}Back to topics</a>
   </div>
 </div></section>

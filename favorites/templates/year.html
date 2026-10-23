@@ -1,6 +1,8 @@
 {% extends "base.html" %}
 {% from "_card.html" import card, frame, room %}
 {% from "_icons.html" import icon %}
+{% set nav = 'year' %}
+{% set back = '/more' %}{% set back_label = 'More' %}
 {% block title %}Your {{ year }} · Faves{% endblock %}
 {% block main_class %}{% if review %}is-bands{% endif %}{% endblock %}
 {% block content %}

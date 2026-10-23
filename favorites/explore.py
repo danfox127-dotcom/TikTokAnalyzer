@@ -165,6 +165,18 @@ class Filters:
         params = {k: v for k, v in merged.items() if v and not (k == "page" and v == 1)}
         return "/search" + (f"?{urlencode(params)}" if params else "")
 
+    def deck_href(self, order: str = "") -> str:
+        """These same saves as a swipe feed. From a list they keep the list's
+        order (newest first unless it is sorted oldest first); ``shuffle``
+        deals them at random instead."""
+        params = dict(self.narrowing())
+        if self.q:
+            params["q"] = self.q
+        order = order or ("oldest" if self.order == "oldest" else "newest")
+        if order != "shuffle":
+            params["order"] = order
+        return "/shuffle" + (f"?{urlencode(params)}" if params else "")
+
 
 # --- the query --------------------------------------------------------------
 
@@ -238,21 +250,29 @@ def _like_fallback(f: Filters) -> Filters:
     return replace(f, q="")
 
 
-def results(conn: sqlite3.Connection, f: Filters) -> tuple[list[dict], int]:
-    """One page of matching saves, and how many match in all."""
+def _safely(f: Filters, run):
+    """Run a query over ``f``'s clauses; if full-text search rejects the
+    words, run it again searching them by substring.
+
+    The search box must never produce an error page. db.fts_query quotes
+    every token, so this is belt and braces -- but it is cheap.
+    """
     where, params = _clauses(f)
     try:
-        return _results(conn, f, where, params)
+        return run(f, where, params)
     except sqlite3.OperationalError:
-        # The search box must never produce an error page. db.fts_query quotes
-        # every token, so this is belt and braces -- but it is cheap.
         g = _like_fallback(f)
         where, params = _clauses(g)
         like = f"%{f.q}%"
         where.append("(i.title LIKE ? OR i.description LIKE ? OR i.note LIKE ?"
                      " OR i.creator_name LIKE ? OR i.creator_handle LIKE ?)")
         params.extend([like] * 5)
-        return _results(conn, g, where, params)
+        return run(g, where, params)
+
+
+def results(conn: sqlite3.Connection, f: Filters) -> tuple[list[dict], int]:
+    """One page of matching saves, and how many match in all."""
+    return _safely(f, lambda g, where, params: _results(conn, g, where, params))
 
 
 def _results(conn, f: Filters, where: list[str], params: list) -> tuple[list[dict], int]:
@@ -277,6 +297,77 @@ def _results(conn, f: Filters, where: list[str], params: list) -> tuple[list[dic
             [*params, PAGE_SIZE, offset],
         ).fetchall()
     return db.rows_to_dicts(rows), int(total)
+
+
+# --- the swipe feed -------------------------------------------------------------
+
+# A shuffled feed orders saves by their id times a multiplier, modulo a
+# prime. The multiplier comes from the feed's seed, spread across the whole
+# range so that even a small seed over a small library jumps about rather
+# than counting up. Every seed deals a different order, and the same seed
+# deals the same one again -- so a feed can be reloaded, or come back to from
+# a save's page, and carry on where it was.
+DECK_PRIME = 1_000_003
+_SPREAD = 2_654_435_761  # Knuth's multiplicative-hash constant
+DECK_ORDERS = ("shuffle", "newest", "oldest")
+DECK_BATCH = 8
+
+
+def deck_seed(raw) -> Optional[int]:
+    """A seed from the address, or None if it is missing or not a number."""
+    raw = str(raw or "").strip()
+    if not raw.isdigit() or len(raw) > 9:
+        return None
+    seed = int(raw) % DECK_PRIME
+    return seed or None
+
+
+def deck(conn: sqlite3.Connection, f: Filters, *, order: str = "shuffle", seed: int = 1,
+         after: Optional[int] = None, before: Optional[int] = None, at: Optional[int] = None,
+         n: int = DECK_BATCH) -> tuple[list[dict], int, bool]:
+    """A batch of the feed: up to ``n`` saves, how many the feed holds, and
+    whether there are more beyond the batch.
+
+    A batch continues from a save (``after`` it, ``before`` it, or starting
+    ``at`` it) rather than from a position. Giving a save a topic can take it
+    out of the feed -- the untagged feed empties as you go -- and counting
+    positions would then skip the saves that moved up.
+    """
+    order = order if order in DECK_ORDERS else "shuffle"
+    mult = (int(seed) * _SPREAD) % DECK_PRIME or 1
+    if order == "shuffle":
+        key, forward = f"((i.id * {mult}) % {DECK_PRIME})", "ASC"
+    else:
+        key, forward = "i.saved_at", "DESC" if order == "newest" else "ASC"
+    cursor, backwards, inclusive = (before, True, False) if before else (at, False, True) if at else (after, False, False)
+    pivot = None
+    if cursor:
+        if order == "shuffle":
+            pivot = (int(cursor) * mult) % DECK_PRIME
+        else:
+            row = conn.execute("SELECT saved_at FROM items WHERE id = ?", (cursor,)).fetchone()
+            pivot = row[0] if row else None
+    going = forward if not backwards else ("DESC" if forward == "ASC" else "ASC")
+    past = ">" if going == "ASC" else "<"
+
+    def run(g, where, params):
+        where = [*where, "i.resolve_status = 'ok'"]
+        total = conn.execute(f"SELECT count(*) FROM items i{_where_sql(where)}", params).fetchone()[0]
+        page_where, page_params = list(where), list(params)
+        if pivot is not None:
+            page_where.append(f"({key} {past} ? OR ({key} = ? AND i.id {past}{'=' if inclusive else ''} ?))")
+            page_params.extend([pivot, pivot, int(cursor)])
+        rows = conn.execute(
+            f"SELECT i.* FROM items i{_where_sql(page_where)} ORDER BY {key} {going}, i.id {going} LIMIT ?",
+            [*page_params, n + 1]).fetchall()
+        return db.rows_to_dicts(rows), int(total)
+
+    items, total = _safely(f, run)
+    more = len(items) > n
+    items = items[:n]
+    if backwards:
+        items.reverse()
+    return items, total, more
 
 
 # --- the options beside the results ------------------------------------------
