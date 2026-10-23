@@ -51,7 +51,7 @@ def checkout(tmp_path):
     venv = root / "favorites" / ".venv"
     log, up = tmp_path / "log", tmp_path / "up"
     executable(venv / "bin" / "python",
-               f'echo "python $*" >> "{log}"\n'
+               f'echo "python $* version=$FAVES_VERSION" >> "{log}"\n'
                f'n=$(cat "{tmp_path}/runs" 2>/dev/null || echo 0); echo $((n+1)) > "{tmp_path}/runs"\n'
                f'code=$(cut -d, -f$((n+1)) "{tmp_path}/codes")\n'
                f'[ "$code" = 0 ] && {{ touch "{up}"; /bin/sleep 1.5; }}\n'
@@ -65,10 +65,14 @@ def checkout(tmp_path):
     executable(bin_ / "caffeinate", f'echo "caffeinate $*" >> "{log}"\n')
     # Skip the 10-second restart wait; shorten the browser-tab poll.
     executable(bin_ / "sleep", '[ "$1" = 10 ] && exit 0\n[ "$1" = 0.5 ] && exec /bin/sleep 0.1\nexec /bin/sleep "$@"\n')
-    executable(bin_ / "curl", f'[ -f "{up}" ]\n')
-    # What holds the port: the PID in holder_pid, while that process lives.
+    # Faves "answers" while the up file exists, with the healthz body in healthz.
+    executable(bin_ / "curl", f'[ -f "{up}" ] || exit 7\ncat "{tmp_path}/healthz" 2>/dev/null\nexit 0\n')
+    # Not a checkout to update; HEAD is whatever the head file says.
+    executable(bin_ / "git", f'[ "$1 $2" = "rev-parse HEAD" ] && {{ cat "{tmp_path}/head" 2>/dev/null || exit 128; exit 0; }}\nexit 1\n')
+    # What holds the port: the PID in holder_pid, while that process lives (a
+    # stopped one lingers here as a zombie until the test reaps it; on a Mac it's gone).
     executable(bin_ / "lsof", f'[ -f "{tmp_path}/also_up" ] && touch "{up}"\n'
-                              f'pid=$(cat "{tmp_path}/holder_pid" 2>/dev/null) && kill -0 "$pid" 2>/dev/null && echo "$pid"\n'
+                              f'pid=$(cat "{tmp_path}/holder_pid" 2>/dev/null) && ps -o stat= -p "$pid" 2>/dev/null | grep -q "^[^Z]" && echo "$pid"\n'
                               'exit 0\n')
     env = {**os.environ, "HOME": str(home), "PATH": f"{bin_}:{os.environ['PATH']}"}
     env.pop("FAVORITES_PORT", None)
@@ -149,3 +153,36 @@ def test_a_faves_already_answering_in_another_window_is_left_alone(checkout):
     assert result.returncode == 0, result.stdout + result.stderr
     assert "already running in another window" in result.stdout
     assert other.poll() is None and uvicorn_runs(lines) == 0
+
+
+def running_faves(tmp_path, hold_port, version):
+    """A Faves already running and answering, started with ``version``."""
+    holder = hold_port("python -m uvicorn favorites.app:app --port 8000")
+    body = f'"{version}"' if version else "null"
+    (tmp_path / "healthz").write_text('{"ok":true,"items":3,"version":%s}' % body)
+    (tmp_path / "up").touch()
+    return holder
+
+
+def test_an_up_to_date_faves_is_just_opened(checkout):
+    run, lines, hold_port, tmp_path = checkout
+    (tmp_path / "head").write_text("abc123\n")
+    holder = running_faves(tmp_path, hold_port, "abc123")
+    result = run("0")
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "Faves is already running" in result.stdout
+    assert uvicorn_runs(lines) == 0 and holder.poll() is None
+    assert "open http://localhost:8000" in lines()
+
+
+@pytest.mark.parametrize("running", ["old999", None])  # an older version, or one too old to say
+def test_a_faves_behind_the_update_is_restarted_on_it(checkout, running):
+    run, lines, hold_port, tmp_path = checkout
+    (tmp_path / "head").write_text("new123\n")
+    holder = running_faves(tmp_path, hold_port, running)
+    result = run("0")
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "running an older version" in result.stdout and "Stopped the older version" in result.stdout
+    assert holder.wait(timeout=10) is not None
+    [started] = [l for l in lines() if l.startswith("python -m uvicorn favorites.app:app")]
+    assert started.endswith("version=new123")

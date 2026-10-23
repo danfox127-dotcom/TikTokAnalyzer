@@ -1076,6 +1076,9 @@ def healthz(conn: sqlite3.Connection = Depends(get_db)):
         "ok": True,
         "items": db.count(conn),
         "transcripts_enabled": transcript.available(),
+        # The code this server started with (start.command sets it), so a
+        # double-click can tell a running Faves is behind an update.
+        "version": os.environ.get("FAVES_VERSION") or None,
     }
 
 
