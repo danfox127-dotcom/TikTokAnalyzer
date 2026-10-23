@@ -1,0 +1,103 @@
+{% from "_icons.html" import icon %}
+{% from "_card.html" import frame %}
+{% from "_more.html" import sheet %}
+
+{#- Shuffle's cards: one save per screen, flicked up like a reel. The picture
+    hangs on a blurred wash of itself, the label sits under it, and the ways
+    on are within a thumb's reach at the bottom. -#}
+
+{% macro at(here, id) %}{{ here }}{{ '&' if '?' in here else '?' }}at={{ id }}{% endmacro %}
+
+{#- Topics in three lanes that scroll sideways together, most used first. -#}
+{% macro topic_lanes(topics) %}
+<div class="room-choices is-lanes">
+  {% for lane in range(3) %}<div class="lane">
+    {% for t in topics[lane::3] %}{% set tl = look(t) %}<label class="choice tone-{{ tl[0] }}"><input type="checkbox" name="room" value="{{ t }}"><span>{{ tl[2] }} {{ t }}</span></label>{% endfor %}
+  </div>{% endfor %}
+</div>
+{% endmacro %}
+
+{% macro deckcard(item, tagging=False, here='/shuffle', topics=()) %}
+{%- set theme = (item.themes or [none])[0] %}{% set lk = look(theme) %}
+{%- set who = item.creator_name or item.creator_handle %}
+<article class="rr-deckcard tone-{{ lk[0] }}{% if tagging %} is-tagging{% endif %}" data-id="{{ item.id }}" data-themes="{{ item.themes | join('|') }}">
+  <div class="backdrop" aria-hidden="true">{% if item.thumbnail_url %}<img src="/thumb/{{ item.id }}" alt="" loading="lazy" referrerpolicy="no-referrer" data-hide-broken>{% endif %}</div>
+  <a class="pic" href="/item/{{ item.id }}" tabindex="-1" aria-hidden="true">{{ frame(item) }}<span class="stamp" aria-hidden="true">{{ icon('check') }}</span></a>
+  <div class="cap">
+    <p class="meta"><span data-topic>{% if theme %}{{ lk[2] }} {{ theme }}{% else %}{{ platform_label(item.platform) }}{% endif %}</span><span class="sep"></span><span>{% if theme %}{{ platform_label(item.platform) }} · {% endif %}{{ item.saved_at[:4] }}</span></p>
+    <h2><a href="/item/{{ item.id }}">{{ headline(item) or browsable_url(item) }}</a></h2>
+    {% if who %}<a class="by" href="/search?creator={{ (item.creator_handle or item.creator_name) | urlencode }}">{{ who }}</a>{% endif %}
+    {% if not tagging %}{% set b = blurb(item, 160) %}{% if b %}<p class="desc">{{ b }}</p>{% endif %}{% endif %}
+    <p class="note" data-note{% if not item.note %} hidden{% endif %}>{{ item.note or '' }}</p>
+    {% if tagging %}
+    <form class="tagger" action="/item/{{ item.id }}/rooms" method="post">
+      <input type="hidden" name="next" value="{{ at(here, item.id) }}">
+      <fieldset>
+        <legend class="rr-label is-muted">What's it about? Tap one or more</legend>
+        {{ topic_lanes(topics or theme_names) }}
+      </fieldset>
+      <div class="acts">
+        <button class="rr-btn rr-btn--primary" type="submit">{{ icon('check') }}Done</button>
+        <a class="rr-btn rr-btn--icon" href="{{ browsable_url(item) }}" target="_blank" rel="noopener noreferrer" aria-label="Watch it on {{ platform_label(item.platform) }}">{{ icon('external') }}</a>
+        <a class="rr-btn rr-btn--icon" href="/item/{{ item.id }}" aria-label="Everything about this save">{{ icon('right') }}</a>
+      </div>
+    </form>
+    {% else %}
+    <div class="acts">
+      <a class="rr-btn rr-btn--primary open" href="{{ browsable_url(item) }}" target="_blank" rel="noopener noreferrer">
+        {% if item.format == 'short' %}Watch it{% else %}Open on {{ platform_label(item.platform) }}{% endif %}{{ icon('external') }}</a>
+      <a class="rr-btn rr-btn--icon" href="/item/{{ item.id }}?rooms=1#rooms" data-sheet-open="topic" aria-label="Topics">{{ icon('rooms') }}</a>
+      <a class="rr-btn rr-btn--icon" href="/item/{{ item.id }}#note" data-sheet-open="note" aria-label="Your note">{{ icon('note') }}</a>
+      <a class="rr-btn rr-btn--icon" href="/item/{{ item.id }}" aria-label="Everything about this save">{{ icon('right') }}</a>
+    </div>
+    {% endif %}
+  </div>
+</article>
+{% endmacro %}
+
+{#- The last screen of a feed. -#}
+{% macro deck_end(total, tagging, again_href, list_href) %}
+<section class="rr-deckend tone-butter">
+  <div class="big" aria-hidden="true">{% if tagging %}🎉{% else %}🍦{% endif %}</div>
+  <h2 class="rr-h-l">{% if tagging %}That's every one for now.{% else %}That's all {{ total }}.{% endif %}</h2>
+  <p>{% if tagging %}Saves you skipped are still waiting -- shuffle to see them again.{% else %}Shuffle to deal them again in a new order.{% endif %}</p>
+  <div class="acts">
+    <a class="rr-btn rr-btn--primary" href="{{ again_href }}">{{ icon('shuffle') }}Shuffle{% if tagging %} the rest{% else %} again{% endif %}</a>
+    <a class="rr-btn" href="{{ list_href }}">{{ icon('filter') }}See them as a list</a>
+  </div>
+</section>
+{% endmacro %}
+
+{#- With no script there is no loading on demand: the last screen of a batch
+    is a link to the next. museum.js removes it and loads in place. -#}
+{% macro deck_next(here, last_id) %}
+<section class="rr-deckend rr-decknext tone-lilac" data-no-js>
+  <a class="rr-btn rr-btn--primary" href="{{ here }}{{ '&' if '?' in here else '?' }}after={{ last_id }}">{{ icon('up') }}Keep going</a>
+</section>
+{% endmacro %}
+
+{#- One topic picker and one note editor for the whole feed; museum.js fills
+    them in for the card you opened them from. -#}
+{% macro deck_sheets(topics=()) %}
+{% call sheet('topic', 'Topics') %}
+  <form class="sheet-form" method="post" data-for-card="topics">
+    <div class="body">
+      <div class="room-choices">
+        {% for t in topics or theme_names %}{% set tl = look(t) %}
+          <label class="choice tone-{{ tl[0] }}"><input type="checkbox" name="room" value="{{ t }}"><span>{{ tl[2] }} {{ t }}</span></label>
+        {% endfor %}
+      </div>
+    </div>
+    <footer><button class="rr-btn rr-btn--primary" type="submit">Save topics</button></footer>
+  </form>
+{% endcall %}
+{% call sheet('note', 'Your note') %}
+  <form class="sheet-form" method="post" data-for-card="note">
+    <div class="body">
+      <label class="rr-sr" for="deck-note">Why did you keep this?</label>
+      <textarea id="deck-note" name="note" rows="3" placeholder="Why did you keep this?"></textarea>
+    </div>
+    <footer><button class="rr-btn rr-btn--primary" type="submit">Save note</button></footer>
+  </form>
+{% endcall %}
+{% endmacro %}

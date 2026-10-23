@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% from "_more.html" import more_links %}
+{% set nav = 'more' %}
+{% block title %}More · Faves{% endblock %}
+{% block content %}
+<section class="page-head more-page">
+  <h1 class="rr-h-l">More</h1>
+  {{ more_links() }}
+</section>
+{% endblock %}

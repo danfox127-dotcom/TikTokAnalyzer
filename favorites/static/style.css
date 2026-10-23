@@ -904,7 +904,7 @@ a.rr-stat:hover { transform: translateY(-3px); }
 .why-here li b { font-weight: 800; }
 .why-here .hunch { display: inline-block; margin-left: 4px; padding: 1px 8px; border-radius: var(--radius-pill); background: var(--band-butter); color: var(--ink); font: 800 11px/16px var(--font-sans); letter-spacing: .06em; text-transform: uppercase; }
 .change-rooms { margin-top: 12px; }
-.change-rooms summary { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; font: 800 14px/20px var(--font-sans); color: var(--accent-ink); list-style: none; }
+.change-rooms summary { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; font: 800 14px/20px var(--font-sans); color: var(--accent-ink); list-style: none; min-height: var(--tap-min); }
 .change-rooms summary::-webkit-details-marker { display: none; }
 .change-rooms fieldset { border: 0; padding: 0; margin: 12px 0 0; }
 .room-choices { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
@@ -1076,3 +1076,226 @@ body { overflow-wrap: anywhere; }
 .phone-cards { margin-top: 4px; }
 .inbox-recent { margin: 0; padding: 0; list-style: none; display: grid; gap: 4px; }
 .inbox-recent code { display: block; font-size: 12.5px; overflow-wrap: anywhere; }
+
+/* ======================================================================
+   On the phone. Faves opened from the home screen has no browser around
+   it -- no Back button, no address bar -- so the app carries its own way
+   back, keeps everything that isn't a tab one tap away under More, and
+   gives Shuffle a screen per save to flick through.
+   ====================================================================== */
+.rr { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; -webkit-tap-highlight-color: transparent; --mast-h: 68px; --tabbar-h: 84px; }
+/* No 300ms wait for a double-tap zoom that never comes. */
+.rr a, .rr button, .rr summary, .rr label, .rr input, .rr select { touch-action: manipulation; }
+/* What you touch answers your finger. */
+.rr-pill:active, .rr-room:active .door, .rr-spine:active .cover, .rr-tabbar a:active, .rr-more-list a:active, .rr-threads li a:active { transform: scale(.96); }
+.rr-piece:active, .rr-card:active .rr-frame, .rr-stat:active { transform: scale(.985); }
+@media (pointer: coarse) {
+  /* iOS zooms into any field set smaller than 16px; nothing here is. */
+  .rr input, .rr select, .rr textarea { font-size: max(16px, 1em); }
+  .teach .pick select { font-size: 16px; }
+  .rr-pill, .room-choices .choice span, .rr-sheet .rr-facet ul:not(.rr-pills) li a { min-height: var(--tap-min); }
+  .rr-mode button { min-height: 40px; }
+  .unfile { min-width: var(--tap-min); min-height: var(--tap-min); }
+  .rr-seg a, .rr-seg button { min-height: 40px; line-height: 28px; }
+  .rr-btn { min-height: 48px; }
+}
+:where(.rr) [id] { scroll-margin-top: calc(var(--mast-h) + 12px); }
+
+/* ---- Back: the way you came ---- */
+.rr-masthead { min-height: var(--mast-h); view-transition-name: rr-masthead; }
+.rr-back {
+  display: inline-flex; align-items: center; gap: 2px; min-width: 0; min-height: var(--tap-min);
+  padding: 0 14px 0 4px; margin-left: -6px; border-radius: var(--radius-pill);
+  font: 800 17px/22px var(--font-sans); color: var(--accent-ink);
+}
+.rr-back:active { background: var(--wall-sunk); }
+.rr-back .rr-icon { width: 26px; height: 26px; }
+.rr-back span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 62vw; }
+.rr-masthead.has-back .rr-wordmark { display: none; }
+@container rr (min-width: 760px) {
+  .rr-back { display: none; }
+  .rr-masthead.has-back .rr-wordmark { display: inline-flex; }
+}
+/* The colour switch lives under More on a phone. */
+@container rr (max-width: 759px) { .rr-masthead .rr-mode { display: none; } }
+
+/* ---- the tab bar stays put while pages change beneath it ---- */
+.rr-tabbar { view-transition-name: rr-tabbar; }
+.rr-tabbar a { touch-action: manipulation; transition: transform var(--t-quick) var(--ease-out); }
+.rr-tabbar a.scoop.is-on .ball { box-shadow: 0 4px 0 var(--ink), 0 0 0 5px var(--band-lilac); }
+@container rr (max-width: 759px) {
+  /* More holds the footer's links on a phone. */
+  .rr-footer a { display: none; }
+  .rr-footer { padding: 18px 16px 22px; font-size: 13px; }
+}
+
+/* ---- sheets: More, and Shuffle's topic and note pickers ---- */
+.rr-sheet-dialog {
+  position: fixed; inset: auto 0 0; width: 100%; max-width: 640px; max-height: 88vh; max-height: 88dvh;
+  margin: 0 auto; padding: 0; border: 0; border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  background: var(--wall-raised); color: var(--ink); box-shadow: var(--shadow-pop);
+  font-family: var(--font-sans); overscroll-behavior: contain;
+}
+.rr-sheet-dialog[open] { display: flex; flex-direction: column; animation: rr-rise .24s cubic-bezier(.2, .7, .3, 1); }
+.rr-sheet-dialog::backdrop { background: rgba(26, 16, 50, .45); }
+.rr-sheet-dialog.is-dragging { animation: none; transition: none; }
+.rr-sheet-dialog.is-settling { transition: transform .2s var(--ease-out); }
+.rr-sheet-dialog .grab { flex: none; width: 44px; height: 6px; border-radius: 3px; background: var(--rule-strong); margin: 10px auto 4px; }
+.rr-sheet-dialog header { flex: none; display: flex; align-items: center; justify-content: space-between; padding: 4px 12px 8px 20px; touch-action: none; }
+.rr-sheet-dialog header h2 { margin: 0; font: 600 24px/28px var(--font-display); }
+.rr-sheet-dialog header form { margin: 0; }
+.rr-sheet-dialog .body { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 4px 16px 16px; }
+.rr-sheet-dialog footer { flex: none; display: flex; gap: 10px; padding: 12px 16px calc(12px + env(safe-area-inset-bottom)); border-top: 2px dotted var(--rule); }
+.rr-sheet-dialog footer .rr-btn--primary { flex: 1; }
+.rr-sheet-dialog .sheet-form { display: flex; flex-direction: column; min-height: 0; flex: 1; margin: 0; }
+.rr-sheet-dialog textarea {
+  width: 100%; min-height: 110px; resize: vertical; padding: 12px 16px; border-radius: var(--radius-sm);
+  border: 2px solid var(--ink); background: var(--band-butter); color: var(--ink); font: italic 600 17px/25px var(--font-sans);
+}
+html:has(.rr-sheet-dialog[open]) { overflow: hidden; }
+.rr-more-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.rr-more-list a { display: flex; align-items: center; gap: 14px; min-height: 58px; padding: 8px 12px; border-radius: var(--radius-md); transition: transform var(--t-quick) var(--ease-out); }
+.rr-more-list a:hover { background: var(--wall-sunk); }
+.rr-more-list a > .rr-icon { width: 40px; height: 40px; padding: 9px; border-radius: 50%; background: var(--band-lilac); color: var(--band-lilac-ink); }
+.rr-more-list li:nth-child(6n+2) a > .rr-icon { background: var(--band-mint); color: var(--band-mint-ink); }
+.rr-more-list li:nth-child(6n+3) a > .rr-icon { background: var(--band-butter); color: var(--band-butter-ink); }
+.rr-more-list li:nth-child(6n+4) a > .rr-icon { background: var(--band-sky); color: var(--band-sky-ink); }
+.rr-more-list li:nth-child(6n+5) a > .rr-icon { background: var(--band-peach); color: var(--band-peach-ink); }
+.rr-more-list li:nth-child(6n) a > .rr-icon { background: var(--band-pink); color: var(--band-pink-ink); }
+.rr-more-list .t { display: flex; flex-direction: column; min-width: 0; }
+.rr-more-list .t b { font: 800 16.5px/22px var(--font-sans); }
+.rr-more-list .t span { font: 600 13.5px/18px var(--font-sans); color: var(--ink-muted); }
+.rr-more-mode { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin: 14px 12px 4px; padding-top: 14px; border-top: 2px dotted var(--rule); }
+.rr-more-mode .rr-mode button { min-height: 40px; }
+.more-page .rr-more-list { margin-top: 18px; max-width: 560px; }
+.more-page .rr-more-mode { max-width: 536px; }
+
+/* ---- a quick word after saving in place ---- */
+.rr-toast {
+  position: fixed; left: 50%; bottom: calc(var(--tabbar-h) + env(safe-area-inset-bottom) + 12px); z-index: 70;
+  transform: translateX(-50%); max-width: calc(100% - 32px); padding: 10px 18px; border-radius: var(--radius-pill);
+  background: var(--ink); color: var(--wall-raised); font: 800 15px/20px var(--font-sans); box-shadow: var(--shadow-pop);
+  animation: rr-toast 2.6s var(--ease-out) both; pointer-events: none;
+}
+.rr-toast[hidden] { display: none; }
+@container rr (min-width: 760px) { .rr-toast { bottom: 28px; } }
+@keyframes rr-toast { 0% { opacity: 0; transform: translate(-50%, 12px); } 10%, 82% { opacity: 1; transform: translate(-50%, 0); } 100% { opacity: 0; transform: translate(-50%, 6px); } }
+form.is-busy { opacity: .6; pointer-events: none; }
+
+/* ---- search on a phone: the toolbar rides along, results keep coming ---- */
+@container rr (max-width: 959px) {
+  .rr-page > main > .rr-toolbar {
+    position: sticky; top: var(--mast-h); z-index: 15; margin: 0; padding: 8px 16px;
+    background: color-mix(in srgb, var(--wall) 86%, transparent); backdrop-filter: blur(14px) saturate(1.2);
+  }
+}
+.swipe-these { min-height: 46px; }
+.tag-them { margin: 4px 0 6px; align-items: center; background: var(--band-mint); }
+.tag-them span { flex: 1; }
+.tag-them b { display: block; }
+.tag-them .rr-icon { color: var(--band-mint-ink); }
+.pager.is-auto { justify-content: center; }
+.pager.is-auto .page-n { display: none; }
+.pager [data-next].is-busy { opacity: .6; pointer-events: none; }
+.explore-results .rr-salon + .rr-salon { margin-top: 16px; }
+
+/* ---- page changes: a quick crossfade, where the browser can ---- */
+@media (prefers-reduced-motion: no-preference) {
+  @view-transition { navigation: auto; }
+}
+::view-transition-group(root) { animation-duration: .2s; }
+
+/* ======================================================================
+   Shuffle: one save per screen. The feed is its own scroller, snapping a
+   whole screen at a time, so a flick moves exactly one save -- the phone's
+   own scrolling, with its own momentum, and no gesture code at all.
+   ====================================================================== */
+html:has(body.is-deck), body.is-deck { height: 100%; overflow: hidden; overscroll-behavior: none; }
+.rr.is-deck .rr-page > main { padding: 0; max-width: none; }
+.rr.is-deck .rr-footer { display: none; }
+.rr.is-deck .rr-tabbar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 30; }
+.rr-deck {
+  height: 100vh; height: 100dvh; overflow-y: auto; overscroll-behavior: contain; outline: none;
+  scroll-snap-type: y mandatory; scrollbar-width: none;
+}
+.rr-deck::-webkit-scrollbar { display: none; }
+.rr-deckcard, .rr-deckend {
+  /* clip, not hidden: a hidden overflow can still be scrolled sideways by a
+     tapped chip asking to be shown, and the whole card would slide over. */
+  position: relative; height: 100%; overflow: hidden; overflow: clip; scroll-snap-align: start; scroll-snap-stop: always;
+  padding: calc(66px + env(safe-area-inset-top)) 18px calc(var(--tabbar-h) + env(safe-area-inset-bottom) + 12px);
+  background: var(--band, var(--wall)); color: var(--ink);
+}
+@container rr (min-width: 760px) { .rr-deckcard, .rr-deckend { padding-bottom: 28px; } }
+.rr-deckcard { display: grid; grid-template-rows: minmax(0, 1fr) auto; grid-template-columns: minmax(0, 1fr); gap: 14px; }
+.rr-deckcard > :not(.backdrop) { position: relative; z-index: 1; width: 100%; max-width: 540px; margin: 0 auto; }
+/* The picture's own colours, blurred, behind everything -- fading into the
+   topic's colour where the words are, so they always read. */
+.rr-deckcard .backdrop { position: absolute; inset: -40px; z-index: 0; pointer-events: none; }
+.rr-deckcard .backdrop img { width: 100%; height: 100%; object-fit: cover; filter: blur(34px) saturate(1.4); opacity: .55; }
+.rr-deckcard::after { content: ""; position: absolute; inset: 0; z-index: 0; pointer-events: none; background: linear-gradient(to bottom, transparent 18%, var(--band, var(--wall)) 58%); }
+/* The picture takes whatever room the words leave, as big as fits. */
+.rr-deckcard .pic { display: grid; place-items: center; min-height: 0; height: 100%; container-type: size; }
+.rr-deckcard .pic .rr-frame { height: min(100cqh, 133cqw); width: auto; min-width: 0; aspect-ratio: var(--thumb-aspect); box-shadow: var(--shadow-pop); transform: rotate(-1.2deg); }
+.rr-deckcard .pic .stamp {
+  position: absolute; left: 50%; top: 50%; width: 92px; height: 92px; margin: -46px 0 0 -46px; display: grid; place-items: center;
+  border-radius: 50%; background: var(--accent); color: var(--on-accent); box-shadow: 0 5px 0 var(--ink);
+  opacity: 0; transform: scale(.4) rotate(-20deg); transition: transform .32s var(--ease-bounce), opacity .2s;
+}
+.rr-deckcard .pic .stamp .rr-icon { width: 50px; height: 50px; }
+.rr-deckcard.is-done .pic .stamp { opacity: 1; transform: none; }
+.rr-deckcard .cap { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.rr-deckcard .meta { display: flex; align-items: center; gap: 8px; margin: 0; white-space: nowrap; overflow: hidden; font: 800 12px/16px var(--font-sans); letter-spacing: .08em; text-transform: uppercase; color: var(--band-ink, var(--ink-muted)); }
+.rr-deckcard .meta > span:first-child { overflow: hidden; text-overflow: ellipsis; }
+.rr-deckcard .meta .sep { flex: none; width: 4px; height: 4px; border-radius: 50%; background: currentColor; opacity: .5; }
+.rr-deckcard h2 { margin: 2px 0 0; font: 600 24px/28px var(--font-display); text-wrap: balance; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.rr-deckcard .by { font: 800 15px/20px var(--font-sans); color: var(--ink-muted); align-self: flex-start; padding: 2px 0; }
+.rr-deckcard .desc { margin: 4px 0 0; font: 500 15px/21px var(--font-sans); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.rr-deckcard .note { margin: 6px 0 0; align-self: flex-start; padding: 7px 12px; border-radius: 10px; background: var(--band-butter); font: italic 600 14.5px/20px var(--font-sans); transform: rotate(-1deg); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.rr-deckcard .note[hidden] { display: none; }
+.rr-deckcard .acts, .rr-deckend .acts { display: flex; gap: 10px; margin-top: 10px; }
+.rr-deckcard .acts .rr-btn--primary { flex: 1; min-width: 0; }
+.rr-deckcard .acts .rr-btn--icon { flex: none; width: 50px; min-height: 50px; }
+.rr-deckcard .acts .open { gap: 6px; }
+/* Untagged: the topics are right there to tap, in a strip that scrolls sideways. */
+.rr-deckcard.is-tagging .desc { display: none; }
+.tagger { margin: 8px 0 0; }
+.tagger fieldset { border: 0; margin: 0; padding: 0; min-width: 0; }
+.tagger legend { padding: 0; margin-bottom: 8px; }
+.tagger .room-choices.is-lanes {
+  display: grid; grid-template-rows: repeat(3, auto); gap: 8px; margin: 0 -18px; padding: 2px 18px 6px;
+  overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: none;
+}
+.tagger .lane { display: flex; gap: 8px; width: max-content; }
+.tagger .room-choices::-webkit-scrollbar { display: none; }
+.rr-deckcard.is-done .tagger { opacity: .55; pointer-events: none; }
+/* The top bar floats over the feed: close, what this is, shuffle again. */
+.rr-deckbar {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 25; display: flex; align-items: center; gap: 10px;
+  padding: calc(10px + env(safe-area-inset-top)) 12px 10px; pointer-events: none;
+}
+.rr-deckbar > * { pointer-events: auto; }
+.rr-deck-btn {
+  flex: none; display: grid; place-items: center; width: 46px; height: 46px; border-radius: 50%;
+  background: color-mix(in srgb, var(--wall-raised) 80%, transparent); backdrop-filter: blur(10px);
+  box-shadow: var(--shadow-soft); color: var(--ink); transition: transform var(--t-quick) var(--ease-out);
+}
+.rr-deck-btn:active { transform: scale(.92); }
+.rr-deckbar .name { flex: 1; min-width: 0; margin: 0; text-align: center; display: flex; flex-direction: column; line-height: 1.1; }
+.rr-deckbar .name b { font: 600 18px/22px var(--font-display); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rr-deckbar .name span { font: 800 12px/16px var(--font-sans); color: var(--ink-muted); font-variant-numeric: tabular-nums; }
+.rr-deckend { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; text-align: center; }
+.rr-deckend .big { font-size: 56px; line-height: 1; }
+.rr-deckend p { margin: 0; max-width: 360px; font: 600 16px/23px var(--font-sans); color: var(--ink-muted); }
+.rr-deckend .acts { flex-wrap: wrap; justify-content: center; }
+.deck-hint {
+  position: fixed; left: 50%; top: calc(70px + env(safe-area-inset-top)); z-index: 26; transform: translateX(-50%);
+  display: inline-flex; align-items: center; gap: 6px; margin: 0; padding: 8px 16px 8px 12px; border-radius: var(--radius-pill);
+  background: var(--ink); color: var(--wall-raised); font: 800 14px/18px var(--font-sans); box-shadow: var(--shadow-pop);
+  pointer-events: none; animation: rr-bob 1.6s var(--ease-out) infinite;
+}
+.deck-hint[hidden] { display: none; }
+.deck-hint { white-space: nowrap; }
+/* In the feed the word after saving shows at the top, clear of the buttons. */
+.rr.is-deck .rr-toast { top: calc(68px + env(safe-area-inset-top)); bottom: auto; }
+@keyframes rr-bob { 0%, 100% { transform: translate(-50%, 0); } 50% { transform: translate(-50%, -6px); } }

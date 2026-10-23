@@ -504,8 +504,20 @@ def _back(to: str, fallback: str) -> str:
     return to if to.startswith("/") and not to.startswith("//") else fallback
 
 
+def _wants_json(request: Request) -> bool:
+    """The page saved this in place (museum.js) rather than by posting a form."""
+    return request.headers.get("accept", "").startswith("application/json")
+
+
+def _topics_reply(conn: sqlite3.Connection, item_id: int) -> JSONResponse:
+    themes = db.rows_to_dicts([db.get_item(conn, item_id)])[0].get("themes") or []
+    return JSONResponse({"themes": themes,
+                         "labels": [f"{looks.look(t)[2]} {t}" for t in themes]})
+
+
 @app.post("/item/{item_id}/rooms")
 def choose_rooms(
+    request: Request,
     item_id: int, room: list[str] = Form([]), whole_creator: int = Form(0),
     reset: int = Form(0), confirm: int = Form(0), next: str = Form(""),
     conn: sqlite3.Connection = Depends(get_db),
@@ -517,6 +529,8 @@ def choose_rooms(
         db.reset_rooms(conn, item_id)
     else:
         db.set_rooms(conn, item_id, room, whole_creator=bool(whole_creator), confirm=bool(confirm))
+    if _wants_json(request):
+        return _topics_reply(conn, item_id)
     return RedirectResponse(_back(next, f"/item/{item_id}"), status_code=303)
 
 
@@ -526,6 +540,107 @@ def surprise(conn: sqlite3.Connection = Depends(get_db)):
     row = conn.execute(
         f"SELECT id FROM items WHERE {museum.RESOLVED} ORDER BY random() LIMIT 1").fetchone()
     return RedirectResponse(f"/item/{row['id']}?surprise=1" if row else "/", status_code=303)
+
+
+# ---- Shuffle: swipe through saves, one screen each ---------------------------
+
+def _deck_view(request: Request) -> tuple[explore.Filters, str, Optional[int]]:
+    """A feed's saves (the same filters as /search), its order, and its seed."""
+    q = request.query_params
+    order = q.get("order", "shuffle")
+    return (explore.Filters.from_params(q),
+            order if order in explore.DECK_ORDERS else "shuffle",
+            explore.deck_seed(q.get("seed")))
+
+
+def _deck_href(f: explore.Filters, order: str, seed: Optional[int], path: str = "/shuffle") -> str:
+    params = dict(f.narrowing())
+    if f.q:
+        params["q"] = f.q
+    if order != "shuffle":
+        params["order"] = order
+    elif seed:
+        params["seed"] = str(seed)
+    return path + (f"?{urlencode(params)}" if params else "")
+
+
+def _an_id(raw) -> Optional[int]:
+    raw = str(raw or "").strip()
+    return int(raw) if raw.isdigit() and len(raw) < 12 else None
+
+
+def _topic_order(conn: sqlite3.Connection) -> list[str]:
+    """Every topic, the ones holding the most saves first: the likeliest
+    answers are the ones already in reach."""
+    counts = dict(conn.execute(
+        "SELECT j.value, count(*) FROM items i, json_each(coalesce(nullif(i.themes, ''), '[]')) j"
+        " GROUP BY j.value").fetchall())
+    return sorted(theme_vocabulary.THEMES, key=lambda t: -counts.get(t, 0))
+
+
+def _deck_title(f: explore.Filters, order: str) -> str:
+    if f.theme.lower() == theme_vocabulary.UNDEFINED.lower():
+        return "Without a topic"
+    if not f.narrowing() and not f.q:
+        return "Shuffle" if order == "shuffle" else "Everything"
+    if set(f.narrowing()) == {"theme"} and not f.q:
+        return f"{looks.look(f.theme)[2]} {f.theme}"
+    return explore.describe(f, [])
+
+
+@app.get("/shuffle", response_class=HTMLResponse)
+def shuffle(request: Request, conn: sqlite3.Connection = Depends(get_db)):
+    """Saves one screen at a time, flicked through like a reel: dealt at
+    random, or a list's own saves in its order. The untagged ones come with
+    the topics to tap, so giving each a topic is one tap and a flick."""
+    f, order, seed = _deck_view(request)
+    if order == "shuffle" and seed is None:
+        fresh = secrets.randbelow(explore.DECK_PRIME - 1) + 1
+        return RedirectResponse(_deck_href(f, order, fresh), status_code=303)
+    at, after = _an_id(request.query_params.get("at")), _an_id(request.query_params.get("after"))
+    items, total, more = explore.deck(conn, f, order=order, seed=seed or 1, at=at, after=after)
+    if not items and (at or after) and total:
+        # Past the end -- the last of the untagged ones just got its topic, say.
+        at = after = None
+        items, total, more = explore.deck(conn, f, order=order, seed=seed or 1)
+    earlier = bool(items) and bool(at or after) and bool(
+        explore.deck(conn, f, order=order, seed=seed or 1, before=items[0]["id"], n=1)[0])
+    here = _deck_href(f, order, seed)
+    return templates.TemplateResponse(request, "shuffle.html", {
+        "items": items, "total": total, "more": more, "earlier": earlier,
+        "title": _deck_title(f, order), "order": order,
+        "tagging": f.theme.lower() == theme_vocabulary.UNDEFINED.lower(),
+        "deck_here": here, "cards_href": _deck_href(f, order, seed, path="/shuffle/cards"),
+        "again_href": _deck_href(f, "shuffle", None),
+        "list_href": f.href(sort=order if order != "shuffle" else None),
+        "topics": _topic_order(conn), "nav": "shuffle", "q": "",
+    })
+
+
+@app.get("/shuffle/cards", response_class=HTMLResponse)
+def shuffle_cards(request: Request, conn: sqlite3.Connection = Depends(get_db)):
+    """The next (or, scrolling back up, the previous) few cards of a feed."""
+    f, order, seed = _deck_view(request)
+    after, before = _an_id(request.query_params.get("after")), _an_id(request.query_params.get("before"))
+    items, total, more = explore.deck(conn, f, order=order, seed=seed or 1, after=after, before=before)
+    resp = templates.TemplateResponse(request, "deck_cards.html", {
+        "items": items, "total": total, "end": not more and not before,
+        "tagging": f.theme.lower() == theme_vocabulary.UNDEFINED.lower(),
+        "deck_here": _deck_href(f, order, seed), "again_href": _deck_href(f, "shuffle", None),
+        "list_href": f.href(sort=order if order != "shuffle" else None),
+        "topics": _topic_order(conn),
+    })
+    resp.headers["X-Deck-More"] = "1" if more else "0"
+    resp.headers["X-Deck-Total"] = str(total)
+    return resp
+
+
+@app.get("/more", response_class=HTMLResponse)
+def more_page(request: Request, conn: sqlite3.Connection = Depends(get_db)):
+    """Everything that isn't a tab -- on a phone this opens as a sheet instead."""
+    return templates.TemplateResponse(request, "more.html", {
+        "nav": "more", "q": "", "total": db.count(conn),
+    })
 
 
 # ---- keeping a link from the phone -------------------------------------------
@@ -864,11 +979,13 @@ def unfile_item(
 
 @app.post("/item/{item_id}/note")
 def update_note(
-    item_id: int, note: str = Form(""), conn: sqlite3.Connection = Depends(get_db)
+    request: Request, item_id: int, note: str = Form(""), conn: sqlite3.Connection = Depends(get_db)
 ):
     if db.get_item(conn, item_id) is None:
         raise HTTPException(status_code=404, detail="no such item")
     db.set_note(conn, item_id, note.strip())
+    if _wants_json(request):
+        return JSONResponse({"note": note.strip()})
     return RedirectResponse(f"/item/{item_id}", status_code=303)
 
 

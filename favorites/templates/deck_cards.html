@@ -1,0 +1,3 @@
+{%- from "_deck.html" import deckcard, deck_end -%}
+{%- for item in items %}{{ deckcard(item, tagging, deck_here, topics) }}{% endfor -%}
+{%- if end %}{{ deck_end(total, tagging, again_href, list_href) }}{% endif -%}

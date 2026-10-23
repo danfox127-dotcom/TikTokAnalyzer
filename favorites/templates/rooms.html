@@ -32,6 +32,6 @@
 
 {% if undefined %}
   <p class="rr-notice undefined-note">{{ icon('placard') }}<span><b>{{ undefined }} {{ 'save' if undefined == 1 else 'saves' }} without a topic yet.</b>
-    <a href="/search?theme=Undefined">Look through them</a>, or <a href="/notes">write notes</a> so they turn up in search.</span></p>
+    <a href="/shuffle?theme=Undefined&amp;order=newest">Swipe through and give them topics</a>, <a href="/search?theme=Undefined">look through them</a>, or <a href="/notes">write notes</a> so they turn up in search.</span></p>
 {% endif %}
 {% endblock %}
