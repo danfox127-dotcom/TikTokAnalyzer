@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "_card.html" import card, frame, shelf, room_pill, threads as connected %}
+{% from "_card.html" import card, frame, player, shelf, room_pill, threads as connected %}
 {% from "_icons.html" import icon %}
 {% set back = '/search' %}{% set back_label = 'Search' %}{% set here = (headline(item) or 'This save') | truncate(40, True, '…') %}
 {% block title %}{{ headline(item) or 'Item' }} · Faves{% endblock %}
@@ -10,7 +10,7 @@
 
 <section class="rr-band detail-band"><div class="inner">
 <article class="rr-detail detail">
-  <div class="hang">{{ frame(item) }}</div>
+  <div class="hang">{{ player(item) }}</div>
 
   <div class="detail-body">
     <div class="rr-walllabel">

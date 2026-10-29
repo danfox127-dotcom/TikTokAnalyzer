@@ -49,6 +49,10 @@ Probe = Callable[[str], str]
 # Length: the HTML of an item's own page -> its length in seconds, or None.
 Length = Callable[[str], Optional[int]]
 
+# Embed: a stored item -> (the platform's own player URL, its shape), or None
+# where the platform has no player or this item can't use it.
+Embed = Callable[[dict], Optional[tuple[str, str]]]
+
 #: How a link-preview fetcher introduces itself -- the wording iMessage uses,
 #: naming the preview robots sites already recognise. The page read is the one
 #: a chat app reads to draw a preview of a pasted link, which is what the
@@ -108,6 +112,10 @@ class Platform:
     #: lookup (oEmbed) or data export carries it; YouTube's and TikTok's pages
     #: do. Unset where the page does not say -- Instagram's, on a real library.
     length_from_page: Optional[Length] = None
+
+    #: The platform's published embed player, so a save can play inside the
+    #: museum. Unset means link out, as before.
+    embed: Optional[Embed] = None
 
 
 # --- identity rules ---------------------------------------------------------
@@ -197,6 +205,42 @@ def _youtube_link(item: dict) -> Optional[str]:
     return item.get("canonical_url") or None
 
 
+# --- embed rules ------------------------------------------------------------
+#
+# Each platform's own published player, built from ids the library already
+# holds. Nothing is copied: the platform streams the video, and a page only
+# asks for its player when you press play.
+
+def _youtube_embed(item: dict) -> Optional[tuple[str, str]]:
+    # The privacy-enhanced domain: it sets no cookies until the video plays.
+    vid = (item.get("external_id") or "").strip()
+    if not re.fullmatch(r"[\w\-]{6,}", vid):
+        return None
+    shape = "tall" if item.get("format") == "short" else "wide"
+    return f"https://www.youtube-nocookie.com/embed/{vid}?playsinline=1&rel=0&autoplay=1", shape
+
+
+def _tiktok_embed(item: dict) -> Optional[tuple[str, str]]:
+    vid = (item.get("external_id") or "").strip()
+    if not vid.isdigit():
+        return None
+    # A photo slideshow files under the same identity as a video, but its
+    # player can't show one; the address it arrived as still says /photo/.
+    if "/photo/" in (item.get("shared_url") or ""):
+        return None
+    return (f"https://www.tiktok.com/player/v1/{vid}"
+            "?autoplay=1&loop=1&rel=0&music_info=1&description=1", "tall")
+
+
+def _instagram_embed(item: dict) -> Optional[tuple[str, str]]:
+    m = re.fullmatch(r"https://www\.instagram\.com/(reel|p|tv)/([\w\-]+)", item.get("canonical_url") or "")
+    if not m:
+        return None
+    # The embed brings Instagram's own header and footer with it.
+    shape = "ig-reel" if m.group(1) in ("reel", "tv") else "ig-post"
+    return f"https://www.instagram.com/{m.group(1)}/{m.group(2)}/embed/", shape
+
+
 # --- handle rules -----------------------------------------------------------
 
 def _x_handle(path: str) -> Optional[str]:
@@ -281,20 +325,20 @@ PLATFORMS: tuple[Platform, ...] = (
         shorteners=("vm.tiktok.com", "vt.tiktok.com", "m.tiktok.com"),
         oembed="https://www.tiktok.com/oembed",
         host_canonical="www.tiktok.com",
-        identity=_tiktok_identity, link=_tiktok_link,
+        identity=_tiktok_identity, link=_tiktok_link, embed=_tiktok_embed,
         caption_is_title=True, length_from_page=_tiktok_length,
     ),
     Platform(
         name="youtube", label="YouTube",
         hosts=("youtube.com", "youtu.be"), shorteners=("youtu.be",),
         oembed="https://www.youtube.com/oembed",
-        identity=_youtube_identity, link=_youtube_link, transcripts=True,
+        identity=_youtube_identity, link=_youtube_link, embed=_youtube_embed, transcripts=True,
         format_from_url=_youtube_format, short_form_probe=_youtube_short_probe,
         length_from_page=_youtube_length,
     ),
     Platform(
         name="instagram", label="Instagram",
-        hosts=("instagram.com",), identity=_instagram_identity,
+        hosts=("instagram.com",), identity=_instagram_identity, embed=_instagram_embed,
         format_from_url=_instagram_format,
         # Tested against a real library's saves: as a browser, 20 of 20 pages
         # (and 20 of 20 embed pages) came back with no picture tag; as a link
@@ -363,3 +407,14 @@ def for_host(host: str) -> Platform:
 def get(name: str) -> Platform:
     """The platform with this name, or :data:`WEB` for anything unrecognised."""
     return BY_NAME.get(name, WEB)
+
+
+def embed(item: dict) -> Optional[dict]:
+    """The platform's own player for a save -- ``src``, ``shape`` and the
+    platform's ``label`` -- or None to link out to it instead."""
+    platform = get(item.get("platform") or "web")
+    found = platform.embed(item) if platform.embed else None
+    if not found:
+        return None
+    src, shape = found
+    return {"src": src, "shape": shape, "label": platform.label}

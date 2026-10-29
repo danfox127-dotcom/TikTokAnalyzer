@@ -14,6 +14,23 @@
 </span>
 {%- endmacro %}
 
+{#- A save's picture that plays. Where the platform has its own embed player,
+    the picture carries a play button and museum.js swaps the player in when
+    it's tapped -- nothing loads from the platform before then. With no
+    script it is a plain link out to the platform, as it always was. Saves the
+    platform can't embed keep their plain picture (linked to ``fallback``,
+    where one is given). -#}
+{% macro player(item, fallback='') -%}
+{%- set e = embed(item) -%}
+{%- if e -%}
+<a class="rr-player" href="{{ browsable_url(item) }}" target="_blank" rel="noopener noreferrer" data-embed="{{ e.src }}" data-shape="{{ e.shape }}" data-label="{{ e.label }}" aria-label="Play it here">{{ frame(item) }}<span class="play" aria-hidden="true">{{ icon('play') }}</span></a>
+{%- elif fallback -%}
+<a href="{{ fallback }}" tabindex="-1" aria-hidden="true">{{ frame(item) }}</a>
+{%- else -%}
+{{ frame(item) }}
+{%- endif -%}
+{%- endmacro %}
+
 {% macro card(item, size='', top=None, note=True) %}
 <article class="card rr-card{% if size %} rr-card--{{ size }}{% endif %}">
   <a href="/item/{{ item.id }}" tabindex="-1" aria-hidden="true">{{ frame(item, top) }}</a>

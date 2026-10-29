@@ -1,5 +1,5 @@
 {% from "_icons.html" import icon %}
-{% from "_card.html" import frame %}
+{% from "_card.html" import player %}
 {% from "_more.html" import sheet %}
 
 {#- Shuffle's cards: one save per screen, flicked up like a reel. The picture
@@ -22,7 +22,7 @@
 {%- set who = item.creator_name or item.creator_handle %}
 <article class="rr-deckcard tone-{{ lk[0] }}{% if tagging %} is-tagging{% endif %}" data-id="{{ item.id }}" data-themes="{{ item.themes | join('|') }}">
   <div class="backdrop" aria-hidden="true">{% if item.thumbnail_url %}<img src="/thumb/{{ item.id }}" alt="" loading="lazy" referrerpolicy="no-referrer" data-hide-broken>{% endif %}</div>
-  <a class="pic" href="/item/{{ item.id }}" tabindex="-1" aria-hidden="true">{{ frame(item) }}<span class="stamp" aria-hidden="true">{{ icon('check') }}</span></a>
+  <div class="pic">{{ player(item, fallback='/item/' ~ item.id) }}<span class="stamp" aria-hidden="true">{{ icon('check') }}</span></div>
   <div class="cap">
     <p class="meta"><span data-topic>{% if theme %}{{ lk[2] }} {{ theme }}{% else %}{{ platform_label(item.platform) }}{% endif %}</span><span class="sep"></span><span>{% if theme %}{{ platform_label(item.platform) }} · {% endif %}{{ item.saved_at[:4] }}</span></p>
     <h2><a href="/item/{{ item.id }}">{{ headline(item) or browsable_url(item) }}</a></h2>

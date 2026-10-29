@@ -272,6 +272,22 @@ button, no address bar. So it carries its own.
   - **Untagged saves** (`/shuffle?theme=Undefined&order=newest`) come with the
     topics to tap, most-used first. Tap one or two, *Done*, and it moves on to
     the next; the counter in the top bar goes down as you go.
+- **Watching in Faves.** Where the platform publishes an embed player
+  (YouTube, TikTok and Instagram), a save's picture carries a play button, on
+  its page and in Shuffle. A tap swaps in the platform's own player, right
+  there; the close button puts the picture back, and flicking on in Shuffle
+  stops it. The way out to the app ("Open on TikTok", "Watch the Short") stays
+  where it always was, and beside the player too.
+  - Nothing loads from the platform until you press play, and YouTube plays
+    from its privacy-enhanced `youtube-nocookie.com` domain. Faves never copies
+    a video: the platform streams it, as it would on any page that embeds it.
+  - Players: `youtube-nocookie.com/embed/<id>`, `tiktok.com/player/v1/<id>` and
+    Instagram's `/reel/<code>/embed/` (`platforms.embed`). TikTok photo
+    slideshows, other platforms and anything without an id link out as before.
+  - Some videos won't play embedded -- the owner turned embedding off, the
+    account is private, or the video is gone -- and the player then says so;
+    the link out still works. On an iPhone a video may need a second tap, in
+    the player, to start with sound.
 - Touch details: every tap target is at least 44 points, fields are 16px so iOS
   doesn't zoom in on them, sheets pull down to close, and pages crossfade where
   the browser supports it (iOS 18.2 and later).
