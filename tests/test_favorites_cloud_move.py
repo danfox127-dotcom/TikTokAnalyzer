@@ -228,6 +228,15 @@ class TestTheAddress:
     """The first time, the move asks for the cloud library's address rather
     than leaving you to edit a hidden settings file."""
 
+    def test_it_names_the_supabase_password_not_the_faves_one(self, tmp_path, capsys):
+        prompts = []
+        cloud_move.setup(tmp_path / ".favorites.env", tries=1,
+                         ask=lambda _: "postgresql://u:[YOUR-PASSWORD]@127.0.0.1:1/postgres",
+                         ask_secret=lambda prompt: prompts.append(prompt) or "")
+        assert "Supabase database password" in capsys.readouterr().out
+        assert "Not your Faves password" in cloud_move.FIRST_TIME
+        assert prompts == ["Your Supabase database password (it won't show as you type): "]
+
     def test_the_password_goes_in_with_its_symbols_intact(self):
         assert cloud_move.fill_password(
             "postgresql://postgres.abc:[YOUR-PASSWORD]@h.pooler.supabase.com:5432/postgres",

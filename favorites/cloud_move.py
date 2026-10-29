@@ -302,8 +302,10 @@ First, Faves needs the address of your cloud library. This is a one-time step.
   1. On supabase.com, open your project and click Connect, at the top.
   2. Choose "Session pooler" and copy the address. It starts with postgresql://
   3. Paste it below. Where it says [YOUR-PASSWORD], you'll be asked for your
-     database password next. (Forgotten it? In Supabase: Project Settings,
-     Database, Reset database password.)
+     Supabase database password next: the one you chose when you made the
+     Supabase project. Not your Faves password, and not your Supabase login.
+     (Forgotten it? In Supabase: Project Settings, Database, Reset database
+     password.)
 """
 
 
@@ -337,7 +339,7 @@ def setup(env_file: Path = ENV_FILE, ask: Callable[[str], str] = input,
             continue
         if "[YOUR-PASSWORD]" in address:
             address = fill_password(address, ask_secret(
-                "Your database password (it won't show as you type): "))
+                "Your Supabase database password (it won't show as you type): "))
         problem, host = where_to(address)
         if problem:
             print(problem + "\n")

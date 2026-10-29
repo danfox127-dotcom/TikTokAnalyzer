@@ -283,6 +283,7 @@ def test_the_cloud_copys_settings_go_to_the_clipboard_one_at_a_time(mover):
     assert run.copies() == ["postgresql://u:pw@h:5432/db", "sesame", ""]
     assert "tik-tok-analyzer/settings/environment-variables" in run.opened.read_text()
     assert "Name:  DATABASE_URL" in result.stdout and "Name:  FAVORITES_TOKEN" in result.stdout
+    assert "the same one your phone's shortcut already uses" in result.stdout
     assert "sesame" not in result.stdout and "pw@" not in result.stdout
 
 

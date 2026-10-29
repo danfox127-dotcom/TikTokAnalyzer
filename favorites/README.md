@@ -665,14 +665,15 @@ throwaway database: every test gets an empty schema of its own, dropped after.
 
 To move the library on your Mac into Supabase:
 
-1. Have your database password ready. If you've forgotten it, open your project
-   on supabase.com and go to Project Settings → Database → Reset database
-   password.
+1. Have your **Supabase database password** ready: the one you chose when you
+   made the Supabase project. It's not your Faves password, and not your
+   Supabase login. If you've forgotten it, open your project on supabase.com
+   and go to Project Settings → Database → Reset database password.
 2. Double-click **`move-to-cloud.command`**. The first time, it asks for the
    cloud library's address: in Supabase, click **Connect** at the top, choose
    **Session pooler**, and copy the address that starts `postgresql://`.
-   Paste it in, then type the password when asked (it won't show as you
-   type). It checks the address connects before keeping it, in
+   Paste it in, then type the Supabase database password when asked (it
+   won't show as you type). It checks the address connects before keeping it, in
    `~/.favorites.env`, the same settings file `start.command` reads.
 3. It copies everything, showing progress, then a table: each kind of thing on
    this Mac next to the same in the cloud, and how much of the free plan's
