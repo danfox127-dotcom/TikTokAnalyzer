@@ -50,6 +50,12 @@ only works on your home wi-fi. Both start with plain `http://`, not
 `https://`. Faves' **Keep it in sync** page (`/sync`, opened on the Mac)
 shows the right one, ready to copy.
 
+**With Faves in the cloud** (see "Faves in the cloud" in `README.md`), use
+its address instead: `https://tik-tok-analyzer.vercel.app`. It works
+anywhere, with no Tailscale, whether or not your Mac is awake. Wherever a URL
+below starts `http://YOUR-ADDRESS`, write `https://tik-tok-analyzer.vercel.app`
+in its place. The password is the same.
+
 Below, replace `YOUR-ADDRESS` with that address including the port (e.g.
 `100.101.102.103:8000`) and `YOUR-TOKEN` with the password (or leave the
 Authorization header out entirely if you did not set one).

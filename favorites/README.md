@@ -707,6 +707,56 @@ What it does, and doesn't:
 From the Terminal, the same move is `python -m favorites.cloud_move`, with
 `--from PATH` to move a library file other than the usual one.
 
+### Faves in the cloud
+
+The same app also runs on Vercel, at **https://tik-tok-analyzer.vercel.app**,
+reading the library in Supabase. Your phone reaches it anywhere, with no
+Tailscale, whether or not the Mac is awake.
+
+To switch it on, in one sitting:
+
+0. Once, in Vercel: open the **tik-tok-analyzer** project, then **Settings →
+   Build and Deployment**. Set **Framework Preset** to **FastAPI**, empty the
+   **Root Directory** box (it said `algorithmic-mirror`, the old analyzer),
+   and save each. From then on the project builds Faves instead.
+1. Double-click **`move-to-cloud.command`** (above). When the move is done,
+   it opens Vercel's settings page and puts the two settings the cloud copy
+   needs on your clipboard, one at a time: `DATABASE_URL` (the library's
+   address) and `FAVORITES_TOKEN` (your Faves password). Paste each into
+   Vercel as an environment variable.
+2. In Vercel, **Redeploy** the newest deployment, so it picks the settings up.
+3. On your phone, open the address and sign in with the password. Then
+   **Share → Add to Home Screen**.
+4. In your **Save to Faves** shortcut, change the address to
+   `https://tik-tok-analyzer.vercel.app/save`. The password stays the same.
+5. On the Mac, double-click **`start.command`**. Faves there becomes the
+   helper (below).
+
+**It shows nothing without the password.** Every page asks for it once per
+phone or browser, then remembers it for a year. If a setting is missing it
+says which one, and shows nothing else: it never falls back to being open.
+Change `FAVORITES_TOKEN` (on the Mac and in Vercel) to sign every browser out.
+
+**What happens where.** The cloud copy only answers requests. It can't watch a
+folder or wake up every minute, so Faves on the Mac keeps doing that, into
+the same library:
+
+| In the cloud | On the Mac (the helper) |
+|---|---|
+| Browsing, search, Shuffle, notes, topics | Imports exports that land in Downloads |
+| Saving from the phone's share sheet | Reads the phone's inbox file in iCloud Drive |
+| Saving from the Keep page and the Chrome extension | Syncs YouTube playlists |
+| | Fills in shared saves the cloud couldn't look up |
+
+The last one matters most for Instagram, which can refuse requests from
+cloud servers. The save is kept either way, and the Mac fills in its title
+and picture the next time it runs.
+
+**How it's put together.** `pyproject.toml` tells Vercel what to install and
+to run `favorites.app`. `vercel.json` runs it in Portland (`pdx1`), next to
+the database in Oregon. `.vercelignore` uploads only `favorites/`, so the
+rest of the repo stays out. `cloud.py` holds the sign-in rules.
+
 ## Privacy
 
 The library is a file on your machine, or with `DATABASE_URL` set, in the
@@ -730,6 +780,7 @@ library.
 | `thumbnails.py` | Keeps each picture, because platform links expire |
 | `db.py` | SQLite storage and full-text search |
 | `pg.py` | The library in Postgres (Supabase), answering like SQLite |
+| `cloud.py` | Faves on Vercel: the sign-in, and what the cloud copy leaves to the Mac |
 | `cloud_move.py`, `move-to-cloud.command` | Moves the Mac's library into the cloud |
 | `museum.py` | The digest, the rotating shelves and the hooks (On this day, topics, threads) |
 | `explore.py` | Search and filters, including On this day |

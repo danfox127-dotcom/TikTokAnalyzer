@@ -1,1 +1,9 @@
-{}
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "regions": ["pdx1"],
+  "functions": {
+    "favorites/app.py": {
+      "maxDuration": 60
+    }
+  }
+}

@@ -1,0 +1,22 @@
+# Faves in the cloud, on Vercel. Vercel reads this file to know what to install
+# and which app to run; nothing else in the repo uses it. Everything else still
+# installs from requirements.txt (and the Mac's Faves from
+# favorites/requirements.txt). See "Faves in the cloud" in favorites/README.md.
+
+[project]
+name = "faves"
+version = "1.0.0"
+description = "Faves, the museum of your saved videos, as it runs on Vercel"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.115",
+    "httpx>=0.27",
+    "jinja2>=3.1",
+    "python-multipart>=0.0.9",
+    "psycopg[binary]>=3.2",
+    "Pillow>=10",
+    "youtube-transcript-api>=0.6",
+]
+
+[tool.vercel]
+entrypoint = "favorites.app:app"
