@@ -304,8 +304,12 @@ class Connection:
 def connect() -> Connection:
     """Open the library in Postgres, setting up its schema the first time."""
     name = schema()
-    raw = psycopg.connect(url(), options=f"-c search_path={name},public,extensions",
-                          prepare_threshold=None)
+    raw = psycopg.connect(url(), prepare_threshold=None, autocommit=True)
+    # Said as a statement rather than a connection option: Supabase's pooler
+    # passes statements through but can drop options. Outside a transaction,
+    # so a later rollback can't undo it.
+    raw.execute(f"SET search_path TO {name}, public, extensions")
+    raw.autocommit = False
     for kind in (int, bool):
         raw.adapters.register_dumper(kind, _Loose)
     if (url(), name) not in _READY:

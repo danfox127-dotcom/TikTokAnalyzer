@@ -661,6 +661,52 @@ throwaway database: every test gets an empty schema of its own, dropped after.
 
     FAVES_TEST_DATABASE_URL=postgresql://postgres@localhost:5432/postgres pytest tests/test_favorites_*.py
 
+### Moving to the cloud
+
+To move the library on your Mac into Supabase:
+
+1. Have your database password ready. If you've forgotten it, open your project
+   on supabase.com and go to Project Settings → Database → Reset database
+   password.
+2. Double-click **`move-to-cloud.command`**. The first time, it asks for the
+   cloud library's address: in Supabase, click **Connect** at the top, choose
+   **Session pooler**, and copy the address that starts `postgresql://`.
+   Paste it in, then type the password when asked (it won't show as you
+   type). It checks the address connects before keeping it, in
+   `~/.favorites.env`, the same settings file `start.command` reads.
+3. It copies everything, showing progress, then a table: each kind of thing on
+   this Mac next to the same in the cloud, and how much of the free plan's
+   500 MB the database now uses.
+4. Double-click **`start.command`**. Faves on this Mac now uses the cloud
+   library. If it was already running, it restarts itself onto it.
+
+What it does, and doesn't:
+
+- **It copies everything**: saves, notes, categories, the rooms you picked
+  for a save, a creator or a hashtag, the imports it remembers, and the
+  pictures.
+- **Pictures go up phone-sized**: no more than 720 pixels on the long side,
+  as WebP. A full-size TikTok cover can be several megabytes; the copy is
+  tens of kilobytes. From then on, pictures fetched for the cloud library
+  are kept phone-sized too. The file on the Mac keeps its originals.
+- **The file on your Mac is never changed.** It is opened read-only. It stays
+  as it was, a complete backup. To go back to it, take the `DATABASE_URL`
+  line out of `~/.favorites.env` and double-click `start.command`.
+- **It is safe to run again.** Saves are matched by their link, never by
+  number, so nothing is duplicated. Where the cloud already has something,
+  the cloud's version wins: a note written on your phone after the move
+  is never replaced by the Mac's older copy. The Mac only fills gaps, such
+  as a note the cloud doesn't have, or a save the cloud couldn't look up.
+  If Faves saved anything to the Mac's file after you moved, run it once
+  more to bring those across.
+- **The address holds your password**, so `~/.favorites.env` is readable
+  only by you. Use the **Session pooler** address, which works on any
+  network. The **Direct** one needs IPv6, which many networks lack, and the
+  **Transaction** one doesn't keep Faves' settings between queries.
+
+From the Terminal, the same move is `python -m favorites.cloud_move`, with
+`--from PATH` to move a library file other than the usual one.
+
 ## Privacy
 
 The library is a file on your machine, or with `DATABASE_URL` set, in the
@@ -683,6 +729,8 @@ library.
 | `transcript.py` | YouTube captions, where available |
 | `thumbnails.py` | Keeps each picture, because platform links expire |
 | `db.py` | SQLite storage and full-text search |
+| `pg.py` | The library in Postgres (Supabase), answering like SQLite |
+| `cloud_move.py`, `move-to-cloud.command` | Moves the Mac's library into the cloud |
 | `museum.py` | The digest, the rotating shelves and the hooks (On this day, topics, threads) |
 | `explore.py` | Search and filters, including On this day |
 | `looks.py` | Each theme's band colour, icon and emoji |

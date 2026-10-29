@@ -79,11 +79,15 @@ stop_faves() {
 }
 
 # The code on disk, and the code the running Faves started with (empty when
-# unknown: not a git checkout, or a Faves from before it reported this).
-code_version() { git rev-parse HEAD 2>/dev/null; }
+# unknown: not a git checkout, or a Faves from before it reported this). The
+# version also says where the library is: a Faves started before the library
+# moved to the cloud is as out of date as one started before an update.
+code_version() {
+  v="$(git rev-parse HEAD 2>/dev/null)" && [ -n "$v" ] && printf '%s%s\n' "$v" "${DATABASE_URL:+-cloud}"
+}
 running_version() {
   curl -fsS --max-time 5 "http://127.0.0.1:$PORT/healthz" 2>/dev/null |
-    sed -n 's/.*"version":"\([0-9A-Za-z]*\)".*/\1/p'
+    sed -n 's/.*"version":"\([0-9A-Za-z-]*\)".*/\1/p'
 }
 
 # Make sure the port is free before starting. An older copy of Faves that has
@@ -145,6 +149,11 @@ if [ ! -f "$ENV_FILE" ]; then
 # Faves' Keep it in sync page.
 # GOOGLE_CLIENT_ID=""
 # GOOGLE_CLIENT_SECRET=""
+
+# The library in the cloud (Supabase) instead of a file on this Mac.
+# move-to-cloud.command adds this for you; see "Moving to the cloud" in
+# favorites/README.md.
+# DATABASE_URL=""
 EOF
   chmod 600 "$ENV_FILE"
   say "Created your settings file: $ENV_FILE"
@@ -188,7 +197,10 @@ if answering; then
     exit 0
   fi
   say ""
-  say "   Faves is running an older version -- restarting it with the update..."
+  case "$have" in
+    "$runs-cloud") say "   Faves is still using the library on this Mac -- restarting it on the cloud library..." ;;
+    *) say "   Faves is running an older version -- restarting it with the update..." ;;
+  esac
   RESTART=1
 fi
 

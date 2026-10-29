@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import io
 import sqlite3
 import time
 from typing import Optional
@@ -84,9 +85,43 @@ async def fetch(url: Optional[str], client: httpx.AsyncClient) -> Optional[tuple
     return (await fetch_explained(url, client))[0]
 
 
+#: The longest side a picture is kept at in the cloud library: plenty for a
+#: save's own page on a phone's sharp screen. A full-size cover is often five
+#: times that, and the cloud database has 500 MB to hold every picture.
+SHRINK_TO = 720
+#: A picture already phone-sized and no heavier than this is kept as it is.
+LIGHT = 150_000
+
+
+def shrink(data: bytes, content_type: str) -> tuple[bytes, str]:
+    """A phone-sized copy of a picture, as WebP: ``(bytes, content_type)``.
+
+    The original comes back unchanged when it's already phone-sized and light,
+    when it can't be read as a picture, or when the copy wouldn't be any
+    smaller -- a picture is never made worse for nothing.
+    """
+    try:
+        from PIL import Image
+        with Image.open(io.BytesIO(data)) as im:
+            if max(im.size) <= SHRINK_TO and len(data) <= LIGHT:
+                return data, content_type
+            im.seek(0)  # a GIF's first frame
+            im = im.convert("RGBA" if im.mode in ("RGBA", "LA", "P", "PA") else "RGB")
+            im.thumbnail((SHRINK_TO, SHRINK_TO))
+            out = io.BytesIO()
+            im.save(out, "WEBP", quality=80, method=4)
+    except Exception:  # not a picture Pillow can read, or no Pillow at all
+        return data, content_type
+    small = out.getvalue()
+    return (small, "image/webp") if len(small) < len(data) else (data, content_type)
+
+
 def store(conn: sqlite3.Connection, item_id: int, image: tuple[bytes, str],
           source_url: Optional[str]) -> None:
     data, ctype = image
+    if db.on_postgres():
+        # The cloud library keeps a phone-sized copy; the Mac's file keeps the original.
+        data, ctype = shrink(data, ctype)
     conn.execute(
         "INSERT INTO thumbnails (item_id, content_type, data, source_url, fetched_at)"
         " VALUES (?, ?, ?, ?, ?) ON CONFLICT (item_id) DO UPDATE SET content_type = excluded.content_type,"
