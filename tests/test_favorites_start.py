@@ -20,8 +20,8 @@ def executable(path: Path, body: str) -> Path:
     return path
 
 
-def test_both_scripts_parse():
-    for name in ("start.command", "always-on.command"):
+def test_the_scripts_parse():
+    for name in ("start.command", "always-on.command", "move-to-cloud.command"):
         subprocess.run(["bash", "-n", str(FAV / name)], check=True)
 
 
@@ -75,7 +75,10 @@ def checkout(tmp_path):
                               f'pid=$(cat "{tmp_path}/holder_pid" 2>/dev/null) && ps -o stat= -p "$pid" 2>/dev/null | grep -q "^[^Z]" && echo "$pid"\n'
                               'exit 0\n')
     env = {**os.environ, "HOME": str(home), "PATH": f"{bin_}:{os.environ['PATH']}"}
-    env.pop("FAVORITES_PORT", None)
+    # Only the stand-in settings file says where the library is -- not the
+    # test run's own Postgres library, when the suite runs on one.
+    for name in ("FAVORITES_PORT", "DATABASE_URL", "FAVORITES_PG_SCHEMA"):
+        env.pop(name, None)
 
     def run(codes, **extra):
         (tmp_path / "codes").write_text(codes)
@@ -186,3 +189,75 @@ def test_a_faves_behind_the_update_is_restarted_on_it(checkout, running):
     assert holder.wait(timeout=10) is not None
     [started] = [l for l in lines() if l.startswith("python -m uvicorn favorites.app:app")]
     assert started.endswith("version=new123")
+
+
+def test_a_faves_still_on_the_macs_library_is_restarted_on_the_cloud_one(checkout):
+    # The library just moved to the cloud (DATABASE_URL added to the settings):
+    # a Faves started before that still writes to the Mac's file, so a
+    # double-click restarts it, even with the code unchanged.
+    run, lines, hold_port, tmp_path = checkout
+    (tmp_path / "home" / ".favorites.env").write_text("DATABASE_URL=postgresql://example/db\n")
+    (tmp_path / "head").write_text("same123\n")
+    holder = running_faves(tmp_path, hold_port, "same123")
+    result = run("0")
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "restarting it on the cloud library" in result.stdout
+    assert holder.wait(timeout=10) is not None
+    [started] = [l for l in lines() if l.startswith("python -m uvicorn favorites.app:app")]
+    assert started.endswith("version=same123-cloud")
+
+
+def test_a_faves_already_on_the_cloud_library_is_just_opened(checkout):
+    run, lines, hold_port, tmp_path = checkout
+    (tmp_path / "home" / ".favorites.env").write_text("DATABASE_URL=postgresql://example/db\n")
+    (tmp_path / "head").write_text("same123\n")
+    holder = running_faves(tmp_path, hold_port, "same123-cloud")
+    result = run("0")
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "Faves is already running" in result.stdout and holder.poll() is None
+
+
+@pytest.fixture
+def mover(tmp_path):
+    """A copy of move-to-cloud.command whose Python only says how it was run."""
+    root = tmp_path / "repo"
+    (root / "favorites").mkdir(parents=True)
+    shutil.copy(FAV / "move-to-cloud.command", root / "favorites" / "move-to-cloud.command")
+    (root / "favorites" / "requirements.txt").write_text("fastapi\n")
+    home = tmp_path / "home"
+    home.mkdir()
+
+    def run(code: int = 0):
+        return subprocess.run([str(root / "favorites" / "move-to-cloud.command")], input="\n",
+                              capture_output=True, text=True, timeout=30,
+                              env={"PATH": os.environ["PATH"], "HOME": str(home)})
+
+    def python(code: int = 0):
+        executable(root / "favorites" / ".venv" / "bin" / "python",
+                   'echo "python $* db=${FAVORITES_DB:-} cloud=${DATABASE_URL:+yes}"\n'
+                   f"exit {code}\n")
+    return run, python, home
+
+
+def test_moving_needs_faves_set_up_first(mover):
+    run, _, _ = mover
+    result = run()
+    assert result.returncode == 1 and "Double-click start.command once" in result.stdout
+
+
+def test_moving_runs_the_move_with_the_settings_file(mover):
+    run, python, home = mover
+    python(0)
+    (home / ".favorites.env").write_text('FAVORITES_DB="$HOME/lib.db"\nDATABASE_URL=postgresql://h/db\n')
+    result = run()
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "python -m pip install --quiet -r" in result.stdout
+    assert f"python -m favorites.cloud_move db={home}/lib.db cloud=yes" in result.stdout
+    assert "Next: double-click start.command" in result.stdout
+
+
+def test_a_move_that_stopped_says_so_and_no_more(mover):
+    run, python, _ = mover
+    python(1)
+    result = run()
+    assert result.returncode == 1 and "Next:" not in result.stdout

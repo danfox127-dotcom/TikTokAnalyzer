@@ -497,34 +497,32 @@ def loads_list(value: Any) -> list[str]:
     return parsed if isinstance(parsed, list) else []
 
 
+FTS_INSERT = ("INSERT INTO items_fts (item_id, title, creator, description, note, transcript, tags)"
+              " VALUES (?, ?, ?, ?, ?, ?, ?)")
+
+
+def fts_row(row, filed: Iterable[str]) -> tuple:
+    """What :data:`FTS_INSERT` writes for one item, given its categories."""
+    creator = " ".join(filter(None, [row["creator_name"], row["creator_handle"]]))
+    # A category name is your own label, as telling as a note: filing something
+    # under "Recipes" should make it findable by searching "recipes".
+    tags = " ".join(loads_list(row["tags"]) + loads_list(row["terms"]) + list(filed))
+    return (row["id"], row["title"] or "", creator, row["description"] or "",
+            row["note"] or "", row["transcript"] or "", tags)
+
+
 def index_item(conn: sqlite3.Connection, item_id: int) -> None:
     """Rewrite the full-text row for one item."""
     row = conn.execute("SELECT * FROM items WHERE id = ?", (item_id,)).fetchone()
     if row is None:
         conn.execute("DELETE FROM items_fts WHERE item_id = ?", (item_id,))
         return
-    creator = " ".join(filter(None, [row["creator_name"], row["creator_handle"]]))
-    # A category name is your own label, as telling as a note: filing something
-    # under "Recipes" should make it findable by searching "recipes".
     filed = [r["name"] for r in conn.execute(
         "SELECT name FROM collections WHERE item_id = ?", (item_id,))]
-    tags = " ".join(loads_list(row["tags"]) + loads_list(row["terms"]) + filed)
     conn.execute("UPDATE items SET themes = ? WHERE id = ?",
                  (json.dumps(themes_of(conn, item_id)), item_id))
     conn.execute("DELETE FROM items_fts WHERE item_id = ?", (item_id,))
-    conn.execute(
-        "INSERT INTO items_fts (item_id, title, creator, description, note, transcript, tags)"
-        " VALUES (?, ?, ?, ?, ?, ?, ?)",
-        (
-            item_id,
-            row["title"] or "",
-            creator,
-            row["description"] or "",
-            row["note"] or "",
-            row["transcript"] or "",
-            tags,
-        ),
-    )
+    conn.execute(FTS_INSERT, fts_row(row, filed))
 
 
 def upsert_item(conn: sqlite3.Connection, payload: dict) -> tuple[int, bool]:
