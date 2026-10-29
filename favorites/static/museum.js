@@ -8,7 +8,10 @@
    And, for the phone: a Back that knows where you came from (a home-screen
    app has no browser Back button), sheets that pull down to close, saves
    that don't leave the page, search results that keep coming, and
-   Shuffle's feed, which loads more as you flick. */
+   Shuffle's feed, which loads more as you flick.
+
+   And videos that play in place, in the platform's own player, asked for
+   only when you press play. */
 (function () {
   'use strict';
 
@@ -257,8 +260,10 @@
     location.href = before.u;
   }
   window.addEventListener('pagehide', function () {
-    // A sheet left open would still be open when the page comes back.
+    // A sheet left open would still be open when the page comes back, and a
+    // video would still be playing.
     document.querySelectorAll('dialog[open]').forEach(function (d) { d.close(); });
+    stopPlaying();
     var trail = load(TRAIL, []);
     if (trail.length && trail[trail.length - 1].u === here()) { trail[trail.length - 1].y = Math.round(window.scrollY); keep(TRAIL, trail); }
   });
@@ -269,6 +274,42 @@
     var stale = load('rr-stale', []);
     load(TRAIL, []).slice(0, -1).forEach(function (e) { if (stale.indexOf(e.u) < 0) stale.push(e.u); });
     keep('rr-stale', stale.slice(-30));
+  }
+
+  /* ---- playing a save in place ----
+     The picture's play button swaps in the platform's own embed player. One
+     plays at a time; the close button, flicking on in Shuffle, or leaving the
+     page puts the picture back, which is what stops the sound. The way out
+     to the app stays beside the player, as it does on the page. */
+  var CLOSE_SVG = '<span class="rr-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6 6 18"/></svg></span>';
+  function stopPlaying(except) {
+    document.querySelectorAll('.rr-playing').forEach(function (box) {
+      if (box === except) return;
+      var link = box.previousElementSibling;
+      if (link && link.hasAttribute('data-embed')) link.hidden = false;
+      box.remove();
+    });
+  }
+  function play(link) {
+    stopPlaying();
+    var box = document.createElement('div');
+    box.className = 'rr-playing is-' + link.getAttribute('data-shape');
+    box.innerHTML = '<div class="bar"><a class="out" target="_blank" rel="noopener noreferrer"></a>' +
+      '<button type="button" class="stop" aria-label="Close the player">' + CLOSE_SVG + '</button></div>';
+    var out = box.querySelector('.out');
+    out.href = link.href;
+    out.textContent = 'Open in ' + (link.getAttribute('data-label') || 'the app') + ' ↗';
+    var frame = document.createElement('iframe');
+    frame.src = link.getAttribute('data-embed');
+    frame.title = (link.getAttribute('data-label') || 'Video') + ' player';
+    frame.setAttribute('allow', 'autoplay; encrypted-media; picture-in-picture; fullscreen');
+    frame.setAttribute('allowfullscreen', '');
+    // YouTube refuses to play for a page that doesn't say where it is.
+    frame.setAttribute('referrerpolicy', 'strict-origin-when-cross-origin');
+    box.appendChild(frame);
+    link.hidden = true;
+    link.parentNode.insertBefore(box, link.nextSibling);
+    box.querySelector('.stop').addEventListener('click', function () { stopPlaying(); link.focus(); });
   }
 
   /* ---- a word after saving, carried across the reload ---- */
@@ -398,6 +439,7 @@
       var h = feed.clientHeight || 1, i = Math.round(feed.scrollTop / h), screens = feed.children, card = screens[i];
       if (card && card.getAttribute('data-id') && card.getAttribute('data-id') !== shown) {
         shown = card.getAttribute('data-id');
+        stopPlaying();                                       // flicking on stops the last one
         var p = new URLSearchParams(location.search);
         p.set('at', shown); p.delete('after');
         history.replaceState(history.state, '', location.pathname + '?' + p.toString());
@@ -494,6 +536,12 @@
     document.addEventListener('click', function (e) {
       var a = e.target.closest && e.target.closest('[data-sheet-open]');
       if (a && openSheet(a.getAttribute('data-sheet-open'), a)) e.preventDefault();
+    });
+    document.addEventListener('click', function (e) {
+      var a = e.target.closest && e.target.closest('[data-embed]');
+      if (!a || e.metaKey || e.ctrlKey || e.shiftKey) return;   // a modified click still opens the app
+      e.preventDefault();
+      play(a);
     });
     document.querySelectorAll('.rr-sheet-dialog').forEach(sheetDialog);
     document.querySelectorAll('form[data-inplace]').forEach(inplace);

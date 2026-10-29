@@ -39,7 +39,7 @@ from starlette.concurrency import run_in_threadpool
 
 from . import (backfill, blurb, db, explore, google_sync, lengths, looks, museum, tagging,
                thumbnails, transcript, watch)
-from . import inbox, profiles, shortcuts
+from . import inbox, platforms, profiles, shortcuts
 from . import themes as theme_vocabulary
 from .resolve import browsable_url, extract_url, platform_label, resolve
 
@@ -163,6 +163,7 @@ templates = Jinja2Templates(directory=str(HERE / "templates"))
 templates.env.globals["platform_label"] = platform_label
 # canonical_url identifies an item; it is not necessarily a link that opens.
 templates.env.globals["browsable_url"] = browsable_url
+templates.env.globals["embed"] = platforms.embed
 
 
 def clock(seconds) -> str:

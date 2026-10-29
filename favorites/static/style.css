@@ -1299,3 +1299,50 @@ html:has(body.is-deck), body.is-deck { height: 100%; overflow: hidden; overscrol
 /* In the feed the word after saving shows at the top, clear of the buttons. */
 .rr.is-deck .rr-toast { top: calc(68px + env(safe-area-inset-top)); bottom: auto; }
 @keyframes rr-bob { 0%, 100% { transform: translate(-50%, 0); } 50% { transform: translate(-50%, -6px); } }
+
+/* ======================================================================
+   Watching in place. A save's picture carries a play button where its
+   platform publishes an embed player; a tap swaps the player in. The way
+   out to the app stays beside it.
+   ====================================================================== */
+.rr-player { position: relative; display: block; border-radius: var(--radius-md); }
+.rr-player[hidden], .rr-deckcard .pic > a[hidden] { display: none; }
+.rr-player .play {
+  position: absolute; left: 50%; top: 50%; width: 72px; height: 72px; margin: -36px 0 0 -36px;
+  display: grid; place-items: center; border-radius: 50%;
+  background: var(--accent); color: var(--on-accent); border: 3px solid var(--wall-raised);
+  box-shadow: 0 4px 0 var(--ink), var(--shadow-pop);
+  transition: transform var(--t-quick) var(--ease-bounce), box-shadow var(--t-quick) var(--ease-out);
+}
+.rr-player .play .rr-icon { width: 34px; height: 34px; margin-left: 4px; }
+.rr-player:active .play { transform: translateY(3px) scale(.95); box-shadow: 0 1px 0 var(--ink), var(--shadow-soft); }
+@media (hover: hover) { .rr-player:hover .play { transform: scale(1.06); } }
+.rr-playing { display: flex; flex-direction: column; gap: 8px; width: 100%; margin: 0 auto; container-type: inline-size; }
+.rr-playing .bar { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.rr-playing .out { display: inline-flex; align-items: center; min-height: var(--tap-min); font: 800 15px/20px var(--font-sans); color: var(--accent-ink); }
+.rr-playing .stop {
+  flex: none; display: grid; place-items: center; width: var(--tap-min); height: var(--tap-min); border-radius: 50%;
+  border: 2px solid var(--ink); background: var(--wall-raised); color: var(--ink); cursor: pointer; box-shadow: 0 3px 0 var(--ink);
+}
+.rr-playing .stop:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--ink); }
+/* The player never runs taller than the space it has (a phone screen, or
+   the picture's spot in the feed); a taller embed scrolls inside itself. */
+.rr-playing iframe {
+  display: block; width: 100%; max-height: calc(100cqh - 52px); border: 0; border-radius: var(--radius-md);
+  background: #000; box-shadow: var(--shadow-pop);
+}
+.rr-playing.is-tall iframe { aspect-ratio: 9 / 16; }
+.rr-playing.is-wide iframe { aspect-ratio: 16 / 9; }
+/* Instagram's player brings its own header and footer: room for both. */
+.rr-playing.is-ig-reel iframe { height: calc(100cqw * 16 / 9 + 190px); background: var(--wall-raised); }
+.rr-playing.is-ig-post iframe { height: calc(100cqw * 5 / 4 + 190px); background: var(--wall-raised); }
+/* On a save's page a landscape video gets the page's width, not the picture's. */
+.rr-detail .hang:has(.rr-playing.is-wide) { width: 100%; max-width: 640px; }
+/* In the feed the player takes the picture's place, as big as fits. */
+.rr-deckcard .pic > a { display: block; }
+/* The "filed" tick sits over the middle of the picture, where the play
+   button is: it's for looking at, never for catching a tap. */
+.rr-deckcard .pic .stamp { pointer-events: none; }
+.rr-deckcard .pic .rr-playing.is-tall { width: min(100cqw, (100cqh - 52px) * 9 / 16); }
+.rr-deckcard .pic .rr-playing.is-wide { width: 100cqw; }
+.rr-deckcard .pic .rr-playing.is-ig-reel, .rr-deckcard .pic .rr-playing.is-ig-post { width: min(100cqw, 400px); }
