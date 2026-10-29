@@ -642,9 +642,29 @@ Reels are recorded as short-form video, the same as TikToks and YouTube Shorts.
 so captions, names, hashtags and collection names come through as written, and
 stay searchable: `don’t` stored as `donâ€™t` would match nothing anyone types.
 
+## The library in Postgres
+
+By default the library is one SQLite file. Set `DATABASE_URL` to a Postgres
+database (Supabase's, say) and it lives there instead, in a schema of its own
+called `faves` (`FAVORITES_PG_SCHEMA` to change it), set up on first use. This
+is the first step towards running Faves in the cloud, where there is no disk to
+keep a file on.
+
+The code is the same either way: `pg.py` gives Postgres a connection that
+answers like SQLite's, and the few SQLite functions the queries use
+(`json_each`, `json_array_length`, `julianday`, `COLLATE NOCASE`) are defined in
+the schema under the same names. Full-text search is the one place with two
+versions: FTS5 in SQLite, a `tsvector` column in Postgres (`db.fts_hits`).
+
+The whole test suite runs against both. To run it on Postgres, point it at a
+throwaway database: every test gets an empty schema of its own, dropped after.
+
+    FAVES_TEST_DATABASE_URL=postgresql://postgres@localhost:5432/postgres pytest tests/test_favorites_*.py
+
 ## Privacy
 
-The library is a file on your machine. Nothing is uploaded, and the only
+The library is a file on your machine, or with `DATABASE_URL` set, in the
+Postgres database you pointed it at. Nothing else is uploaded, and the only
 outbound requests are to the platforms themselves, to read the public metadata
 for a link you just shared.
 

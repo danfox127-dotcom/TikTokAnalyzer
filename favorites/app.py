@@ -773,7 +773,7 @@ def suggest(q: str = Query("", max_length=200), conn: sqlite3.Connection = Depen
         " WHERE j.value LIKE ? GROUP BY v ORDER BY n DESC LIMIT 2", (like,)).fetchall()
     tags = conn.execute(
         "SELECT j.value AS v, count(*) AS n FROM items, json_each(items.tags) j"
-        " WHERE j.value LIKE ? GROUP BY v HAVING n >= 2 ORDER BY n DESC LIMIT 2",
+        " WHERE j.value LIKE ? GROUP BY v HAVING count(*) >= 2 ORDER BY n DESC LIMIT 2",
         (f"%{q.lstrip('#').lower()}%",)).fetchall()
     rows = [{"kind": "room", "label": r["v"], "sub": f"Topic · {r['n']} saves",
              "href": "/search?" + urlencode({"theme": r["v"]})} for r in rooms]
@@ -785,7 +785,7 @@ def suggest(q: str = Query("", max_length=200), conn: sqlite3.Connection = Depen
     creators = conn.execute(
         "SELECT coalesce(creator_handle, creator_name) AS k,"
         " max(coalesce(creator_name, creator_handle)) AS label, count(*) AS n FROM items"
-        " WHERE (creator_name LIKE ? OR creator_handle LIKE ?) AND k IS NOT NULL"
+        " WHERE (creator_name LIKE ? OR creator_handle LIKE ?) AND coalesce(creator_handle, creator_name) IS NOT NULL"
         " GROUP BY k ORDER BY n DESC LIMIT 2", (like, like)).fetchall()
     rows = [{"kind": "creator", "label": r["label"], "initials": initials(r["label"]),
              "sub": f"Creator · you have saved {r['n']}",

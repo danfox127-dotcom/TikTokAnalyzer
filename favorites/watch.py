@@ -191,8 +191,10 @@ def scan(conn: sqlite3.Connection, folders: Iterable[Path], now: Optional[float]
                 # Not the export it looked like: remember it, so it is not retried every minute.
                 item.error = str(exc)[:200]
             conn.execute(
-                "INSERT OR REPLACE INTO imports (key, filename, platform, imported_at, added, detail)"
-                " VALUES (?, ?, ?, ?, ?, ?)",
+                "INSERT INTO imports (key, filename, platform, imported_at, added, detail)"
+                " VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT (key) DO UPDATE SET filename = excluded.filename,"
+                " platform = excluded.platform, imported_at = excluded.imported_at,"
+                " added = excluded.added, detail = excluded.detail",
                 (key, path.name, PLATFORM_OF[kind], db.now_iso(), item.added,
                  json.dumps({"already": item.already, "error": item.error})))
             conn.commit()
@@ -214,8 +216,9 @@ def last_imports(conn: sqlite3.Connection) -> dict[str, dict]:
         row = conn.execute(f"SELECT max(imported_at) AS at FROM items WHERE {where}").fetchone()
         if row and row["at"]:
             out[platform] = {"at": row["at"], "via": "an import"}
-    for row in conn.execute("SELECT platform, max(imported_at) AS at, filename FROM imports"
-                            " GROUP BY platform"):
+    # Every import, not the latest per platform in SQL: which file was the
+    # latest is a column Postgres won't pick out of a GROUP BY. There are few.
+    for row in conn.execute("SELECT platform, imported_at AS at, filename FROM imports"):
         if row["at"] and (row["platform"] not in out or row["at"] > out[row["platform"]]["at"]):
             out[row["platform"]] = {"at": row["at"], "via": row["filename"]}
     return out

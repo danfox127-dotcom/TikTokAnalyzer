@@ -214,8 +214,8 @@ def browse(conn: sqlite3.Connection, per_row: int = 8) -> dict:
     creators = conn.execute(
         f"SELECT coalesce(creator_handle, creator_name) AS k,"
         f" max(coalesce(creator_name, creator_handle)) AS label, count(*) AS n"
-        f" FROM items {resolved} AND k IS NOT NULL"
-        f" GROUP BY k HAVING n >= 2 ORDER BY n DESC, k LIMIT ?", (per_row,)).fetchall()
+        f" FROM items {resolved} AND coalesce(creator_handle, creator_name) IS NOT NULL"
+        f" GROUP BY k HAVING count(*) >= 2 ORDER BY n DESC, k LIMIT ?", (per_row,)).fetchall()
     platforms = conn.execute(
         f"SELECT platform AS v, count(*) AS n FROM items {resolved}"
         f" GROUP BY v ORDER BY n DESC").fetchall()
@@ -322,7 +322,7 @@ def shelves(
     # A month you were busy.
     months = conn.execute(
         f"SELECT substr(saved_at, 1, 7) AS m, count(*) AS n FROM items"
-        f" WHERE {RESOLVED} GROUP BY m HAVING n >= 3 ORDER BY n DESC LIMIT 6"
+        f" WHERE {RESOLVED} GROUP BY m HAVING count(*) >= 3 ORDER BY n DESC LIMIT 6"
     ).fetchall()
     for row in months:
         if row["m"] == now.strftime("%Y-%m"):
@@ -352,7 +352,7 @@ def shelves(
     # Someone you keep coming back to.
     creators = conn.execute(
         f"SELECT coalesce(creator_handle, creator_name) AS k, count(*) AS n FROM items"
-        f" WHERE {RESOLVED} AND k IS NOT NULL GROUP BY k HAVING n >= 2"
+        f" WHERE {RESOLVED} AND coalesce(creator_handle, creator_name) IS NOT NULL GROUP BY k HAVING count(*) >= 2"
         f" ORDER BY n DESC LIMIT 6"
     ).fetchall()
     for row in creators:
@@ -514,7 +514,7 @@ def rooms(conn: sqlite3.Connection, limit: Optional[int] = None,
     month_ago = _cutoff(30, now)
     rows = conn.execute(
         f"SELECT j.value AS theme, count(*) AS n FROM items, json_each(items.themes) j"
-        f" WHERE {RESOLVED} GROUP BY theme HAVING n >= 2 ORDER BY n DESC, theme"
+        f" WHERE {RESOLVED} GROUP BY theme HAVING count(*) >= 2 ORDER BY n DESC, theme"
         + (" LIMIT ?" if limit else ""), (limit,) if limit else ()).fetchall()
     out = []
     for row in rows:
@@ -550,7 +550,7 @@ def creators_shelf(conn: sqlite3.Connection, limit: int = 12,
     rows = conn.execute(
         f"SELECT coalesce(creator_handle, creator_name) AS k, count(*) AS n,"
         f" max(saved_at) AS latest, min(saved_at) AS first FROM items"
-        f" WHERE {RESOLVED} AND k IS NOT NULL GROUP BY k HAVING n >= 2"
+        f" WHERE {RESOLVED} AND coalesce(creator_handle, creator_name) IS NOT NULL GROUP BY k HAVING count(*) >= 2"
         f" ORDER BY n DESC, latest DESC LIMIT ?", (limit,)).fetchall()
     out = []
     for row in rows:

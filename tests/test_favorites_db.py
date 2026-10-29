@@ -114,11 +114,15 @@ class TestSearch:
 
 
 class TestFtsQuery:
+    """An FTS5 MATCH expression in SQLite; the same query as a tsquery in Postgres."""
+
     def test_tokens_are_quoted_and_anded(self):
-        assert db.fts_query("zoning code") == '"zoning" AND "code"*'
+        assert db.fts_query("zoning code") == (
+            "'zoning' & 'code':*" if db.on_postgres() else '"zoning" AND "code"*')
 
     def test_punctuation_is_discarded(self):
-        assert db.fts_query('what?! "the"') == '"what" AND "the"*'
+        assert db.fts_query('what?! "the"') == (
+            "'what' & 'the':*" if db.on_postgres() else '"what" AND "the"*')
 
     def test_nothing_to_search_for(self):
         assert db.fts_query("!!!") == ""

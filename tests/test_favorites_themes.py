@@ -211,6 +211,7 @@ class TestStorage:
             monkeypatch.undo()
             themes._rebuild()
 
+    @pytest.mark.sqlite_file
     def test_an_older_library_gains_themes_when_opened(self, tmp_path):
         import sqlite3
         path = tmp_path / "old.db"

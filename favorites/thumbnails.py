@@ -88,8 +88,9 @@ def store(conn: sqlite3.Connection, item_id: int, image: tuple[bytes, str],
           source_url: Optional[str]) -> None:
     data, ctype = image
     conn.execute(
-        "INSERT OR REPLACE INTO thumbnails (item_id, content_type, data, source_url, fetched_at)"
-        " VALUES (?, ?, ?, ?, ?)",
+        "INSERT INTO thumbnails (item_id, content_type, data, source_url, fetched_at)"
+        " VALUES (?, ?, ?, ?, ?) ON CONFLICT (item_id) DO UPDATE SET content_type = excluded.content_type,"
+        " data = excluded.data, source_url = excluded.source_url, fetched_at = excluded.fetched_at",
         (item_id, ctype, data, source_url, db.now_iso()),
     )
     conn.commit()

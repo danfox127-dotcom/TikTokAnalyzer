@@ -17,6 +17,8 @@ from favorites.app import app
 from favorites.importers import tiktok_export
 from favorites.importers import youtube_takeout as yt
 
+pytestmark = pytest.mark.sqlite_file
+
 
 class TestResolvePath:
     def test_an_explicit_path_beats_the_environment(self, tmp_path, monkeypatch):

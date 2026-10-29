@@ -187,7 +187,7 @@ def _clauses(f: Filters, without: str = "") -> tuple[list[str], list]:
     if f.q and without != "q":
         match = db.fts_query(f.q)
         if match:
-            where.append("i.id IN (SELECT item_id FROM items_fts WHERE items_fts MATCH ?)")
+            where.append(f"i.id IN (SELECT item_id FROM ({db.fts_hits()}) hit)")
             params.append(match)
     if f.platform and without != "platform":
         where.append("i.platform = ?")
@@ -237,7 +237,8 @@ def _day_clause(day: str, week: bool) -> tuple[str, list]:
         # Distance in days within a year, wrapping at New Year, measured in a
         # leap year so 29 February has somewhere to be.
         gap = "abs(julianday('2000-' || substr(i.saved_at, 6, 5)) - julianday('2000-' || ?))"
-        return f"min({gap}, 366 - {gap}) <= ?", [day, day, WEEK_REACH]
+        # The nearer way round: whichever of the two is under half a year.
+        return f"CASE WHEN {gap} < 183 THEN {gap} ELSE 366 - {gap} END <= ?", [day, day, day, WEEK_REACH]
     return "substr(i.saved_at, 6, 5) = ?", [day]
 
 
@@ -286,8 +287,7 @@ def _results(conn, f: Filters, where: list[str], params: list) -> tuple[list[dic
     if order is None:  # relevance
         match = db.fts_query(f.q)
         rows = conn.execute(
-            "SELECT i.* FROM items i JOIN (SELECT item_id, rank FROM items_fts"
-            " WHERE items_fts MATCH ?) hit ON hit.item_id = i.id"
+            f"SELECT i.* FROM items i JOIN ({db.fts_hits()}) hit ON hit.item_id = i.id"
             f"{sql_where} ORDER BY hit.rank, i.saved_at DESC LIMIT ? OFFSET ?",
             [match, *params, PAGE_SIZE, offset],
         ).fetchall()
@@ -403,8 +403,10 @@ def _grouped(conn, f: Filters, name: str, select: str, joins: str = "",
     where, params = _clauses(f, without=name)
     if extra_where:
         where.append(extra_where)
-    sql = (f"SELECT {select} FROM items i{joins}{_where_sql(where)}"
-           f" GROUP BY v HAVING v IS NOT NULL AND v != '' ORDER BY {order}")
+    # The emptiness test sits outside the grouping, because Postgres won't
+    # let HAVING name a column by the alias its SELECT gave it.
+    sql = (f"SELECT * FROM (SELECT {select} FROM items i{joins}{_where_sql(where)}"
+           f" GROUP BY v) g WHERE v IS NOT NULL AND v != '' ORDER BY {order}")
     try:
         return [tuple(r) for r in conn.execute(sql, params).fetchall()]
     except sqlite3.OperationalError:
