@@ -1,0 +1,11 @@
+# The Vercel project runs Faves and nothing else (see favorites/cloud.py), so
+# only Faves goes up: the rest of the repo -- the old analyzer, its api/ folder,
+# Footprint, the tests -- stays out of the deployment.
+/*
+!/favorites
+!/pyproject.toml
+!/vercel.json
+
+# Mac-only parts of Faves.
+/favorites/.venv
+/favorites/*.command

@@ -37,8 +37,8 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from starlette.concurrency import run_in_threadpool
 
-from . import (backfill, blurb, db, explore, google_sync, lengths, looks, museum, tagging,
-               thumbnails, transcript, watch)
+from . import (backfill, blurb, cloud, db, explore, google_sync, lengths, looks, museum,
+               tagging, thumbnails, transcript, watch)
 from . import inbox, platforms, profiles, shortcuts
 from . import themes as theme_vocabulary
 from .resolve import browsable_url, extract_url, platform_label, resolve
@@ -49,6 +49,11 @@ HERE = Path(__file__).resolve().parent
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
+    if cloud.active():
+        # In the cloud there's no folder to watch and nothing to keep running
+        # between requests: Faves on the Mac does that (see cloud.py).
+        yield
+        return
     # Say which library file this server is reading. Without it, a second
     # library file -- one an import quietly created somewhere else -- is
     # invisible: the page loads fine, it just never shows what was imported.
@@ -81,6 +86,21 @@ def _scan_now() -> list:
     watch.STATUS.last_scan = db.now_iso()
     watch.STATUS.found = (found + watch.STATUS.found)[:8]
     return found
+
+
+def _shared_waiting() -> bool:
+    """Is a save shared from the phone still waiting for its title and picture?
+
+    The cloud copy keeps what you share even when the platform won't talk to
+    it; the Mac, with its own address, looks those up again.
+    """
+    conn = db.connect()
+    try:
+        return conn.execute(
+            "SELECT 1 FROM items WHERE source = 'share' AND resolve_status != 'ok'"
+            " AND resolve_attempts < ? LIMIT 1", (backfill.MAX_ATTEMPTS,)).fetchone() is not None
+    finally:
+        conn.close()
 
 
 async def _fill_in(limit: int = 50) -> None:
@@ -150,6 +170,8 @@ async def _keep_in_sync() -> None:
             if added:
                 log.info("%s new saves arrived; filling in the first 50", added)
                 await _fill_in()
+            elif db.on_postgres() and await run_in_threadpool(_shared_waiting):
+                await _fill_in(limit=10)
         except asyncio.CancelledError:
             raise
         except Exception:  # never let one bad export stop the watching
@@ -200,6 +222,28 @@ templates.env.globals["detail"] = blurb.detail
 templates.env.globals["clean_caption"] = blurb.clean_caption
 templates.env.filters["upto"] = blurb.trim
 templates.env.globals["theme_names"] = list(theme_vocabulary.THEMES)
+templates.env.globals["in_the_cloud"] = cloud.active
+
+
+@app.middleware("http")
+async def sign_in_first(request: Request, call_next):
+    """In the cloud, nothing shows until this browser has the Faves password.
+
+    Fails closed: with a setting missing, every page says which one, rather
+    than opening up.
+    """
+    if not cloud.active() or cloud.is_open(request.url.path):
+        return await call_next(request)
+    if cloud.missing():
+        return templates.TemplateResponse(request, "signin.html", {
+            "missing": [(name, cloud.NEEDS[name]) for name in cloud.missing()], "chrome": "bare",
+        }, status_code=503)
+    if unlocked(request):
+        return await call_next(request)
+    if "text/html" in request.headers.get("accept", ""):
+        here = request.url.path + (f"?{request.url.query}" if request.url.query else "")
+        return RedirectResponse("/signin?" + urlencode({"next": here}), status_code=303)
+    return JSONResponse({"detail": "Sign in to Faves first."}, status_code=401)
 
 
 def get_db():
@@ -501,8 +545,11 @@ def teach(tag: str = Form(""), theme: str = Form(""), conn: sqlite3.Connection =
 
 
 def _back(to: str, fallback: str) -> str:
-    """Only ever redirect within the app."""
-    return to if to.startswith("/") and not to.startswith("//") else fallback
+    """Only ever redirect within the app. (A browser reads "/\\x" as "//x", and
+    ignores tabs and line breaks, so "/<tab>/x" is "//x" too.)"""
+    if any(c < " " for c in to):
+        return fallback
+    return to if to.startswith("/") and not to.startswith(("//", "/\\")) else fallback
 
 
 def _wants_json(request: Request) -> bool:
@@ -672,22 +719,36 @@ async def keep_link(request: Request, url: str = Form(""), note: str = Form(""),
     return RedirectResponse(f"/item/{result['id']}?saved=1", status_code=303)
 
 
+@app.get("/signin", response_class=HTMLResponse)
+def signin(request: Request, next: str = "/", error: str = ""):
+    """The cloud copy's front door: the Faves password, once per browser."""
+    if not cloud.active():
+        return RedirectResponse("/keep", status_code=303)
+    missing = [(name, cloud.NEEDS[name]) for name in cloud.missing()]
+    return templates.TemplateResponse(request, "signin.html", {
+        "missing": missing, "next": _back(next, "/"), "error": error, "chrome": "bare",
+    }, status_code=503 if missing else 200)
+
+
 @app.post("/unlock")
 def unlock(request: Request, password: str = Form(""), next: str = Form("/keep")):
     """Remember the password on this browser for a year, so it can save."""
     expected = os.environ.get("FAVORITES_TOKEN") or ""
     if not expected or not secrets.compare_digest(password.strip(), expected):
+        if cloud.active():
+            return RedirectResponse("/signin?" + urlencode({"next": _back(next, "/"), "error": "password"}),
+                                    status_code=303)
         return RedirectResponse("/keep?error=password", status_code=303)
-    resp = RedirectResponse(_back(next, "/keep"), status_code=303)
-    resp.set_cookie(KEY_COOKIE, expected, max_age=365 * 24 * 3600, httponly=True,
-                    samesite="lax", secure=request.url.scheme == "https")
+    resp = RedirectResponse(_back(next, "/" if cloud.active() else "/keep"), status_code=303)
+    resp.set_cookie(KEY_COOKIE, expected, max_age=365 * 24 * 3600, httponly=True, samesite="lax",
+                    secure=request.url.scheme == "https" or cloud.active())
     return resp
 
 
 @app.post("/lock")
 def lock():
     """Forget the password on this browser."""
-    resp = RedirectResponse("/keep", status_code=303)
+    resp = RedirectResponse("/signin" if cloud.active() else "/keep", status_code=303)
     resp.delete_cookie(KEY_COOKIE)
     return resp
 
@@ -1016,6 +1077,8 @@ def _on_this_mac(request: Request) -> bool:
     Things that should only happen at the Mac itself -- showing the password,
     signing in to Google -- check this. A phone on the wi-fi is not the Mac.
     """
+    if cloud.active():
+        return False
     host = request.client.host if request.client else ""
     return host in ("127.0.0.1", "::1") and "x-forwarded-for" not in request.headers
 
@@ -1063,8 +1126,9 @@ def sync_page(request: Request, conn: sqlite3.Connection = Depends(get_db)):
                           " ORDER BY imported_at DESC LIMIT 6").fetchall()
     port = request.url.port or 8000
     token = os.environ.get("FAVORITES_TOKEN")
-    wifi = _wifi_address() if token else None
-    tailscale = _tailscale_address() if token else None
+    in_cloud = cloud.active()
+    wifi = _wifi_address() if token and not in_cloud else None
+    tailscale = _tailscale_address() if token and not in_cloud else None
     return templates.TemplateResponse(request, "sync.html", {
         "exports": exports, "recent": [dict(r) | {"detail": json.loads(r["detail"] or "{}")} for r in recent],
         "folders": [str(f) for f in watch.folders_from_env()], "status": watch.STATUS,
@@ -1072,7 +1136,8 @@ def sync_page(request: Request, conn: sqlite3.Connection = Depends(get_db)):
                    "last": google_sync.last_sync(conn)},
         "here": _on_this_mac(request), "token": token,
         "always_on": (Path.home() / "Library" / "LaunchAgents" / "app.faves.plist").exists(),
-        "anywhere": f"http://{tailscale}:{port}" if tailscale else None,
+        "anywhere": (_phone_address(request) if in_cloud
+                     else f"http://{tailscale}:{port}" if tailscale else None), "cloud": in_cloud,
         "at_home": f"http://{wifi}:{port}" if wifi else None,
         "flash": request.query_params.get("done", ""),
         "can_sign": shortcuts.can_sign(), "unlocked": unlocked(request),
@@ -1087,7 +1152,10 @@ SHORTCUT_SLUGS = {"save-to-faves": "Save to Faves", "save-copied-link": "Save co
 
 def _phone_address(request: Request) -> str:
     """The address a phone should use for Faves: Tailscale's when it is on (it
-    works anywhere), else the one this request came in on, else the wi-fi one."""
+    works anywhere), else the one this request came in on, else the wi-fi one.
+    In the cloud, the cloud's own address, which works anywhere."""
+    if cloud.active():
+        return f"https://{request.url.hostname}"
     port = request.url.port or 8000
     tailscale = _tailscale_address()
     if tailscale:
@@ -1189,10 +1257,20 @@ async def youtube_disconnect(request: Request, conn: sqlite3.Connection = Depend
 
 
 @app.get("/healthz")
-def healthz(conn: sqlite3.Connection = Depends(get_db)):
+def healthz():
+    if cloud.active():
+        # Open to anyone, so it says whether the cloud copy is set up -- and
+        # nothing about the library itself.
+        return {"ok": not cloud.missing(), "cloud": True, "missing": cloud.missing(),
+                "version": os.environ.get("VERCEL_GIT_COMMIT_SHA") or None}
+    conn = db.connect()
+    try:
+        items = db.count(conn)
+    finally:
+        conn.close()
     return {
         "ok": True,
-        "items": db.count(conn),
+        "items": items,
         "transcripts_enabled": transcript.available(),
         # The code this server started with (start.command sets it), so a
         # double-click can tell a running Faves is behind an update.

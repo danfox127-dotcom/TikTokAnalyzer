@@ -4,19 +4,20 @@
 {% set back = '/more' %}{% set back_label = 'More' %}
 {% block title %}Keep it in sync · Faves{% endblock %}
 {% block main_class %}is-bands{% endblock %}
+{% set this_mac = 'your Mac' if cloud else 'this Mac' %}
 {% set steps = {
   'tiktok': {
     'emoji': '🎵', 'tone': 'pink', 'href': 'https://www.tiktok.com/setting/download-your-data',
     'wait': 'TikTok takes a few days to prepare it, and sends a notification when it is ready.',
     'how': ['In the TikTok app: Profile → ☰ → Settings and privacy → Account → Download your data.',
             'Choose <b>JSON</b> and <b>All data</b>, then Request data.',
-            'When it is ready, download it on this Mac. It lands in Downloads — that is all.']},
+            'When it is ready, download it on ' ~ this_mac ~ '. It lands in Downloads — that is all.']},
   'instagram': {
     'emoji': '📸', 'tone': 'peach', 'href': 'https://accountscenter.instagram.com/info_and_permissions/dyi/',
     'wait': 'Usually ready within a day; Meta emails you a link.',
     'how': ['Accounts Center → Your information and permissions → Download your information.',
             'Choose <b>Some of your information</b> → <b>Saved</b>, format <b>JSON</b>, all time.',
-            'Download the file on this Mac when Meta emails you.']},
+            'Download the file on ' ~ this_mac ~ ' when Meta emails you.']},
   'youtube': {
     'emoji': '▶️', 'tone': 'sky', 'href': 'https://takeout.google.com/',
     'wait': 'Set it once and Google repeats it every two months for a year.',
@@ -47,7 +48,7 @@
   <div class="rr-shelf-head rr-reveal"><div>
     <p class="rr-label">📦 Your exports</p>
     <h2 class="rr-h-m" id="exports-title">Request one now and then; the rest is automatic</h2>
-    <p>Download it on this Mac and Faves imports it by itself. Due again after {{ 60 }} days.</p>
+    <p>Download it on {{ this_mac }} and Faves imports it by itself. Due again after {{ 60 }} days.</p>
   </div></div>
   <div class="export-cards band-pad">
     {% for e in exports %}{% set st = steps[e.platform] %}
@@ -68,8 +69,13 @@
 <section class="rr-band tone-butter" id="folder" aria-labelledby="folder-title"><div class="inner">
   <div class="rr-shelf-head rr-reveal"><div>
     <p class="rr-label">📂 The watched folder</p>
+    {% if cloud %}
+    <h2 class="rr-h-m" id="folder-title">Your Mac does the watching</h2>
+    <p>Faves on your Mac watches its Downloads folder and imports each export into this same library, while <code>start.command</code> is running there.</p>
+    {% else %}
     <h2 class="rr-h-m" id="folder-title">{% if folders %}Watching {{ folders | length }} {{ 'folder' if folders | length == 1 else 'folders' }}{% else %}Not watching a folder yet{% endif %}</h2>
     <p>{% if folders %}Every minute it looks for TikTok, Instagram and Google Takeout exports. It never moves or deletes your files.{% else %}Starting Faves with <code>start.command</code> watches your Downloads folder. To choose others, set <code>FAVORITES_WATCH</code> in <code>~/.favorites.env</code>.{% endif %}</p>
+    {% endif %}
   </div></div>
   <div class="band-pad folder-body rr-reveal">
     {% if folders %}
@@ -131,14 +137,20 @@
     <p>TikTok's and Instagram's own share panels only list their partner apps, so Faves lives one tap further, in your iPhone's share sheet: <b>Share → More</b> in TikTok, <b>Share → Share to…</b> in Instagram. Or skip the share sheet: copy the link, then double-tap the back of your phone.</p>
   </div></div>
   <div class="band-pad phone-body rr-reveal">
-    {% if always_on %}
+    {% if cloud %}
+      <p class="rr-notice always-on">{{ icon('check') }}<span><b>Faves in the cloud.</b> Your phone reaches it anywhere, whether or not your Mac is awake.</span></p>
+    {% elif always_on %}
       <p class="rr-notice always-on">{{ icon('check') }}<span><b>Always on.</b> The Faves window opens by itself when you log in to the Mac, and a plugged-in Mac stays awake while it runs.</span></p>
     {% else %}
       <p class="rr-notice always-on">{{ icon('clock') }}<span><b>White screen on your phone?</b> That means Faves isn't running on the Mac. Double-click <code>always-on.command</code> (next to <code>start.command</code>) once, and Faves opens by itself whenever you log in.</span></p>
     {% endif %}
+    {% if not cloud %}
     <p class="rr-muted small">Your phone can only reach Faves while the Mac is awake with the Faves window open. A closed laptop lid still sleeps: leave it open, or turn on System Settings → Battery → Options → <i>Prevent automatic sleeping on power adapter when the display is off</i>.</p>
+    {% endif %}
     {% if token and not unlocked %}
       <p class="rr-notice">{{ icon('placard') }}<span>To install the shortcuts on this phone, first <a href="/keep">unlock it on the Keep page</a> (once), then come back here.</span></p>
+    {% elif cloud %}
+      <p class="rr-notice">{{ icon('placard') }}<span>Already have <b>Save to Faves</b>? In Shortcuts, edit it and change its address to <code>{{ anywhere }}/save</code>. The password stays the same. Setting it up fresh: <b>Build it yourself</b>, below.</span></p>
     {% elif token and not can_sign %}
       <p class="rr-notice">{{ icon('clock') }}<span>This Mac can't prepare ready-made shortcuts (that needs macOS 12 or later, signed in to iCloud). Use <b>Build it yourself</b> below.</span></p>
     {% endif %}
@@ -165,7 +177,7 @@
     </article>
     <article class="export-card tone-mint rr-reveal" style="--i:2">
       <header><span class="em" aria-hidden="true">🛟</span><div><h3>The safety net</h3>
-        <p class="when">{% if inbox.found %}Faves can see your inbox{% if inbox.rescued %} · <b>{{ inbox.rescued }} rescued</b>{% endif %}{% else %}No inbox on this Mac yet{% endif %}</p></div></header>
+        <p class="when">{% if cloud %}Read by Faves on your Mac{% elif inbox.found %}Faves can see your inbox{% if inbox.rescued %} · <b>{{ inbox.rescued }} rescued</b>{% endif %}{% else %}No inbox on this Mac yet{% endif %}</p></div></header>
       <p class="wait">Both shortcuts write each link to <b>Faves inbox.txt</b> in iCloud Drive before sending it, which works even with no connection. Faves reads the inbox every minute and saves anything that didn't arrive, with the date you shared it.</p>
       {% if inbox.recent %}<ul class="inbox-recent">{% for l in inbox.recent[:3] %}<li><code>{{ l }}</code></li>{% endfor %}</ul>{% endif %}
       {% if here and not inbox.found %}<p class="wait">It appears after your first save with the new shortcut. If macOS asks whether Terminal may use iCloud Drive, choose Allow.</p>{% endif %}
@@ -180,7 +192,7 @@
         <dl>
         <div><dt>The address (URL)</dt>
           <dd>{% if use %}<span class="copyable"><code>{{ use }}/save</code><button class="rr-btn rr-btn--quiet copy-btn" type="button" data-copy="{{ use }}/save" hidden>Copy</button></span>
-              <span class="rr-muted small">{% if anywhere %}Your Tailscale address: it works at home and away, wherever your phone has Tailscale switched on.{% else %}Tailscale isn't on on this Mac, so this is your home wi-fi address: it only works while your phone is on the same wi-fi. Switch Tailscale on and reload this page for one that works anywhere.{% endif %}</span>
+              <span class="rr-muted small">{% if cloud %}Your Faves address in the cloud: it works anywhere, with no Tailscale needed.{% elif anywhere %}Your Tailscale address: it works at home and away, wherever your phone has Tailscale switched on.{% else %}Tailscale isn't on on this Mac, so this is your home wi-fi address: it only works while your phone is on the same wi-fi. Switch Tailscale on and reload this page for one that works anywhere.{% endif %}</span>
               {% if anywhere and at_home %}<span class="rr-muted small">Not this one: <code>{{ at_home }}</code> is the home-wi-fi-only address.</span>{% endif %}
             {% else %}<span class="rr-muted">Couldn't tell this Mac's address. start.command prints it when it starts.</span>{% endif %}</dd></div>
         {% if here %}

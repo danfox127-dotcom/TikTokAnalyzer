@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% from "_icons.html" import icon %}
+{% block title %}{{ 'Almost there' if missing else 'Sign in' }} · Faves{% endblock %}
+{% block content %}
+<section class="rr-hero keep-hero signin">
+  <p class="rr-wordmark"><span class="dot" aria-hidden="true"></span>Faves</p>
+  {% if missing %}
+    <p class="rr-label">🔧 Almost there</p>
+    <h1 class="rr-h-xl">The cloud copy of Faves needs {{ 'one more setting' if missing | length == 1 else 'two settings' }}</h1>
+    <p class="lede">Until it has {{ 'it' if missing | length == 1 else 'them' }}, it shows nothing else: your library stays private.</p>
+    <ol class="keep-how">
+      <li>On your Mac, double-click <b>move-to-cloud.command</b>, in the favorites folder. At the end it opens Vercel's settings and copies each value for you to paste in.</li>
+      <li>Or add {{ 'it' if missing | length == 1 else 'them' }} yourself. In Vercel, open the project, then <b>Settings → Environment Variables</b>:
+        <ul>{% for name, what in missing %}<li><code>{{ name }}</code>: {{ what }}</li>{% endfor %}</ul></li>
+      <li>Then, in <b>Deployments</b>, open the newest one's <b>⋯</b> menu and choose <b>Redeploy</b>.</li>
+    </ol>
+  {% else %}
+    <p class="rr-label">🔑 Sign in</p>
+    <h1 class="rr-h-xl">Your saves, anywhere</h1>
+    {% if error %}
+      <p class="rr-notice keep-error">{{ icon('close') }}<span>That password didn't match. It's <code>FAVORITES_TOKEN</code> in <code>~/.favorites.env</code> on your Mac, the same one your Save to Faves shortcut uses.</span></p>
+    {% endif %}
+    <form class="rr-placard keep-form unlock" action="/unlock" method="post">
+      {#- A name to file the password under, for the phone's password manager. -#}
+      <input type="text" name="username" value="Faves" autocomplete="username" hidden>
+      <label class="rr-label" for="pw">Your Faves password</label>
+      <p class="hint">Once on each phone or computer. It remembers you for a year.</p>
+      <input type="password" id="pw" name="password" autocomplete="current-password" required autofocus>
+      <input type="hidden" name="next" value="{{ next }}">
+      <div class="row"><button class="rr-btn rr-btn--primary" type="submit">Sign in</button></div>
+    </form>
+  {% endif %}
+</section>
+{% endblock %}

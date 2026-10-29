@@ -226,16 +226,26 @@ def mover(tmp_path):
     (root / "favorites" / "requirements.txt").write_text("fastapi\n")
     home = tmp_path / "home"
     home.mkdir()
+    # The clipboard and the browser, as stand-ins: each copy is logged, then "--".
+    bin_ = tmp_path / "bin"
+    executable(bin_ / "pbcopy", f'cat >> "{tmp_path}/clipboard"; printf "\\n--\\n" >> "{tmp_path}/clipboard"\n')
+    executable(bin_ / "open", f'echo "$*" >> "{tmp_path}/opened"\n')
 
-    def run(code: int = 0):
-        return subprocess.run([str(root / "favorites" / "move-to-cloud.command")], input="\n",
+    def run(answers: str = "n\n"):
+        return subprocess.run([str(root / "favorites" / "move-to-cloud.command")], input=answers,
                               capture_output=True, text=True, timeout=30,
-                              env={"PATH": os.environ["PATH"], "HOME": str(home)})
+                              env={"PATH": f"{bin_}:{os.environ['PATH']}", "HOME": str(home)})
 
     def python(code: int = 0):
         executable(root / "favorites" / ".venv" / "bin" / "python",
                    'echo "python $* db=${FAVORITES_DB:-} cloud=${DATABASE_URL:+yes}"\n'
                    f"exit {code}\n")
+
+    def copies():
+        log = tmp_path / "clipboard"
+        return log.read_text().split("\n--\n")[:-1] if log.exists() else []
+
+    run.copies, run.opened = copies, tmp_path / "opened"
     return run, python, home
 
 
@@ -261,3 +271,37 @@ def test_a_move_that_stopped_says_so_and_no_more(mover):
     python(1)
     result = run()
     assert result.returncode == 1 and "Next:" not in result.stdout
+
+
+def test_the_cloud_copys_settings_go_to_the_clipboard_one_at_a_time(mover):
+    run, python, home = mover
+    python(0)
+    (home / ".favorites.env").write_text('DATABASE_URL=postgresql://u:pw@h:5432/db\nFAVORITES_TOKEN="sesame"\n')
+    result = run("\n" * 6)
+    assert result.returncode == 0, result.stdout + result.stderr
+    # Pasted one at a time, then the clipboard is emptied.
+    assert run.copies() == ["postgresql://u:pw@h:5432/db", "sesame", ""]
+    assert "tik-tok-analyzer/settings/environment-variables" in run.opened.read_text()
+    assert "Name:  DATABASE_URL" in result.stdout and "Name:  FAVORITES_TOKEN" in result.stdout
+    assert "sesame" not in result.stdout and "pw@" not in result.stdout
+
+
+def test_a_faves_with_no_password_gets_one_for_the_cloud(mover):
+    run, python, home = mover
+    python(0)
+    settings = home / ".favorites.env"
+    settings.write_text("DATABASE_URL=postgresql://h/db\n")
+    result = run("\n" * 6)
+    assert result.returncode == 0, result.stdout + result.stderr
+    token = settings.read_text().split('FAVORITES_TOKEN="')[1].split('"')[0]
+    assert len(token) == 32 and token.isalnum()
+    assert run.copies()[1] == token and "has one now" in result.stdout
+
+
+def test_the_hand_over_can_be_skipped(mover):
+    run, python, home = mover
+    python(0)
+    (home / ".favorites.env").write_text("DATABASE_URL=postgresql://h/db\n")
+    result = run("n\n\n")
+    assert result.returncode == 0 and run.copies() == [] and not run.opened.exists()
+    assert "FAVORITES_TOKEN" not in (home / ".favorites.env").read_text()

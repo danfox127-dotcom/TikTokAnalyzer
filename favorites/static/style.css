@@ -1024,6 +1024,12 @@ a.rr-stat:hover { transform: translateY(-3px); }
 .keep-faster a { color: var(--accent-ink); font-weight: 800; }
 .forget { margin-top: 18px; }
 
+/* ---- the cloud copy's front door ---- */
+.signin { margin: clamp(24px, 8vh, 72px) auto 0; }
+.signin .rr-wordmark { display: flex; width: fit-content; margin: 0 0 22px; font-size: 28px; line-height: 32px; }
+.signin .keep-how ul { margin: 6px 0 0; padding-left: 18px; }
+.signin .keep-how code { overflow-wrap: anywhere; }
+
 /* ---------- the front door's big doors: Surprise me, then Keep a link ---------- */
 .rr-bigdoors { display: flex; flex-wrap: wrap; gap: 12px; align-items: stretch; margin-top: 18px; }
 .rr-surprise {

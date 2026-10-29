@@ -17,7 +17,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:ital,wght@0,500;0,600;0,800;1,600&display=swap">
-<link rel="stylesheet" href="/static/style.css?v=13">
+<link rel="stylesheet" href="/static/style.css?v=14">
 <script src="/static/museum.js?v=6" defer></script>
 </head>
 {% from "_icons.html" import icon %}
@@ -31,7 +31,7 @@
 {% set more_pages = ('more', 'keep', 'placards', 'year', 'sync') %}
 <body class="rr{% if chrome == 'deck' %} is-deck{% endif %}"{% if not back %} data-root{% endif %}{% if here is defined %} data-here="{{ here }}"{% endif %}>
 <div class="rr-app rr-page">
-{% if chrome != 'deck' %}
+{% if chrome not in ('deck', 'bare') %}
 <header class="rr-masthead{% if back %} has-back{% endif %}">
   {% if back %}<a class="rr-back" href="{{ back }}" data-back>{{ icon('left') }}<span data-back-label>{{ back_label }}</span></a>{% endif %}
   <a class="rr-wordmark" href="/"><span class="dot" aria-hidden="true"></span>Faves</a>
@@ -60,8 +60,9 @@
 {% block content %}{% endblock %}
 </main>
 
+{% if chrome != 'bare' %}
 <footer class="rr-footer">
-  <span>Your library lives on this machine{% if total is defined %} · {{ total }} {{ 'save' if total == 1 else 'saves' }}{% endif %}.</span>
+  <span>Your library lives {{ 'in your own cloud database' if in_the_cloud() else 'on this machine' }}{% if total is defined %} · {{ total }} {{ 'save' if total == 1 else 'saves' }}{% endif %}.</span>
   <a href="/keep">Keep a link</a>
   <a href="/unlabelled">Missing a note</a>
   <a href="/surprise">Surprise me</a>
@@ -79,6 +80,7 @@
   <a href="/more" data-sheet-open="more"{% if nav in more_pages %} class="is-on" aria-current="page"{% endif %}>{{ icon('dots') }}More</a>
 </nav>
 {% if nav != 'more' %}{% call sheet('more', 'More') %}<div class="body">{{ more_links() }}</div>{% endcall %}{% endif %}
+{% endif %}
 <div class="rr-toast" role="status" aria-live="polite" hidden></div>
 </div>
 <script>
