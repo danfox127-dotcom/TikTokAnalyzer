@@ -715,6 +715,10 @@ Tailscale, whether or not the Mac is awake.
 
 To switch it on, in one sitting:
 
+0. Once, in Vercel: open the **tik-tok-analyzer** project, then **Settings →
+   Build and Deployment**. Set **Framework Preset** to **FastAPI**, empty the
+   **Root Directory** box (it said `algorithmic-mirror`, the old analyzer),
+   and save each. From then on the project builds Faves instead.
 1. Double-click **`move-to-cloud.command`** (above). When the move is done,
    it opens Vercel's settings page and puts the two settings the cloud copy
    needs on your clipboard, one at a time: `DATABASE_URL` (the library's

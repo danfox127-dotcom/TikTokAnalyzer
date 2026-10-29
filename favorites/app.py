@@ -232,7 +232,7 @@ async def sign_in_first(request: Request, call_next):
     Fails closed: with a setting missing, every page says which one, rather
     than opening up.
     """
-    if not cloud.active() or cloud.is_open(request.url.path):
+    if not cloud.active(request) or cloud.is_open(request.url.path):
         return await call_next(request)
     if cloud.missing():
         return templates.TemplateResponse(request, "signin.html", {
@@ -722,7 +722,7 @@ async def keep_link(request: Request, url: str = Form(""), note: str = Form(""),
 @app.get("/signin", response_class=HTMLResponse)
 def signin(request: Request, next: str = "/", error: str = ""):
     """The cloud copy's front door: the Faves password, once per browser."""
-    if not cloud.active():
+    if not cloud.active(request):
         return RedirectResponse("/keep", status_code=303)
     missing = [(name, cloud.NEEDS[name]) for name in cloud.missing()]
     return templates.TemplateResponse(request, "signin.html", {
@@ -735,20 +735,21 @@ def unlock(request: Request, password: str = Form(""), next: str = Form("/keep")
     """Remember the password on this browser for a year, so it can save."""
     expected = os.environ.get("FAVORITES_TOKEN") or ""
     if not expected or not secrets.compare_digest(password.strip(), expected):
-        if cloud.active():
+        if cloud.active(request):
             return RedirectResponse("/signin?" + urlencode({"next": _back(next, "/"), "error": "password"}),
                                     status_code=303)
         return RedirectResponse("/keep?error=password", status_code=303)
-    resp = RedirectResponse(_back(next, "/" if cloud.active() else "/keep"), status_code=303)
+    in_cloud = cloud.active(request)
+    resp = RedirectResponse(_back(next, "/" if in_cloud else "/keep"), status_code=303)
     resp.set_cookie(KEY_COOKIE, expected, max_age=365 * 24 * 3600, httponly=True, samesite="lax",
-                    secure=request.url.scheme == "https" or cloud.active())
+                    secure=request.url.scheme == "https" or in_cloud)
     return resp
 
 
 @app.post("/lock")
-def lock():
+def lock(request: Request):
     """Forget the password on this browser."""
-    resp = RedirectResponse("/signin" if cloud.active() else "/keep", status_code=303)
+    resp = RedirectResponse("/signin" if cloud.active(request) else "/keep", status_code=303)
     resp.delete_cookie(KEY_COOKIE)
     return resp
 
@@ -1077,7 +1078,7 @@ def _on_this_mac(request: Request) -> bool:
     Things that should only happen at the Mac itself -- showing the password,
     signing in to Google -- check this. A phone on the wi-fi is not the Mac.
     """
-    if cloud.active():
+    if cloud.active(request):
         return False
     host = request.client.host if request.client else ""
     return host in ("127.0.0.1", "::1") and "x-forwarded-for" not in request.headers
@@ -1126,7 +1127,7 @@ def sync_page(request: Request, conn: sqlite3.Connection = Depends(get_db)):
                           " ORDER BY imported_at DESC LIMIT 6").fetchall()
     port = request.url.port or 8000
     token = os.environ.get("FAVORITES_TOKEN")
-    in_cloud = cloud.active()
+    in_cloud = cloud.active(request)
     wifi = _wifi_address() if token and not in_cloud else None
     tailscale = _tailscale_address() if token and not in_cloud else None
     return templates.TemplateResponse(request, "sync.html", {
@@ -1154,7 +1155,7 @@ def _phone_address(request: Request) -> str:
     """The address a phone should use for Faves: Tailscale's when it is on (it
     works anywhere), else the one this request came in on, else the wi-fi one.
     In the cloud, the cloud's own address, which works anywhere."""
-    if cloud.active():
+    if cloud.active(request):
         return f"https://{request.url.hostname}"
     port = request.url.port or 8000
     tailscale = _tailscale_address()
@@ -1257,8 +1258,8 @@ async def youtube_disconnect(request: Request, conn: sqlite3.Connection = Depend
 
 
 @app.get("/healthz")
-def healthz():
-    if cloud.active():
+def healthz(request: Request):
+    if cloud.active(request):
         # Open to anyone, so it says whether the cloud copy is set up -- and
         # nothing about the library itself.
         return {"ok": not cloud.missing(), "cloud": True, "missing": cloud.missing(),

@@ -133,6 +133,19 @@ class TestASettingMissing:
         assert "needs two settings" in page and "DATABASE_URL" in page
 
 
+def test_a_request_through_vercel_is_gated_even_without_vercels_setting(monkeypatch):
+    # Vercel marks each request it passes on; that alone is enough to lock up.
+    monkeypatch.delenv("VERCEL", raising=False)
+    monkeypatch.delenv("FAVES_CLOUD", raising=False)
+    monkeypatch.setenv("FAVORITES_TOKEN", "sesame")
+    with TestClient(web.app) as client:
+        assert client.get("/", headers=HTML, follow_redirects=False).status_code == 200  # the Mac, as ever
+        vercel = {**HTML, "x-vercel-id": "pdx1::abc"}
+        r = client.get("/", headers=vercel, follow_redirects=False)
+        assert r.status_code in (303, 503)
+        assert client.get("/healthz", headers=vercel).json()["cloud"] is True
+
+
 class TestTheCloudPages:
     def test_keep_it_in_sync_gives_the_cloud_address(self, cloud_app):
         sign_in(cloud_app)

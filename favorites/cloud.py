@@ -29,9 +29,16 @@ NEEDS = {
 }
 
 
-def active() -> bool:
-    """Whether this is the cloud copy: on Vercel (which says so), or told so."""
-    return bool(os.environ.get("VERCEL") or os.environ.get("FAVES_CLOUD"))
+def active(request=None) -> bool:
+    """Whether this is the cloud copy: on Vercel, or told so (``FAVES_CLOUD``).
+
+    Vercel says so twice -- in a setting (``VERCEL``) and on every request it
+    passes on (an ``x-vercel-id`` header) -- and either is enough. A header
+    can only ever switch the password on, never off.
+    """
+    if os.environ.get("VERCEL") or os.environ.get("FAVES_CLOUD"):
+        return True
+    return request is not None and "x-vercel-id" in request.headers
 
 
 def missing() -> list[str]:
