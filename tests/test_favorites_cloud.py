@@ -64,6 +64,7 @@ class TestSignedOut:
         page = cloud_app.get("/signin", headers=HTML).text
         assert 'name="password"' in page and "zoning" not in page
         assert "rr-tabbar" not in page and "rr-footer" not in page
+        assert "The same Faves password your Save to Faves shortcut uses" in page
 
     def test_what_a_page_needs_to_draw_stays_open(self, cloud_app):
         assert cloud_app.get("/static/style.css").status_code == 200

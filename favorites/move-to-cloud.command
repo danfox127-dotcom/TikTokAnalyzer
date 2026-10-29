@@ -64,6 +64,7 @@ hand_over() {
   say "all environments ticked, and tick Sensitive."
   command -v open >/dev/null 2>&1 && open "$VERCEL_SETTINGS"
   copy_setting DATABASE_URL
+  say "  Next, your Faves password: the same one your phone's shortcut already uses."
   copy_setting FAVORITES_TOKEN
   printf '\n  When both are saved, press Return to clear the clipboard... '
   read -r _
