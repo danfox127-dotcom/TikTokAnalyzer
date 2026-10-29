@@ -147,6 +147,6 @@ def already_saved(conn: sqlite3.Connection, link: str) -> bool:
 
 
 def mark(conn: sqlite3.Connection, line: Line) -> None:
-    conn.execute("INSERT OR IGNORE INTO inbox_seen (line_hash, seen_at) VALUES (?, ?)",
+    conn.execute("INSERT INTO inbox_seen (line_hash, seen_at) VALUES (?, ?) ON CONFLICT DO NOTHING",
                  (line.key, db.now_iso()))
     conn.commit()

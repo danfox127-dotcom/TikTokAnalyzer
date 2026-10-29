@@ -570,6 +570,7 @@ class TestCollectionsInTheApp:
         assert client.get("/collection/nothing-here").status_code == 404
 
 
+@pytest.mark.sqlite_file
 def test_an_existing_library_gains_the_new_column_and_table(tmp_path):
     # The items table as the first release wrote it: today's, minus every
     # column that has since been added by migration. No collections table.

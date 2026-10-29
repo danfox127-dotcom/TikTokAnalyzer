@@ -178,7 +178,8 @@ class TestCommand:
         lib = tmp_path / "lib.db"
         assert ig.main([str(path), "--db", str(lib)]) == 0
         out = capsys.readouterr().out
-        assert f"library: {lib}" in out and "posts imported       : 1" in out
+        assert ("library: Postgres" if db.on_postgres() else f"library: {lib}") in out
+        assert "posts imported       : 1" in out
 
     def test_a_missing_file_says_so_plainly(self, tmp_path, capsys):
         assert ig.main([str(tmp_path / "nope.json")]) == 1

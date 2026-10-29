@@ -6,6 +6,7 @@ uvicorn[standard]
 httpx
 jinja2
 python-multipart        # lets the note form post back
+psycopg[binary]>=3.2    # only used with DATABASE_URL: the library in Postgres (Supabase)
 
 # Optional. Fetches YouTube caption tracks so transcripts become searchable.
 # Remove this line and everything still works, minus transcripts.

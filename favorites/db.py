@@ -4,6 +4,12 @@ One SQLite file holds everything. There is no server-side anything: the
 database lives wherever ``FAVORITES_DB`` points, defaulting to
 ``~/favorites.db`` in your home folder.
 
+Or, with ``DATABASE_URL`` set, the library lives in Postgres -- Supabase, so the
+museum can run in the cloud -- through the adapter in ``pg.py``. The queries
+here and elsewhere are written in what the two share, so they read the same
+either way; full-text search is the one place with two forms, side by side
+below.
+
 Search uses SQLite's built-in FTS5 full-text index. The index is a plain FTS5
 table kept in step by :func:`index_item` rather than an external-content table
 driven by triggers -- at personal scale the duplicated text costs nothing, and
@@ -199,8 +205,18 @@ def _default() -> Path:
     return DEFAULT_DB
 
 
+def on_postgres() -> bool:
+    """Whether the library is in Postgres (``DATABASE_URL``) rather than a file."""
+    return bool(os.environ.get("DATABASE_URL"))
+
+
 def connect(path: str | os.PathLike | None = None) -> sqlite3.Connection:
     """Open the library, creating it if this is the first run."""
+    if on_postgres():
+        from . import pg  # only needed, and only installed, where Postgres is used
+        conn = pg.connect()
+        retheme_if_stale(conn)
+        return conn
     target = resolve_path(path)
     if target != ":memory:":
         Path(target).parent.mkdir(parents=True, exist_ok=True)
@@ -229,6 +245,11 @@ def connect_announced(path: str | os.PathLike | None = None) -> tuple[sqlite3.Co
     shows what was imported. Every command that writes says which file it
     used, and says loudly when it has just created one.
     """
+    if on_postgres():
+        from . import pg
+        conn = connect()
+        n = count(conn)
+        return conn, f"library: Postgres, schema {pg.schema()}  ({n} {'item' if n == 1 else 'items'})"
     target = resolve_path(path)
     existed = target == ":memory:" or os.path.exists(target)
     conn = connect(target)
@@ -253,7 +274,8 @@ def set_meta(conn: sqlite3.Connection, key: str, value: Optional[str]) -> None:
     if value is None:
         conn.execute("DELETE FROM meta WHERE key = ?", (key,))
     else:
-        conn.execute("INSERT OR REPLACE INTO meta (key, value) VALUES (?, ?)", (key, value))
+        conn.execute("INSERT INTO meta (key, value) VALUES (?, ?)"
+                     " ON CONFLICT (key) DO UPDATE SET value = excluded.value", (key, value))
     conn.commit()
 
 
@@ -346,7 +368,8 @@ def retheme_if_stale(conn: sqlite3.Connection) -> int:
     if row is not None and row["value"] == theme_vocabulary.VERSION:
         return 0
     n = retheme(conn)
-    conn.execute("INSERT OR REPLACE INTO meta (key, value) VALUES ('themes_version', ?)",
+    conn.execute("INSERT INTO meta (key, value) VALUES ('themes_version', ?)"
+                 " ON CONFLICT (key) DO UPDATE SET value = excluded.value",
                  (theme_vocabulary.VERSION,))
     conn.commit()
     return n
@@ -425,8 +448,9 @@ def set_rooms(conn: sqlite3.Connection, item_id: int, chosen: Iterable[str],
                      f" ({','.join('?' * len(adds | removes)) or 'NULL'})",
                      (key, *(adds | removes)))
     conn.executemany(
-        "INSERT OR REPLACE INTO theme_rules (kind, key, theme, action, created_at)"
-        " VALUES (?, ?, ?, ?, ?)",
+        "INSERT INTO theme_rules (kind, key, theme, action, created_at) VALUES (?, ?, ?, ?, ?)"
+        " ON CONFLICT (kind, key, theme) DO UPDATE"
+        " SET action = excluded.action, created_at = excluded.created_at",
         [(kind, rule_key, t, "add", now_iso()) for t in adds]
         + [(kind, rule_key, t, "remove", now_iso()) for t in removes])
     retheme(conn)
@@ -525,8 +549,8 @@ def upsert_item(conn: sqlite3.Connection, payload: dict) -> tuple[int, bool]:
     if existing is None:
         cols = ", ".join(data)
         marks = ", ".join("?" for _ in data)
-        cur = conn.execute(f"INSERT INTO items ({cols}) VALUES ({marks})", tuple(data.values()))
-        item_id = int(cur.lastrowid)
+        item_id = int(conn.execute(f"INSERT INTO items ({cols}) VALUES ({marks}) RETURNING id",
+                                   tuple(data.values())).fetchone()[0])
         created = True
     else:
         item_id = int(existing["id"])
@@ -571,7 +595,8 @@ def file_under(
         " ON CONFLICT (item_id, name) DO UPDATE SET added_at = CASE"
         "   WHEN collections.added_at IS NULL THEN excluded.added_at"
         "   WHEN excluded.added_at IS NULL THEN collections.added_at"
-        "   ELSE min(collections.added_at, excluded.added_at) END",
+        "   WHEN excluded.added_at < collections.added_at THEN excluded.added_at"
+        "   ELSE collections.added_at END",
         (item_id, name, added_at),
     )
     index_item(conn, item_id)
@@ -634,18 +659,31 @@ _WORD = re.compile(r"[^\w@#]+", re.UNICODE)
 
 
 def fts_query(text: str) -> str:
-    """Turn whatever someone typed into a valid FTS5 MATCH expression.
+    """Turn whatever someone typed into a valid full-text query.
 
     Raw user input is not a valid query -- an unbalanced quote or a bare ``OR``
     is a syntax error, not zero results. Every token is quoted and ANDed, and
-    the final token gets a prefix wildcard so partial words match while typing.
+    the final token gets a prefix wildcard so partial words match while typing:
+    an FTS5 MATCH expression in SQLite, a tsquery in Postgres.
     """
     tokens = [t for t in _WORD.split(text or "") if t]
     if not tokens:
         return ""
+    if on_postgres():
+        quoted = [f"'{t}'" for t in tokens[:-1]] + [f"'{tokens[-1]}':*"]
+        return " & ".join(quoted)
     quoted = [f'"{t}"' for t in tokens[:-1]]
     quoted.append(f'"{tokens[-1]}"*')
     return " AND ".join(quoted)
+
+
+def fts_hits() -> str:
+    """The saves matching one :func:`fts_query` (its single parameter), as
+    ``(item_id, rank)`` rows -- lower rank is the better match, in both."""
+    if on_postgres():
+        return ("SELECT item_id, -ts_rank(doc, q) AS rank FROM items_fts,"
+                " to_tsquery('simple', fold(?)) AS q WHERE doc @@ q")
+    return "SELECT item_id, rank FROM items_fts WHERE items_fts MATCH ?"
 
 
 def search(conn: sqlite3.Connection, text: str, limit: int = 50) -> list[sqlite3.Row]:
@@ -659,8 +697,8 @@ def search(conn: sqlite3.Connection, text: str, limit: int = 50) -> list[sqlite3
         return []
     try:
         return conn.execute(
-            "SELECT i.* FROM items_fts f JOIN items i ON i.id = f.item_id"
-            " WHERE items_fts MATCH ? ORDER BY rank LIMIT ?",
+            f"SELECT i.* FROM ({fts_hits()}) f JOIN items i ON i.id = f.item_id"
+            " ORDER BY f.rank LIMIT ?",
             (match, limit),
         ).fetchall()
     except sqlite3.OperationalError:

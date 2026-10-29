@@ -259,7 +259,7 @@ class TestCatchingUp:
             200, content=JPEG, headers={"content-type": "image/jpeg"}))
         assert thumbnails.main(["--db", str(path), "--quiet"]) == 0
         out = capsys.readouterr().out
-        assert f"library: {path}" in out
+        assert ("library: Postgres" if db.on_postgres() else f"library: {path}") in out
         assert "kept 1 of 1" in out
         assert "thumbnails kept      : 1 of 1" in out
 
