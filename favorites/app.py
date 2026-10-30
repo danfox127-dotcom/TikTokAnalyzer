@@ -28,7 +28,7 @@ import sqlite3
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
-from urllib.parse import urlencode
+from urllib.parse import urlencode, urlparse
 
 import httpx
 from fastapi import Depends, FastAPI, Form, HTTPException, Query, Request
@@ -225,6 +225,18 @@ templates.env.globals["theme_names"] = list(theme_vocabulary.THEMES)
 templates.env.globals["in_the_cloud"] = cloud.active
 
 
+#: Where a phone or a browser extension sends what it saves.
+SAVE_PATHS = ("/save", "/collections.json", "/share-target")
+
+
+def log_save(request: Request, message: str) -> None:
+    """One line in the cloud's log about a share: what happened to it, so a
+    share that never arrives can be traced. Never the password, never the link
+    itself -- its website at most."""
+    if cloud.active(request):
+        print(f"faves: {message}", flush=True)
+
+
 @app.middleware("http")
 async def sign_in_first(request: Request, call_next):
     """In the cloud, nothing shows until this browser has the Faves password.
@@ -240,6 +252,10 @@ async def sign_in_first(request: Request, call_next):
         }, status_code=503)
     if unlocked(request):
         return await call_next(request)
+    if request.url.path in SAVE_PATHS:
+        how = _how_supplied(request)
+        log_save(request, f"{request.url.path[1:]} refused: "
+                          + ("no password" if how == "nothing" else f"wrong password (sent as {how})"))
     if "text/html" in request.headers.get("accept", ""):
         here = request.url.path + (f"?{request.url.query}" if request.url.query else "")
         return RedirectResponse("/signin?" + urlencode({"next": here}), status_code=303)
@@ -282,11 +298,28 @@ def unlocked(request: Request) -> bool:
     expected = os.environ.get("FAVORITES_TOKEN")
     if not expected:
         return True
+    return secrets.compare_digest(_supplied(request), expected)
+
+
+def _supplied(request: Request) -> str:
     header = request.headers.get("authorization", "")
-    supplied = header[7:] if header.lower().startswith("bearer ") else (
+    return header[7:] if header.lower().startswith("bearer ") else (
         request.query_params.get("token") or request.cookies.get(KEY_COOKIE) or ""
     )
-    return secrets.compare_digest(supplied, expected)
+
+
+def _how_supplied(request: Request) -> str:
+    """How a request carried its password, for the log -- not what it was."""
+    header = request.headers.get("authorization", "")
+    if header.lower().startswith("bearer "):
+        return "an Authorization header"
+    if header:
+        return "an Authorization header without 'Bearer '"
+    if request.query_params.get("token"):
+        return "?token="
+    if request.cookies.get(KEY_COOKIE):
+        return "a signed-in browser"
+    return "nothing"
 
 
 async def capture(
@@ -382,11 +415,24 @@ async def save(
             shared = value
             break
     if not shared:
+        log_save(request, "save refused: no link in the request (fields: "
+                          + (", ".join(sorted(data)) or "none") + ")")
         raise HTTPException(status_code=400, detail=(
             "Nothing to keep: no link came with this. Share a link to the shortcut "
             "(pressing ▶︎ in the Shortcuts editor sends nothing)."))
 
-    result = await capture(shared, data.get("note"), conn, data.get("collection"))
+    log_save(request, f"save received ({urlparse(extract_url(shared)).hostname or 'a link'})")
+    try:
+        result = await capture(shared, data.get("note"), conn, data.get("collection"))
+    except HTTPException as exc:
+        log_save(request, f"save failed: {exc.detail}")
+        raise
+    looked_up = result.get("resolve_status") or "?"
+    if looked_up != "ok" and cloud.active(request):
+        row = db.get_item(conn, result["id"])
+        looked_up += f": {(row['resolve_error'] or '')[:120]}" if row is not None else ""
+    log_save(request, f"saved #{result['id']} {result.get('platform') or ''} {looked_up}"
+                      f" ({'new' if result['created'] else 'already saved'})")
     return JSONResponse(result, status_code=201 if result["created"] else 200)
 
 

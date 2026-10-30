@@ -111,6 +111,66 @@ class TestSigningIn:
         assert cloud_app.get("/collections.json", headers={"authorization": "Bearer sesame"}).status_code == 200
 
 
+class TestTheLogOfShares:
+    """Each share leaves one line in the cloud's log -- never the password."""
+
+    def lines(self, capsys):
+        return [l for l in capsys.readouterr().out.splitlines() if l.startswith("faves: ")]
+
+    @pytest.mark.parametrize("headers, said", [
+        ({}, "save refused: no password"),
+        ({"authorization": "Bearer open-sesame"}, "save refused: wrong password (sent as an Authorization header)"),
+        ({"authorization": "open-sesame"},
+         "save refused: wrong password (sent as an Authorization header without 'Bearer ')"),
+    ])
+    def test_a_refused_share_says_why(self, cloud_app, capsys, headers, said):
+        capsys.readouterr()
+        r = cloud_app.post("/save", json={"url": "https://www.tiktok.com/video/9"}, headers=headers)
+        assert r.status_code == 401
+        out = self.lines(capsys)
+        assert out == [f"faves: {said}"]
+        assert "sesame" not in " ".join(out)
+
+    def test_a_share_without_a_link_names_the_fields_it_had(self, cloud_app, capsys):
+        capsys.readouterr()
+        r = cloud_app.post("/save", json={"Note": "why I kept it"}, headers={"authorization": "Bearer sesame"})
+        assert r.status_code == 400
+        assert self.lines(capsys) == ["faves: save refused: no link in the request (fields: note)"]
+
+    def test_a_share_that_arrives_says_so_and_where_from(self, cloud_app, capsys, monkeypatch):
+        async def fake_capture(shared, note, conn, collection=None, saved_at=None):
+            return {"id": 1166, "created": True, "platform": "tiktok", "resolve_status": "ok"}
+        monkeypatch.setattr(web, "capture", fake_capture)
+        capsys.readouterr()
+        r = cloud_app.post("/save", json={"url": "Look https://www.tiktok.com/@a/video/9?is_from=x"},
+                           headers={"authorization": "Bearer sesame"})
+        assert r.status_code == 201
+        assert self.lines(capsys) == ["faves: save received (www.tiktok.com)",
+                                      "faves: saved #1166 tiktok ok (new)"]
+
+    def test_a_share_the_platform_wouldnt_answer_gives_its_reason(self, cloud_app, capsys, monkeypatch):
+        async def fake_capture(shared, note, conn, collection=None, saved_at=None):
+            conn.execute("UPDATE items SET resolve_status = 'failed', resolve_error = 'HTTP 429 from instagram'"
+                         " WHERE id = ?", (cloud_app.item,))
+            conn.commit()
+            return {"id": cloud_app.item, "created": False, "platform": "instagram", "resolve_status": "failed"}
+        monkeypatch.setattr(web, "capture", fake_capture)
+        capsys.readouterr()
+        cloud_app.post("/save", json={"url": "https://www.instagram.com/reel/abc"},
+                       headers={"authorization": "Bearer sesame"})
+        assert self.lines(capsys)[-1] == (f"faves: saved #{cloud_app.item} instagram failed:"
+                                          " HTTP 429 from instagram (already saved)")
+
+    def test_nothing_is_logged_on_the_mac(self, tmp_path, monkeypatch, capsys):
+        monkeypatch.delenv("VERCEL", raising=False)
+        monkeypatch.delenv("FAVES_CLOUD", raising=False)
+        monkeypatch.setenv("FAVORITES_TOKEN", "sesame")
+        with TestClient(web.app) as client:
+            capsys.readouterr()
+            assert client.post("/save", json={"url": "https://x.com/a/status/1"}).status_code == 401
+        assert "faves: " not in capsys.readouterr().out
+
+
 class TestASettingMissing:
     def test_every_page_says_which_and_shows_nothing_else(self, monkeypatch):
         monkeypatch.setenv("FAVES_CLOUD", "1")
