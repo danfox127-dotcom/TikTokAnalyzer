@@ -264,6 +264,7 @@ async def _try_oembed(url: str, platform: str, client: httpx.AsyncClient) -> Opt
 
 async def _try_opengraph(
     url: str, client: httpx.AsyncClient, user_agent: str = USER_AGENT,
+    details: Optional[platforms.Details] = None,
 ) -> Optional[dict]:
     try:
         resp = await client.get(
@@ -276,9 +277,11 @@ async def _try_opengraph(
         if "html" not in ctype and ctype:
             return None
         meta, title = parse_meta(resp.text)
-        if not meta and not title:
+        found = details(resp.text) if details else {}
+        if not meta and not title and not found:
             return None
         meta["__title__"] = title
+        meta["__details__"] = found
         return meta
     except Exception as exc:
         logger.debug("opengraph read failed for %s: %s", url, exc)
@@ -402,20 +405,33 @@ async def resolve(shared: str, client: httpx.AsyncClient) -> Resolved:
         elif item.creator_url:
             item.creator_handle = _handle_from_url(item.creator_url, platform) or item.creator_handle
         item.thumbnail_url = _clean(data.get("thumbnail_url"))
+        # TikTok's bare answer carries only a player and the video's number.
+        # The number is still worth keeping: it plays the video in Faves.
+        number = str(data.get("embed_product_id") or "")
+        if not item.external_id and number.isdigit():
+            item.external_id = number
         item.raw["oembed"] = data
         item.resolve_status = "ok"
 
     meta = None
     if item.resolve_status != "ok" or not item.thumbnail_url or not item.title:
         meta = await _try_opengraph(
-            canonical, client, platforms.get(platform).preview_agent or USER_AGENT)
+            canonical, client, platforms.get(platform).preview_agent or USER_AGENT,
+            platforms.get(platform).details_from_page)
     if meta:
-        item.title = item.title or _clean(meta.get("og:title") or meta.get("twitter:title") or meta.get("__title__"))
+        # What the page's own data says beats its preview tags, which on
+        # TikTok can be its slogan in place of the caption.
+        page = meta.get("__details__") or {}
+        item.title = item.title or _clean(page.get("title")) or _clean(
+            meta.get("og:title") or meta.get("twitter:title") or meta.get("__title__"))
         item.description = _clean(meta.get("og:description") or meta.get("twitter:description") or meta.get("description"))
-        item.thumbnail_url = item.thumbnail_url or _clean(meta.get("og:image") or meta.get("twitter:image"))
-        item.creator_name = item.creator_name or _clean(
+        item.thumbnail_url = item.thumbnail_url or _clean(page.get("thumbnail_url")) or _clean(
+            meta.get("og:image") or meta.get("twitter:image"))
+        item.creator_handle = item.creator_handle or page.get("creator_handle")
+        item.creator_name = item.creator_name or _clean(page.get("creator_name")) or _clean(
             meta.get("author") or meta.get("article:author") or meta.get("og:site_name")
         )
+        item.external_id = item.external_id or page.get("external_id")
         item.raw["opengraph"] = {k: v for k, v in meta.items() if not k.startswith("__")}
         item.resolve_status = "ok"
 

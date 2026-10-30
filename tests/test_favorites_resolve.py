@@ -1,9 +1,12 @@
 """Resolution: the part that turns a shared link into a catalogue entry."""
 
+import json
+
 import httpx
 import pytest
 import respx
 
+from favorites import platforms
 from favorites.resolve import (
     browsable_url, canonical_form, detect_platform, extract_url, resolve,
     strip_tracking,
@@ -272,6 +275,78 @@ class TestPlaceholderPagesAreNotResolutions:
         assert item.title != "TikTok - Make Your Day"
         assert item.description is None
         assert item.creator_name is None
+
+
+@pytest.mark.asyncio
+class TestTikToksBareAnswer:
+    """Since late October TikTok's oEmbed can answer with a player and the
+    video's number, and nothing else: no caption, creator or picture."""
+
+    BARE = {"version": "1.0", "type": "video", "width": "325", "height": "578",
+            "html": '<iframe src="https://www.tiktok.com/player/v1/7300000000000000001"></iframe>',
+            "provider_url": "https://www.tiktok.com", "provider_name": "TikTok",
+            "embed_product_id": "7300000000000000001", "embed_type": "video"}
+
+    def page(self, item=None):
+        data = {"__DEFAULT_SCOPE__": {"webapp.video-detail": {"itemInfo": {"itemStruct": item}}}}
+        script = ('<script id="__UNIVERSAL_DATA_FOR_REHYDRATION__" type="application/json">'
+                  + json.dumps(data) + "</script>") if item else ""
+        return httpx.Response(200, text=SLOGAN_PAGE.replace("</head>", script + "</head>"),
+                              headers={"content-type": "text/html"})
+
+    def answers(self, page):
+        respx.get(host="www.tiktok.com", path="/oembed").mock(
+            return_value=httpx.Response(200, json=self.BARE))
+        respx.get(host="www.tiktok.com", path__startswith="/t/").mock(return_value=page)
+
+    @respx.mock
+    async def test_the_page_supplies_the_caption_creator_and_picture(self):
+        self.answers(self.page({
+            "id": "7300000000000000001", "desc": "the zoning meeting went sideways #localgov",
+            "author": {"uniqueId": "citydesk", "nickname": "City Desk"},
+            "video": {"duration": 58, "cover": "https://p16.tiktokcdn.com/cover.jpg"}}))
+        async with httpx.AsyncClient() as client:
+            item = await resolve("https://www.tiktok.com/t/ZTf7W8jhW/", client)
+        assert item.resolve_status == "ok"
+        assert item.title == "the zoning meeting went sideways #localgov"
+        assert item.description == item.title  # the caption, not the slogan
+        assert (item.creator_handle, item.creator_name) == ("@citydesk", "City Desk")
+        assert item.thumbnail_url == "https://p16.tiktokcdn.com/cover.jpg"
+        assert item.external_id == "7300000000000000001"
+
+    @respx.mock
+    async def test_without_the_pages_data_it_waits_but_keeps_the_videos_number(self):
+        # Unresolved, so the Mac asks again; the number already plays it in Faves.
+        self.answers(self.page())
+        async with httpx.AsyncClient() as client:
+            item = await resolve("https://www.tiktok.com/t/ZTf7W8jhW/", client)
+        assert item.resolve_status == "unresolved"
+        assert item.external_id == "7300000000000000001"
+        assert item.description is None
+
+
+class TestTikTokPageDetails:
+    def page(self, item):
+        data = {"__DEFAULT_SCOPE__": {"webapp.video-detail": {"itemInfo": {"itemStruct": item}}}}
+        return ('<html><script id="__UNIVERSAL_DATA_FOR_REHYDRATION__" type="application/json">'
+                + json.dumps(data) + "</script></html>")
+
+    def test_it_prefers_the_full_size_cover(self):
+        found = platforms._tiktok_details(self.page({
+            "id": "71", "desc": "a caption", "author": {"uniqueId": "a", "nickname": ""},
+            "video": {"cover": "small.jpg", "originCover": "full.jpg"}}))
+        assert found == {"title": "a caption", "creator_handle": "@a",
+                         "thumbnail_url": "full.jpg", "external_id": "71"}
+
+    def test_an_author_given_by_handle_alone(self):
+        assert platforms._tiktok_details(self.page({"author": "citydesk"})) == {
+            "creator_handle": "@citydesk"}
+
+    @pytest.mark.parametrize("html", ["", "<html><title>TikTok - Make Your Day</title></html>",
+                                      '<script id="__UNIVERSAL_DATA_FOR_REHYDRATION__">{not json'
+                                      "</script>"])
+    def test_a_page_without_the_data_says_nothing(self, html):
+        assert platforms._tiktok_details(html) == {}
 
 
 SLOGAN_PAGE = (
