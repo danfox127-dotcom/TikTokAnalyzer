@@ -222,7 +222,7 @@ and then behaves like this:
   and one old save worth another look (the same one all week).
 - **This season.** The current season as a topic — every autumn (or winter…) you
   have kept things through — on the front page and first on `/topics`.
-- **Rabbit hole** (`/wander`, and *Keep going* on every save). Follows one of the
+- **Rabbit hole** (`/wander`, and *Rabbit hole: something related* on every save). Follows one of the
   save's threads — its topic, creator, date, season or a hashtag — to somewhere
   you have not just been, and says which thread it took. It never dead-ends.
 - **Your year** (`/year`, `/year/2025`). A Wrapped-style page: top topics and

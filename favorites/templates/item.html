@@ -90,7 +90,7 @@
         <a class="rr-btn rr-btn--primary open" href="{{ browsable_url(item) }}" target="_blank" rel="noopener noreferrer">
           {% if item.format == 'short' %}Watch the Short{% else %}Open on {{ platform_label(item.platform) }}{% endif %} {{ icon('external') }}</a>
         {% if surprise %}<a class="rr-btn rr-btn--primary surprise-again" href="/surprise">{{ icon('shuffle') }}Another surprise</a>{% endif %}
-        <a class="rr-btn wander-btn" href="{{ wander_href }}">{{ icon('compass') }}Keep going</a>
+        <a class="rr-btn wander-btn" href="{{ wander_href }}">{{ icon('compass') }}Rabbit hole: something related</a>
         <form class="file-form" action="/item/{{ item.id }}/file" method="post" data-inplace="Filed">
           <input type="text" name="name" list="all-collections" autocomplete="off"
                  placeholder="{% if collections %}Also file under…{% else %}File under a category…{% endif %}"
