@@ -385,7 +385,8 @@ class TestMoreHooks:
         loc = resp.headers["location"]
         assert loc.startswith("/item/") and f"trail={three[0]}" in loc and "via=" in loc
         page = client.get(loc).text
-        assert "Down the rabbit hole via" in page and "Keep going" in page
+        # Named for what it does: "Keep going" is Shuffle's, for more of the same feed.
+        assert "Down the rabbit hole via" in page and "Rabbit hole: something related" in page
 
     def test_junk_in_the_trail_is_ignored(self, client, three):
         resp = client.get(f"/wander/{three[0]}?trail=abc,,7x,{three[1]}", follow_redirects=False)
