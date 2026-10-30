@@ -136,7 +136,7 @@ class TestResolve:
         # Instagram has no open oEmbed endpoint, and TikTok's sometimes 403s.
         respx.get(host="www.tiktok.com", path="/oembed").mock(
             return_value=httpx.Response(403))
-        respx.get(host="www.tiktok.com", path__startswith="/video").mock(
+        respx.get(host="www.tiktok.com", path="/@citydesk/video/7123").mock(
             return_value=httpx.Response(200, text=OG_PAGE,
                                         headers={"content-type": "text/html"}))
         async with httpx.AsyncClient() as client:
@@ -203,7 +203,7 @@ class TestPlaceholderPagesAreNotResolutions:
     async def test_a_dead_video_page_does_not_count_as_resolved(self):
         respx.get(host="www.tiktok.com", path="/oembed").mock(
             return_value=httpx.Response(404))
-        respx.get(host="www.tiktok.com", path__startswith="/video").mock(
+        respx.get(host="www.tiktokv.com", path="/share/video/7123/").mock(
             return_value=httpx.Response(200, text=PLACEHOLDER_PAGE,
                                         headers={"content-type": "text/html"}))
         async with httpx.AsyncClient() as client:
@@ -217,7 +217,7 @@ class TestPlaceholderPagesAreNotResolutions:
         # the OpenGraph fallback runs and fills the gap with "TikTok".
         respx.get(host="www.tiktok.com", path="/oembed").mock(
             return_value=httpx.Response(200, json={"title": "", "author_name": ""}))
-        respx.get(host="www.tiktok.com", path__startswith="/video").mock(
+        respx.get(host="www.tiktokv.com", path="/share/video/7123/").mock(
             return_value=httpx.Response(200, text=PLACEHOLDER_PAGE,
                                         headers={"content-type": "text/html"}))
         async with httpx.AsyncClient() as client:
@@ -323,6 +323,40 @@ class TestTikToksBareAnswer:
         assert item.resolve_status == "unresolved"
         assert item.external_id == "7300000000000000001"
         assert item.description is None
+
+    @respx.mock
+    async def test_an_imported_save_reads_its_page_through_the_share_link(self):
+        # An export's save is stored as tiktok.com/video/<id>, which is no page
+        # at all. Its share link is, and leads to the video's own.
+        vid = "7300000000000000001"
+        respx.get(host="www.tiktok.com", path="/oembed").mock(
+            return_value=httpx.Response(200, json=self.BARE))
+        respx.get(host="www.tiktok.com", path=f"/video/{vid}").mock(return_value=httpx.Response(404))
+        respx.get(host="www.tiktokv.com", path=f"/share/video/{vid}/").mock(return_value=self.page({
+            "id": vid, "desc": "how dry cleaning actually works", "author": {"uniqueId": "citydesk"},
+            "video": {"cover": "https://p16.tiktokcdn.com/cover.jpg"}}))
+        async with httpx.AsyncClient() as client:
+            item = await resolve(f"https://www.tiktok.com/video/{vid}", client)
+        assert item.resolve_status == "ok"
+        assert (item.title, item.creator_handle) == ("how dry cleaning actually works", "@citydesk")
+        assert item.canonical_url == f"https://www.tiktok.com/video/{vid}"  # the same save
+
+
+class TestTikTokPage:
+    """Where a TikTok save's own page is read."""
+
+    def test_an_imported_save_uses_its_share_link(self):
+        assert platforms._tiktok_page({"canonical_url": "https://www.tiktok.com/video/71",
+                                       "external_id": "71"}) == "https://www.tiktokv.com/share/video/71/"
+
+    def test_with_the_creator_known_it_uses_the_videos_own_address(self):
+        assert platforms._tiktok_page({"canonical_url": "https://www.tiktok.com/video/71",
+                                       "external_id": "71", "creator_handle": "@a"}) == \
+            "https://www.tiktok.com/@a/video/71"
+
+    def test_a_link_as_shared_is_read_as_it_is(self):
+        assert platforms._tiktok_page({"canonical_url": "https://www.tiktok.com/t/ZTf7W8jhW",
+                                       "external_id": "71"}) is None
 
 
 class TestTikTokPageDetails:

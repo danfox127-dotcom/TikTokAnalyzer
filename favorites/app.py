@@ -1289,7 +1289,7 @@ LOOKUP: dict = {"running": False, "last": None}
 
 
 def _look_again() -> None:
-    """Give every save still missing its details a fresh set of tries.
+    """Give every save still missing its details another try.
 
     One that failed three times is otherwise never asked about again -- right
     for a deleted video, wrong when the failure was the platform changing what

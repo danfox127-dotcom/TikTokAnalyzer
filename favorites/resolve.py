@@ -415,8 +415,12 @@ async def resolve(shared: str, client: httpx.AsyncClient) -> Resolved:
 
     meta = None
     if item.resolve_status != "ok" or not item.thumbnail_url or not item.title:
+        page_for = platforms.get(platform).page
+        page_url = page_for({"canonical_url": canonical, "external_id": item.external_id,
+                             "creator_handle": item.creator_handle or _handle_from_url(expanded, platform),
+                             }) if page_for else None
         meta = await _try_opengraph(
-            canonical, client, platforms.get(platform).preview_agent or USER_AGENT,
+            page_url or canonical, client, platforms.get(platform).preview_agent or USER_AGENT,
             platforms.get(platform).details_from_page)
     if meta:
         # What the page's own data says beats its preview tags, which on

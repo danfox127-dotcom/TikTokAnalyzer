@@ -88,6 +88,10 @@ class Platform:
     link: Optional[Link] = None
     handle: Optional[Handle] = None
 
+    #: Where to read an item's own page, when its canonical URL isn't one.
+    #: Unset, or None for an item, means the canonical URL itself.
+    page: Optional[Link] = None
+
     #: How to tell short-form vertical video from the URL, and how to ask the
     #: platform when the URL is silent. Only matters where one platform serves
     #: both -- YouTube does, TikTok does not.
@@ -201,6 +205,17 @@ def _tiktok_link(item: dict) -> Optional[str]:
     if handle and external_id:
         return f"https://www.tiktok.com/@{handle}/video/{external_id}"
     return None
+
+
+def _tiktok_page(item: dict) -> Optional[str]:
+    # An imported save's address is the identity form, which 404s as a page.
+    # The export's own share link for that number redirects to the video.
+    if "/video/" not in (item.get("canonical_url") or ""):
+        return None  # a link as shared is already a page
+    external_id = (item.get("external_id") or "").strip()
+    if not external_id.isdigit():
+        return None
+    return _tiktok_link(item) or f"https://www.tiktokv.com/share/video/{external_id}/"
 
 
 def _youtube_link(item: dict) -> Optional[str]:
@@ -365,7 +380,7 @@ PLATFORMS: tuple[Platform, ...] = (
         shorteners=("vm.tiktok.com", "vt.tiktok.com", "m.tiktok.com"),
         oembed="https://www.tiktok.com/oembed",
         host_canonical="www.tiktok.com",
-        identity=_tiktok_identity, link=_tiktok_link, embed=_tiktok_embed,
+        identity=_tiktok_identity, link=_tiktok_link, page=_tiktok_page, embed=_tiktok_embed,
         caption_is_title=True, length_from_page=_tiktok_length,
         # What a share link opens to from a cloud server, where TikTok won't
         # show the video: a page about TikTok, not about the thing you saved.
