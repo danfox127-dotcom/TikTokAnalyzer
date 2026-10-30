@@ -17,6 +17,7 @@ import dataclasses
 import json
 import logging
 import socket
+import threading
 import time
 import io
 import zipfile
@@ -73,16 +74,22 @@ SCAN_EVERY = 60
 YOUTUBE_EVERY = 24 * 3600
 
 
+#: One look in the watched folder at a time: "Look now" pressed during the
+#: minute's look would otherwise import the same export twice.
+_SCANNING = threading.Lock()
+
+
 def _scan_now() -> list:
     folders = watch.folders_from_env()
     watch.STATUS.folders = [str(f) for f in folders]
     if not folders:
         return []
-    conn = db.connect()
-    try:
-        found = watch.scan(conn, folders)
-    finally:
-        conn.close()
+    with _SCANNING:
+        conn = db.connect()
+        try:
+            found = watch.scan(conn, folders)
+        finally:
+            conn.close()
     watch.STATUS.last_scan = db.now_iso()
     watch.STATUS.found = (found + watch.STATUS.found)[:8]
     return found
