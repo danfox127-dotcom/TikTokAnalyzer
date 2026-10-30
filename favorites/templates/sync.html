@@ -137,20 +137,20 @@
     <p>TikTok's and Instagram's own share panels only list their partner apps, so Faves lives one tap further, in your iPhone's share sheet: <b>Share → More</b> in TikTok, <b>Share → Share to…</b> in Instagram. Or skip the share sheet: copy the link, then double-tap the back of your phone.</p>
   </div></div>
   <div class="band-pad phone-body rr-reveal">
-    {% if cloud %}
-      <p class="rr-notice always-on">{{ icon('check') }}<span><b>Faves in the cloud.</b> Your phone reaches it anywhere, whether or not your Mac is awake.</span></p>
+    {% if address_is_cloud %}
+      <p class="rr-notice always-on">{{ icon('check') }}<span><b>Faves in the cloud.</b> Your phone reaches it anywhere, whether or not your Mac is awake.{% if not cloud %} The shortcuts below save straight to it.{% endif %}</span></p>
     {% elif always_on %}
       <p class="rr-notice always-on">{{ icon('check') }}<span><b>Always on.</b> The Faves window opens by itself when you log in to the Mac, and a plugged-in Mac stays awake while it runs.</span></p>
     {% else %}
       <p class="rr-notice always-on">{{ icon('clock') }}<span><b>White screen on your phone?</b> That means Faves isn't running on the Mac. Double-click <code>always-on.command</code> (next to <code>start.command</code>) once, and Faves opens by itself whenever you log in.</span></p>
     {% endif %}
-    {% if not cloud %}
+    {% if not address_is_cloud %}
     <p class="rr-muted small">Your phone can only reach Faves while the Mac is awake with the Faves window open. A closed laptop lid still sleeps: leave it open, or turn on System Settings → Battery → Options → <i>Prevent automatic sleeping on power adapter when the display is off</i>.</p>
     {% endif %}
     {% if token and not unlocked %}
       <p class="rr-notice">{{ icon('placard') }}<span>To install the shortcuts on this phone, first <a href="/keep">unlock it on the Keep page</a> (once), then come back here.</span></p>
     {% elif cloud %}
-      <p class="rr-notice">{{ icon('placard') }}<span>Already have <b>Save to Faves</b>? In Shortcuts, edit it and change its address to <code>{{ anywhere }}/save</code>. The password stays the same. Setting it up fresh: <b>Build it yourself</b>, below.</span></p>
+      <p class="rr-notice">{{ icon('placard') }}<span>The easiest way to set up <b>Save to Faves</b>: open Faves on your Mac, go to <b>Keep it in sync</b>, and press <b>Install Save to Faves</b>. It comes ready-made, already pointed here. Or build it yourself, below.</span></p>
     {% elif token and not can_sign %}
       <p class="rr-notice">{{ icon('clock') }}<span>This Mac can't prepare ready-made shortcuts (that needs macOS 12 or later, signed in to iCloud). Use <b>Build it yourself</b> below.</span></p>
     {% endif %}
@@ -192,8 +192,8 @@
         <dl>
         <div><dt>The address (URL)</dt>
           <dd>{% if use %}<span class="copyable"><code>{{ use }}/save</code><button class="rr-btn rr-btn--quiet copy-btn" type="button" data-copy="{{ use }}/save" hidden>Copy</button></span>
-              <span class="rr-muted small">{% if cloud %}Your Faves address in the cloud: it works anywhere, with no Tailscale needed.{% elif anywhere %}Your Tailscale address: it works at home and away, wherever your phone has Tailscale switched on.{% else %}Tailscale isn't on on this Mac, so this is your home wi-fi address: it only works while your phone is on the same wi-fi. Switch Tailscale on and reload this page for one that works anywhere.{% endif %}</span>
-              {% if anywhere and at_home %}<span class="rr-muted small">Not this one: <code>{{ at_home }}</code> is the home-wi-fi-only address.</span>{% endif %}
+              <span class="rr-muted small">{% if address_is_cloud %}Your Faves address in the cloud: it works anywhere, with no Tailscale needed.{% elif anywhere %}Your Tailscale address: it works at home and away, wherever your phone has Tailscale switched on.{% else %}Tailscale isn't on on this Mac, so this is your home wi-fi address: it only works while your phone is on the same wi-fi. Switch Tailscale on and reload this page for one that works anywhere.{% endif %}</span>
+              {% if anywhere and at_home and not address_is_cloud %}<span class="rr-muted small">Not this one: <code>{{ at_home }}</code> is the home-wi-fi-only address.</span>{% endif %}
             {% else %}<span class="rr-muted">Couldn't tell this Mac's address. start.command prints it when it starts.</span>{% endif %}</dd></div>
         {% if here %}
         <div><dt>Header name</dt>

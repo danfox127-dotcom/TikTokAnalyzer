@@ -54,7 +54,9 @@ shows the right one, ready to copy.
 its address instead: `https://tik-tok-analyzer.vercel.app`. It works
 anywhere, with no Tailscale, whether or not your Mac is awake. Wherever a URL
 below starts `http://YOUR-ADDRESS`, write `https://tik-tok-analyzer.vercel.app`
-in its place. The password is the same.
+in its place. The password is the same. Easier still: with the library in
+the cloud, the **Install** buttons on the Mac's Keep it in sync page make
+shortcuts already pointed at the cloud address (`FAVES_CLOUD_URL` changes it).
 
 Below, replace `YOUR-ADDRESS` with that address including the port (e.g.
 `100.101.102.103:8000`) and `YOUR-TOKEN` with the password (or leave the

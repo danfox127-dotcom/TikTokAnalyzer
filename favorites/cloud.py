@@ -22,6 +22,10 @@ import os
 OPEN = ("/signin", "/unlock", "/healthz", "/manifest.webmanifest", "/sw.js", "/favicon.ico")
 OPEN_PREFIXES = ("/static/",)
 
+#: Where the cloud copy lives. Faves on the Mac puts it in the ready-made
+#: shortcuts once the library is in the cloud; ``FAVES_CLOUD_URL`` overrides it.
+ADDRESS = "https://tik-tok-analyzer.vercel.app"
+
 #: The settings the cloud copy needs, and what each is.
 NEEDS = {
     "DATABASE_URL": "the address of your library in Supabase",
@@ -39,6 +43,11 @@ def active(request=None) -> bool:
     if os.environ.get("VERCEL") or os.environ.get("FAVES_CLOUD"):
         return True
     return request is not None and "x-vercel-id" in request.headers
+
+
+def address() -> str:
+    """The cloud copy's address, with no slash at the end."""
+    return (os.environ.get("FAVES_CLOUD_URL") or ADDRESS).rstrip("/")
 
 
 def missing() -> list[str]:

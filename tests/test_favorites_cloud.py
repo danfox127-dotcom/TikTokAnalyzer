@@ -214,7 +214,9 @@ class TestTheCloudPages:
         assert "<code>https://faves.example.vercel.app/save</code>" in page
         assert "Your Mac does the watching" in page and "Faves in the cloud." in page
         assert "Tailscale address" not in page and "White screen" not in page
-        assert "change its address to <code>https://faves.example.vercel.app/save</code>" in page
+        # Shortcuts are signed on a Mac: the cloud copy points there for a ready-made one.
+        assert "press <b>Install Save to Faves</b>. It comes ready-made" in page
+        assert "The shortcuts below save straight to it." not in page
         assert "This Mac can't prepare" not in page
         assert "sesame" not in page  # the password is never shown off the Mac
 

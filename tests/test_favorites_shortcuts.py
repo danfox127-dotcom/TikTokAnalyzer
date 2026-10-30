@@ -68,6 +68,8 @@ def phone(tmp_path, monkeypatch):
     monkeypatch.setenv("FAVORITES_DB", str(tmp_path / "lib.db"))
     monkeypatch.setenv("FAVORITES_TOKEN", "sesame")
     monkeypatch.setattr(app_module, "_tailscale_address", lambda: "100.101.150.74")
+    # The library on the Mac, reached over Tailscale (see TestOnceInTheCloud).
+    monkeypatch.setattr(app_module, "_cloud_address", lambda request: None)
     with TestClient(app, client=("100.88.36.117", 50000)) as c:
         yield c
 
@@ -102,3 +104,64 @@ class TestInstalling:
 
     def test_unknown_shortcut(self, phone):
         assert phone.get("/shortcuts/nope.shortcut").status_code == 404
+
+
+class TestOnceInTheCloud:
+    """With the library in the cloud, the ready-made shortcuts save to the cloud
+    copy: from anywhere, whether or not the Mac is awake."""
+
+    @pytest.fixture
+    def on_the_cloud_library(self, phone, monkeypatch):
+        from favorites import cloud
+        monkeypatch.setattr(app_module, "_cloud_address", lambda request: cloud.address())
+        phone.cookies.set(app_module.KEY_COOKIE, "sesame")
+        return phone
+
+    def sends_to(self, data: bytes) -> str:
+        workflow = plistlib.loads(data)
+        send = [a for a in workflow["WFWorkflowActions"] if a["WFWorkflowActionIdentifier"].endswith("downloadurl")][0]
+        return send["WFWorkflowActionParameters"]["WFURL"]
+
+    def test_the_shortcuts_save_to_the_cloud(self, on_the_cloud_library, fake_shortcuts_command):
+        for slug in ("save-to-faves", "save-copied-link"):
+            resp = on_the_cloud_library.get(f"/shortcuts/{slug}.shortcut")
+            assert resp.status_code == 200
+            assert self.sends_to(resp.content) == "https://tik-tok-analyzer.vercel.app/save"
+            # Still with the password, and still writing the inbox first.
+            assert b"Bearer sesame" in resp.content and b"Faves inbox.txt" in resp.content
+
+    def test_the_page_offers_them_with_the_cloud_address(self, on_the_cloud_library, fake_shortcuts_command):
+        page = on_the_cloud_library.get("/sync").text
+        assert 'href="/shortcuts/save-to-faves.shortcut"' in page
+        assert "<code>https://tik-tok-analyzer.vercel.app/save</code>" in page
+        assert "Your Faves address in the cloud" in page and "The shortcuts below save straight to it." in page
+        assert "Tailscale address" not in page and "White screen" not in page
+        assert "home-wi-fi-only" not in page and "only reach Faves while the Mac is awake" not in page
+
+    def test_another_cloud_address_can_be_set(self, on_the_cloud_library, fake_shortcuts_command, monkeypatch):
+        monkeypatch.setenv("FAVES_CLOUD_URL", "https://faves.example.com/")
+        resp = on_the_cloud_library.get("/shortcuts/save-to-faves.shortcut")
+        assert self.sends_to(resp.content) == "https://faves.example.com/save"
+
+
+def test_the_cloud_address_is_used_once_the_library_is_there(monkeypatch):
+    from starlette.requests import Request
+    from favorites import cloud
+    request = Request({"type": "http", "headers": [], "server": ("127.0.0.1", 8000), "path": "/"})
+    for name in ("VERCEL", "FAVES_CLOUD", "FAVES_CLOUD_URL"):
+        monkeypatch.delenv(name, raising=False)
+    monkeypatch.delenv("DATABASE_URL", raising=False)
+    assert app_module._cloud_address(request) is None  # the library on the Mac
+    monkeypatch.setenv("DATABASE_URL", "postgresql://user@db.example/postgres")
+    assert app_module._cloud_address(request) == cloud.ADDRESS
+    monkeypatch.setenv("FAVES_CLOUD_URL", "https://faves.example.com/")
+    assert app_module._cloud_address(request) == "https://faves.example.com"
+
+
+def test_the_cloud_copy_names_its_own_address(monkeypatch):
+    from starlette.requests import Request
+    monkeypatch.setenv("FAVES_CLOUD", "1")
+    request = Request({"type": "http", "headers": [(b"host", b"faves.example.vercel.app")],
+                       "server": ("faves.example.vercel.app", 443), "scheme": "https", "path": "/"})
+    assert app_module._cloud_address(request) == "https://faves.example.vercel.app"
+
