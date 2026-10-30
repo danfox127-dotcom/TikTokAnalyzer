@@ -728,8 +728,12 @@ To switch it on, in one sitting:
 2. In Vercel, **Redeploy** the newest deployment, so it picks the settings up.
 3. On your phone, open the address and sign in with the password. Then
    **Share → Add to Home Screen**.
-4. In your **Save to Faves** shortcut, change the address to
-   `https://tik-tok-analyzer.vercel.app/save`. The password stays the same.
+4. Install a fresh **Save to Faves**, ready-made and already pointed at the
+   cloud. On the phone, delete the old one first: in Shortcuts, press and
+   hold it, then Delete. Then, on the Mac, open Faves → More → **Keep it in
+   sync** → **Install Save to Faves**, and choose **Add Shortcut**. iCloud
+   puts it on your phone. (Or edit the old one's address to
+   `https://tik-tok-analyzer.vercel.app/save`; the password stays the same.)
 5. On the Mac, double-click **`start.command`**. Faves there becomes the
    helper (below).
 

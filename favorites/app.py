@@ -120,9 +120,11 @@ async def _fill_in(limit: int = 50) -> None:
 
 
 async def _sync_youtube() -> Optional[dict]:
+    if not google_sync.configured():
+        return None  # not set up: no need to open the library to find that out
     conn = db.connect()
     try:
-        if not (google_sync.configured() and google_sync.connected(conn)):
+        if not google_sync.connected(conn):
             return None
         return await google_sync.sync(conn)
     finally:
@@ -165,6 +167,7 @@ async def _keep_in_sync() -> None:
     """
     log = logging.getLogger("uvicorn.error")
     last_youtube = 0.0
+    first_pass = True
     while True:
         try:
             found = await run_in_threadpool(_scan_now)
@@ -177,12 +180,15 @@ async def _keep_in_sync() -> None:
             if added:
                 log.info("%s new saves arrived; filling in the first 50", added)
                 await _fill_in()
-            elif db.on_postgres() and await run_in_threadpool(_shared_waiting):
+            elif not first_pass and db.on_postgres() and await run_in_threadpool(_shared_waiting):
+                # From the second minute on: a start opens the library for
+                # nothing it hasn't been asked to do.
                 await _fill_in(limit=10)
         except asyncio.CancelledError:
             raise
         except Exception:  # never let one bad export stop the watching
             log.exception("keeping in sync failed; trying again in a minute")
+        first_pass = False
         await asyncio.sleep(SCAN_EVERY)
 
 
@@ -1181,8 +1187,9 @@ def sync_page(request: Request, conn: sqlite3.Connection = Depends(get_db)):
     port = request.url.port or 8000
     token = os.environ.get("FAVORITES_TOKEN")
     in_cloud = cloud.active(request)
+    cloud_address = _cloud_address(request)
     wifi = _wifi_address() if token and not in_cloud else None
-    tailscale = _tailscale_address() if token and not in_cloud else None
+    tailscale = _tailscale_address() if token and not cloud_address else None
     return templates.TemplateResponse(request, "sync.html", {
         "exports": exports, "recent": [dict(r) | {"detail": json.loads(r["detail"] or "{}")} for r in recent],
         "folders": [str(f) for f in watch.folders_from_env()], "status": watch.STATUS,
@@ -1190,8 +1197,8 @@ def sync_page(request: Request, conn: sqlite3.Connection = Depends(get_db)):
                    "last": google_sync.last_sync(conn)},
         "here": _on_this_mac(request), "token": token,
         "always_on": (Path.home() / "Library" / "LaunchAgents" / "app.faves.plist").exists(),
-        "anywhere": (_phone_address(request) if in_cloud
-                     else f"http://{tailscale}:{port}" if tailscale else None), "cloud": in_cloud,
+        "anywhere": cloud_address or (f"http://{tailscale}:{port}" if tailscale else None),
+        "cloud": in_cloud, "address_is_cloud": bool(cloud_address),
         "at_home": f"http://{wifi}:{port}" if wifi else None,
         "flash": request.query_params.get("done", ""),
         "can_sign": shortcuts.can_sign(), "unlocked": unlocked(request),
@@ -1204,12 +1211,23 @@ def sync_page(request: Request, conn: sqlite3.Connection = Depends(get_db)):
 SHORTCUT_SLUGS = {"save-to-faves": "Save to Faves", "save-copied-link": "Save copied link"}
 
 
-def _phone_address(request: Request) -> str:
-    """The address a phone should use for Faves: Tailscale's when it is on (it
-    works anywhere), else the one this request came in on, else the wi-fi one.
-    In the cloud, the cloud's own address, which works anywhere."""
+def _cloud_address(request: Request) -> Optional[str]:
+    """The cloud copy's address, once the library is in the cloud: what a phone
+    should use from anywhere, Mac awake or not. None while it's on the Mac."""
     if cloud.active(request):
         return f"https://{request.url.hostname}"
+    if db.on_postgres():
+        return cloud.address()
+    return None
+
+
+def _phone_address(request: Request) -> str:
+    """The address a phone should use for Faves: the cloud's once the library
+    is there, else Tailscale's when it is on (it works anywhere), else the one
+    this request came in on, else the wi-fi one."""
+    in_the_cloud = _cloud_address(request)
+    if in_the_cloud:
+        return in_the_cloud
     port = request.url.port or 8000
     tailscale = _tailscale_address()
     if tailscale:

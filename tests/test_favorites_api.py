@@ -482,7 +482,9 @@ class TestCleanLabels:
 class TestKeepingInSync:
     @pytest.fixture
     def mac(self, tmp_path, monkeypatch):
-        """A browser on the Mac the museum runs on."""
+        """A browser on the Mac the museum runs on, its library on the Mac."""
+        import favorites.app as appmod
+        monkeypatch.setattr(appmod, "_cloud_address", lambda request: None)
         monkeypatch.setenv("FAVORITES_DB", str(tmp_path / "favorites.db"))
         monkeypatch.delenv("FAVORITES_WATCH", raising=False)
         monkeypatch.delenv("GOOGLE_CLIENT_ID", raising=False)
@@ -598,6 +600,32 @@ class TestKeepingInSync:
         assert db.count(conn) == 1
         assert conn.execute("SELECT count(*) FROM imports").fetchone()[0] == 1
         conn.close()
+
+    def test_a_plain_start_leaves_the_library_alone(self, tmp_path, monkeypatch):
+        # Nothing switched on (no watched folder, no Google): the background
+        # pass doesn't open the library. A test's library is dropped as soon
+        # as it ends, and a pass still reading it then deadlocks the drop.
+        import time
+        import favorites.app as appmod
+        monkeypatch.setenv("FAVORITES_DB", str(tmp_path / "favorites.db"))
+        for name in ("FAVORITES_WATCH", "GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET"):
+            monkeypatch.delenv(name, raising=False)
+        passes, opened = [], []
+        read_inbox = appmod._read_inbox
+
+        async def counted():
+            passes.append(1)
+            return await read_inbox()
+
+        monkeypatch.setattr(appmod, "_read_inbox", counted)
+        connect = appmod.db.connect
+        with TestClient(app):
+            monkeypatch.setattr(appmod.db, "connect", lambda *a, **k: opened.append(1) or connect(*a, **k))
+            deadline = time.monotonic() + 5
+            while not passes and time.monotonic() < deadline:
+                time.sleep(0.05)
+            time.sleep(0.5)  # the rest of the pass
+        assert passes and opened == []
 
     def test_google_steps_happen_only_on_the_mac(self, client, mac, monkeypatch):
         monkeypatch.setenv("GOOGLE_CLIENT_ID", "cid")
