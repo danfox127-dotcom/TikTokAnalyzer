@@ -256,6 +256,30 @@ class TestPlaceholderPagesAreNotResolutions:
             item = await resolve("https://example.com/gone", client)
         assert item.resolve_status == "unresolved"
 
+    @respx.mock
+    async def test_tiktoks_slogan_page_is_a_placeholder(self):
+        # What a share link opened to from the cloud: no oEmbed, and a page
+        # about TikTok in place of the video. Left unresolved, the Mac's
+        # helper looks it up again from home, where TikTok answers properly.
+        respx.get(host="www.tiktok.com", path="/oembed").mock(
+            return_value=httpx.Response(400))
+        respx.get(host="www.tiktok.com", path__startswith="/t/").mock(
+            return_value=httpx.Response(200, text=SLOGAN_PAGE,
+                                        headers={"content-type": "text/html"}))
+        async with httpx.AsyncClient() as client:
+            item = await resolve("https://www.tiktok.com/t/ZTf7W8jhW/", client)
+        assert item.resolve_status == "unresolved"
+        assert item.title != "TikTok - Make Your Day"
+        assert item.description is None
+        assert item.creator_name is None
+
+
+SLOGAN_PAGE = (
+    '<html><head><title>TikTok - Make Your Day</title>'
+    '<meta property="og:title" content="TikTok - Make Your Day">'
+    '<meta property="og:description" content="TikTok - Make Your Day">'
+    '<meta property="og:site_name" content="TikTok"></head></html>')
+
 
 class TestBrowsableUrl:
     """The identity key and the link you click are different values.

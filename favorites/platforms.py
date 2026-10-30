@@ -117,6 +117,10 @@ class Platform:
     #: museum. Unset means link out, as before.
     embed: Optional[Embed] = None
 
+    #: Page titles the platform gives a visitor it won't show the item to --
+    #: its slogan rather than the video. Read as no title at all.
+    stub_titles: tuple[str, ...] = ()
+
 
 # --- identity rules ---------------------------------------------------------
 
@@ -327,6 +331,9 @@ PLATFORMS: tuple[Platform, ...] = (
         host_canonical="www.tiktok.com",
         identity=_tiktok_identity, link=_tiktok_link, embed=_tiktok_embed,
         caption_is_title=True, length_from_page=_tiktok_length,
+        # What a share link opens to from a cloud server, where TikTok won't
+        # show the video: a page about TikTok, not about the thing you saved.
+        stub_titles=("TikTok - Make Your Day",),
     ),
     Platform(
         name="youtube", label="YouTube",

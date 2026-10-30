@@ -288,6 +288,7 @@ async def _try_opengraph(
 def _placeholder_names(platform: str, site_name: Optional[str] = None) -> set[str]:
     """The strings that mean "this is the site, not the thing you asked for"."""
     names = {platform.lower(), platform_label(platform).lower()}
+    names.update(t.lower() for t in platforms.get(platform).stub_titles)
     if site_name:
         names.add(re.sub(r"\s+", " ", site_name).strip().lower())
     return names
@@ -428,6 +429,9 @@ async def resolve(shared: str, client: httpx.AsyncClient) -> Resolved:
         hollow = _placeholder_names(platform, site_name)
         if (item.creator_name or "").strip().lower() in hollow:
             item.creator_name = None
+    # TikTok's stub page repeats its slogan as the description, too.
+    if item.description and _is_placeholder_title(item.description, platform, site_name):
+        item.description = None
 
     # A resolution has to have produced something that actually identifies the
     # item. A bare placeholder title is not that, and neither is nothing at all.

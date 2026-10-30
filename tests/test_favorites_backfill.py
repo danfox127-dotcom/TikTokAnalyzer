@@ -294,6 +294,12 @@ class TestRepairingFalseResolutions:
         assert row["resolve_status"] == "pending"
         assert row["resolve_attempts"] == 0
 
+    def test_tiktoks_slogan_page_goes_back_in_the_queue(self, conn):
+        self.resolved(conn, "7001", "TikTok - Make Your Day")
+        assert backfill.requeue_placeholders(conn) == {
+            "cleared_titles": 1, "requeued": 1}
+        assert db.rows_to_dicts(db.recent(conn))[0]["resolve_status"] == "pending"
+
     def test_a_placeholder_title_over_a_real_creator_is_cleared_not_requeued(self, conn):
         # oEmbed gave a creator but no caption, so the junk page supplied the
         # title. The creator is real; only the title has to go.

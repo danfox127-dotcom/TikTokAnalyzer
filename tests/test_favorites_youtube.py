@@ -381,6 +381,14 @@ class TestYouTubePlaceholder:
         assert _is_placeholder_title("TikTok", "tiktok")
         assert not _is_placeholder_title("the zoning meeting went sideways", "tiktok")
 
+    @pytest.mark.parametrize("title", ["TikTok - Make Your Day", "tiktok - make your day "])
+    def test_tiktoks_slogan_is_a_placeholder(self, title):
+        assert _is_placeholder_title(title, "tiktok")
+
+    def test_a_caption_that_mentions_the_slogan_is_kept(self):
+        assert not _is_placeholder_title("this soup will make your day #recipe", "tiktok")
+        assert not _is_placeholder_title("TikTok - Make Your Day", "youtube")
+
 
 # --- backfill ---------------------------------------------------------------
 
