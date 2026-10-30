@@ -400,3 +400,19 @@ class TestAQuietToday:
     def test_a_week_value_reads_as_its_day(self):
         assert explore.day_label("10-04~") == "4 October"
         assert explore.week_days("01-02~") >= {"12-30", "01-05"}
+
+
+def test_the_phone_filter_sheet_opens_over_the_whole_screen():
+    # On a phone the search toolbar is sticky and frosted. A box with a
+    # backdrop-filter frames any fixed element inside it, so the filter sheet
+    # opened squashed into the toolbar, and the toolbar's own layer put it
+    # under the masthead and tab bar. Open, the toolbar sheds both.
+    import re
+    from pathlib import Path
+    css = (Path(explore.__file__).parent / "static" / "style.css").read_text()
+    rule = re.search(r"\.rr-toolbar:has\(> \.rr-filters-mobile\[open\]\)\s*\{([^}]*)\}", css)
+    assert rule, "nothing undoes the frosted toolbar while the filter sheet is open"
+    assert "backdrop-filter: none" in rule.group(1)
+    above = int(re.search(r"z-index:\s*(\d+)", rule.group(1)).group(1))
+    bars = [int(z) for z in re.findall(r"\n\.rr-(?:masthead|tabbar) \{[^}]*?z-index:\s*(\d+)", css)]
+    assert len(bars) == 2 and above > max(bars)

@@ -1194,6 +1194,10 @@ form.is-busy { opacity: .6; pointer-events: none; }
     position: sticky; top: var(--mast-h); z-index: 15; margin: 0; padding: 8px 16px;
     background: color-mix(in srgb, var(--wall) 86%, transparent); backdrop-filter: blur(14px) saturate(1.2);
   }
+  /* Open, the filter sheet covers the screen. A backdrop-filter would make this
+     toolbar its frame (a filtered box holds its fixed descendants), and the
+     toolbar's own layer would sit under the masthead and tab bar. */
+  .rr-page > main > .rr-toolbar:has(> .rr-filters-mobile[open]) { backdrop-filter: none; z-index: 60; }
 }
 .swipe-these { min-height: 46px; }
 .tag-them { margin: 4px 0 6px; align-items: center; background: var(--band-mint); }
