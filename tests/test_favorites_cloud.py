@@ -7,7 +7,9 @@ import sys
 import tomllib
 from pathlib import Path
 
+import httpx
 import pytest
+import respx
 from fastapi.testclient import TestClient
 
 from favorites import app as web
@@ -160,6 +162,25 @@ class TestTheLogOfShares:
                        headers={"authorization": "Bearer sesame"})
         assert self.lines(capsys)[-1] == (f"faves: saved #{cloud_app.item} instagram failed:"
                                           " HTTP 429 from instagram (already saved)")
+
+    def test_a_share_tiktok_wont_show_the_cloud_waits_for_the_mac(self, cloud_app, capsys):
+        # From the cloud, TikTok gave nothing for a share link but a page
+        # about itself. Saved as not looked up yet, so the Mac's helper asks
+        # again from home, where TikTok answers properly.
+        slogan = ('<html><head><title>TikTok - Make Your Day</title>'
+                  '<meta property="og:description" content="TikTok - Make Your Day"></head></html>')
+        with respx.mock:
+            respx.get(host="www.tiktok.com", path="/oembed").mock(return_value=httpx.Response(400))
+            respx.get(host="www.tiktok.com", path__startswith="/t/").mock(
+                return_value=httpx.Response(200, text=slogan, headers={"content-type": "text/html"}))
+            capsys.readouterr()
+            r = cloud_app.post("/save", json={"url": "https://www.tiktok.com/t/ZTf7W8jhW/"},
+                               headers={"authorization": "Bearer sesame"})
+        assert r.status_code == 201
+        assert r.json()["resolve_status"] == "unresolved"
+        assert self.lines(capsys)[-1] == (f"faves: saved #{r.json()['id']} tiktok unresolved:"
+                                          " only placeholder metadata available (new)")
+        assert web._shared_waiting()
 
     def test_nothing_is_logged_on_the_mac(self, tmp_path, monkeypatch, capsys):
         monkeypatch.delenv("VERCEL", raising=False)
