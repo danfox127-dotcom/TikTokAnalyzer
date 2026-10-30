@@ -241,6 +241,17 @@ class TestTheCloudPages:
         assert "This Mac can't prepare" not in page
         assert "sesame" not in page  # the password is never shown off the Mac
 
+    def test_saves_missing_details_are_looked_up_from_the_mac(self, cloud_app):
+        conn = db.connect()
+        db.upsert_item(conn, {"canonical_url": "https://www.tiktok.com/video/5", "shared_url": "x",
+                              "platform": "tiktok", "resolve_status": "unresolved"})
+        conn.close()
+        sign_in(cloud_app)
+        page = cloud_app.get("/sync", headers=HTML).text
+        assert "1 save is missing its details" in page
+        assert "Faves on your Mac can look them up again" in page and 'action="/sync/lookup"' not in page
+        assert cloud_app.post("/sync/lookup", follow_redirects=False).status_code == 403
+
     def test_mac_only_actions_stay_on_the_mac(self, cloud_app):
         sign_in(cloud_app)
         assert cloud_app.post("/sync/youtube/connect").status_code == 403

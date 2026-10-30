@@ -76,7 +76,7 @@
 
 {% if pending %}
   <p class="rr-notice pending-strip">{{ icon('clock') }}<span>{{ pending }} imported {{ "save" if pending == 1 else "saves" }}
-     still to identify — <code>python -m favorites.backfill --all</code></span></p>
+     still to identify — <a href="/sync#details">look them up again</a></span></p>
 {% endif %}
 
 {% for r in reminders %}
