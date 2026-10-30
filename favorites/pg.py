@@ -24,6 +24,7 @@ from __future__ import annotations
 import os
 import re
 import sqlite3
+import threading
 from functools import lru_cache
 
 import psycopg
@@ -170,6 +171,12 @@ CREATE INDEX IF NOT EXISTS idx_items_fts_doc ON items_fts USING gin (doc);
 
 #: Schemas this process has already set up, so a request doesn't redo it.
 _READY: set[tuple[str, str]] = set()
+_SETTING_UP = threading.Lock()
+
+#: Setting up a schema takes this advisory lock first, so two servers starting
+#: at once take turns: run side by side, Postgres rejects the second one's
+#: CREATE OR REPLACE ("tuple concurrently updated").
+_SETUP_LOCK = 0x46617665  # "Fave"
 
 
 def url() -> str:
@@ -313,10 +320,15 @@ def connect() -> Connection:
     for kind in (int, bool):
         raw.adapters.register_dumper(kind, _Loose)
     if (url(), name) not in _READY:
-        with raw.cursor() as cur:
-            cur.execute(SCHEMA.replace("{schema}", name))
-        raw.commit()
-        _READY.add((url(), name))
+        # A page's pictures arrive together: one request sets the schema up,
+        # the rest wait for it rather than all trying at once.
+        with _SETTING_UP:
+            if (url(), name) not in _READY:
+                with raw.cursor() as cur:
+                    cur.execute(f"SELECT pg_advisory_xact_lock({_SETUP_LOCK})")
+                    cur.execute(SCHEMA.replace("{schema}", name))
+                raw.commit()
+                _READY.add((url(), name))
     return Connection(raw)
 
 
