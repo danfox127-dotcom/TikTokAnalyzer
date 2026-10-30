@@ -53,6 +53,10 @@ Length = Callable[[str], Optional[int]]
 # where the platform has no player or this item can't use it.
 Embed = Callable[[dict], Optional[tuple[str, str]]]
 
+# Details: the HTML of an item's own page -> what it says about the item
+# (title, creator_handle, creator_name, thumbnail_url, external_id); {} if none.
+Details = Callable[[str], dict]
+
 #: How a link-preview fetcher introduces itself -- the wording iMessage uses,
 #: naming the preview robots sites already recognise. The page read is the one
 #: a chat app reads to draw a preview of a pasted link, which is what the
@@ -120,6 +124,10 @@ class Platform:
     #: Page titles the platform gives a visitor it won't show the item to --
     #: its slogan rather than the video. Read as no title at all.
     stub_titles: tuple[str, ...] = ()
+
+    #: How to read the caption, creator and picture from the data the item's
+    #: own page carries, for when the quick lookup (oEmbed) comes back bare.
+    details_from_page: Optional[Details] = None
 
 
 # --- identity rules ---------------------------------------------------------
@@ -290,22 +298,50 @@ def _youtube_length(page: str) -> Optional[int]:
     return _iso_duration(m.group(1)) if m else None
 
 
+def _tiktok_item(page: str) -> dict:
+    """The video's own entry in the JSON a TikTok page carries; {} if absent."""
+    m = re.search(
+        r'<script[^>]+id="__UNIVERSAL_DATA_FOR_REHYDRATION__"[^>]*>(.*?)</script>', page, re.S)
+    if not m:
+        return {}
+    try:
+        data = json.loads(m.group(1))
+        item = data["__DEFAULT_SCOPE__"]["webapp.video-detail"]["itemInfo"]["itemStruct"]
+    except (ValueError, KeyError, TypeError):
+        return {}
+    return item if isinstance(item, dict) else {}
+
+
+def _tiktok_details(page: str) -> dict:
+    # TikTok's oEmbed sometimes answers with only a player and the video's
+    # number. The page itself still carries the caption, who posted it and
+    # the cover picture, under a <title> that is just TikTok's slogan.
+    item = _tiktok_item(page)
+    author = item.get("author")
+    if isinstance(author, str):  # older pages name the author by handle alone
+        author = {"uniqueId": author}
+    author = author if isinstance(author, dict) else {}
+    video = item.get("video") if isinstance(item.get("video"), dict) else {}
+    vid, handle = str(item.get("id") or ""), str(author.get("uniqueId") or "").lstrip("@")
+    found = {
+        "title": item.get("desc"),
+        "creator_handle": "@" + handle if handle else None,
+        "creator_name": author.get("nickname"),
+        "thumbnail_url": video.get("originCover") or video.get("cover"),
+        "external_id": vid if vid.isdigit() else None,
+    }
+    return {k: v for k, v in found.items() if isinstance(v, str) and v.strip()}
+
+
 def _tiktok_length(page: str) -> Optional[int]:
     # The page carries its data as JSON. The video's length sits at a known
     # place in it; the soundtrack's has the same name elsewhere, so the first
     # "duration" on the page is not necessarily the video's.
-    m = re.search(
-        r'<script[^>]+id="__UNIVERSAL_DATA_FOR_REHYDRATION__"[^>]*>(.*?)</script>', page, re.S)
-    if m:
-        try:
-            data = json.loads(m.group(1))
-            video = (data["__DEFAULT_SCOPE__"]["webapp.video-detail"]
-                     ["itemInfo"]["itemStruct"]["video"])
-            found = _seconds(video.get("duration"))
-            if found:
-                return found
-        except (ValueError, KeyError, TypeError):
-            pass
+    video = _tiktok_item(page).get("video")
+    if isinstance(video, dict):
+        found = _seconds(video.get("duration"))
+        if found:
+            return found
     # Older page layouts: the "video" object's own duration, then any.
     m = re.search(r'"video"\s*:\s*\{[^{}]*?"duration"\s*:\s*(\d+)', page)
     if m:
@@ -334,6 +370,7 @@ PLATFORMS: tuple[Platform, ...] = (
         # What a share link opens to from a cloud server, where TikTok won't
         # show the video: a page about TikTok, not about the thing you saved.
         stub_titles=("TikTok - Make Your Day",),
+        details_from_page=_tiktok_details,
     ),
     Platform(
         name="youtube", label="YouTube",
