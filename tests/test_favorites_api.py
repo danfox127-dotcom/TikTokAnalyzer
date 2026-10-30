@@ -1,11 +1,13 @@
 """The capture endpoint and the pages, end to end."""
 
+import asyncio
+
 import httpx
 import pytest
 import respx
 from fastapi.testclient import TestClient
 
-from favorites import db
+from favorites import backfill, db
 from favorites.app import app
 
 OEMBED = {
@@ -573,6 +575,54 @@ class TestKeepingInSync:
         assert resp.headers["location"] == "/sync?done=scanned#folder"
         page = mac.get("/sync").text
         assert "Watching 1 folder" in page and "TikTok_Data.zip" in page and "1 new" in page
+
+    def given_up(self, n=2):
+        """``n`` imported saves that failed three times, and one that resolved."""
+        conn = db.connect()
+        for i in range(n):
+            db.upsert_item(conn, {"canonical_url": f"https://www.tiktok.com/video/{i + 1}", "shared_url": "x",
+                                  "platform": "tiktok", "resolve_status": "unresolved", "source": "export",
+                                  "resolve_attempts": backfill.MAX_ATTEMPTS})
+        db.upsert_item(conn, {"canonical_url": "https://www.tiktok.com/video/9", "shared_url": "x",
+                              "platform": "tiktok", "title": "a caption", "resolve_status": "ok"})
+        conn.close()
+
+    def test_saves_missing_their_details_can_be_looked_up_again(self, mac, monkeypatch):
+        import favorites.app as appmod
+        self.given_up()
+        asked = []
+
+        async def fake_run(conn, limit, quiet=False, transcripts=True):
+            asked.append([r["resolve_attempts"] for r in conn.execute(
+                "SELECT resolve_attempts FROM items WHERE resolve_status != 'ok'").fetchall()])
+            return {"attempted": 2, "resolved": 1, "failed": 1, "seconds": 1.0}
+
+        monkeypatch.setattr(appmod.backfill, "run", fake_run)
+        monkeypatch.setattr(appmod, "LOOKUP", {"running": False, "last": None})
+        look_up, started = appmod._look_up_again, []
+        monkeypatch.setattr(appmod, "_look_up_again", lambda: (started.append(1), asyncio_noop())[1])
+        page = mac.get("/sync").text
+        assert "2 saves are missing their details" in page and 'action="/sync/lookup"' in page
+
+        resp = mac.post("/sync/lookup", follow_redirects=False)
+        assert resp.headers["location"] == "/sync?done=looking#details"
+        assert started == [1]
+        asyncio.run(look_up())  # what the background task does
+        # A fresh set of tries: the given-up saves are back in the queue.
+        assert asked[-1] == [0, 0]
+        assert "1 of 2 found" in mac.get("/sync").text
+
+    def test_a_second_press_while_looking_starts_nothing(self, mac, monkeypatch):
+        import favorites.app as appmod
+        self.given_up(1)
+        monkeypatch.setattr(appmod, "LOOKUP", {"running": True, "last": None})
+        monkeypatch.setattr(appmod, "_look_again", lambda: pytest.fail("looked again while looking"))
+        assert mac.post("/sync/lookup", follow_redirects=False).status_code == 303
+        page = mac.get("/sync").text
+        assert "Looking them up now" in page and 'action="/sync/lookup"' not in page
+
+    def test_looking_again_is_the_macs_job(self, client):
+        assert client.post("/sync/lookup", follow_redirects=False).status_code == 403
 
     def test_looking_now_during_the_minutes_look_imports_an_export_once(self, tmp_path, monkeypatch):
         # "Look now" pressed while the once-a-minute look is under way: the

@@ -1204,6 +1204,7 @@ def sync_page(request: Request, conn: sqlite3.Connection = Depends(get_db)):
         "can_sign": shortcuts.can_sign(), "unlocked": unlocked(request),
         "shortcut_links": SHORTCUT_SLUGS, "inbox": inbox.STATUS, "inbox_path": str(inbox.path()),
         "q": "", "total": db.count(conn),
+        "missing": museum.pending_count(conn), "lookup": LOOKUP,
     })
 
 
@@ -1281,6 +1282,52 @@ def sync_snooze(platform: str = Form(""), next: str = Form("/"),
 def _mac_only(request: Request) -> None:
     if not _on_this_mac(request):
         raise HTTPException(status_code=403, detail="do this on the Mac Faves runs on")
+
+
+#: "Look them up again" on this Mac: whether it is running, and how it went.
+LOOKUP: dict = {"running": False, "last": None}
+
+
+def _look_again() -> None:
+    """Give every save still missing its details a fresh set of tries.
+
+    One that failed three times is otherwise never asked about again -- right
+    for a deleted video, wrong when the failure was the platform changing what
+    it shares, as TikTok's oEmbed did.
+    """
+    conn = db.connect()
+    try:
+        conn.execute("UPDATE items SET resolve_attempts = 0 WHERE resolve_status != 'ok'")
+        conn.commit()
+    finally:
+        conn.close()
+
+
+async def _look_up_again() -> None:
+    LOOKUP["running"] = True
+    try:
+        conn = db.connect()
+        try:
+            result = await backfill.run(conn, None, quiet=True)
+        finally:
+            conn.close()
+        LOOKUP["last"] = {**result, "at": db.now_iso()}
+    finally:
+        LOOKUP["running"] = False
+
+
+@app.post("/sync/lookup")
+async def sync_lookup(request: Request):
+    """Look up the saves still missing a title once more, in the background.
+
+    The Mac's job: a few hundred lookups outlast a cloud request's minute.
+    """
+    _mac_only(request)
+    if not LOOKUP["running"]:
+        await run_in_threadpool(_look_again)
+        LOOKUP["running"] = True  # before the task starts, so a second press waits
+        asyncio.create_task(_look_up_again())
+    return RedirectResponse("/sync?done=looking#details", status_code=303)
 
 
 @app.post("/sync/youtube/connect")

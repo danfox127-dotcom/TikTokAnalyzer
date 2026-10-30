@@ -36,6 +36,7 @@
   {% if flash %}
     <p class="rr-notice sync-flash">{{ icon('check') }}<span>{{ {
       'scanned': 'Looked in the watched folder just now.',
+      'looking': 'Looking up the saves missing their details. It takes a few minutes.',
       'youtube-connected': 'YouTube is connected — your playlists are coming in.',
       'youtube-synced': 'YouTube synced just now.',
       'youtube-disconnected': 'YouTube disconnected, and the sign-in revoked with Google.',
@@ -92,6 +93,29 @@
       </ul>
     {% endif %}
   </div>
+</div></section>
+
+<section class="rr-band tone-peach" id="details" aria-labelledby="details-title"><div class="inner">
+  <div class="rr-shelf-head rr-reveal"><div>
+    <p class="rr-label">🔎 Titles and pictures</p>
+    <h2 class="rr-h-m" id="details-title">{% if missing %}{{ missing }} {{ 'save is' if missing == 1 else 'saves are' }} missing {{ 'its' if missing == 1 else 'their' }} details{% else %}Every save has its details{% endif %}</h2>
+    {% if missing %}<p>Usually the video was deleted or made private, so there is nothing left to look up. But the apps change what they share now and then, and looking again can bring some back.</p>{% endif %}
+  </div></div>
+  {% if missing or lookup.running or lookup.last %}
+  <div class="band-pad details-body rr-reveal">
+    {% if lookup.running %}
+      <p class="yt-state">{{ icon('clock') }}<span>Looking them up now. It takes a few minutes; reload this page to see how it went.</span></p>
+    {% elif lookup.last %}
+      <p class="yt-state">{{ icon('check') }}<span>Last looked {{ lookup.last.at[:16] | replace('T', ' ') }}: {{ lookup.last.resolved }} of {{ lookup.last.attempted }} found.</span></p>
+    {% endif %}
+    {% if missing and not lookup.running %}
+      {% if here %}
+        <form action="/sync/lookup" method="post"><button class="rr-btn rr-btn--primary" type="submit">{{ icon('search') }}Look them up again</button></form>
+      {% elif cloud %}<p>Faves on your Mac can look them up again: Keep it in sync there.</p>
+      {% else %}<p>Look them up again from the Mac Faves runs on.</p>{% endif %}
+    {% endif %}
+  </div>
+  {% endif %}
 </div></section>
 
 <section class="rr-band tone-sky" id="youtube" aria-labelledby="yt-title"><div class="inner">

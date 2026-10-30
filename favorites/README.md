@@ -515,6 +515,12 @@ your attention. Three things make that survivable:
 
 Check progress any time with `python -m favorites.backfill --stats`.
 
+Saves that gave up can be tried once more without a terminal: on the Mac, open
+**Keep it in sync** and press **Look them up again** under *Titles and pictures*.
+It gives every save still missing its details three fresh tries, in the
+background, and the band says how many it found. Worth doing after a platform
+changes what it shares, as TikTok's oEmbed did in October 2026.
+
 ### A 100% hit rate means something is wrong
 
 A deleted video, a private account and a login wall all answer **200 with a
