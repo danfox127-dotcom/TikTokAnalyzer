@@ -549,7 +549,8 @@ class TestKeepingInSync:
         assert 'data-copy="http://192.168.1.20:8000/save"' in page
         assert "Tailscale isn't on on this Mac" in page
 
-    def test_watching_and_looking_now(self, mac, tmp_path, monkeypatch):
+    def tiktok_export(self, tmp_path):
+        """A Downloads folder holding one settled TikTok export with one favourite."""
         import zipfile, os, time, json as j
         d = tmp_path / "Downloads"
         d.mkdir()
@@ -559,6 +560,10 @@ class TestKeepingInSync:
                 "FavoriteVideoList": [{"Date": "2024-05-01 10:00:00",
                                        "Link": "https://www.tiktokv.com/share/video/7/"}]}}}))
         os.utime(z, (time.time() - 600,) * 2)
+        return d
+
+    def test_watching_and_looking_now(self, mac, tmp_path, monkeypatch):
+        d = self.tiktok_export(tmp_path)
         monkeypatch.setenv("FAVORITES_WATCH", str(d))
         import favorites.app as appmod
         monkeypatch.setattr(appmod, "_fill_in", lambda *a, **k: asyncio_noop())
@@ -566,6 +571,33 @@ class TestKeepingInSync:
         assert resp.headers["location"] == "/sync?done=scanned#folder"
         page = mac.get("/sync").text
         assert "Watching 1 folder" in page and "TikTok_Data.zip" in page and "1 new" in page
+
+    def test_looking_now_during_the_minutes_look_imports_an_export_once(self, tmp_path, monkeypatch):
+        # "Look now" pressed while the once-a-minute look is under way: the
+        # second waits for the first, then finds the export already imported.
+        import threading
+        import favorites.app as appmod
+        monkeypatch.setenv("FAVORITES_DB", str(tmp_path / "favorites.db"))
+        monkeypatch.setenv("FAVORITES_WATCH", str(self.tiktok_export(tmp_path)))
+        errors, start = [], threading.Barrier(2)
+
+        def look():
+            start.wait()
+            try:
+                appmod._scan_now()
+            except Exception as exc:
+                errors.append(exc)
+
+        looks = [threading.Thread(target=look) for _ in range(2)]
+        for t in looks:
+            t.start()
+        for t in looks:
+            t.join(timeout=60)
+        assert errors == []
+        conn = db.connect()
+        assert db.count(conn) == 1
+        assert conn.execute("SELECT count(*) FROM imports").fetchone()[0] == 1
+        conn.close()
 
     def test_google_steps_happen_only_on_the_mac(self, client, mac, monkeypatch):
         monkeypatch.setenv("GOOGLE_CLIENT_ID", "cid")
