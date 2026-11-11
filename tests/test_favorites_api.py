@@ -156,16 +156,16 @@ class TestPages:
         assert "5 saves imported, none identified yet" in body
         assert "favorites.backfill" in body
 
-    def test_the_front_page_leads_with_the_digest(self, client, tiktok_ok):
+    def test_today_leads_with_whats_new_and_browse_has_the_digest(self, client, tiktok_ok):
         client.post("/save", json={"url": "https://www.tiktok.com/@citydesk/video/7123"})
+        assert "1 save this past month." in client.get("/browse").text
         body = client.get("/").text
-        assert "1 save this past month." in body
         assert "Recently saved" in body
         # The shelf must actually render its contents. Naming that key "items"
         # made Jinja resolve dict.items() instead, producing an empty shelf
         # under a correct-looking heading.
         assert "City Desk" in body
-        assert 'class="rr-slide"' in body
+        assert 'class="card rr-card rr-card--s"' in body  # compact on Today
 
     def test_search_finds_a_saved_item(self, client, tiktok_ok):
         client.post("/save", json={"url": "https://www.tiktok.com/@citydesk/video/7123"})
@@ -350,7 +350,8 @@ class TestHooks:
             "title": "A year-old keepsake", "resolve_status": "ok",
             "saved_at": today.replace(year=today.year - 4).isoformat(),
         })
-        body = client.get("/").text
+        assert 'On this day <span class="n">1</span>' in client.get("/").text
+        body = client.get("/browse").text
         assert "On this day" in body and "4 years ago" in body
 
 
@@ -469,7 +470,7 @@ class TestTidyingRooms:
 
 
 class TestCleanLabels:
-    def test_a_search_result_shows_the_caption_cleaned(self, client, library):
+    def test_a_search_result_shows_the_headline_cleaned(self, client, library):
         db.upsert_item(library, {
             "canonical_url": "https://example.com/d", "shared_url": "x", "platform": "tiktok",
             "title": "Folding dumplings. For the party tonight! #cooking #fyp",
@@ -478,8 +479,10 @@ class TestCleanLabels:
         page = client.get("/search?theme=Food+%26+cooking").text
         assert 'class="rr-salon"' in page and 'class="rr-piece is-tall' in page
         assert ">Folding dumplings</a></h3>" in page
-        assert "For the party tonight!" in page
-        assert "#fyp" not in page.split('class="rr-salon"')[1].split("</main>")[0]
+        results = page.split('class="rr-salon"')[1].split("</main>")[0]
+        assert "#fyp" not in results
+        # The rest of the caption is on the save's own page, not under every card.
+        assert "For the party tonight!" not in results
 
 
 class TestKeepingInSync:
@@ -509,7 +512,8 @@ class TestKeepingInSync:
         assert "Not watching a folder yet" in page
         assert "One-time setup" in page  # no Google client yet
         assert "Europe and the UK only" in page
-        assert 'href="/sync"' in mac.get("/topics").text  # the footer
+        assert 'href="/connections"' in mac.get("/topics").text  # the footer
+        assert '<a class="rr-back" href="/connections" data-back>' in page
 
     def test_the_front_page_reminds_and_can_be_told_later(self, mac, library):
         self.old_tiktok_import(library)

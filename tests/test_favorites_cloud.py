@@ -45,7 +45,7 @@ def sign_in(client, password="sesame", next="/"):
 
 
 class TestSignedOut:
-    @pytest.mark.parametrize("path", ["/", "/search?q=zoning", "/shuffle", "/topics", "/notes", "/sync",
+    @pytest.mark.parametrize("path", ["/", "/search?q=zoning", "/shuffle", "/topics", "/browse", "/notes", "/sync", "/connections", "/rewind",
                                       "/keep", "/more", "/year", "/creator/@a"])
     def test_every_page_asks_for_the_password_first(self, cloud_app, path):
         r = cloud_app.get(path, headers=HTML, follow_redirects=False)

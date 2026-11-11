@@ -16,6 +16,9 @@ dependencies = [
     "psycopg[binary]>=3.2",
     "Pillow>=10",
     "youtube-transcript-api>=0.6",
+    # Rewind tells its clock in your time zone (zoneinfo); this is the time
+    # zone list for a server that doesn't carry its own.
+    "tzdata>=2024.1",
 ]
 
 [tool.vercel]

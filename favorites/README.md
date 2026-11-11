@@ -189,16 +189,19 @@ Every item has a one-line note — a note. It is optional, it takes three
 seconds at save time, and no API will ever give you it. Six months later it is
 the difference between a link and a reason.
 
-## The front page
+## Today, and Browse
 
 A search box is a fine way to find something you already remember, and useless
-for being reminded of something you forgot. So the front page leads with search
-and then behaves like this:
+for being reminded of something you forgot. So the front page, **Today**, is
+short: search, two big doors (Shuffle and Save copied link), *Recently saved*,
+one more shelf drawn by the date (the same all day, a different one tomorrow),
+and a door into **Browse** (`/browse`, the fourth tab), which holds everything
+else below. A topic's full list (`/topics`) sits under Browse.
 
 - **Search first.** One question — *What are you looking for?* — and one big
   field. As you type it suggests saves (with their pictures), topics, hashtags,
   creators and dates (`/suggest.json`). Under it, a row of ways in: *On this
-  day*, *Surprise me* (Shuffle, below) and your biggest topics.
+  day*, *Rabbit hole*, this season and your year.
 - **On this day.** Things you saved on today's date in earlier years, stacked
   by year. A quiet date widens to the week around it; a date with nothing even
   then shows nothing. The same hook is a filter on the search page
@@ -209,19 +212,19 @@ and then behaves like this:
 - **A digest of the last month.** Not just a count — a comparison. *"Nine saves
   this past month, up from four. Spread across TikTok, YouTube and Instagram.
   Recurring threads: housing, localgov. One creator is new to the library."*
-- **Rotating shelves**, as swipeable carousels with a description under every
-  picture. Recently saved, then some combination of a theme, a month, a creator
+- **Rotating shelves**, as swipeable carousels (compact on Today). Recently saved, then some combination of a theme, a month, a creator
   you keep returning to, *This time last year* (six weeks either side of today,
   a year ago) and *Throwbacks* — a random handful of things saved more than
   four months ago.
 - **Topics.** Themes as tiles, each framed by three of its own pictures; every
   topic is on `/topics`.
+- **By month.** Every month you saved something, newest first.
 - **On your shelf.** The creators you keep saving, like books on a shelf.
 
 - **This week.** How this week compares with last, the topic it leaned towards,
   and one old save worth another look (the same one all week).
 - **This season.** The current season as a topic — every autumn (or winter…) you
-  have kept things through — on the front page and first on `/topics`.
+  have kept things through — in Browse and first on `/topics`.
 - **Rabbit hole** (`/wander`, and *Rabbit hole: something related* on every save). Follows one of the
   save's threads — its topic, creator, date, season or a hashtag — to somewhere
   you have not just been, and says which thread it took. It never dead-ends.
@@ -246,10 +249,19 @@ without having to re-derive any of the numbers.
 Added to the home screen, Faves opens with no browser around it: no Back
 button, no address bar. So it carries its own.
 
-- **Tabs:** Home · Search · **Shuffle** · Topics · **More**. More is a sheet
+- **Tabs:** Today · Search · **Shuffle** · Browse · **More**. More is a sheet
   holding everything else — Keep a link, Set up this phone, Give saves a topic,
-  Notes, Sort things out, Your year, Rabbit hole, Keep it in sync, and
-  Day/Night. (`/more` is the same list as a page.)
+  Notes, Sort things out, Your year, Rabbit hole, Connections, and Day/Night.
+  (`/more` is the same list as a page.)
+- **Connections** (`/connections`). Everything that feeds the library, one row
+  each with a status in words: this phone (when it last saved something), your
+  Mac (in the cloud copy, when it last checked in: the Mac leaves the time
+  there every minute it runs), each app's export, titles and pictures, and
+  where the library lives. A button appears only where something needs you;
+  Keep it in sync (`/sync`) holds the details and how-tos behind each row.
+- **A save's page** keeps *Watch*, *Note*, *Topic* and *Like this* (a rabbit
+  hole from it) in a bar above the tabs, however far down you are. Watch plays
+  it right there when it can.
 - **Set up this phone** (`/setup`). A new or restored phone working in a
   minute, with no Mac nearby: sign in, the Home Screen icon (ticked by itself
   when the page is opened from the icon), Save to Faves, and the optional ways
@@ -257,7 +269,7 @@ button, no address bar. So it carries its own.
   shortcuts for the cloud copy every hour (only re-signing when the address,
   password or shortcuts change) and leaves them in the library, so a phone
   installs them from there.
-- **Save copied link** on Home reads the clipboard and keeps the link in one
+- **Save copied link** on Today reads the clipboard and keeps the link in one
   tap, landing on the save so you can add a note. With no clipboard access it
   opens the Keep page, whose **Paste & keep** does the same.
 - **Back goes where you came from.** Every page below the tabs has a Back in
@@ -269,7 +281,8 @@ button, no address bar. So it carries its own.
   in place, so Back (and the iPhone's edge swipe) still goes to the list you
   came from, and a list you return to is redrawn if something on it changed.
 - **Search results keep coming** as you scroll, and the Filters/sort bar rides
-  along under the top bar.
+  along under the top bar. Each result is its picture, topic and year, a
+  two-line title, the creator and your note; the caption is on the save's page.
 - **Shuffle** (`/shuffle`) is your saves one screen at a time, flicked up like a
   reel: the picture on a blurred wash of itself, its label, and *Watch*,
   *Topics*, *Note* and *Details* within a thumb's reach. It is the phone's own
@@ -451,7 +464,7 @@ sideways" — so the themes above replaced them.
 ## Keeping it in sync
 
 The platforms don't let another app read your saves, so Faves does the
-next-best things, all on the **Keep it in sync** page (`/sync`, in the footer):
+next-best things, all on the **Keep it in sync** page (`/sync`, behind Connections in More and the footer):
 
 - **The watched folder.** Started with `start.command`, Faves looks in
   `~/Downloads` every minute for a TikTok, Instagram or Google Takeout export
@@ -507,7 +520,8 @@ and covers only recent months, so importing it buries a multi-year collection of
 deliberate saves under a short burst of taps.
 
 Likes are therefore opt-in (`--include-likes`) and tagged `source='export-like'`
-so you can tell them apart or delete them later.
+so you can tell them apart or delete them later. (Rewind uses them without
+making them saves: see *Rewind* above.)
 
 ### Resolution is slow, and that is fine
 
@@ -556,6 +570,32 @@ Deleted videos and private accounts cannot be recovered by any method. Those
 rows stay in the library with their link and date, and stay off the shelves --
 a wall of untitled URLs is worse than an empty shelf. They still count, and the
 front page tells you how many are outstanding.
+
+## Rewind: a month on TikTok
+
+`/rewind` (in Browse, and on Today once there is a month to show) tells a month
+of your TikTok as five story cards, swiped sideways: how much, when, who, what,
+and the month in one card. It is built from your own data export, which holds
+far more than your favourites:
+
+- **Kept apart from the library.** Importing a TikTok export also keeps each
+  video you opened, each like and each search, with its time, in an `activity`
+  table. None of it becomes a save. A second, overlapping export adds only
+  what the first didn't have. Exports still in the watched folder are read
+  once more after an update that keeps more of them (`watch.READS`), keeping
+  the date they first arrived.
+- **How much and when** come straight from the export: videos opened (and the
+  change on last month), and a week-by-hour clock in your own time zone. The
+  page reports the zone once and the library remembers it.
+- **Who and what** come from the videos you liked and saved, because the
+  export's watch list is bare ids: no creator, no caption. Saves already have
+  their details; the Mac looks likes up a few each minute (`rewind.look_up_likes`,
+  about 300 a month is a quarter of an hour) and keeps what it finds in
+  `videos`, apart from the library. Until they are done, the creators card says
+  how many are still waiting.
+- **One estimate, labelled:** hours, as videos opened × the usual length of
+  what you saved that month (30 seconds if none has a length). The export
+  doesn't say how long you watched.
 
 ## Backfilling your YouTube saves from Google Takeout
 
@@ -804,6 +844,7 @@ library.
 | `cloud.py` | Faves on Vercel: the sign-in, and what the cloud copy leaves to the Mac |
 | `cloud_move.py`, `move-to-cloud.command` | Moves the Mac's library into the cloud |
 | `museum.py` | The digest, the rotating shelves and the hooks (On this day, topics, threads) |
+| `rewind.py` | Rewind: a month on TikTok from your export, and the Mac's look-ups of your likes |
 | `explore.py` | Search and filters, including On this day |
 | `looks.py` | Each theme's band colour, icon and emoji |
 | `templates/`, `static/` | The pages, in the *Faves* design system (version 2, "Sweet Spot"): lavender, candy-colour section bands, round type, subtle scroll motion.: `style.css` holds its tokens and components, `museum.js` the little behaviour a plain page cannot do (carousel dots, the phone filter sheet, suggestions, the colour mode, Back's trail, sheets, saving in place, Shuffle's feed). Every page works without it |

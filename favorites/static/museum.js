@@ -541,6 +541,64 @@
     });
   }
 
+  /* ---- a save's pinned bar: Watch plays it right here when it can, and
+     Note and Topic open what they name and bring it into view. With no
+     script they are a link out and two jumps down the page. ---- */
+  function saveBar(bar) {
+    var calm = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var how = calm ? 'auto' : 'smooth';
+    bar.addEventListener('click', function (e) {
+      var a = e.target.closest && e.target.closest('a');
+      if (!a || e.metaKey || e.ctrlKey || e.shiftKey) return;
+      if (a.hasAttribute('data-watch')) {
+        var p = document.querySelector('.rr-player[data-embed]');
+        if (!p) return;                       // nothing to play here: open the app
+        e.preventDefault();
+        if (!p.hidden) play(p);
+        p.parentNode.scrollIntoView({ behavior: how, block: 'start' });
+        return;
+      }
+      var id = a.getAttribute('data-reveal'), el = id && document.getElementById(id);
+      if (!el) return;
+      e.preventDefault();
+      if (el.tagName === 'DETAILS') el.open = true;
+      el.scrollIntoView({ behavior: how, block: 'center' });
+      if (el.tagName === 'TEXTAREA') el.focus({ preventScroll: true });
+    });
+  }
+
+  /* ---- Rewind: tells the page your time zone once (so the clock is
+     yours), lights a dash per card as you swipe, and a tap on either side
+     moves a card. Swiping is the phone's own scroll-snap. ---- */
+  function rewind(el) {
+    var tz = '';
+    try { tz = Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch (e) {}
+    var u = new URL(location.href);
+    if (tz && el.getAttribute('data-tz') !== tz && u.searchParams.get('tz') !== tz) {
+      u.searchParams.set('tz', tz);
+      location.replace(u.toString());
+      return;
+    }
+    if (u.searchParams.has('tz') && el.getAttribute('data-tz') === u.searchParams.get('tz')) {
+      u.searchParams.delete('tz');
+      history.replaceState(history.state, '', u.pathname + u.search + u.hash);
+    }
+    var track = el.querySelector('.rw-track'), dashes = el.querySelectorAll('.rw-dashes span');
+    if (!track) return;
+    var calm = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+    function at() { return Math.round(track.scrollLeft / Math.max(track.clientWidth, 1)); }
+    track.addEventListener('scroll', function () {
+      var i = at();
+      dashes.forEach(function (d, n) { d.classList.toggle('is-on', n <= i); });
+    }, { passive: true });
+    track.addEventListener('click', function (e) {
+      if (e.target.closest('a, button, input, label, summary, .rw-clock')) return;
+      var x = e.clientX / window.innerWidth;
+      if (x > 0.3 && x < 0.7) return;
+      track.scrollTo({ left: (at() + (x <= 0.3 ? -1 : 1)) * track.clientWidth, behavior: calm ? 'auto' : 'smooth' });
+    });
+  }
+
   function init() {
     setMode(stored());
     document.addEventListener('click', function (e) {
@@ -570,6 +628,8 @@
     document.querySelectorAll('.explore-results .pager').forEach(moreResults);
     document.querySelectorAll('[data-deck]').forEach(deck);
     document.querySelectorAll('[data-save-copied]').forEach(saveCopied);
+    document.querySelectorAll('[data-save-bar]').forEach(saveBar);
+    document.querySelectorAll('[data-rewind]').forEach(rewind);
     var standalone = navigator.standalone || (window.matchMedia && matchMedia('(display-mode: standalone)').matches);
     if (standalone) document.querySelectorAll('[data-standalone-step]').forEach(function (s) { s.classList.add('is-done'); });
     var said = load('rr-flash', null);

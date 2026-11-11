@@ -16,6 +16,7 @@ import asyncio
 import dataclasses
 import json
 import logging
+import re
 import socket
 import threading
 import time
@@ -26,7 +27,7 @@ from contextlib import asynccontextmanager
 import os
 import secrets
 import sqlite3
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Optional
 from urllib.parse import urlencode, urlparse
@@ -40,7 +41,7 @@ from starlette.concurrency import run_in_threadpool
 
 from . import (backfill, blurb, cloud, db, explore, google_sync, lengths, looks, museum,
                tagging, thumbnails, transcript, watch)
-from . import inbox, platforms, profiles, shortcuts
+from . import inbox, platforms, profiles, rewind, shortcuts
 from . import themes as theme_vocabulary
 from .resolve import browsable_url, canonical_form, detect_platform, extract_url, platform_label, resolve
 
@@ -137,6 +138,31 @@ def _prepare_for_the_cloud() -> int:
     return made
 
 
+#: When Faves on the Mac last checked in with the cloud copy.
+MAC_SEEN = "mac_seen"
+
+
+def _mark_the_mac_seen() -> None:
+    """Leave the time in the cloud copy, so its Connections page can say when
+    the Mac last checked in. A library on the Mac itself needs no such note."""
+    if not db.on_postgres():
+        return
+    conn = db.connect()
+    try:
+        db.set_meta(conn, MAC_SEEN, db.now_iso())
+    finally:
+        conn.close()
+
+
+async def _look_up_likes() -> int:
+    """A few liked TikToks looked up for Rewind's creators and topics."""
+    conn = db.connect()
+    try:
+        return await rewind.look_up_likes(conn)
+    finally:
+        conn.close()
+
+
 async def _fill_in(limit: int = 50) -> None:
     """Titles and pictures for what just arrived: a first batch, straight away."""
     conn = db.connect()
@@ -218,6 +244,9 @@ async def _keep_in_sync() -> None:
                         log.info("signed the phone shortcuts for the cloud copy")
                 except shortcuts.CannotSign as exc:
                     log.warning("couldn't sign the phone shortcuts for the cloud copy: %s", exc)
+            if not first_pass:
+                await run_in_threadpool(_mark_the_mac_seen)
+                await _look_up_likes()
         except asyncio.CancelledError:
             raise
         except Exception:  # never let one bad export stop the watching
@@ -270,6 +299,7 @@ templates.env.globals["clean_caption"] = blurb.clean_caption
 templates.env.filters["upto"] = blurb.trim
 templates.env.globals["theme_names"] = list(theme_vocabulary.THEMES)
 templates.env.globals["in_the_cloud"] = cloud.active
+templates.env.globals["month_name"] = rewind.month_name
 
 
 #: Where a phone or a browser extension sends what it saves.
@@ -551,23 +581,46 @@ async def share_target(
 
 @app.get("/", response_class=HTMLResponse)
 def home(request: Request, conn: sqlite3.Connection = Depends(get_db)):
+    """Today: search, the two big doors, what's new and one pick for the day.
+    Everything else the front page used to hold lives in Browse."""
     now = datetime.now(timezone.utc)
     return templates.TemplateResponse(request, "museum.html", {
-        "shelves": museum.shelves(conn, now=now),
+        # "Recently saved", then one shelf drawn by the date: the same all day,
+        # a different one tomorrow.
+        "shelves": museum.shelves(conn, now=now, max_shelves=2),
         "on_this_day": museum.on_this_day(conn, now=now),
-        "rooms": museum.rooms(conn, limit=8, now=now),
-        "creators": museum.creators_shelf(conn, now=now),
         "season": museum.season_room(conn, now=now),
-        "week": museum.week_digest(conn, now=now),
         "year_now": now.strftime("%Y"),
-        "digest": museum.digest(conn, days=30, now=now),
-        "browse": museum.browse(conn),
         "total": db.count(conn),
         # A freshly backfilled library is mostly dated URLs. Without saying so,
         # an empty-looking front page over a four-figure item count reads as a
         # bug rather than as work still in progress.
         "pending": museum.pending_count(conn),
         "reminders": watch.reminders(conn),
+        "rewind": rewind.latest(conn, rewind.zone(db.get_meta(conn, rewind.TZ_KEY))),
+    })
+
+
+@app.get("/browse", response_class=HTMLResponse)
+def browse_page(request: Request, conn: sqlite3.Connection = Depends(get_db)):
+    """Every way into the library: topics, creators, months, this day in
+    other years, the season, and shelves you might not think to ask for."""
+    now = datetime.now(timezone.utc)
+    return templates.TemplateResponse(request, "browse.html", {
+        # The first shelf is "Recently saved", which Today already shows.
+        "shelves": museum.shelves(conn, now=now, max_shelves=5)[1:],
+        "on_this_day": museum.on_this_day(conn, now=now),
+        "rooms": museum.rooms(conn, limit=8, now=now),
+        "room_count": museum.room_count(conn),
+        "creators": museum.creators_shelf(conn, now=now),
+        "season": museum.season_room(conn, now=now),
+        "week": museum.week_digest(conn, now=now),
+        "months": museum.months(conn),
+        "year_now": now.strftime("%Y"),
+        "digest": museum.digest(conn, days=30, now=now),
+        "browse": museum.browse(conn),
+        "total": db.count(conn),
+        "q": "",
     })
 
 
@@ -928,6 +981,51 @@ def year_page(request: Request, year: str, conn: sqlite3.Connection = Depends(ge
         raise HTTPException(status_code=404, detail="nothing saved that year")
     return templates.TemplateResponse(request, "year.html", {
         "review": review, "year": year, "q": "", "total": db.count(conn)})
+
+
+def _rewind_zone(request: Request, conn: sqlite3.Connection):
+    """The time zone Rewind's clock is told in: the one the page reports
+    (kept for next time), else the last one it reported, else UTC."""
+    asked = rewind.zone(request.query_params.get("tz"))
+    if asked:
+        if db.get_meta(conn, rewind.TZ_KEY) != asked.key:
+            db.set_meta(conn, rewind.TZ_KEY, asked.key)
+        return asked
+    return rewind.zone(db.get_meta(conn, rewind.TZ_KEY))
+
+
+@app.get("/rewind", response_class=HTMLResponse)
+def rewind_latest(request: Request, conn: sqlite3.Connection = Depends(get_db)):
+    """The latest month's Rewind, or how to get one."""
+    zone = _rewind_zone(request, conn)
+    found = rewind.months(conn, zone)
+    if found:
+        tz = request.query_params.get("tz")
+        return RedirectResponse(f"/rewind/{found[0]}" + (f"?{urlencode({'tz': tz})}" if tz else ""), 303)
+    return templates.TemplateResponse(request, "rewind.html", {
+        "m": None, "months": [], "q": "", "total": db.count(conn)})
+
+
+@app.get("/rewind/{key}", response_class=HTMLResponse)
+def rewind_month(request: Request, key: str, conn: sqlite3.Connection = Depends(get_db)):
+    """One month on TikTok, as story cards."""
+    if not re.fullmatch(r"\d{4}-(0[1-9]|1[0-2])", key):
+        raise HTTPException(status_code=404)
+    tz = _rewind_zone(request, conn)
+    found = rewind.months(conn, tz)
+    m = rewind.month(conn, key, tz)
+    if m is None:
+        if found and request.query_params.get("tz"):
+            # The page has just said where you are, and in your time zone
+            # this month is empty (the last hours of a month in UTC can be
+            # the next one's first): your latest month instead.
+            return RedirectResponse(f"/rewind/{found[0]}", 303)
+        raise HTTPException(status_code=404)
+    return templates.TemplateResponse(request, "rewind.html", {
+        "m": m, "months": found, "zone_known": tz is not None,
+        "earlier": next((k for k in found if k < key), None),
+        "later": next((k for k in reversed(found) if k > key), None),
+        "q": "", "total": db.count(conn)})
 
 
 @app.get("/suggest.json")
@@ -1316,6 +1414,112 @@ def setup_page(request: Request, conn: sqlite3.Connection = Depends(get_db)):
         "cloud": cloud.active(request), "on_mac": _on_this_mac(request),
         "last_share": dict(last) if last else None,
         "q": "", "total": db.count(conn), "nav": "setup",
+    })
+
+
+def _ago(iso: Optional[str], now: datetime) -> str:
+    """``2026-11-11T09:00:00+00:00`` -> "4 minutes ago", "yesterday", "12 days ago"."""
+    try:
+        then = datetime.fromisoformat(str(iso).replace("Z", "+00:00"))
+    except ValueError:
+        return "a while ago"
+    if then.tzinfo is None:
+        then = then.replace(tzinfo=timezone.utc)
+    seconds = max(0, int((now - then).total_seconds()))
+    if seconds < 90:
+        return "just now"
+    if seconds < 3600:
+        return f"{seconds // 60} minutes ago"
+    if seconds < 2 * 3600:
+        return "an hour ago"
+    if seconds < 86400:
+        return f"{seconds // 3600} hours ago"
+    days = seconds // 86400
+    return "yesterday" if days == 1 else f"{days} days ago"
+
+
+#: A Mac that hasn't checked in for this long is worth a word.
+MAC_QUIET_AFTER = timedelta(days=2)
+
+
+def _connections(request: Request, conn: sqlite3.Connection, now: datetime) -> list[tuple[str, list[dict]]]:
+    """Everything that feeds the library, one row each: a status in words,
+    and a button only where something needs you.
+
+    A row's ``state`` is "ok", "need" (something for you to do) or "idle"
+    (nothing wrong, nothing set up either).
+    """
+    def row(key, name, state, status, href, action=None):
+        return {"key": key, "name": name, "state": state, "status": status, "href": href, "action": action}
+
+    last_share = conn.execute(
+        "SELECT saved_at FROM items WHERE source = 'share' ORDER BY saved_at DESC LIMIT 1").fetchone()
+    phone = (row("phone", "This phone", "ok", f"Last save from a phone {_ago(last_share[0], now)}", "/setup")
+             if last_share else
+             row("phone", "This phone", "need", "Nothing saved from a phone yet", "/setup", ("Set it up", "/setup")))
+
+    if cloud.active(request):
+        seen = db.get_meta(conn, MAC_SEEN)
+        if not seen:
+            mac = row("mac", "Your Mac", "need", "Hasn't checked in yet: open Faves there (start.command)", "/sync#folder")
+        else:
+            try:
+                then = datetime.fromisoformat(seen.replace("Z", "+00:00"))
+                quiet = now - (then if then.tzinfo else then.replace(tzinfo=timezone.utc)) > MAC_QUIET_AFTER
+            except ValueError:
+                quiet = True
+            mac = (row("mac", "Your Mac", "need", f"Last checked in {_ago(seen, now)}: open Faves there to catch up", "/sync#folder")
+                   if quiet else row("mac", "Your Mac", "ok", f"Checked in {_ago(seen, now)}", "/sync#folder"))
+    elif db.on_postgres():
+        mac = row("mac", "This Mac", "ok", "Keeping the cloud copy filled in", "/sync#folder")
+    else:
+        mac = row("mac", "Your Mac", "ok", "Your library lives here", "/sync#folder")
+
+    last = watch.last_imports(conn)
+    google = google_sync.connected(conn)
+    apps = []
+    for platform in ("tiktok", "instagram", "youtube"):
+        name = watch.NAMES[platform]
+        if platform == "youtube" and google:
+            synced = google_sync.last_sync(conn) or {}
+            when = f": last {_ago(synced['at'], now)}" if synced.get("at") else ""
+            apps.append(row(platform, name, "ok", f"Playlists sync every day{when}", "/sync#youtube"))
+            continue
+        at = last.get(platform)
+        if not at:
+            apps.append(row(platform, name, "idle", "No export added yet", "/sync#exports", ("How", "/sync#exports")))
+            continue
+        days = watch._days_since(at["at"], now)
+        when = "today" if days == 0 else "yesterday" if days == 1 else f"{days} days ago"
+        if days > watch.DUE_DAYS:
+            apps.append(row(platform, name, "need", f"Last export {when}: time for a new one", "/sync#exports",
+                            ("Get one", "/sync#exports")))
+        else:
+            apps.append(row(platform, name, "ok", f"Export added {when}", "/sync#exports"))
+
+    total, missing = db.count(conn), museum.pending_count(conn)
+    if not total:
+        details = row("details", "Titles and pictures", "idle", "Nothing saved yet", "/sync#details")
+    elif not missing:
+        details = row("details", "Titles and pictures", "ok", f"All {total} found", "/sync#details")
+    else:
+        details = row("details", "Titles and pictures", "idle",
+                      f"{total - missing} found · {missing} missing (deleted or private videos stay that way)",
+                      "/sync#details", ("Look", "/sync#details"))
+    library = row("library", "Your library", "ok",
+                  "In your own cloud database" if db.on_postgres() else "On this Mac, in one file", "/sync")
+    return [("", [phone, mac]), ("Your apps", apps), ("Behind the scenes", [details, library])]
+
+
+@app.get("/connections", response_class=HTMLResponse)
+def connections_page(request: Request, conn: sqlite3.Connection = Depends(get_db)):
+    """Connections: your phone, your Mac, your exports and the rest, one row
+    each, with a button only where something needs you. Keep it in sync
+    (/sync) holds the details and the how-tos."""
+    groups = _connections(request, conn, datetime.now(timezone.utc))
+    return templates.TemplateResponse(request, "connections.html", {
+        "groups": groups, "needs": sum(r["state"] == "need" for _, rows in groups for r in rows),
+        "q": "", "total": db.count(conn), "nav": "connections",
     })
 
 

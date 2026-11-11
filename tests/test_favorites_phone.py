@@ -213,14 +213,14 @@ class TestSavingInPlace:
 class TestGettingAround:
     def test_the_tab_bar(self, client, library):
         tabs = re.search(r'<nav class="rr-tabbar".*?</nav>', client.get("/").text, re.S).group(0)
-        assert [h for h in re.findall(r'href="([^"]+)"', tabs)] == ["/", "/search", "/shuffle", "/topics", "/more"]
+        assert [h for h in re.findall(r'href="([^"]+)"', tabs)] == ["/", "/search", "/shuffle", "/browse", "/more"]
         assert 'data-sheet-open="more"' in tabs
 
     @pytest.mark.parametrize("path", ["/", "/more"])
     def test_more_holds_everything_that_isnt_a_tab(self, client, library, path):
         page = client.get(path).text
         for href in ["/keep", "/shuffle?theme=Undefined&amp;order=newest", "/notes", "/topics/sort",
-                     "/year", "/wander", "/sync"]:
+                     "/year", "/wander", "/connections"]:
             assert f'<a href="{href}">' in page
         assert 'data-mode="dark"' in page
 
@@ -245,19 +245,20 @@ class TestGettingAround:
         page = client.get("/sync").text
         assert 'data-here="True"' not in page and 'data-here="False"' not in page
 
-    @pytest.mark.parametrize("path", ["/keep", "/year", "/sync", "/more", "/notes"])
+    @pytest.mark.parametrize("path", ["/keep", "/year", "/sync", "/more", "/notes", "/connections"])
     def test_more_lights_up_for_its_pages(self, client, library, path):
         tabs = re.search(r'<nav class="rr-tabbar".*?</nav>', client.get(path).text, re.S).group(0)
         assert '<a href="/more" data-sheet-open="more" class="is-on" aria-current="page">' in tabs
 
-    @pytest.mark.parametrize("path", ["/", "/topics", "/search", "/more"])
+    @pytest.mark.parametrize("path", ["/", "/browse", "/search", "/more"])
     def test_the_tabs_own_pages_start_the_trail(self, client, library, path):
         page = client.get(path).text
         assert "<body class=\"rr\" data-root" in page and "data-back" not in page.split("</header>")[0]
 
     @pytest.mark.parametrize("path, parent", [
         ("/search?theme=Undefined", "/search"), ("/topics/sort", "/topics"), ("/notes", "/more"),
-        ("/keep", "/more"), ("/year", "/more"), ("/sync", "/more")])
+        ("/keep", "/more"), ("/year", "/more"), ("/sync", "/connections"), ("/connections", "/more"),
+        ("/topics", "/browse")])
     def test_pages_below_the_tabs_have_a_way_back(self, client, library, path, parent):
         page = client.get(path).text
         assert f'<a class="rr-back" href="{parent}" data-back>' in page
@@ -288,3 +289,79 @@ class TestGettingAround:
 
     def test_the_front_door_surprise_is_the_feed(self, client, library):
         assert '<a class="rr-surprise" href="/shuffle">' in client.get("/").text
+
+
+class TestTodayAndBrowse:
+    """Home was ten screens of shelves; it is now Today, and the rest is Browse."""
+
+    def test_today_is_whats_new_and_one_pick_then_a_door_to_browse(self, client, library):
+        page = client.get("/").text
+        assert page.count('class="rr-band tone-') <= 3  # recent, the day's pick, the door
+        assert re.findall(r'data-kind="(\w+)"', page)[0] == "recent"
+        assert len(re.findall(r'data-kind="(\w+)"', page)) <= 2
+        assert '<a class="today-browse" href="/browse">' in page
+        for gone in ["Browse by topic", "Browse the collection", "Favorite creators"]:
+            assert gone not in page
+        assert "<b>Shuffle</b>" in page and "data-save-copied" in page and 'name="q"' in page
+
+    def test_browse_holds_what_today_left_out(self, client, library):
+        page = client.get("/browse").text
+        assert "Browse by topic" in page and '<a class="more" href="/topics">The topic</a>' in page
+        assert "Browse the collection" in page and "Favorite creators" in page
+        assert 'href="/month/2025-09"' in page and "September 2025" in page
+        assert 'data-kind="recent"' not in page  # Today already has it
+
+    def test_browse_months_are_newest_first(self, conn, library):
+        from favorites import museum
+        months = museum.months(conn)
+        assert [m["label"] for m in months[:2]] == ["September 2025", "August 2025"]
+        assert months[0] == {"label": "September 2025", "count": 1, "href": "/month/2025-09"}
+
+    @pytest.mark.parametrize("path", ["/browse", "/topics"])
+    def test_browse_lights_up_for_topics_too(self, client, library, path):
+        tabs = re.search(r'<nav class="rr-tabbar".*?</nav>', client.get(path).text, re.S).group(0)
+        assert '<a href="/browse" class="is-on" aria-current="page">' in tabs
+
+    def test_an_empty_library_has_nothing_to_browse(self, client):
+        page = client.get("/browse").text
+        assert "Nothing to browse yet." in page and '<a href="/">Save your first one from Today.</a>' in page
+
+
+class TestASavesPinnedBar:
+    """Watch, Note, Topic and Like this stay above the tabs however far you scroll."""
+
+    def test_the_bar_and_what_each_button_reaches(self, client, library):
+        item_id = library["food"][0]
+        page = client.get(f"/item/{item_id}").text
+        bar = re.search(r'<nav class="save-bar".*?</nav>', page, re.S).group(0)
+        opens = re.search(r'<a class="rr-btn rr-btn--primary open" href="([^"]+)"', page).group(1)
+        assert f'<a class="watch" href="{opens}"' in bar and "data-watch" in bar and ">Watch</a>" in bar
+        assert '<a href="#note" data-reveal="note">' in bar and 'id="note"' in page
+        assert '<a href="#rooms" data-reveal="change-rooms">' in bar and 'id="change-rooms"' in page
+        assert f'href="/wander/{item_id}' in bar and ">Like this</a>" in bar
+        # The bar comes last, so it is pinned from the top of the page to the bottom.
+        assert page.index('<nav class="save-bar"') > page.index('class="rr-detail detail"')
+        assert page.index("</nav>", page.index('<nav class="save-bar"')) < page.index("</main>")
+
+    def test_the_script_answers_the_bar(self, client):
+        js = client.get("/static/museum.js").text
+        assert "[data-save-bar]" in js and "data-reveal" in js and "data-watch" in js
+
+
+class TestLighterSearchCards:
+    def test_a_result_is_picture_title_and_creator_without_the_caption(self, client, conn):
+        db.upsert_item(conn, {
+            "canonical_url": "https://example.com/orzo", "shared_url": "x", "platform": "tiktok",
+            "title": "The one-pan orzo I make every Sunday", "creator_handle": "@nishakitchen",
+            "description": "Every week without fail, this is the dinner that saves my Sunday night",
+            "note": "make this for the book club", "resolve_status": "ok",
+            "saved_at": "2025-10-05T12:00:00+00:00"})
+        page = client.get("/search", params={"q": "orzo"}).text
+        piece = re.search(r'<article class="rr-piece.*?</article>', page, re.S).group(0)
+        assert "The one-pan orzo I make every Sunday" in piece and "@nishakitchen" in piece
+        assert "make this for the book club" in piece          # your note stays
+        assert "dinner that saves my Sunday night" not in piece  # the caption doesn't
+        assert 'class="desc"' not in piece
+        # The save's own page still has it.
+        item_id = conn.execute("SELECT id FROM items WHERE canonical_url = 'https://example.com/orzo'").fetchone()[0]
+        assert "dinner that saves my Sunday night" in client.get(f"/item/{item_id}").text

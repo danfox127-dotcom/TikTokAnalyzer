@@ -234,6 +234,15 @@ def browse(conn: sqlite3.Connection, per_row: int = 8) -> dict:
     }
 
 
+def months(conn: sqlite3.Connection, limit: int = 12) -> list[dict]:
+    """The months you saved something in, newest first, for Browse."""
+    rows = conn.execute(
+        f"SELECT substr(saved_at, 1, 7) AS m, count(*) AS n FROM items"
+        f" WHERE {RESOLVED} GROUP BY m ORDER BY m DESC LIMIT ?", (limit,)).fetchall()
+    return [{"label": _month_title(r["m"]), "count": r["n"], "href": f"/month/{r['m']}"}
+            for r in rows if r["m"]]
+
+
 def shared_terms(conn: sqlite3.Connection, item: dict, limit: int = 10) -> list[str]:
     """Terms this item has in common with the rest of the library.
 
@@ -505,6 +514,13 @@ def _covers(entries: list[dict], n: int = 3) -> list[dict]:
         if len(chosen) == n:
             break
     return chosen
+
+
+def room_count(conn: sqlite3.Connection) -> int:
+    """How many topics :func:`rooms` would list, without building them."""
+    return int(conn.execute(
+        f"SELECT count(*) FROM (SELECT j.value FROM items, json_each(items.themes) j"
+        f" WHERE {RESOLVED} GROUP BY j.value HAVING count(*) >= 2) t").fetchone()[0])
 
 
 def rooms(conn: sqlite3.Connection, limit: Optional[int] = None,
