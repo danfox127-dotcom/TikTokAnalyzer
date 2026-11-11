@@ -1,0 +1,141 @@
+{% extends "base.html" %}
+{% from "_icons.html" import icon %}
+{% from "_rewind.html" import hr, clock, ranks, topic_bars %}
+{% set nav = 'browse' %}
+{% set back = '/browse' %}{% set back_label = 'Browse' %}
+{% block title %}{% if m %}{{ m.name }} {{ m.year }} · {% endif %}Your TikTok stats · Faves{% endblock %}
+{#- Rewind's month, all on one page to scroll: every month at a glance on
+    top, then this one in full. Story cards and this page draw the same
+    charts (_rewind.html). -#}
+{% macro num(n) %}{{ '{:,}'.format(n or 0) }}{% endmacro %}
+{% macro change(pct, name) %}{% if pct is none %}<span class="flat">no {{ name }} to compare</span>{% else %}{{ '↑' if pct > 0 else '↓' if pct < 0 else '=' }} {{ pct | abs }}% on {{ name }}{% endif %}{% endmacro %}
+{% block content %}
+
+{% if not m %}
+<section class="page-head st-head">
+  <p class="rr-label">📊 Your TikTok stats</p>
+  <h1 class="rr-h-l">Needs a TikTok export</h1>
+  <p class="rr-muted">Every month you've spent on TikTok, on one page to scroll: how much, when, who and what.
+    It comes from your own data export. Request one, download it on your Mac, and it comes in by itself.</p>
+  <p><a class="rr-btn rr-btn--primary" href="/sync#exports">How to get your export</a></p>
+</section>
+{% else %}
+<div class="st" data-rewind data-tz="{{ m.tz }}"{% if not zone_known %} data-tz-unknown{% endif %}>
+
+<section class="page-head st-head">
+  <p class="rr-label">📊 Your TikTok stats</p>
+  <h1 class="rr-h-l">{{ m.name }} {{ m.year }}</h1>
+  <p class="rr-muted">{% if m.coverage %}Your export covers {{ m.coverage }}. {% endif %}{% if m.tz == 'UTC' %}Times in UTC until this page learns your time zone.{% endif %}</p>
+  <div class="st-acts">
+    <a class="rr-btn rr-btn--primary" href="/rewind/{{ m.key }}">{{ icon('play') }}Play as a story</a>
+    <a class="rr-btn" href="/known">{{ icon('shield') }}What TikTok knows</a>
+  </div>
+  <ul class="rr-pills is-scroll st-months" aria-label="Months">
+    {% for k in months %}<li><a class="rr-pill{% if k == m.key %} is-on{% endif %}" href="/stats/{{ k }}"{% if k == m.key %} aria-current="page"{% endif %}>{{ month_name(k)[:3] }} {{ k[:4] }}</a></li>{% endfor %}
+  </ul>
+</section>
+
+<div class="st-grid">
+
+  {#- Every month: one column each, this month in the accent, the rest muted.
+      Each column is a way to its month; the table below holds every number. -#}
+  {%- set measures = [('opened', 'Videos', 'Videos opened each month.'), ('liked', 'Likes', 'Videos liked each month.'),
+                      ('saved', 'Saves', 'TikToks saved to Faves each month.'), ('searched', 'Searches', 'Searches each month.')] %}
+  {%- set every = [1, ((trend | length) / 8) | round(0, 'ceil') | int] | max %}
+  <section class="st-panel is-wide" aria-labelledby="st-trend-t">
+    <div class="st-panel-head">
+      <h2 id="st-trend-t">Every month</h2>
+      <div class="rr-seg st-measure" role="group" aria-label="Show" hidden>
+        {% for key, label, note in measures %}<button type="button" data-measure="{{ key }}" data-note="{{ note }} Tap a month to see it." aria-pressed="{{ 'true' if loop.first else 'false' }}">{{ label }}</button>{% endfor %}
+      </div>
+    </div>
+    <p class="st-note" data-measure-note>Videos opened each month. Tap a month to see it.</p>
+    <div class="st-cols" data-trend>
+      {% for t in trend %}{% set on = t.key == m.key %}
+        <a class="st-col{% if on %} is-on{% endif %}" href="/stats/{{ t.key }}"
+           {% for key, _, _ in measures %} data-h-{{ key }}="{{ (100 * t[key] / most[key]) | round(1) }}" data-n-{{ key }}="{{ num(t[key]) }}"{% endfor %}
+           aria-label="{{ t.name }} {{ t.year }}: {{ num(t.opened) }} videos opened, {{ num(t.liked) }} likes, {{ num(t.saved) }} saves, {{ num(t.searched) }} searches"
+           title="{{ t.name }} {{ t.year }}: {{ num(t.opened) }} opened · {{ num(t.liked) }} likes · {{ num(t.saved) }} saves · {{ num(t.searched) }} searches"{% if on %} aria-current="page"{% endif %}>
+          <span class="v">{% if on %}{{ num(t.opened) }}{% endif %}</span>
+          <span class="plot"><span class="bar" style="height: {{ (100 * t.opened / most.opened) | round(1) }}%"></span></span>
+          <span class="lab">{% if on or loop.index0 % every == 0 %}{{ t.name[:3] }}{% if loop.first or t.key[5:] == '01' %}<small>{{ t.year }}</small>{% endif %}{% endif %}</span>
+        </a>
+      {% endfor %}
+    </div>
+    <details class="st-table">
+      <summary>Every month's numbers</summary>
+      <table>
+        <thead><tr><th scope="col">Month</th><th scope="col">Opened</th><th scope="col">Likes</th><th scope="col">Saves</th><th scope="col">Searches</th></tr></thead>
+        <tbody>
+          {% for t in trend | reverse %}<tr{% if t.key == m.key %} class="is-on"{% endif %}><th scope="row"><a href="/stats/{{ t.key }}">{{ t.name }} {{ t.year }}</a></th>
+            <td>{{ num(t.opened) }}</td><td>{{ num(t.liked) }}</td><td>{{ num(t.saved) }}</td><td>{{ num(t.searched) }}</td></tr>{% endfor %}
+        </tbody>
+      </table>
+    </details>
+  </section>
+
+  {#- The month in five numbers, each against the month before. -#}
+  <section class="st-panel is-wide st-tiles" aria-label="{{ m.name }} in numbers">
+    <div class="st-tile"><p class="lab">Videos opened</p><p class="val">{{ num(m.opened) }}</p><p class="delta">{{ change(changes.opened, m.prev_name) }}</p></div>
+    <div class="st-tile"><p class="lab">Likes</p><p class="val">{{ num(m.liked) }}</p><p class="delta">{{ change(changes.liked, m.prev_name) }}</p></div>
+    <div class="st-tile"><p class="lab">Saved to Faves</p><p class="val">{{ num(m.saved) }}</p><p class="delta">{{ change(changes.saved, m.prev_name) }}</p></div>
+    <div class="st-tile"><p class="lab">Searches</p><p class="val">{{ num(m.searched) }}</p><p class="delta">{{ change(changes.searched, m.prev_name) }}</p></div>
+    <div class="st-tile"><p class="lab">Hours <span class="rw-tag">estimate</span></p><p class="val">About {{ m.hours }}</p><p class="delta">at {{ m.seconds }} seconds a video{% if not m.seconds_guessed %}, the usual length of what you saved{% endif %}</p></div>
+  </section>
+
+  {#- Day by day. -#}
+  {%- set daynames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'] %}
+  <section class="st-panel is-wide" aria-labelledby="st-days-t">
+    <div class="st-panel-head"><h2 id="st-days-t">Day by day</h2></div>
+    <p class="st-note">Videos opened each day of {{ m.name }}; weekends are shaded.{% if m.day_peak %} Busiest: {{ daynames[(m.weekday_one + m.days.index(m.day_peak)) % 7] }} {{ m.days.index(m.day_peak) + 1 }} {{ m.name }}, with {{ num(m.day_peak) }}.{% endif %}</p>
+    <div class="st-cols is-days" role="img" aria-label="Videos opened each day of {{ m.name }}">
+      {% for n in m.days %}{% set wd = (m.weekday_one + loop.index0) % 7 %}
+        <span class="st-col{% if wd >= 5 %} is-weekend{% endif %}" title="{{ daynames[wd] }} {{ loop.index }} {{ m.name }}: {{ num(n) }} {{ 'video' if n == 1 else 'videos' }}">
+          <span class="plot"><span class="bar" style="height: {{ (100 * n / m.day_peak) | round(1) if m.day_peak else 0 }}%"></span></span>
+          <span class="lab">{% if loop.index in (1, 8, 15, 22, 29) %}{{ loop.index }}{% endif %}</span>
+        </span>
+      {% endfor %}
+    </div>
+  </section>
+
+  {#- The clock. -#}
+  <section class="st-panel tone-sky" aria-labelledby="st-clock-t">
+    <div class="st-panel-head"><h2 id="st-clock-t">Your TikTok clock</h2></div>
+    <p class="st-note">{% if m.busiest %}Busiest: {{ m.busiest.day }}s, {{ hr(m.busiest.hour) }}–{{ hr(m.busiest.hour + 1) }}. {% endif %}The more videos, the stronger the colour.</p>
+    {{ clock(m) }}
+  </section>
+
+  {#- Who. -#}
+  <section class="st-panel tone-mint" aria-labelledby="st-who-t">
+    <div class="st-panel-head"><h2 id="st-who-t">Top creators</h2></div>
+    {% if m.creators %}{{ ranks(m.creators, m.creators[0].count) }}{% else %}<p class="st-note">Not known yet.</p>{% endif %}
+    <p class="st-note">From the videos you liked and saved.{% if m.waiting %} Still looking up {{ m.waiting }} of your likes on your Mac.{% endif %}</p>
+  </section>
+
+  {#- What. -#}
+  <section class="st-panel tone-peach" aria-labelledby="st-what-t">
+    <div class="st-panel-head"><h2 id="st-what-t">Topics</h2></div>
+    {% if m.themes %}{{ topic_bars(m.themes) }}
+      <p class="st-note">Share of the {{ num(m.looked_at) }} videos you liked and saved.</p>
+      {% if m.jump %}<p class="rw-jump">{{ icon('up') }}<span><b>Biggest jump: {{ m.jump.name }}</b>
+        {% if m.jump.before %}{{ m.jump.share }}% of the month, up from {{ m.jump.before }}% in {{ m.prev_name }}{% else %}{{ m.jump.share }}% of the month, new since {{ m.prev_name }}{% endif %}</span></p>{% endif %}
+    {% else %}<p class="st-note">No topics yet.</p>{% endif %}
+  </section>
+
+  {#- Searches, and likes kept. -#}
+  <section class="st-panel tone-butter" aria-labelledby="st-search-t">
+    <div class="st-panel-head"><h2 id="st-search-t">Searches <span>· {{ num(m.searched) }}</span></h2></div>
+    {% if m.searches %}
+      <ul class="rw-searches">{% for s in m.searches %}<li><a class="rr-pill" href="https://www.tiktok.com/search?q={{ s | urlencode }}" target="_blank" rel="noopener noreferrer">{{ s }}</a></li>{% endfor %}</ul>
+    {% else %}<p class="st-note">No searches this month.</p>{% endif %}
+    {% if m.liked %}
+      <p class="rw-est st-kept"><b>{% if m.kept %}1 in {{ (m.liked / m.kept) | round | int }} likes made it to Faves{% else %}None of your likes made it to Faves{% endif %}</b></p>
+      <div class="rw-meter" role="meter" aria-label="Likes also saved to Faves" aria-valuemin="0" aria-valuemax="{{ m.liked }}" aria-valuenow="{{ m.kept }}"><span style="width: {{ (100 * m.kept / m.liked) | round(1) }}%"></span></div>
+      <p class="st-note">You liked {{ num(m.liked) }} and kept {{ num(m.kept) }} in Faves.</p>
+    {% endif %}
+  </section>
+
+</div>
+</div>
+{% endif %}
+{% endblock %}

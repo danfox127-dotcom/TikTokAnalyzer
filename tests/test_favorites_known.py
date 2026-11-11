@@ -183,4 +183,4 @@ class TestThePage:
 
     def test_the_script_asks_for_a_time_zone_only_for_the_clock(self, client):
         js = client.get("/static/museum.js").text
-        assert "hasAttribute('data-tz')" in js
+        assert "[data-rewind][data-tz]" in js   # only a page with a clock

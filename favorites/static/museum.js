@@ -570,19 +570,28 @@
   /* ---- Rewind: tells the page your time zone once (so the clock is
      yours), lights a dash per card as you swipe, and a tap on either side
      moves a card. Swiping is the phone's own scroll-snap. ---- */
-  function rewind(el) {
+  /* A page with a clock tells the server your time zone, once: before Back
+     notes the page, so a page about to be replaced never joins the trail.
+     True when it is reloading with it. */
+  function sendZone() {
+    var el = document.querySelector('[data-rewind][data-tz]');
+    if (!el) return false;
     var tz = '';
     try { tz = Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch (e) {}
-    var u = new URL(location.href), asks = el.hasAttribute('data-tz');   // only Rewind's clock needs it
-    if (asks && tz && el.getAttribute('data-tz') !== tz && u.searchParams.get('tz') !== tz) {
+    var u = new URL(location.href);
+    if (tz && el.getAttribute('data-tz') !== tz && u.searchParams.get('tz') !== tz) {
       u.searchParams.set('tz', tz);
       location.replace(u.toString());
-      return;
+      return true;
     }
-    if (asks && u.searchParams.has('tz') && el.getAttribute('data-tz') === u.searchParams.get('tz')) {
+    if (u.searchParams.has('tz') && el.getAttribute('data-tz') === u.searchParams.get('tz')) {
       u.searchParams.delete('tz');
       history.replaceState(history.state, '', u.pathname + u.search + u.hash);
     }
+    return false;
+  }
+
+  function rewind(el) {
     var track = el.querySelector('.rw-track'), dashes = el.querySelectorAll('.rw-dashes span');
     if (!track) return;
     var calm = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -599,7 +608,27 @@
     });
   }
 
+  /* ---- the stats page: one chart of every month, shown as videos,
+     likes, saves or searches. With no script it shows videos. ---- */
+  function statsTrend(group) {
+    var panel = group.closest('.st-panel'), cols = panel.querySelectorAll('[data-trend] .st-col');
+    var note = panel.querySelector('[data-measure-note]');
+    group.hidden = false;
+    group.addEventListener('click', function (e) {
+      var b = e.target.closest('button[data-measure]');
+      if (!b) return;
+      var key = b.getAttribute('data-measure');
+      group.querySelectorAll('button').forEach(function (x) { x.setAttribute('aria-pressed', x === b ? 'true' : 'false'); });
+      cols.forEach(function (c) {
+        c.querySelector('.bar').style.height = c.getAttribute('data-h-' + key) + '%';
+        if (c.classList.contains('is-on')) c.querySelector('.v').textContent = c.getAttribute('data-n-' + key);
+      });
+      if (note) note.textContent = b.getAttribute('data-note');
+    });
+  }
+
   function init() {
+    if (sendZone()) return;
     setMode(stored());
     document.addEventListener('click', function (e) {
       var b = e.target.closest && e.target.closest('.rr-mode [data-mode]');
@@ -630,6 +659,7 @@
     document.querySelectorAll('[data-save-copied]').forEach(saveCopied);
     document.querySelectorAll('[data-save-bar]').forEach(saveBar);
     document.querySelectorAll('[data-rewind]').forEach(rewind);
+    document.querySelectorAll('.st-measure').forEach(statsTrend);
     var standalone = navigator.standalone || (window.matchMedia && matchMedia('(display-mode: standalone)').matches);
     if (standalone) document.querySelectorAll('[data-standalone-step]').forEach(function (s) { s.classList.add('is-done'); });
     var said = load('rr-flash', null);

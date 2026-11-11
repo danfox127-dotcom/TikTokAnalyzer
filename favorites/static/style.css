@@ -692,13 +692,13 @@ body { margin: 0; }
 /* Blocks that do not carry their own gutter get the page's. */
 .rr-page > main > :where(.digest, .browse-more, .explore-head, .rr-toolbar, .explore, .page-head,
   .page-grid, .pending-notice, .rr-notice, .placard-run, .undefined-note, .empty, .rr-empty, .pager,
-  .conn-title, .conn-group, .conn-foot) {
+  .conn-title, .conn-group, .conn-foot, .st) {
   margin-left: 16px; margin-right: 16px;
 }
 @container rr (min-width: 760px) {
   .rr-page > main > :where(.digest, .browse-more, .explore-head, .rr-toolbar, .explore, .page-head,
     .page-grid, .pending-notice, .rr-notice, .placard-run, .undefined-note, .empty, .rr-empty, .pager,
-    .conn-title, .conn-group, .conn-foot) {
+    .conn-title, .conn-group, .conn-foot, .st) {
     margin-left: 32px; margin-right: 32px;
   }
 }
@@ -1330,6 +1330,62 @@ html:has(.rr-sheet-dialog[open]) { overflow: hidden; }
 .kn-steps b { font-weight: 800; }
 .kn-next { margin: 18px 0 0; font: 800 15px/20px var(--font-sans); }
 .kn-next a { display: inline-flex; align-items: center; gap: 4px; color: var(--accent-ink); }
+
+/* ---- Your TikTok stats: Rewind's month as a dashboard to scroll ---- */
+.rw-all { display: inline-flex; align-items: center; gap: 4px; margin-left: auto; height: 36px; padding: 0 12px;
+  border-radius: var(--radius-pill); background: color-mix(in srgb, var(--wall-raised) 80%, transparent);
+  backdrop-filter: blur(10px); box-shadow: var(--shadow-soft); font: 800 13px/1 var(--font-sans); color: var(--ink); }
+.rw-all .rr-icon { width: 16px; height: 16px; }
+.rw-all + .rr-deck-btn { margin-left: 0; }
+.st-head { padding-bottom: 8px; }
+.st > .page-head { margin-left: 0; margin-right: 0; }
+.st-acts { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; }
+.st-months { margin-top: 14px; }
+.st-grid { display: grid; grid-template-columns: minmax(0, 1fr); align-items: start; gap: 14px; margin-top: 8px; }
+@container rr (min-width: 900px) { .st-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .st-panel.is-wide { grid-column: 1 / -1; } }
+.st-panel { min-width: 0; padding: 16px; border-radius: var(--radius-md); background: var(--wall-raised); box-shadow: var(--shadow-soft); }
+.st-panel-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.st-panel h2 { margin: 0; font: 600 20px/24px var(--font-display); }
+.st-panel h2 span { font: 700 14px/1 var(--font-sans); color: var(--ink-muted); }
+.st-note { margin: 6px 0 0; font: 600 13px/18px var(--font-sans); color: var(--ink-muted); }
+.st-measure button { padding: 4px 10px; min-height: 30px; font-size: 12px; }
+/* Columns: thin, a 4px rounded top on a hairline baseline, a gap between. */
+.st-cols { display: flex; align-items: stretch; gap: 2px; height: 190px; margin-top: 10px; }
+.st-col { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; align-items: center; color: var(--ink-muted); }
+.st-col .v { height: 18px; font: 800 12px/18px var(--font-sans); color: var(--ink); white-space: nowrap; }
+.st-col .plot { flex: 1; align-self: stretch; display: flex; align-items: flex-end; justify-content: center; border-bottom: 1px solid var(--rule); }
+.st-col .bar { width: min(24px, 72%); min-height: 2px; border-radius: 4px 4px 0 0;
+  background: color-mix(in oklab, var(--ink) 22%, var(--wall-raised)); transition: height .3s var(--ease-out), background .15s; }
+.st-col.is-on .bar { background: var(--accent); }
+a.st-col:hover .bar, a.st-col:focus-visible .bar { background: color-mix(in oklab, var(--accent) 55%, var(--wall-raised)); }
+a.st-col.is-on:hover .bar { background: var(--accent); }
+.st-col .lab { height: 30px; padding-top: 4px; font: 700 11px/13px var(--font-sans); text-align: center; white-space: nowrap; }
+.st-col .lab small { display: block; font-weight: 600; }
+.st-cols.is-days { height: 150px; gap: 1px; }
+.is-days .st-col .bar { width: min(12px, 76%); background: var(--accent); }
+.is-days .st-col.is-weekend .plot { background: var(--wall-sunk); border-radius: 4px 4px 0 0; }
+@media (prefers-reduced-motion: reduce) { .st-col .bar { transition: none; } }
+.st-table { margin-top: 12px; }
+.st-table summary { cursor: pointer; font: 800 14px/20px var(--font-sans); color: var(--accent-ink); }
+.st-table table { width: 100%; margin-top: 10px; border-collapse: collapse; font: 600 13px/18px var(--font-sans); font-variant-numeric: tabular-nums; }
+.st-table th, .st-table td { padding: 6px 4px; border-bottom: 1px solid var(--rule); text-align: right; }
+.st-table th:first-child { text-align: left; }
+.st-table thead th { font-weight: 800; color: var(--ink-muted); }
+.st-table tr.is-on th, .st-table tr.is-on td { font-weight: 800; }
+.st-tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 16px; }
+@container rr (min-width: 760px) { .st-tiles { grid-template-columns: repeat(5, minmax(0, 1fr)); } }
+.st-tile p { margin: 0; }
+.st-tile .lab { display: flex; align-items: center; gap: 6px; font: 800 12px/16px var(--font-sans); color: var(--ink-muted); }
+.st-tile .val { margin-top: 4px; font: 600 30px/34px var(--font-sans); }
+.st-tile .delta { margin-top: 2px; font: 700 12px/16px var(--font-sans); color: var(--ink-muted); }
+.st-tile .delta .flat { font-weight: 600; }
+.st-panel .rw-clock { margin-top: 10px; }
+.st-panel .rw-rank { margin-top: 6px; padding: 0; background: none; box-shadow: none; }
+.st-panel .rw-rank .rw-avatar { background: var(--band); color: var(--band-ink); }
+.st-panel .rw-themes { margin-top: 6px; }
+.st-panel .rw-jump { margin-top: 12px; background: var(--wall); box-shadow: none; }
+.st-panel .rw-searches { margin-top: 10px; }
+.st-kept { margin-top: 18px; }
 
 /* ---- a save's own actions, pinned above the tabs on a phone ---- */
 .save-bar {

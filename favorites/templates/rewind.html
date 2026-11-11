@@ -1,17 +1,11 @@
 {% extends "base.html" %}
 {% from "_icons.html" import icon %}
+{% from "_rewind.html" import hr, clock, ranks, topic_bars %}
 {% set nav = 'browse' %}
 {% set chrome = 'deck' %}
 {% set back = '/browse' %}{% set back_label = 'Browse' %}
 {% block title %}{% if m %}{{ m.name }} {{ m.year }} · Rewind{% else %}Rewind{% endif %} · Faves{% endblock %}
 {% block main_class %}is-deck{% endblock %}
-
-{#- An hour as the clock says it: 0 -> "12am", 13 -> "1pm". -#}
-{% macro hr(h) %}{{ (h % 12) or 12 }}{{ 'am' if h % 24 < 12 else 'pm' }}{% endmacro %}
-{#- How much of the accent a clock square holds, by how busy it was: one
-    hue, light to dark, over the card's own surface. -#}
-{% set steps = [0, 18, 36, 56, 78, 100] %}
-{% macro shade(level) %}{% if level == 0 %}var(--wall-sunk){% else %}color-mix(in oklab, var(--accent) {{ steps[level] }}%, var(--wall-raised)){% endif %}{% endmacro %}
 
 {% block content %}
 <div class="rw"{% if m %} data-rewind data-tz="{{ m.tz }}"{% if not zone_known %} data-tz-unknown{% endif %}{% endif %}>
@@ -20,6 +14,7 @@
     <div class="rw-bar">
       <span class="rw-brand">Rewind</span>
       {% if m %}<span class="rw-month">{{ m.name }} {{ m.year }}</span>{% endif %}
+      {% if m %}<a class="rw-all" href="/stats/{{ m.key }}">{{ icon('filter') }}See it all</a>{% endif %}
       <a class="rr-deck-btn" href="{{ back }}" data-back aria-label="Close">{{ icon('close') }}</a>
     </div>
   </header>
@@ -62,20 +57,7 @@
       <h2 class="rw-title">{% if m.busiest %}Busiest: {{ m.busiest.day }}s, {{ hr(m.busiest.hour) }}–{{ hr(m.busiest.hour + 1) }}{% else %}No watch history this month{% endif %}</h2>
       <div class="rw-panel">
         <p class="rw-note">When you scrolled, by day and hour{% if m.tz == 'UTC' %}, in UTC until this page learns your time zone{% endif %}: the more videos, the stronger the colour.</p>
-        <svg class="rw-clock" viewBox="0 0 326 120" role="img" aria-label="Videos opened by day and hour in {{ m.name }}{% if m.busiest %}. Busiest: {{ m.busiest.day }}, {{ hr(m.busiest.hour) }}{% endif %}.">
-          {% for row in m.clock %}{% set d = loop.index0 %}
-            <text x="0" y="{{ d * 15 + 10 }}" class="lab">{{ ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][d] }}</text>
-            {% for n in row %}{% set h = loop.index0 %}
-              {%- set level = 0 if n == 0 else [1, [5, ((n * 5 / m.peak) | round(0, 'ceil') | int)] | min] | max -%}
-              <rect x="{{ 28 + h * 12.5 }}" y="{{ d * 15 }}" width="10.5" height="13" rx="2.5" style="fill: {{ shade(level) }}"{% if m.busiest and m.busiest.hour == h and ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'][d] == m.busiest.day %} class="peak"{% endif %}><title>{{ ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'][d] }}s, {{ hr(h) }}–{{ hr(h + 1) }}: {{ n }} {{ 'video' if n == 1 else 'videos' }}</title></rect>
-            {%- endfor %}
-          {% endfor %}
-          {% for h in (0, 6, 12, 18) %}<text x="{{ 28 + h * 12.5 }}" y="118" class="lab">{{ hr(h) }}</text>{% endfor %}
-        </svg>
-        <div class="rw-legend">
-          <span>{% if m.busiest %}<i class="ring" aria-hidden="true"></i>Busiest hour{% endif %}</span>
-          <span class="scale">Fewer{% for level in range(6) %}<i style="background: {{ shade(level) }}" aria-hidden="true"></i>{% endfor %}More</span>
-        </div>
+        {{ clock(m) }}
       </div>
     </div></section>
 
@@ -90,14 +72,7 @@
           <p class="rw-count"><b>{{ top.count }}</b> of your likes and saves{% if top.was %} · {{ top.was }}{% endif %}</p>
         </div>
         {% if m.creators | length > 1 %}
-        <ol class="rw-rank" start="2">
-          {% for c in m.creators[1:] %}
-            <li><span class="rw-avatar" aria-hidden="true">{{ c.name | initials }}</span>
-              <span class="who"><b>{{ c.name }}{% if c.was == 'new' %} <span class="rw-new">new</span>{% elif c.was %} <span class="rw-was">{{ c.was }}</span>{% endif %}</b>
-                <span class="bar" style="width: {{ (100 * c.count / top.count) | round | int }}%"></span></span>
-              <span class="n">{{ c.count }}</span></li>
-          {% endfor %}
-        </ol>
+        {{ ranks(m.creators[1:], top.count, start=2) }}
         {% endif %}
       {% else %}
         <h2 class="rw-title">Not known yet</h2>
@@ -110,13 +85,7 @@
       <p class="rw-kicker">What {{ m.name }} was about</p>
       {% if m.themes %}
         <div class="rw-panel">
-          <ul class="rw-themes">
-            {% set most = m.themes[0].count %}
-            {% for t in m.themes %}
-              <li{% if t.rest %} class="is-rest"{% endif %}><b>{% if not t.rest %}{{ look(t.name)[2] }} {% endif %}{{ t.name }}</b><i>{{ t.share }}%</i>
-                <span class="bar" style="width: {{ (100 * t.count / most) | round | int if most else 0 }}%"></span></li>
-            {% endfor %}
-          </ul>
+          {{ topic_bars(m.themes) }}
           <p class="rw-note">Share of the {{ m.looked_at }} videos you liked and saved, by topic.</p>
         </div>
         {% if m.jump %}
@@ -152,6 +121,7 @@
         {% if earlier %}<a class="rr-btn" href="/rewind/{{ earlier }}">{{ icon('left') }}{{ month_name(earlier) }}</a>{% endif %}
         {% if later %}<a class="rr-btn" href="/rewind/{{ later }}">{{ month_name(later) }}{{ icon('right') }}</a>{% endif %}
       </nav>
+      <p class="kn-next"><a href="/stats/{{ m.key }}">See it all on one page{{ icon('right') }}</a></p>
       <p class="kn-next"><a href="/known">What TikTok knows about you{{ icon('right') }}</a></p>
       {% if months | length > 2 %}
         <ul class="rw-months">{% for k in months %}<li><a class="rr-pill{% if k == m.key %} is-on{% endif %}" href="/rewind/{{ k }}">{{ month_name(k) }} {{ k[:4] }}</a></li>{% endfor %}</ul>

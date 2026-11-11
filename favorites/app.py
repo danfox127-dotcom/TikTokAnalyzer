@@ -996,38 +996,82 @@ def _rewind_zone(request: Request, conn: sqlite3.Connection):
     return rewind.zone(db.get_meta(conn, rewind.TZ_KEY))
 
 
-@app.get("/rewind", response_class=HTMLResponse)
-def rewind_latest(request: Request, conn: sqlite3.Connection = Depends(get_db)):
-    """The latest month's Rewind, or how to get one."""
+def _latest_month(request: Request, conn: sqlite3.Connection, base: str, template: str):
+    """The latest month on a page of months (Rewind, stats), or how to get one."""
     zone = _rewind_zone(request, conn)
     found = rewind.months(conn, zone)
     if found:
         tz = request.query_params.get("tz")
-        return RedirectResponse(f"/rewind/{found[0]}" + (f"?{urlencode({'tz': tz})}" if tz else ""), 303)
-    return templates.TemplateResponse(request, "rewind.html", {
+        return RedirectResponse(f"{base}/{found[0]}" + (f"?{urlencode({'tz': tz})}" if tz else ""), 303)
+    return templates.TemplateResponse(request, template, {
         "m": None, "months": [], "q": "", "total": db.count(conn)})
 
 
-@app.get("/rewind/{key}", response_class=HTMLResponse)
-def rewind_month(request: Request, key: str, conn: sqlite3.Connection = Depends(get_db)):
-    """One month on TikTok, as story cards."""
+def _a_month(request: Request, conn: sqlite3.Connection, key: str, base: str, **lists):
+    """``(m, found, tz)`` for one month, or a redirect to your latest one."""
     if not re.fullmatch(r"\d{4}-(0[1-9]|1[0-2])", key):
         raise HTTPException(status_code=404)
     tz = _rewind_zone(request, conn)
     found = rewind.months(conn, tz)
-    m = rewind.month(conn, key, tz)
+    m = rewind.month(conn, key, tz, **lists)
     if m is None:
         if found and request.query_params.get("tz"):
             # The page has just said where you are, and in your time zone
             # this month is empty (the last hours of a month in UTC can be
             # the next one's first): your latest month instead.
-            return RedirectResponse(f"/rewind/{found[0]}", 303)
+            return RedirectResponse(f"{base}/{found[0]}", 303)
         raise HTTPException(status_code=404)
+    return m, found, tz
+
+
+@app.get("/rewind", response_class=HTMLResponse)
+def rewind_latest(request: Request, conn: sqlite3.Connection = Depends(get_db)):
+    """The latest month's Rewind, or how to get one."""
+    return _latest_month(request, conn, "/rewind", "rewind.html")
+
+
+@app.get("/rewind/{key}", response_class=HTMLResponse)
+def rewind_month(request: Request, key: str, conn: sqlite3.Connection = Depends(get_db)):
+    """One month on TikTok, as story cards."""
+    got = _a_month(request, conn, key, "/rewind")
+    if isinstance(got, Response):
+        return got
+    m, found, tz = got
     return templates.TemplateResponse(request, "rewind.html", {
         "m": m, "months": found, "zone_known": tz is not None,
         "earlier": next((k for k in found if k < key), None),
         "later": next((k for k in reversed(found) if k > key), None),
         "q": "", "total": db.count(conn)})
+
+
+@app.get("/stats", response_class=HTMLResponse)
+def stats_latest(request: Request, conn: sqlite3.Connection = Depends(get_db)):
+    """The latest month's stats, or how to get them."""
+    return _latest_month(request, conn, "/stats", "stats.html")
+
+
+@app.get("/stats/{key}", response_class=HTMLResponse)
+def stats_month(request: Request, key: str, conn: sqlite3.Connection = Depends(get_db)):
+    """One month on TikTok, all on one page to scroll: every month at a
+    glance on top, then this one in full."""
+    got = _a_month(request, conn, key, "/stats", creators=10, topics=None, searches=20)
+    if isinstance(got, Response):
+        return got
+    m, found, tz = got
+    trend = rewind.trend(conn, tz)
+    by_key = {t["key"]: t for t in trend}
+    here, before = by_key.get(key, {}), by_key.get(m["prev"])
+
+    def change(measure):
+        if not before or not before[measure]:
+            return None
+        return round(100 * (here.get(measure, 0) - before[measure]) / before[measure])
+
+    return templates.TemplateResponse(request, "stats.html", {
+        "m": m, "months": found, "zone_known": tz is not None, "trend": trend,
+        "most": {k: max([t[k] for t in trend] + [1]) for k in ("opened", "liked", "saved", "searched")},
+        "changes": {k: change(k) for k in ("opened", "liked", "saved", "searched")},
+        "before": before, "q": "", "total": db.count(conn)})
 
 
 @app.get("/known", response_class=HTMLResponse)
