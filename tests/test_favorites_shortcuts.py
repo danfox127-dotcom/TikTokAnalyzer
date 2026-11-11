@@ -2,13 +2,14 @@
 
 import os
 import plistlib
+import sqlite3
 import stat
 
 import pytest
 from fastapi.testclient import TestClient
 
 from favorites import app as app_module
-from favorites import shortcuts
+from favorites import cloud, db, shortcuts
 from favorites.app import app
 
 
@@ -47,6 +48,26 @@ class TestBuild:
         clip = {"Type": "ActionOutput", "OutputName": "Clipboard", "OutputUUID": steps[0][1]["UUID"]}
         assert steps[1][1]["WFTextActionText"]["Value"]["attachmentsByRange"]["{2, 1}"] == clip
         assert steps[3][1]["WFHTTPHeaders"]["Value"]["WFDictionaryFieldValueItems"] == []  # no password
+
+    def test_auto_save_sends_each_link_on_the_clipboard_quietly(self):
+        workflow = plistlib.loads(plistlib.dumps(
+            shortcuts.build("Auto-save copied link", "https://faves.example", "sesame"), fmt=plistlib.FMT_BINARY))
+        steps = actions(workflow)
+        # Clipboard -> its links -> each one to Faves. No inbox line (it runs on
+        # every visit, mostly with nothing new) and no notification (it's silent).
+        assert [name for name, _ in steps] == ["getclipboard", "link", "each", "downloadurl", "each"]
+        assert workflow["WFWorkflowTypes"] == []
+        clip, links, start, send, end = (params for _, params in steps)
+        assert links["WFInput"]["Value"]["OutputUUID"] == clip["UUID"]
+        assert start["WFInput"]["Value"]["OutputUUID"] == links["UUID"]
+        assert (start["WFControlFlowMode"], end["WFControlFlowMode"]) == (0, 2)
+        assert start["GroupingIdentifier"] == end["GroupingIdentifier"]
+        assert send["WFURL"] == "https://faves.example/save?auto=1"
+        [header] = send["WFHTTPHeaders"]["Value"]["WFDictionaryFieldValueItems"]
+        assert header["WFValue"]["Value"]["string"] == "Bearer sesame"
+        [field] = send["WFJSONValues"]["Value"]["WFDictionaryFieldValueItems"]
+        assert field["WFValue"]["Value"]["attachmentsByRange"]["{0, 1}"] == {
+            "Type": "Variable", "VariableName": "Repeat Item"}
 
 
 @pytest.fixture
@@ -104,6 +125,28 @@ class TestInstalling:
 
     def test_unknown_shortcut(self, phone):
         assert phone.get("/shortcuts/nope.shortcut").status_code == 404
+
+    def test_set_up_this_phone_offers_all_three(self, phone, fake_shortcuts_command):
+        phone.cookies.set(app_module.KEY_COOKIE, "sesame")
+        page = phone.get("/setup").text
+        for slug in app_module.SHORTCUT_SLUGS:
+            assert f'href="/shortcuts/{slug}.shortcut"' in page
+        assert "Done. This phone is remembered for a year." in page
+        assert phone.get("/shortcuts/auto-save-copied-link.shortcut").status_code == 200
+
+    def test_set_up_this_phone_signs_in_first(self, phone, fake_shortcuts_command):
+        page = phone.get("/setup").text
+        assert 'action="/unlock"' in page and 'name="next" value="/setup"' in page
+        assert 'href="/shortcuts/' not in page
+
+    def test_set_up_this_phone_shows_the_last_save_from_a_phone(self, phone, fake_shortcuts_command):
+        phone.cookies.set(app_module.KEY_COOKIE, "sesame")
+        conn = db.connect()
+        db.upsert_item(conn, {"canonical_url": "https://www.tiktok.com/video/7", "shared_url": "x",
+                              "platform": "tiktok", "title": "the zoning meeting went sideways",
+                              "resolve_status": "ok", "source": "share"})
+        conn.close()
+        assert "Your last save from a phone: <a href=" in phone.get("/setup").text
 
 
 class TestOnceInTheCloud:
@@ -165,3 +208,58 @@ def test_the_cloud_copy_names_its_own_address(monkeypatch):
                        "server": ("faves.example.vercel.app", 443), "scheme": "https", "path": "/"})
     assert app_module._cloud_address(request) == "https://faves.example.vercel.app"
 
+
+
+class TestLeftForTheCloud:
+    """Only a Mac can sign a shortcut, so the Mac signs them for the cloud copy
+    and leaves them in the library, for a phone set up away from it."""
+
+    @pytest.fixture
+    def mac_on_the_cloud_library(self, tmp_path, monkeypatch, fake_shortcuts_command):
+        monkeypatch.setenv("FAVORITES_TOKEN", "sesame")
+        if not db.on_postgres():
+            # A library file stands in for the cloud database.
+            path = tmp_path / "cloud.db"
+
+            def connect(*args, **kwargs):
+                c = sqlite3.connect(path)
+                c.row_factory = sqlite3.Row
+                c.executescript(db.SCHEMA)
+                return c
+            monkeypatch.setattr(db, "connect", connect)
+            monkeypatch.setattr(db, "on_postgres", lambda: True)
+
+    def stored(self):
+        conn = db.connect()
+        try:
+            return {slug: shortcuts.stored(conn, slug) for slug in app_module.SHORTCUT_SLUGS}
+        finally:
+            conn.close()
+
+    def test_the_mac_signs_them_once_and_again_when_the_password_changes(
+            self, mac_on_the_cloud_library, monkeypatch):
+        assert app_module._prepare_for_the_cloud() == 3
+        for slug, (data, fp) in self.stored().items():
+            name = app_module.SHORTCUT_SLUGS[slug]
+            assert fp == shortcuts.fingerprint(name, cloud.address(), "sesame")
+            assert b"Bearer sesame" in data and cloud.address().encode() in data
+        assert app_module._prepare_for_the_cloud() == 0  # nothing changed: nothing signed
+        monkeypatch.setenv("FAVORITES_TOKEN", "a-new-password")
+        assert app_module._prepare_for_the_cloud() == 3
+
+    def test_new_shortcuts_are_signed_again(self, mac_on_the_cloud_library, monkeypatch):
+        app_module._prepare_for_the_cloud()
+        monkeypatch.setattr(shortcuts, "VERSION", shortcuts.VERSION + "-next")
+        assert app_module._prepare_for_the_cloud() == 3
+
+    def test_without_a_password_or_a_way_to_sign_nothing_is_left(self, mac_on_the_cloud_library, monkeypatch):
+        monkeypatch.setattr(shortcuts.shutil, "which", lambda name: None)
+        assert app_module._prepare_for_the_cloud() == 0
+        monkeypatch.undo()
+        monkeypatch.delenv("FAVORITES_TOKEN", raising=False)
+        assert app_module._prepare_for_the_cloud() == 0
+
+    def test_a_library_on_the_mac_needs_none(self, monkeypatch, fake_shortcuts_command):
+        monkeypatch.setenv("FAVORITES_TOKEN", "sesame")
+        monkeypatch.setattr(db, "on_postgres", lambda: False)
+        assert app_module._prepare_for_the_cloud() == 0

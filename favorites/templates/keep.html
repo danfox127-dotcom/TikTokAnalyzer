@@ -10,6 +10,7 @@
   {% if error %}
     <p class="rr-notice keep-error">{{ icon('close') }}<span>{{ {
       'no-link': "That doesn't look like a link. In the app, tap Share → Copy link, then paste it here.",
+      'no-copied-link': "Nothing copied yet. In TikTok, Instagram or YouTube: Share → Copy link, then tap Save copied link again.",
       'failed': "Couldn't keep that one just now — check the link and try again.",
       'password': "That password didn't match. It's FAVORITES_TOKEN in ~/.favorites.env on your Mac."}.get(error, 'Something went wrong.') }}</span></p>
   {% endif %}
@@ -27,7 +28,7 @@
       <label class="rr-label" for="link">🔗 The link</label>
       <div class="link-row">
         <input type="url" inputmode="url" id="link" name="url" placeholder="Paste a TikTok, Instagram or YouTube link" required autocomplete="off">
-        <button class="rr-btn paste-btn" type="button" data-paste hidden>{{ icon('placard') }}Paste</button>
+        <button class="rr-btn paste-btn" type="button" data-paste hidden>{{ icon('placard') }}Paste &amp; keep</button>
       </div>
       <label class="rr-label" for="note">📝 Your note <span class="opt">(optional)</span></label>
       <input type="text" id="note" name="note" placeholder="Why are you keeping this?">
@@ -37,9 +38,9 @@
 
   <ol class="keep-how">
     <li>In TikTok, Instagram or YouTube: <b>Share → Copy link</b>.</li>
-    <li>Come here and tap <b>Paste</b>, then <b>Keep it</b>.</li>
+    <li>Come here and tap <b>Paste &amp; keep</b>. (Or <b>Save copied link</b> on Home.)</li>
   </ol>
-  <p class="rr-muted keep-faster">Faster still: a one-tap <b>Keep</b> in your share sheet — on iPhone with a Shortcut, on Android by adding this site to your home screen. Steps on <a href="/sync#phone">Keep it in sync</a>.</p>
+  <p class="rr-muted keep-faster">Faster still: a one-tap <b>Keep</b> in your share sheet — on iPhone with a Shortcut, on Android by adding this site to your home screen. Steps on <a href="/setup">Set up this phone</a>.</p>
 
   {% if has_password and remembered and not locked %}
     <form class="forget" action="/lock" method="post"><button class="rr-btn rr-btn--quiet" type="submit">Forget the password on this phone</button></form>
@@ -54,7 +55,8 @@
       navigator.clipboard.readText().then(function (t) {
         var m = (t || '').match(/https?:\/\/\S+/);
         f.value = m ? m[0] : (t || '').trim();
-        f.focus();
+        // A link: keep it now, with whatever note is already typed.
+        if (m && f.form.requestSubmit) f.form.requestSubmit(); else f.focus();
       }).catch(function () { f.focus(); });
     });
   })();

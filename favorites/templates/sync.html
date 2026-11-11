@@ -109,7 +109,7 @@
       <p class="yt-state">{{ icon('check') }}<span>Last looked {{ lookup.last.at[:16] | replace('T', ' ') }}: {{ lookup.last.resolved }} of {{ lookup.last.attempted }} found.</span></p>
     {% endif %}
     {% if missing and not lookup.running %}
-      {% if here %}
+      {% if on_mac %}
         <form action="/sync/lookup" method="post"><button class="rr-btn rr-btn--primary" type="submit">{{ icon('search') }}Look them up again</button></form>
       {% elif cloud %}<p>Faves on your Mac can look them up again: Keep it in sync there.</p>
       {% else %}<p>Look them up again from the Mac Faves runs on.</p>{% endif %}
@@ -127,19 +127,19 @@
   <div class="band-pad yt-body rr-reveal">
     {% if google.connected %}
       <p class="yt-state">{{ icon('check') }}<span>Connected.{% if google.last %} Last synced {{ google.last.at[:16] | replace('T', ' ') }}: {{ google.last.playlists }} playlists, {{ google.last.videos }} videos, {{ google.last.added }} new.{% endif %}</span></p>
-      {% if here %}
+      {% if on_mac %}
       <div class="row">
         <form action="/sync/youtube/now" method="post"><button class="rr-btn rr-btn--primary" type="submit">{{ icon('shuffle') }}Sync now</button></form>
         <form action="/sync/youtube/disconnect" method="post"><button class="rr-btn" type="submit">Disconnect</button></form>
       </div>
       {% endif %}
     {% elif google.configured %}
-      {% if here %}
+      {% if on_mac %}
         <form action="/sync/youtube/connect" method="post"><button class="rr-btn rr-btn--primary" type="submit">Connect Google</button></form>
         <p class="rr-muted small">Google will warn that the app is unverified — it's yours, so that's expected. Choose Advanced → Go to (your app).</p>
       {% else %}<p>Connect from the Mac Faves runs on.</p>{% endif %}
     {% else %}
-      <details class="setup"{% if here %} open{% endif %}><summary>One-time setup (about 10 minutes)</summary>
+      <details class="setup"{% if on_mac %} open{% endif %}><summary>One-time setup (about 10 minutes)</summary>
         <ol>
           <li>At <a href="https://console.cloud.google.com/projectcreate" target="_blank" rel="noopener noreferrer">Google Cloud</a>, create a project (any name, e.g. “Faves”).</li>
           <li>In <b>APIs &amp; Services → Library</b>, switch on <b>YouTube Data API v3</b>.</li>
@@ -171,15 +171,17 @@
     {% if not address_is_cloud %}
     <p class="rr-muted small">Your phone can only reach Faves while the Mac is awake with the Faves window open. A closed laptop lid still sleeps: leave it open, or turn on System Settings → Battery → Options → <i>Prevent automatic sleeping on power adapter when the display is off</i>.</p>
     {% endif %}
+    <p class="rr-notice">{{ icon('device') }}<span><b>New or restored phone?</b> <a href="/setup">Set up this phone</a> walks you through it: sign in, the Home Screen icon, and the shortcuts{% if cloud %}, which your Mac leaves here for any phone to install{% endif %}.</span></p>
     {% if token and not unlocked %}
       <p class="rr-notice">{{ icon('placard') }}<span>To install the shortcuts on this phone, first <a href="/keep">unlock it on the Keep page</a> (once), then come back here.</span></p>
-    {% elif cloud %}
-      <p class="rr-notice">{{ icon('placard') }}<span>The easiest way to set up <b>Save to Faves</b>: open Faves on your Mac, go to <b>Keep it in sync</b>, and press <b>Install Save to Faves</b>. It comes ready-made, already pointed here. Or build it yourself, below.</span></p>
-    {% elif token and not can_sign %}
+    {% elif cloud and not shortcut_ready['save-to-faves'] %}
+      <p class="rr-notice">{{ icon('clock') }}<span><b>Waiting for your Mac.</b> Only a Mac can prepare a ready-made shortcut. Open Faves on your Mac (double-click <code>start.command</code>) and leave it a minute; the Install buttons appear here. Or build it yourself, below.</span></p>
+    {% elif token and not can_sign and not cloud %}
       <p class="rr-notice">{{ icon('clock') }}<span>This Mac can't prepare ready-made shortcuts (that needs macOS 12 or later, signed in to iCloud). Use <b>Build it yourself</b> below.</span></p>
     {% endif %}
   </div>
-  {% set ready = token and unlocked and can_sign %}
+  {% set ready = token and shortcut_ready['save-to-faves'] %}
+  {% set ready_copied = token and shortcut_ready['save-copied-link'] %}
   <div class="export-cards band-pad phone-cards">
     <article class="export-card tone-pink rr-reveal" style="--i:0">
       <header><span class="em" aria-hidden="true">📤</span><div><h3>Save to Faves</h3><p class="when">In any app's share sheet</p></div></header>
@@ -193,18 +195,18 @@
     <article class="export-card tone-peach rr-reveal" style="--i:1">
       <header><span class="em" aria-hidden="true">👆</span><div><h3>Copy link, double-tap</h3><p class="when">No share sheet at all</p></div></header>
       <ol>
-        <li>{% if ready %}Tap <b>Install</b> below, then <b>Add Shortcut</b>.{% else %}Install “Save copied link”.{% endif %}</li>
+        <li>{% if ready_copied %}Tap <b>Install</b> below, then <b>Add Shortcut</b>.{% else %}Install “Save copied link”.{% endif %}</li>
         <li>On the phone: <b>Settings → Accessibility → Touch → Back Tap → Double Tap → Save copied link</b>.</li>
         <li>Then in TikTok or Instagram: <b>Copy link</b>, and double-tap the back of your phone.</li>
       </ol>
-      {% if ready %}<a class="rr-btn" href="/shortcuts/save-copied-link.shortcut">{{ icon('plus') }}Install Save copied link</a>{% endif %}
+      {% if ready_copied %}<a class="rr-btn" href="/shortcuts/save-copied-link.shortcut">{{ icon('plus') }}Install Save copied link</a>{% endif %}
     </article>
     <article class="export-card tone-mint rr-reveal" style="--i:2">
       <header><span class="em" aria-hidden="true">🛟</span><div><h3>The safety net</h3>
         <p class="when">{% if cloud %}Read by Faves on your Mac{% elif inbox.found %}Faves can see your inbox{% if inbox.rescued %} · <b>{{ inbox.rescued }} rescued</b>{% endif %}{% else %}No inbox on this Mac yet{% endif %}</p></div></header>
       <p class="wait">Both shortcuts write each link to <b>Faves inbox.txt</b> in iCloud Drive before sending it, which works even with no connection. Faves reads the inbox every minute and saves anything that didn't arrive, with the date you shared it.</p>
       {% if inbox.recent %}<ul class="inbox-recent">{% for l in inbox.recent[:3] %}<li><code>{{ l }}</code></li>{% endfor %}</ul>{% endif %}
-      {% if here and not inbox.found %}<p class="wait">It appears after your first save with the new shortcut. If macOS asks whether Terminal may use iCloud Drive, choose Allow.</p>{% endif %}
+      {% if on_mac and not inbox.found %}<p class="wait">It appears after your first save with the new shortcut. If macOS asks whether Terminal may use iCloud Drive, choose Allow.</p>{% endif %}
     </article>
   </div>
   <div class="band-pad phone-body rr-reveal">
@@ -219,7 +221,7 @@
               <span class="rr-muted small">{% if address_is_cloud %}Your Faves address in the cloud: it works anywhere, with no Tailscale needed.{% elif anywhere %}Your Tailscale address: it works at home and away, wherever your phone has Tailscale switched on.{% else %}Tailscale isn't on on this Mac, so this is your home wi-fi address: it only works while your phone is on the same wi-fi. Switch Tailscale on and reload this page for one that works anywhere.{% endif %}</span>
               {% if anywhere and at_home and not address_is_cloud %}<span class="rr-muted small">Not this one: <code>{{ at_home }}</code> is the home-wi-fi-only address.</span>{% endif %}
             {% else %}<span class="rr-muted">Couldn't tell this Mac's address. start.command prints it when it starts.</span>{% endif %}</dd></div>
-        {% if here %}
+        {% if on_mac %}
         <div><dt>Header name</dt>
           <dd><span class="copyable"><code>Authorization</code><button class="rr-btn rr-btn--quiet copy-btn" type="button" data-copy="Authorization" hidden>Copy</button></span></dd></div>
         <div><dt>Header value (your password)</dt>

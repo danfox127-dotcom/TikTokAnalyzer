@@ -201,11 +201,13 @@
      A home-screen app has no Back button, and a link to a page's "parent"
      is rarely where you were. So every page notes itself on a trail kept for
      this visit; the masthead's Back names the page before and returns to it.
-     A tab's own page (no Back) starts the trail afresh. */
+     A tab's own page (no Back) starts the trail afresh. A bare page -- the
+     sign-in -- is a door, not a place: it never joins the trail. */
   var TRAIL = 'rr-trail';
   function here() { return location.pathname + location.search; }
   function hereTitle() { return document.body.getAttribute('data-here') || document.title.replace(/ · Faves$/, ''); }
   function arrive(cameBack) {
+    if (document.body.hasAttribute('data-off-trail')) return;
     var trail = load(TRAIL, []), now = here(), at = -1, top = trail[trail.length - 1];
     trail.forEach(function (e, i) { if (e.u === now) at = i; });
     var going = load('rr-going-back', null); keep('rr-going-back', null);
@@ -519,6 +521,26 @@
     });
   }
 
+  /* ---- Save copied link: one tap saves the link already on the clipboard.
+     With no clipboard access the button is a plain link to the Keep page. ---- */
+  function copiedLink(text) { var m = (text || '').match(/https?:\/\/\S+/); return m ? m[0] : null; }
+  function postLink(url) {
+    var f = document.createElement('form'), i = document.createElement('input');
+    f.method = 'post'; f.action = '/keep';
+    i.type = 'hidden'; i.name = 'url'; i.value = url;
+    f.appendChild(i); document.body.appendChild(f); f.submit();
+  }
+  function saveCopied(a) {
+    a.addEventListener('click', function (e) {
+      if (!(navigator.clipboard && navigator.clipboard.readText) || e.metaKey || e.ctrlKey) return;
+      e.preventDefault();
+      navigator.clipboard.readText().then(function (t) {
+        var url = copiedLink(t);
+        if (url) postLink(url); else location.href = '/keep?error=no-copied-link';
+      }).catch(function () { location.href = a.getAttribute('href'); });
+    });
+  }
+
   function init() {
     setMode(stored());
     document.addEventListener('click', function (e) {
@@ -547,6 +569,9 @@
     document.querySelectorAll('form[data-inplace]').forEach(inplace);
     document.querySelectorAll('.explore-results .pager').forEach(moreResults);
     document.querySelectorAll('[data-deck]').forEach(deck);
+    document.querySelectorAll('[data-save-copied]').forEach(saveCopied);
+    var standalone = navigator.standalone || (window.matchMedia && matchMedia('(display-mode: standalone)').matches);
+    if (standalone) document.querySelectorAll('[data-standalone-step]').forEach(function (s) { s.classList.add('is-done'); });
     var said = load('rr-flash', null);
     if (said) { keep('rr-flash', null); toast(said); }
     motion();

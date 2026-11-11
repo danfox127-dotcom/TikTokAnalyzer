@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+{% from "_icons.html" import icon %}
+{% set back = '/more' %}{% set back_label = 'More' %}
+{% block title %}Set up this phone · Faves{% endblock %}
+{% block main_class %}is-bands{% endblock %}
+{#- A new or restored phone, working in a minute. Every step says whether it
+    is done; the Home Screen one is ticked by museum.js, which can tell when
+    the page was opened from the icon. -#}
+{% block content %}
+
+<section class="rr-hero sync-hero">
+  <p class="rr-label">📱 Set up this phone</p>
+  <h1 class="rr-h-xl">Faves on this phone, in a minute</h1>
+  <p class="lede">Do these on the phone you save from. A new or restored phone starts here,
+    and nothing needs your Mac.</p>
+</section>
+
+<section class="rr-band tone-pink" aria-label="Steps"><div class="inner">
+  <ol class="setup-steps band-pad">
+
+    <li class="export-card setup-step{% if signed_in %} is-done{% endif %}">
+      <header><span class="em" aria-hidden="true">{% if signed_in %}{{ icon('check') }}{% else %}1{% endif %}</span>
+        <div><h2>Sign in</h2>
+        <p class="when">{% if signed_in %}Done. This phone is remembered for a year.{% else %}Once on this phone.{% endif %}</p></div></header>
+      {% if not signed_in %}
+        <form class="setup-signin" action="/unlock" method="post">
+          <input type="hidden" name="username" value="Faves" autocomplete="username">
+          <label class="rr-label" for="pw">Your Faves password</label>
+          <input type="password" id="pw" name="password" autocomplete="current-password" required>
+          <input type="hidden" name="next" value="/setup">
+          <button class="rr-btn rr-btn--primary" type="submit">Sign in</button>
+        </form>
+        <p class="wait">The same password your Save to Faves shortcut uses. On your Mac it's under
+          Keep it in sync → Your phone → Build it yourself, after the word “Bearer”.</p>
+      {% endif %}
+    </li>
+
+    <li class="export-card setup-step" data-standalone-step>
+      <header><span class="em" aria-hidden="true"><span class="todo">2</span><span class="done">{{ icon('check') }}</span></span>
+        <div><h2>Put Faves on your Home Screen</h2>
+        <p class="when"><span class="todo">So it opens like an app.</span><span class="done">Done. You opened this from the Faves icon.</span></p></div></header>
+      <ol class="todo">
+        <li>Open this page in <b>Safari</b>.</li>
+        <li>Tap <b>Share</b> (the square with an arrow), then <b>Add to Home Screen</b>, then <b>Add</b>.</li>
+        <li>Open Faves from its new icon.</li>
+      </ol>
+    </li>
+
+    <li class="export-card setup-step{% if last_share %} is-done{% endif %}" id="share">
+      <header><span class="em" aria-hidden="true">{% if last_share %}{{ icon('check') }}{% else %}3{% endif %}</span>
+        <div><h2>Save from TikTok, Instagram and YouTube</h2>
+        <p class="when">{% if last_share %}Your last save from a phone: <a href="/item/{{ last_share.id }}">{{ (last_share.title or last_share.canonical_url)[:60] }}</a>, {{ last_share.saved_at[:10] }}.{% else %}The <b>Save to Faves</b> shortcut, in the share sheet.{% endif %}</p></div></header>
+      {% if ready['save-to-faves'] %}
+        <a class="rr-btn rr-btn--primary" href="/shortcuts/save-to-faves.shortcut">{{ icon('plus') }}Install Save to Faves</a>
+      {% elif cloud and signed_in %}
+        <p class="rr-notice">{{ icon('clock') }}<span><b>Waiting for your Mac.</b> Only a Mac can prepare a shortcut. Open Faves on your Mac
+          (double-click <code>start.command</code>) and leave it a minute, then reload this page.</span></p>
+      {% endif %}
+      <ol>
+        <li>Tap <b>Install Save to Faves</b>, then <b>Add Shortcut</b>. (Got one already from before? Delete the old one first.)</li>
+        <li>Pin it: open a share sheet (in TikTok: <b>Share → More</b>), scroll the list of actions to the end, tap <b>Edit Actions</b>, then the <b>+</b> next to <b>Save to Faves</b>.</li>
+        <li>Share something to <b>Save to Faves</b>. The first time, tap <b>Always Allow</b> on each question.</li>
+      </ol>
+    </li>
+
+    <li class="export-card setup-step tone-peach" id="faster">
+      <header><span class="em" aria-hidden="true">4</span>
+        <div><h2>Optional: fewer taps</h2>
+        <p class="when">Copy the link, then one press.</p></div></header>
+      {% if ready['save-copied-link'] %}
+        <a class="rr-btn" href="/shortcuts/save-copied-link.shortcut">{{ icon('plus') }}Install Save copied link</a>
+      {% endif %}
+      <p>In TikTok or Instagram tap <b>Share → Copy link</b>, then use whichever you like:</p>
+      <ul class="setup-ways">
+        <li><b>Double-tap the back of the phone.</b> Settings → Accessibility → Touch → Back Tap → Double Tap → <b>Save copied link</b>.</li>
+        <li><b>The Action Button</b> (iPhone 15 Pro and later). Settings → Action Button → swipe to <b>Shortcut</b> → choose <b>Save copied link</b>.</li>
+        <li><b>Control Center.</b> Swipe down from the top right, tap <b>+</b>, then <b>Add a Control</b>, search for <b>Shortcut</b>, and choose <b>Save copied link</b>.</li>
+        <li><b>Inside Faves.</b> The <b>Save copied link</b> button on Home. No shortcut needed.</li>
+      </ul>
+    </li>
+
+    <li class="export-card setup-step tone-mint" id="auto">
+      <header><span class="em" aria-hidden="true">✨</span>
+        <div><h2>Optional: save when you leave the app</h2>
+        <p class="when">Copy the link; Faves keeps it as you close TikTok.</p></div></header>
+      {% if ready['auto-save-copied-link'] %}
+        <a class="rr-btn" href="/shortcuts/auto-save-copied-link.shortcut">{{ icon('plus') }}Install Auto-save copied link</a>
+      {% endif %}
+      <ol>
+        <li>Install <b>Auto-save copied link</b> and tap <b>Add Shortcut</b>.</li>
+        <li>In the <b>Shortcuts</b> app, tap <b>Automation</b> at the bottom, then <b>+</b> (or <b>New Automation</b>).</li>
+        <li>Choose <b>App</b>. Tap <b>Choose</b>, pick <b>TikTok</b>, <b>Instagram</b> and <b>YouTube</b>, then <b>Done</b>.</li>
+        <li>Untick <b>Is Opened</b> and tick <b>Is Closed</b>. Choose <b>Run Immediately</b> and turn off <b>Notify When Run</b>. Tap <b>Next</b>.</li>
+        <li>Pick <b>Auto-save copied link</b>. That's it.</li>
+      </ol>
+      <p class="wait">From then on, a link you copy in one of those apps is kept when you leave it. Links you've kept already
+        are skipped, and only TikTok, Instagram and YouTube links are ever kept. If your iPhone asks whether the shortcut
+        may paste, choose <b>Always Allow</b>. Menu names vary a little between iOS versions.</p>
+    </li>
+  </ol>
+
+  {% if not (ready['save-to-faves'] or (cloud and signed_in)) %}
+    <p class="band-pad rr-muted small setup-more">{% if not has_password %}The shortcuts need a Faves password on your Mac first.{% endif %}
+      Building the shortcuts by hand, and the safety net that catches links shared offline, are on
+      <a href="/sync#phone">Keep it in sync</a>.</p>
+  {% endif %}
+</div></section>
+{% endblock %}

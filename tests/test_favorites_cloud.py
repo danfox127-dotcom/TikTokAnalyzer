@@ -13,7 +13,7 @@ import respx
 from fastapi.testclient import TestClient
 
 from favorites import app as web
-from favorites import backfill, cloud, db
+from favorites import backfill, cloud, db, shortcuts
 
 ROOT = Path(__file__).resolve().parent.parent
 HTML = {"accept": "text/html"}
@@ -67,6 +67,8 @@ class TestSignedOut:
         assert 'name="password"' in page and "zoning" not in page
         assert "rr-tabbar" not in page and "rr-footer" not in page
         assert "The same Faves password your Save to Faves shortcut uses" in page
+        # A door, not a place: Back on the page after it never says "Sign in".
+        assert "data-off-trail" in page
 
     def test_what_a_page_needs_to_draw_stays_open(self, cloud_app):
         assert cloud_app.get("/static/style.css").status_code == 200
@@ -235,11 +237,48 @@ class TestTheCloudPages:
         assert "<code>https://faves.example.vercel.app/save</code>" in page
         assert "Your Mac does the watching" in page and "Faves in the cloud." in page
         assert "Tailscale address" not in page and "White screen" not in page
-        # Shortcuts are signed on a Mac: the cloud copy points there for a ready-made one.
-        assert "press <b>Install Save to Faves</b>. It comes ready-made" in page
+        # Shortcuts are signed on a Mac: until it has left them here, the cloud
+        # copy says it is waiting, and points to Set up this phone.
+        assert "<b>Waiting for your Mac.</b>" in page and 'href="/setup"' in page
+        assert "/shortcuts/save-to-faves.shortcut" not in page
         assert "The shortcuts below save straight to it." not in page
         assert "This Mac can't prepare" not in page
         assert "sesame" not in page  # the password is never shown off the Mac
+
+    def leave(self, password="sesame"):
+        """What the Mac does: sign each shortcut for the cloud and leave it here."""
+        conn = db.connect()
+        for slug, name in web.SHORTCUT_SLUGS.items():
+            shortcuts.store(conn, slug, f"signed {name}".encode(),
+                            shortcuts.fingerprint(name, cloud.address(), password), db.now_iso())
+        conn.close()
+
+    def test_a_phone_installs_the_shortcuts_the_mac_left(self, cloud_app):
+        sign_in(cloud_app)
+        page = cloud_app.get("/setup", headers=HTML).text
+        assert "<b>Waiting for your Mac.</b>" in page and 'href="/shortcuts/' not in page
+        resp = cloud_app.get("/shortcuts/save-to-faves.shortcut")
+        assert resp.status_code == 503 and "Faves on your Mac prepares this shortcut" in resp.text
+        self.leave()
+        page = cloud_app.get("/setup", headers=HTML).text
+        assert "Waiting for your Mac" not in page
+        for slug in web.SHORTCUT_SLUGS:
+            assert f'href="/shortcuts/{slug}.shortcut"' in page
+        assert 'href="/shortcuts/save-to-faves.shortcut"' in cloud_app.get("/sync", headers=HTML).text
+        resp = cloud_app.get("/shortcuts/auto-save-copied-link.shortcut")
+        assert resp.status_code == 200 and resp.content == b"signed Auto-save copied link"
+        assert resp.headers["content-disposition"] == 'attachment; filename="Auto-save copied link.shortcut"'
+
+    def test_one_signed_for_an_old_password_is_not_offered(self, cloud_app):
+        self.leave(password="the-old-password")
+        sign_in(cloud_app)
+        assert cloud_app.get("/shortcuts/save-to-faves.shortcut").status_code == 503
+        assert 'href="/shortcuts/' not in cloud_app.get("/setup", headers=HTML).text
+
+    def test_signed_out_gets_no_shortcut(self, cloud_app):
+        self.leave()
+        assert cloud_app.get("/shortcuts/save-to-faves.shortcut").status_code == 401
+        assert cloud_app.get("/setup", headers=HTML, follow_redirects=False).status_code == 303
 
     def test_saves_missing_details_are_looked_up_from_the_mac(self, cloud_app):
         conn = db.connect()

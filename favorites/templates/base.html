@@ -28,8 +28,8 @@
 {% set back = back|default('') %}
 {% set back_label = back_label|default('Back') %}
 {% set chrome = chrome|default('') %}
-{% set more_pages = ('more', 'keep', 'placards', 'year', 'sync') %}
-<body class="rr{% if chrome == 'deck' %} is-deck{% endif %}"{% if not back %} data-root{% endif %}{% if here is defined %} data-here="{{ here }}"{% endif %}>
+{% set more_pages = ('more', 'keep', 'placards', 'year', 'sync', 'setup') %}
+<body class="rr{% if chrome == 'deck' %} is-deck{% endif %}"{% if chrome == 'bare' %} data-off-trail{% elif not back %} data-root{% endif %}{% if here is defined %} data-here="{{ here }}"{% endif %}>
 <div class="rr-app rr-page">
 {% if chrome not in ('deck', 'bare') %}
 <header class="rr-masthead{% if back %} has-back{% endif %}">
@@ -65,7 +65,7 @@
   <span>Your library lives {{ 'in your own cloud database' if in_the_cloud() else 'on this machine' }}{% if total is defined %} · {{ total }} {{ 'save' if total == 1 else 'saves' }}{% endif %}.</span>
   <a href="/keep">Keep a link</a>
   <a href="/unlabelled">Missing a note</a>
-  <a href="/surprise">Surprise me</a>
+  <a href="/shuffle">Shuffle</a>
   <a href="/wander">Rabbit hole</a>
   <a href="/year">Your year</a>
   <a href="/topics/sort">Sort things out</a>

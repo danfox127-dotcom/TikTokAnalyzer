@@ -700,6 +700,35 @@ def asyncio_noop():
     return _noop()
 
 
+class TestAutoSave:
+    """The automatic shortcut sends whatever is on the clipboard, every time you
+    leave TikTok, Instagram or YouTube."""
+
+    URL = "https://www.tiktok.com/@citydesk/video/7123?_t=abc"
+
+    def test_a_link_already_kept_is_not_looked_up_again(self, client):
+        with respx.mock:
+            oembed = respx.get(host="www.tiktok.com", path="/oembed").mock(
+                return_value=httpx.Response(200, json=OEMBED))
+            respx.route().mock(return_value=httpx.Response(404))
+            first = client.post("/save", json={"url": self.URL})
+            looked = oembed.call_count
+            again = client.post("/save?auto=1", json={"url": self.URL})
+            assert oembed.call_count == looked
+        assert again.status_code == 200
+        assert again.json()["already"] is True and again.json()["id"] == first.json()["id"]
+
+    def test_a_link_that_isnt_a_video_is_not_kept(self, client, library):
+        with respx.mock(assert_all_called=False):
+            resp = client.post("/save?auto=1", json={"url": "Statement https://bank.example.com/s/123"})
+        assert resp.status_code == 200 and resp.json()["skipped"] is True
+        assert db.count(library) == 0
+
+    def test_a_new_video_link_is_kept(self, client, tiktok_ok):
+        resp = client.post("/save?auto=1", json={"url": self.URL})
+        assert resp.status_code == 201 and resp.json()["created"] is True
+
+
 class TestKeepingFromThePhone:
     @pytest.fixture
     def locked(self, client, monkeypatch):

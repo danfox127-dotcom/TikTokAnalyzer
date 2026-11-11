@@ -118,6 +118,13 @@ CREATE TABLE IF NOT EXISTS meta (
     value TEXT
 );
 
+CREATE TABLE IF NOT EXISTS shortcut_files (
+    slug        TEXT PRIMARY KEY,
+    data        BYTEA NOT NULL,
+    fingerprint TEXT NOT NULL,
+    made_at     TEXT NOT NULL
+);
+
 -- SQLite's json_each over a JSON list kept as text, and its length.
 CREATE OR REPLACE FUNCTION json_each(text) RETURNS TABLE (key integer, value text)
 LANGUAGE sql IMMUTABLE AS $$

@@ -224,6 +224,27 @@ class TestGettingAround:
             assert f'<a href="{href}">' in page
         assert 'data-mode="dark"' in page
 
+    def test_the_random_feed_has_one_name(self, client, library):
+        # "Surprise me", "Shuffle" and the tab were the same feed by three names.
+        for path in ["/", "/search?q=nothing-matches-this"]:
+            page = client.get(path).text
+            assert "Surprise me" not in page and 'href="/surprise"' not in page
+        assert "<b>Shuffle</b>" in client.get("/").text
+
+    def test_save_copied_link_is_one_tap_with_the_keep_page_behind_it(self, client, library):
+        # The script reads the clipboard and posts the link; with no script, or
+        # no clipboard access, it is a plain link to the Keep page.
+        assert '<a class="rr-btn rr-keeplink" href="/keep" data-save-copied>' in client.get("/").text
+        assert "data-save-copied" in client.get("/static/museum.js").text
+        page = client.get("/keep?error=no-copied-link").text
+        assert "Nothing copied yet" in page and "Paste &amp; keep" in page
+
+    def test_a_page_after_keep_it_in_sync_is_not_called_true(self, client, library):
+        # The sync page's "is this the Mac?" flag was named like the page-name
+        # variable, so the back button on the next page read "True".
+        page = client.get("/sync").text
+        assert 'data-here="True"' not in page and 'data-here="False"' not in page
+
     @pytest.mark.parametrize("path", ["/keep", "/year", "/sync", "/more", "/notes"])
     def test_more_lights_up_for_its_pages(self, client, library, path):
         tabs = re.search(r'<nav class="rr-tabbar".*?</nav>', client.get(path).text, re.S).group(0)

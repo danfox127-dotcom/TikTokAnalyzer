@@ -53,8 +53,8 @@
     </label>
   </form>
   <div class="rr-bigdoors">
-    <a class="rr-surprise" href="/shuffle"><span class="die" aria-hidden="true">🎲</span><span class="t"><b>Surprise me</b><span>Swipe through your saves at random</span></span></a>
-    <a class="rr-btn rr-keeplink" href="/keep">{{ icon('plus') }}Keep a link</a>
+    <a class="rr-surprise" href="/shuffle"><span class="die" aria-hidden="true">🎲</span><span class="t"><b>Shuffle</b><span>Flick through your saves at random</span></span></a>
+    <a class="rr-btn rr-keeplink" href="/keep" data-save-copied>{{ icon('plus') }}Save copied link</a>
   </div>
   <ul class="rr-pills is-scroll hooks" aria-label="Ways in">
     {% if on_this_day %}<li><a class="rr-pill is-hook" href="{{ on_this_day.href }}">{{ icon('calendar') }}On this day <span class="n">{{ on_this_day.count }}</span></a></li>{% endif %}

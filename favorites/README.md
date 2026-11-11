@@ -247,9 +247,19 @@ Added to the home screen, Faves opens with no browser around it: no Back
 button, no address bar. So it carries its own.
 
 - **Tabs:** Home · Search · **Shuffle** · Topics · **More**. More is a sheet
-  holding everything else — Keep a link, Give saves a topic, Notes, Sort things
-  out, Your year, Rabbit hole, Keep it in sync, and Day/Night. (`/more` is the
-  same list as a page.)
+  holding everything else — Keep a link, Set up this phone, Give saves a topic,
+  Notes, Sort things out, Your year, Rabbit hole, Keep it in sync, and
+  Day/Night. (`/more` is the same list as a page.)
+- **Set up this phone** (`/setup`). A new or restored phone working in a
+  minute, with no Mac nearby: sign in, the Home Screen icon (ticked by itself
+  when the page is opened from the icon), Save to Faves, and the optional ways
+  with fewer taps. Once the library is in the cloud, the Mac signs the
+  shortcuts for the cloud copy every hour (only re-signing when the address,
+  password or shortcuts change) and leaves them in the library, so a phone
+  installs them from there.
+- **Save copied link** on Home reads the clipboard and keeps the link in one
+  tap, landing on the save so you can add a note. With no clipboard access it
+  opens the Keep page, whose **Paste & keep** does the same.
 - **Back goes where you came from.** Every page below the tabs has a Back in
   the top bar, named for the page before it — "‹ Undefined saves", say, after
   opening a save from that list. Each page notes itself on a trail kept for the

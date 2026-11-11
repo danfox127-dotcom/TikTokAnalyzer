@@ -971,6 +971,24 @@ a.rr-stat:hover { transform: translateY(-3px); }
 .export-card ol { margin: 0; padding-left: 20px; display: grid; gap: 6px; font: 600 14px/20px var(--font-sans); }
 .export-card .wait { margin: 0; font: italic 600 13.5px/19px var(--font-sans); color: var(--ink-muted); }
 .export-card .rr-btn { align-self: flex-start; margin-top: auto; white-space: normal; text-align: left; padding-top: 8px; padding-bottom: 8px; }
+
+/* ---- Set up this phone: a checklist that ticks itself ---- */
+.setup-steps { list-style: none; margin: 0; display: grid; gap: 16px; max-width: 720px; }
+.setup-step h2 { margin: 0; font: 600 20px/24px var(--font-display); }
+.setup-step .em { font: 700 20px/1 var(--font-display); color: var(--band-ink); }
+.setup-step.is-done .em { background: var(--band-mint); color: var(--band-mint-ink); }
+.setup-step.is-done .when { color: var(--band-mint-ink); }
+.setup-step .done, .setup-step.is-done .todo { display: none; }
+.setup-step.is-done .done { display: inline; }
+.setup-step.is-done ol.todo { display: none; }
+.setup-step p { margin: 0; font: 600 14px/20px var(--font-sans); }
+.setup-step .when a { color: var(--accent-ink); text-decoration: underline; }
+.setup-ways { margin: 0; padding-left: 20px; display: grid; gap: 8px; font: 600 14px/20px var(--font-sans); }
+.setup-signin { display: grid; gap: 8px; }
+.setup-signin input[type=password] { min-height: 46px; padding: 0 14px; border-radius: var(--radius-pill); border: 2px solid var(--rule-strong); background: var(--wall-raised); color: var(--ink); font: 600 16px/20px var(--font-sans); }
+.setup-signin .rr-btn { justify-self: start; }
+.setup-more { margin-top: 16px; }
+.setup-more a { color: var(--accent-ink); text-decoration: underline; }
 .folder-body, .yt-body, .phone-body { display: grid; gap: 14px; font: 600 15px/22px var(--font-sans); max-width: 760px; }
 .folder-body form, .yt-body form { margin: 0; }
 .folders, .imports { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
