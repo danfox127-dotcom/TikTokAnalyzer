@@ -597,6 +597,14 @@ far more than your favourites:
   what you saved that month (30 seconds if none has a length). The export
   doesn't say how long you watched.
 
+**Your TikTok stats** (`/stats`, in Browse, and *See it all* on any Rewind)
+is the same month as a page to scroll instead of cards to swipe: every month
+as columns on top (videos, likes, saves or searches; tap one to go to it, and
+*Every month's numbers* opens them as a table), then the month in five
+numbers against the month before, day by day, the clock, the top ten
+creators, every topic and up to twenty searches. *Play as a story* goes back
+to the cards. Both draw the same charts (`templates/_rewind.html`).
+
 ## What TikTok knows
 
 `/known` (in Browse and More, and at the end of Rewind) borrows this repo's

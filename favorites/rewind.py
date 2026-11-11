@@ -241,9 +241,44 @@ def _ordinal(n: int) -> str:
     return f"{n}{'th' if 10 <= n % 100 <= 20 else {1: 'st', 2: 'nd', 3: 'rd'}.get(n % 10, 'th')}"
 
 
+def trend(conn: sqlite3.Connection, tz: Optional[ZoneInfo] = None) -> list[dict]:
+    """Every month at a glance, oldest first: videos opened, likes, saves and
+    searches, each counted in your own time zone, like the month itself."""
+    tz = tz or timezone.utc
+    keys = sorted(months(conn, tz))
+    if not keys:
+        return []
+    opened: Counter[str] = Counter()
+    searched: Counter[str] = Counter()
+    liked: dict[str, set] = {}
+    for r in conn.execute("SELECT kind, at, ref FROM activity WHERE platform = 'tiktok'"):
+        key = _when(r["at"], tz).strftime("%Y-%m")
+        if r["kind"] == "watch":
+            opened[key] += 1
+        elif r["kind"] == "search":
+            searched[key] += 1
+        elif r["kind"] == "like":
+            liked.setdefault(key, set()).add(r["ref"])
+    saved: Counter[str] = Counter()
+    lo = _utc(_bounds(keys[0], tz)[0])
+    for r in conn.execute("SELECT saved_at FROM items WHERE platform = 'tiktok' AND saved_at >= ?", (lo,)):
+        try:
+            saved[_when(r[0], tz).strftime("%Y-%m")] += 1
+        except (TypeError, ValueError):
+            continue
+    return [{"key": k, "name": month_name(k), "year": int(k[:4]), "opened": opened[k],
+             "liked": len(liked.get(k, ())), "saved": saved[k], "searched": searched[k]} for k in keys]
+
+
 def month(conn: sqlite3.Connection, key: str, tz: Optional[ZoneInfo] = None,
-          now: Optional[datetime] = None) -> Optional[dict]:
-    """Everything Rewind says about one month, or None with nothing to say."""
+          now: Optional[datetime] = None, creators: int = 5, topics: Optional[int] = 5,
+          searches: int = 8) -> Optional[dict]:
+    """Everything Rewind says about one month, or None with nothing to say.
+
+    ``creators``, ``topics`` and ``searches`` say how many of each to list:
+    the story's five, or more for the stats page (``topics=None`` is every one).
+    """
+    n_creators, n_topics, n_searches = creators, topics, searches
     tz = tz or timezone.utc
     now = now or datetime.now(timezone.utc)
     start, end = _bounds(key, tz)
@@ -252,7 +287,7 @@ def month(conn: sqlite3.Connection, key: str, tz: Optional[ZoneInfo] = None,
         "SELECT kind, at, ref FROM activity WHERE platform = 'tiktok' AND at >= ? AND at < ?",
         (lo, hi)).fetchall()
     watched = [_when(r["at"], tz) for r in rows if r["kind"] == "watch"]
-    searches = [r["ref"] for r in rows if r["kind"] == "search"]
+    searched = [r["ref"] for r in rows if r["kind"] == "search"]
     if not watched and not any(r["kind"] == "like" for r in rows):
         return None
 
@@ -265,10 +300,12 @@ def month(conn: sqlite3.Connection, key: str, tz: Optional[ZoneInfo] = None,
 
     # When: a week of hours, and how much of the month the export covers.
     clock = [[0] * 24 for _ in range(7)]
+    last_day = calendar.monthrange(start.year, start.month)[1]
+    days = [0] * last_day
     for t in watched:
         clock[t.weekday()][t.hour] += 1
+        days[t.day - 1] += 1
     busiest = max(((d, h) for d in range(7) for h in range(24)), key=lambda dh: clock[dh[0]][dh[1]])
-    last_day = calendar.monthrange(start.year, start.month)[1]
     first_seen = min(watched).day if watched else None
     last_seen = max(watched).day if watched else None
     ongoing = start <= now.astimezone(tz) < end
@@ -279,18 +316,18 @@ def month(conn: sqlite3.Connection, key: str, tz: Optional[ZoneInfo] = None,
 
     # Who and what, from likes and saves -- this month's and last month's.
     videos, likes = _videos(conn, lo, hi)
-    creators, names, topics, total = _mix(videos)
+    who, names, what, total = _mix(videos)
     p_videos, _ = _videos(conn, p_lo, p_hi)
     p_creators, _, p_topics, p_total = _mix(p_videos)
     p_rank = {k: i + 1 for i, (k, _) in enumerate(p_creators.most_common())}
     top = []
-    for i, (k, n) in enumerate(creators.most_common(5)):
+    for i, (k, n) in enumerate(who.most_common(n_creators)):
         before = p_rank.get(k)
         top.append({"name": names[k], "handle": k if k.startswith("@") else "", "count": n,
                     "was": ("new" if not before else f"up from {_ordinal(before)}" if before > i + 1 else "")})
 
-    named = [(t, n) for t, n in topics.most_common() if t]
-    shown = named[:5]
+    named = [(t, n) for t, n in what.most_common() if t]
+    shown = named if n_topics is None else named[:n_topics]
     rest = total - sum(n for _, n in shown)
     themes = [{"name": t, "count": n, "share": round(100 * n / total)} for t, n in shown]
     if rest and total:
@@ -311,7 +348,7 @@ def month(conn: sqlite3.Connection, key: str, tz: Optional[ZoneInfo] = None,
     seconds = min(int(median(lengths)), MOST_SECONDS) if lengths else GUESS_SECONDS
     hours = len(watched) * seconds / 3600
 
-    words = Counter(s.strip().lower() for s in searches if s.strip())
+    words = Counter(s.strip().lower() for s in searched if s.strip())
     return {
         "key": key, "name": MONTH_NAMES[start.month - 1], "year": start.year,
         "prev": prev, "prev_name": month_name(prev),
@@ -320,6 +357,7 @@ def month(conn: sqlite3.Connection, key: str, tz: Optional[ZoneInfo] = None,
         "coverage": coverage, "ongoing": ongoing,
         "hours": round(hours), "seconds": seconds, "seconds_guessed": not lengths,
         "clock": clock, "peak": max(max(r) for r in clock),
+        "days": days, "day_peak": max(days) if days else 0, "weekday_one": start.weekday(),
         "busiest": {"day": DAYS[busiest[0]], "hour": busiest[1]} if watched else None,
         "liked": likes["liked"], "kept": likes["kept"], "waiting": likes["waiting"],
         "saved": conn.execute(
@@ -327,6 +365,6 @@ def month(conn: sqlite3.Connection, key: str, tz: Optional[ZoneInfo] = None,
             (lo, hi)).fetchone()[0],
         "creators": top, "looked_at": total,
         "themes": themes, "jump": jump,
-        "searched": len(searches), "searches": [w for w, _ in words.most_common(8)],
+        "searched": len(searched), "searches": [w for w, _ in words.most_common(n_searches)],
         "tz": getattr(tz, "key", "UTC"),
     }

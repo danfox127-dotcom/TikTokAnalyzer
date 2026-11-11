@@ -1,0 +1,51 @@
+{#- Rewind's charts, drawn the same in the story (rewind.html) and on the
+    stats page (stats.html). -#}
+
+{#- An hour as the clock says it: 0 -> "12am", 13 -> "1pm". -#}
+{% macro hr(h) %}{{ (h % 12) or 12 }}{{ 'am' if h % 24 < 12 else 'pm' }}{% endmacro %}
+
+{#- How much of the accent a clock square holds, by how busy it was: one hue,
+    light to dark, over the panel's own surface. -#}
+{% macro shade(level) %}{% set steps = [0, 18, 36, 56, 78, 100] %}{% if level == 0 %}var(--wall-sunk){% else %}color-mix(in oklab, var(--accent) {{ steps[level] }}%, var(--wall-raised)){% endif %}{% endmacro %}
+
+{#- The week as a clock: a day per row, an hour per square. -#}
+{% macro clock(m) %}
+{%- set days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'] -%}
+<svg class="rw-clock" viewBox="0 0 326 120" role="img" aria-label="Videos opened by day and hour in {{ m.name }}{% if m.busiest %}. Busiest: {{ m.busiest.day }}, {{ hr(m.busiest.hour) }}{% endif %}.">
+  {% for row in m.clock %}{% set d = loop.index0 %}
+    <text x="0" y="{{ d * 15 + 10 }}" class="lab">{{ days[d][:3] }}</text>
+    {% for n in row %}{% set h = loop.index0 %}
+      {%- set level = 0 if n == 0 else [1, [5, ((n * 5 / m.peak) | round(0, 'ceil') | int)] | min] | max -%}
+      <rect x="{{ 28 + h * 12.5 }}" y="{{ d * 15 }}" width="10.5" height="13" rx="2.5" style="fill: {{ shade(level) }}"{% if m.busiest and m.busiest.hour == h and days[d] == m.busiest.day %} class="peak"{% endif %}><title>{{ days[d] }}s, {{ hr(h) }}–{{ hr(h + 1) }}: {{ n }} {{ 'video' if n == 1 else 'videos' }}</title></rect>
+    {%- endfor %}
+  {% endfor %}
+  {% for h in (0, 6, 12, 18) %}<text x="{{ 28 + h * 12.5 }}" y="118" class="lab">{{ hr(h) }}</text>{% endfor %}
+</svg>
+<div class="rw-legend">
+  <span>{% if m.busiest %}<i class="ring" aria-hidden="true"></i>Busiest hour{% endif %}</span>
+  <span class="scale">Fewer{% for level in range(6) %}<i style="background: {{ shade(level) }}" aria-hidden="true"></i>{% endfor %}More</span>
+</div>
+{%- endmacro %}
+
+{#- Creators ranked, each with a thin bar against the most. -#}
+{% macro ranks(creators, most, start=1) %}
+<ol class="rw-rank" start="{{ start }}">
+  {% for c in creators %}
+    <li><span class="rw-avatar" aria-hidden="true">{{ c.name | initials }}</span>
+      <span class="who"><b>{{ c.name }}{% if c.was == 'new' %} <span class="rw-new">new</span>{% elif c.was %} <span class="rw-was">{{ c.was }}</span>{% endif %}</b>
+        <span class="bar" style="width: {{ (100 * c.count / most) | round | int if most else 0 }}%"></span></span>
+      <span class="n">{{ c.count }}</span></li>
+  {% endfor %}
+</ol>
+{%- endmacro %}
+
+{#- Topics by share, "Everything else" last and muted. -#}
+{% macro topic_bars(themes) %}
+{%- set most = themes | map(attribute='count') | max -%}
+<ul class="rw-themes">
+  {% for t in themes %}
+    <li{% if t.rest %} class="is-rest"{% endif %}><b>{% if not t.rest %}{{ look(t.name)[2] }} {% endif %}{{ t.name }}</b><i>{{ t.share }}%</i>
+      <span class="bar" style="width: {{ (100 * t.count / most) | round | int if most else 0 }}%"></span></li>
+  {% endfor %}
+</ul>
+{%- endmacro %}
