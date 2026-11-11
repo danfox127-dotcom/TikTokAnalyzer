@@ -1315,6 +1315,22 @@ html:has(.rr-sheet-dialog[open]) { overflow: hidden; }
 .rw-meter span { display: block; height: 100%; min-width: 4px; border-radius: 4px; background: var(--accent); }
 .rw-more { display: flex; justify-content: space-between; gap: 10px; margin-top: 18px; }
 
+/* ---- What TikTok knows: Rewind's cards, with lists of records ---- */
+.kn-records { list-style: none; margin: 0; padding: 0; }
+.kn-records li { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 7px 0; }
+.kn-records li + li { border-top: 1px solid var(--rule); }
+.kn-records b { min-width: 0; font: 800 14px/19px var(--font-sans); overflow-wrap: anywhere; }
+.kn-records span { flex: none; font: 700 13px/18px var(--font-sans); color: var(--ink-muted); text-align: right; }
+.kn-events { margin-top: 4px; padding: 6px 16px; border-radius: var(--radius-md); background: var(--wall-raised); box-shadow: var(--shadow-soft); }
+.kn-said { margin-bottom: 12px; font-size: 14px; line-height: 20px; }
+.kn-chips { margin-top: 10px; }
+.kn-chips .rr-pill { cursor: default; }
+.kn-gap { margin-top: 14px; }
+.kn-steps { margin: 10px 0 0; padding-left: 20px; display: grid; gap: 10px; font: 600 14px/20px var(--font-sans); }
+.kn-steps b { font-weight: 800; }
+.kn-next { margin: 18px 0 0; font: 800 15px/20px var(--font-sans); }
+.kn-next a { display: inline-flex; align-items: center; gap: 4px; color: var(--accent-ink); }
+
 /* ---- a save's own actions, pinned above the tabs on a phone ---- */
 .save-bar {
   /* Clear of the tab bar and the Shuffle ball that rises out of it. */

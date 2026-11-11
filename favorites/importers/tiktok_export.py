@@ -28,6 +28,7 @@ import json
 import re
 import sqlite3
 import zipfile
+from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path, PurePosixPath
 from typing import Iterable, Optional
@@ -186,6 +187,196 @@ def import_activity(conn: sqlite3.Connection, activity: dict[str, list[tuple[str
     return added
 
 
+# --- what the export says TikTok keeps about you ("What TikTok knows") -------
+#
+# Only a summary is kept: how many of each kind, how far back, which devices
+# and companies -- never a message, a comment, an IP address or a contact
+# detail itself.
+
+#: Profile fields, in the page's words. Only *whether* each is on file is
+#: kept, except the two in SHOWN.
+PROFILE_FIELDS = {
+    "userName": "username", "displayName": "display name", "nickName": "display name",
+    "birthDate": "birth date", "emailAddress": "email address", "email": "email address",
+    "telephoneNumber": "phone number", "phoneNumber": "phone number",
+    "bioDescription": "bio", "profilePhoto": "profile photo", "profileVideo": "profile video",
+    "accountRegion": "region", "inferredGender": "a guess at your gender", "gender": "gender",
+}
+SHOWN = {"userName": "username", "accountRegion": "region"}
+
+#: Each kind of record, in the page's words, and where it has lived.
+RECORDS = {
+    "Videos you opened": ACTIVITY_PATHS["watch"],
+    "Likes": ACTIVITY_PATHS["like"],
+    "Favourites": [("Likes and Favorites", "Favorite Videos", "FavoriteVideoList"),
+                   ("Your Activity", "Favorite Videos", "FavoriteVideoList"),
+                   ("Activity", "Favorite Videos", "FavoriteVideoList")],
+    "Searches": ACTIVITY_PATHS["search"],
+    "Shares": [("Your Activity", "Share History", "ShareHistoryList"),
+               ("Activity", "Share History", "ShareHistoryList")],
+    "Comments": [("Comment", "Comments", "CommentsList"), ("Comments", "Comments", "CommentsList")],
+    "Accounts you follow": [("Profile And Settings", "Following", "Following"),
+                            ("Your Activity", "Following List", "Following"),
+                            ("Profile And Settings", "Following List", "Following")],
+    "Followers": [("Profile And Settings", "Follower", "FansList"),
+                  ("Your Activity", "Follower List", "FansList"),
+                  ("Profile And Settings", "Follower List", "FansList")],
+    "Accounts you blocked": [("Profile And Settings", "Block List", "BlockList"),
+                             ("Your Activity", "Block List", "BlockList"),
+                             ("Activity", "Block List", "BlockList")],
+    "Logins": [("Your Activity", "Login History", "LoginHistoryList"),
+               ("Activity", "Login History", "LoginHistoryList")],
+    "Activity from other apps and websites": [
+        ("Your Activity", "Off TikTok Activity", "OffTikTokActivityDataList"),
+        ("Profile And Settings", "Off TikTok Activity", "OffTikTokActivityDataList"),
+        ("Activity", "Off TikTok Activity", "OffTikTokActivityDataList")],
+    "Shop orders": [("TikTok Shop", "Order", "OrderList"), ("TikTok Shop", "Orders", "OrderList")],
+    "Products you looked at in the Shop": [("TikTok Shop", "Product Browsing History", "ProductBrowsingHistories")],
+}
+_WHEN_FORMATS = (EXPORT_DATE, "%Y-%m-%dT%H:%M:%S", "%Y-%m-%dT%H:%M:%S.%f", "%Y-%m-%d")
+_DATE_KEYS = ("Date", "date", "TimeStamp", "Timestamp", "timestamp", "CreateTime", "browsing_date", "BrowsingDate")
+
+
+def _first(data: dict, paths: Iterable[tuple[str, ...]]):
+    """The first of ``paths`` that holds anything."""
+    for path in paths:
+        found = _dig(data, *path)
+        if found:
+            return found
+    return None
+
+
+def _when(raw) -> Optional[str]:
+    """A date in any of the shapes the export uses, as ISO-8601 UTC."""
+    raw = str(raw or "").strip()
+    for fmt in _WHEN_FORMATS:
+        try:
+            return datetime.strptime(raw, fmt).replace(tzinfo=timezone.utc).isoformat()
+        except ValueError:
+            continue
+    return None
+
+
+def _pick(row: dict, keys: Iterable[str]) -> str:
+    for key in keys:
+        if str(row.get(key) or "").strip():
+            return str(row[key]).strip()
+    return ""
+
+
+def _span(rows: list) -> tuple[Optional[str], Optional[str]]:
+    dates = sorted(d for d in (_when(_pick(r, _DATE_KEYS)) for r in rows if isinstance(r, dict)) if d)
+    return (dates[0], dates[-1]) if dates else (None, None)
+
+
+def _top(counter: Counter, n: int = 12) -> list[list]:
+    return [[k, v] for k, v in counter.most_common(n) if k]
+
+
+def _messages(data: dict) -> tuple[int, int, list]:
+    """Conversations and messages, counted -- and the messages' dates, for
+    how far back they go. Never their words."""
+    chats = _first(data, [("Direct Message", "Direct Messages", "ChatHistory"),
+                          ("Direct Messages", "Direct Messages", "ChatHistory")]) or {}
+    threads = list(chats.values()) if isinstance(chats, dict) else chats if isinstance(chats, list) else []
+    conversations, rows = 0, []
+    for chat in threads:
+        msgs = chat if isinstance(chat, list) else (chat.get("Messages") or chat.get("messages") or []) \
+            if isinstance(chat, dict) else []
+        if isinstance(msgs, list) and msgs:
+            conversations += 1
+            rows += [{"Date": m.get("Date") or m.get("date")} for m in msgs if isinstance(m, dict)]
+    return conversations, len(rows), rows
+
+
+def read_dossier(path: str | Path | dict) -> dict:
+    """A summary of what the export says TikTok keeps about you.
+
+    Counts, spans and names of devices and companies; never message or
+    comment text, IP addresses, or contact details (only that they're on file).
+    """
+    data = _data(path)
+    profile = _first(data, [("Profile And Settings", "Profile Info", "ProfileMap"),
+                            ("Profile And Settings", "ProfileMap"),
+                            ("Profile", "Profile Information", "ProfileMap")]) or {}
+    profile = profile if isinstance(profile, dict) else {}
+    held = sorted({label for key, label in PROFILE_FIELDS.items() if str(profile.get(key) or "").strip()})
+    shown = {label: str(profile[key]).strip()[:80] for key, label in SHOWN.items()
+             if str(profile.get(key) or "").strip()}
+
+    raw_ads = _first(data, [("Your Activity", "Ad Interests", "AdInterestCategories"),
+                            ("Ad Interests", "AdInterestCategories")])
+    if isinstance(raw_ads, str):
+        raw_ads = raw_ads.split(",")
+    ads = list(dict.fromkeys(str(a).strip() for a in (raw_ads or []) if str(a).strip()))
+    settings = _first(data, [("Profile And Settings", "Settings", "SettingsMap"),
+                             ("Profile And Settings", "SettingsMap")]) or {}
+    picked = str((settings.get("Interests") if isinstance(settings, dict) else "") or "")
+    declared = [i.strip() for i in picked.split("|") if i.strip()]
+
+    logins = [r for r in _first_list(data, RECORDS["Logins"]) if isinstance(r, dict)]
+    devices: Counter[str] = Counter()
+    networks: Counter[str] = Counter()
+    carriers: Counter[str] = Counter()
+    addresses: set[str] = set()
+    for r in logins:
+        device = " · ".join(p for p in (_pick(r, ("DeviceModel", "deviceModel")),
+                                        _pick(r, ("DeviceSystem", "deviceSystem"))) if p)
+        devices[device] += 1
+        networks[_pick(r, ("NetworkType", "networkType"))] += 1
+        carriers[_pick(r, ("Carrier", "carrier"))] += 1
+        ip = _pick(r, ("IP", "ip"))
+        if ip:
+            addresses.add(ip)          # counted here, and only the count is kept
+    first_login, last_login = _span(logins)
+
+    off = [r for r in _first_list(data, RECORDS["Activity from other apps and websites"]) if isinstance(r, dict)]
+    sources: Counter[str] = Counter(_pick(r, ("Source", "SourceName", "source", "App", "Website")) for r in off)
+    events: Counter[str] = Counter(_pick(r, ("Event", "EventType", "event", "event_type")) for r in off)
+    off_first, off_last = _span(off)
+
+    records, newest = [], []
+    for kind, paths in RECORDS.items():
+        rows = _first_list(data, paths)
+        if not rows:
+            continue
+        first, last = _span(rows)
+        records.append({"kind": kind, "count": len(rows), "since": first})
+        newest.append(last)
+    conversations, messages, message_rows = _messages(data)
+    if messages:
+        first, last = _span(message_rows)
+        records.append({"kind": "Messages", "count": messages, "since": first})
+        newest.append(last)
+    return {
+        "latest": max((d for d in newest if d), default=None),
+        "profile": {"held": held, **shown},
+        "ad_interests": ads, "declared_interests": declared,
+        "logins": {"count": len(logins), "first": first_login, "last": last_login,
+                   "devices": _top(devices), "networks": _top(networks), "carriers": _top(carriers),
+                   "addresses": len(addresses)},
+        "off_tiktok": {"count": len(off), "first": off_first, "last": off_last,
+                       "sources": _top(sources), "source_count": len([s for s in sources if s]),
+                       "events": _top(events)},
+        "messages": {"conversations": conversations, "messages": messages},
+        "records": records,
+    }
+
+
+def store_dossier(conn: sqlite3.Connection, dossier: dict) -> Optional[str]:
+    """Keep an export's summary, once per export (by its newest record).
+    Returns that date, or None when the export held nothing to summarise."""
+    made_at = dossier.get("latest")
+    if not made_at:
+        return None
+    conn.execute(
+        "INSERT INTO dossiers (platform, made_at, read_at, data) VALUES ('tiktok', ?, ?, ?)"
+        " ON CONFLICT (platform, made_at) DO UPDATE SET read_at = excluded.read_at, data = excluded.data",
+        (made_at, db.now_iso(), json.dumps(dossier)))
+    conn.commit()
+    return made_at
+
+
 def import_rows(
     conn: sqlite3.Connection, rows: list[dict], source: str
 ) -> dict[str, int]:
@@ -247,6 +438,7 @@ def import_export(
     if include_likes:
         result["likes"] = import_rows(conn, lists["likes"], "export-like")
     result["activity"] = import_activity(conn, read_activity(data))
+    result["dossier"] = store_dossier(conn, read_dossier(data))
     return result
 
 

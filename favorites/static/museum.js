@@ -573,13 +573,13 @@
   function rewind(el) {
     var tz = '';
     try { tz = Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch (e) {}
-    var u = new URL(location.href);
-    if (tz && el.getAttribute('data-tz') !== tz && u.searchParams.get('tz') !== tz) {
+    var u = new URL(location.href), asks = el.hasAttribute('data-tz');   // only Rewind's clock needs it
+    if (asks && tz && el.getAttribute('data-tz') !== tz && u.searchParams.get('tz') !== tz) {
       u.searchParams.set('tz', tz);
       location.replace(u.toString());
       return;
     }
-    if (u.searchParams.has('tz') && el.getAttribute('data-tz') === u.searchParams.get('tz')) {
+    if (asks && u.searchParams.has('tz') && el.getAttribute('data-tz') === u.searchParams.get('tz')) {
       u.searchParams.delete('tz');
       history.replaceState(history.state, '', u.pathname + u.search + u.hash);
     }
