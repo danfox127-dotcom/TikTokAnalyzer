@@ -152,6 +152,7 @@
         {% if earlier %}<a class="rr-btn" href="/rewind/{{ earlier }}">{{ icon('left') }}{{ month_name(earlier) }}</a>{% endif %}
         {% if later %}<a class="rr-btn" href="/rewind/{{ later }}">{{ month_name(later) }}{{ icon('right') }}</a>{% endif %}
       </nav>
+      <p class="kn-next"><a href="/known">What TikTok knows about you{{ icon('right') }}</a></p>
       {% if months | length > 2 %}
         <ul class="rw-months">{% for k in months %}<li><a class="rr-pill{% if k == m.key %} is-on{% endif %}" href="/rewind/{{ k }}">{{ month_name(k) }} {{ k[:4] }}</a></li>{% endfor %}</ul>
       {% endif %}

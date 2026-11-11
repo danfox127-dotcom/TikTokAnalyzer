@@ -135,6 +135,17 @@ CREATE TABLE IF NOT EXISTS activity (
 );
 CREATE INDEX IF NOT EXISTS activity_kind_at ON activity (kind, at);
 
+-- What a platform's export says it keeps about you, summarised: counts,
+-- spans, devices and companies -- never messages, comments, IP addresses or
+-- contact details. One row per export, by its newest record.
+CREATE TABLE IF NOT EXISTS dossiers (
+    platform TEXT NOT NULL,
+    made_at  TEXT NOT NULL,
+    read_at  TEXT NOT NULL,
+    data     TEXT NOT NULL,
+    PRIMARY KEY (platform, made_at)
+);
+
 CREATE TABLE IF NOT EXISTS videos (
     platform       TEXT NOT NULL,
     external_id    TEXT NOT NULL,

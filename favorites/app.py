@@ -41,7 +41,7 @@ from starlette.concurrency import run_in_threadpool
 
 from . import (backfill, blurb, cloud, db, explore, google_sync, lengths, looks, museum,
                tagging, thumbnails, transcript, watch)
-from . import inbox, platforms, profiles, rewind, shortcuts
+from . import inbox, known, platforms, profiles, rewind, shortcuts
 from . import themes as theme_vocabulary
 from .resolve import browsable_url, canonical_form, detect_platform, extract_url, platform_label, resolve
 
@@ -300,6 +300,8 @@ templates.env.filters["upto"] = blurb.trim
 templates.env.globals["theme_names"] = list(theme_vocabulary.THEMES)
 templates.env.globals["in_the_cloud"] = cloud.active
 templates.env.globals["month_name"] = rewind.month_name
+templates.env.filters["month_year"] = known.when
+templates.env.filters["day"] = known.day
 
 
 #: Where a phone or a browser extension sends what it saves.
@@ -1026,6 +1028,13 @@ def rewind_month(request: Request, key: str, conn: sqlite3.Connection = Depends(
         "earlier": next((k for k in found if k < key), None),
         "later": next((k for k in reversed(found) if k > key), None),
         "q": "", "total": db.count(conn)})
+
+
+@app.get("/known", response_class=HTMLResponse)
+def known_page(request: Request, conn: sqlite3.Connection = Depends(get_db)):
+    """What TikTok knows: your latest export's summary, as story cards."""
+    return templates.TemplateResponse(request, "known.html", {
+        "k": known.page(conn), "q": "", "total": db.count(conn)})
 
 
 @app.get("/suggest.json")

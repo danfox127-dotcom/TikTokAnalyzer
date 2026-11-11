@@ -1,0 +1,142 @@
+{% extends "base.html" %}
+{% from "_icons.html" import icon %}
+{% set nav = 'browse' %}
+{% set chrome = 'deck' %}
+{% set back = '/browse' %}{% set back_label = 'Browse' %}
+{% block title %}What TikTok knows · Faves{% endblock %}
+{% block main_class %}is-deck{% endblock %}
+{#- The same story cards as Rewind: swiped sideways, a dash per card. Only a
+    summary of the export is ever kept, so that is all this page can show. -#}
+{% block content %}
+<div class="rw"{% if k %} data-rewind{% endif %}>
+  <header class="rw-top">
+    {% if k %}<div class="rw-dashes" aria-hidden="true">{% for i in range(5) %}<span{% if loop.first %} class="is-on"{% endif %}></span>{% endfor %}</div>{% endif %}
+    <div class="rw-bar">
+      <span class="rw-brand">What TikTok knows</span>
+      <a class="rr-deck-btn" href="{{ back }}" data-back aria-label="Close">{{ icon('close') }}</a>
+    </div>
+  </header>
+
+{% if not k %}
+  <div class="rw-track">
+    <section class="rw-card tone-sky"><div class="rw-in">
+      <p class="rw-kicker">Your file</p>
+      <h1 class="rw-title">This needs a TikTok export</h1>
+      <p class="rw-lede">The law lets you ask TikTok for everything it keeps about you. Faves reads it and tells you,
+        in plain words, what's in there: the labels advertisers see, the apps that report back, the devices you used.</p>
+      <p class="rw-lede">Faves keeps only a summary: counts, dates and names of devices and companies. Never your
+        messages, comments or internet addresses.</p>
+      <p><a class="rr-btn rr-btn--primary" href="/sync#exports">How to get your export</a></p>
+    </div></section>
+  </div>
+{% else %}
+  <div class="rw-track" tabindex="0" aria-label="What TikTok knows, in five cards">
+
+    {#- 1. The file. -#}
+    <section class="rw-card tone-sky" aria-label="Your file"><div class="rw-in">
+      <p class="rw-kicker">Your file{% if k.made_at %} <span class="rw-cover">to {{ k.made_at | day }}</span>{% endif %}</p>
+      <p class="rw-hero">{{ '{:,}'.format(k.entries) }}</p>
+      <p class="rw-hero-label">things TikTok wrote down about you</p>
+      <p class="rw-vs">in {{ k.kinds }} kinds of record, from your latest export</p>
+      <div class="rw-panel">
+        <ul class="kn-records">
+          {% for r in k.records | sort(attribute='count', reverse=True) %}
+            <li><b>{{ r.kind }}</b><span>{{ '{:,}'.format(r.count) }}{% if r.since %} · since {{ r.since | month_year }}{% endif %}</span></li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div></section>
+
+    {#- 2. The labels. -#}
+    <section class="rw-card tone-pink" aria-label="What advertisers were told"><div class="rw-in">
+      <p class="rw-kicker">What advertisers were told about you</p>
+      {% if k.ad_interests %}
+        <h2 class="rw-title">{{ k.ad_interests | length }} {{ 'label' if k.ad_interests | length == 1 else 'labels' }}</h2>
+        <p class="rw-note kn-said">You didn't pick these: TikTok did, and advertisers choose who sees their ads by them.</p>
+        <ul class="rw-searches kn-chips">{% for a in k.ad_interests %}<li><span class="rr-pill">{{ a }}</span></li>{% endfor %}</ul>
+      {% else %}
+        <h2 class="rw-title">No labels in this export</h2>
+        <p class="rw-note kn-said">TikTok didn't list any ad interests this time. That can mean personalised ads are off.</p>
+      {% endif %}
+      {% if k.topics %}
+        <div class="rw-panel">
+          <p class="rw-est"><b>Your own topics, by comparison</b></p>
+          <p class="rw-note">From what you actually liked and saved.</p>
+          <ul class="rw-searches kn-chips">{% for t in k.topics %}<li><span class="rr-pill is-room tone-{{ look(t)[0] }}">{{ look(t)[2] }} {{ t }}</span></li>{% endfor %}</ul>
+        </div>
+      {% endif %}
+      {% if k.declared_interests %}
+        <p class="rw-note">You told TikTok you're into: {{ k.declared_interests | join(', ') }}.</p>
+      {% endif %}
+    </div></section>
+
+    {#- 3. Who reported back. -#}
+    {% set off = k.off_tiktok %}
+    <section class="rw-card tone-peach" aria-label="Who told TikTok about you"><div class="rw-in">
+      <p class="rw-kicker">Who told TikTok about you</p>
+      {% if off.count %}
+        <p class="rw-hero">{{ '{:,}'.format(off.count) }}</p>
+        <p class="rw-hero-label">times another app or website told TikTok what you did</p>
+        <p class="rw-vs">{{ off.source_count }} {{ 'company' if off.source_count == 1 else 'companies' }}{% if off.first %}, {{ off.first | month_year }} to {{ off.last | month_year }}{% endif %}</p>
+        <div class="rw-panel">
+          <ul class="rw-themes">
+            {% set most = off.sources[0][1] if off.sources else 1 %}
+            {% for name, n in off.sources[:8] %}
+              <li><b>{{ name }}</b><i>{{ '{:,}'.format(n) }}</i><span class="bar" style="width: {{ (100 * n / most) | round | int }}%"></span></li>
+            {% endfor %}
+          </ul>
+        </div>
+        {% if off.events %}
+          <h3 class="rw-sub">What they said you did</h3>
+          <ul class="kn-records kn-events">{% for words, n in off.events[:6] %}<li><b>You {{ words }}</b><span>{{ '{:,}'.format(n) }}</span></li>{% endfor %}</ul>
+        {% endif %}
+      {% else %}
+        <h2 class="rw-title">Nobody, this time</h2>
+        <p class="rw-lede">No app or website shared your activity with TikTok in this export.</p>
+      {% endif %}
+    </div></section>
+
+    {#- 4. Where and on what. -#}
+    {% set lg = k.logins %}
+    <section class="rw-card tone-mint" aria-label="Where and on what"><div class="rw-in">
+      <p class="rw-kicker">Where and on what</p>
+      {% if lg.count %}
+        <p class="rw-hero">{{ '{:,}'.format(lg.count) }}</p>
+        <p class="rw-hero-label">logins on record</p>
+        <p class="rw-vs">{% if lg.first %}{{ lg.first | month_year }} to {{ lg.last | month_year }}, {% endif %}from {{ lg.addresses }} different internet {{ 'address' if lg.addresses == 1 else 'addresses' }}</p>
+        <div class="rw-panel">
+          {% if lg.devices %}<p class="rw-est"><b>Devices</b></p>
+            <ul class="kn-records">{% for name, n in lg.devices[:5] %}<li><b>{{ name }}</b><span>{{ n }}</span></li>{% endfor %}</ul>{% endif %}
+          {% if lg.networks %}<p class="rw-est kn-gap"><b>Connections</b></p>
+            <ul class="kn-records">{% for name, n in lg.networks[:4] %}<li><b>{{ name }}</b><span>{{ n }}</span></li>{% endfor %}
+              {% for name, n in lg.carriers[:3] %}<li><b>{{ name }}</b><span>{{ n }}</span></li>{% endfor %}</ul>{% endif %}
+        </div>
+        <p class="rw-note">An internet address can place you to a town or a street. Faves counts them and keeps none, and looks none up.</p>
+      {% else %}
+        <h2 class="rw-title">No logins in this export</h2>
+      {% endif %}
+    </div></section>
+
+    {#- 5. What you handed over, and what you can change. -#}
+    <section class="rw-card tone-butter" aria-label="What you can change"><div class="rw-in">
+      <p class="rw-kicker">What you handed over</p>
+      {% if k.profile.held %}
+        <ul class="rw-searches kn-chips">{% for f in k.profile.held %}<li><span class="rr-pill">{% if k.profile[f] %}{{ f | capitalize }}: {{ k.profile[f] }}{% else %}{{ f | capitalize }}{% endif %}</span></li>{% endfor %}</ul>
+      {% endif %}
+      {% if k.messages.messages %}<p class="rw-note">And {{ '{:,}'.format(k.messages.messages) }} messages in {{ k.messages.conversations }} {{ 'conversation' if k.messages.conversations == 1 else 'conversations' }}, which Faves counts and never reads.</p>{% endif %}
+      <div class="rw-panel">
+        <p class="rw-est"><b>What you can change, in the TikTok app</b></p>
+        <ol class="kn-steps">
+          <li><b>Stop personalised ads.</b> Profile → ☰ → Settings and privacy → Ads → turn off <i>Personalised ads</i>.</li>
+          <li><b>Stop other apps reporting back.</b> On the same Ads page, turn off <i>Activity from ad partners</i> and clear it.</li>
+          <li><b>Clear what you watched.</b> Settings and privacy → Activity centre → Watch history → Clear.</li>
+          <li><b>Ask for it again, or delete it.</b> Settings and privacy → Account → Download your data (or Deactivate or delete account).</li>
+        </ol>
+        <p class="rw-note">TikTok renames these now and then; the words above are close to what you'll see.</p>
+      </div>
+      <nav class="rw-more" aria-label="More"><a class="rr-btn" href="/rewind">{{ icon('play') }}Your Rewind</a></nav>
+    </div></section>
+  </div>
+{% endif %}
+</div>
+{% endblock %}

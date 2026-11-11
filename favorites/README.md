@@ -597,6 +597,29 @@ far more than your favourites:
   what you saved that month (30 seconds if none has a length). The export
   doesn't say how long you watched.
 
+## What TikTok knows
+
+`/known` (in Browse and More, and at the end of Rewind) borrows this repo's
+original purpose: what the platform keeps about you, in plain words, from your
+own export. Five story cards, swiped like Rewind's:
+
+- **Your file.** How many things it wrote down, in how many kinds of record,
+  and how far back each goes.
+- **What advertisers were told about you.** The ad-interest labels TikTok gave
+  you, beside your own topics from what you liked and saved.
+- **Who told TikTok about you.** Apps and websites that reported what you did
+  there ("off-TikTok activity"), with the events in words: *bought something*,
+  *added something to a basket*.
+- **Where and on what.** Logins, devices, connections, and how many different
+  internet addresses.
+- **What you handed over, and what you can change** in the TikTok app.
+
+Only a summary of each export is kept (`dossiers`, made by
+`tiktok_export.read_dossier`): counts, dates, and the names of devices and
+companies. **Never** a message, a comment, an IP address (only how many there
+were), or a contact detail (only that it's on file). Nothing is looked up
+anywhere else.
+
 ## Backfilling your YouTube saves from Google Takeout
 
 The same idea as the TikTok export: bring in what you saved before this existed.
@@ -845,6 +868,7 @@ library.
 | `cloud_move.py`, `move-to-cloud.command` | Moves the Mac's library into the cloud |
 | `museum.py` | The digest, the rotating shelves and the hooks (On this day, topics, threads) |
 | `rewind.py` | Rewind: a month on TikTok from your export, and the Mac's look-ups of your likes |
+| `known.py` | What TikTok knows: the latest export's summary, in plain words |
 | `explore.py` | Search and filters, including On this day |
 | `looks.py` | Each theme's band colour, icon and emoji |
 | `templates/`, `static/` | The pages, in the *Faves* design system (version 2, "Sweet Spot"): lavender, candy-colour section bands, round type, subtle scroll motion.: `style.css` holds its tokens and components, `museum.js` the little behaviour a plain page cannot do (carousel dots, the phone filter sheet, suggestions, the colour mode, Back's trail, sheets, saving in place, Shuffle's feed). Every page works without it |
