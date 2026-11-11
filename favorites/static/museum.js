@@ -541,6 +541,32 @@
     });
   }
 
+  /* ---- a save's pinned bar: Watch plays it right here when it can, and
+     Note and Topic open what they name and bring it into view. With no
+     script they are a link out and two jumps down the page. ---- */
+  function saveBar(bar) {
+    var calm = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var how = calm ? 'auto' : 'smooth';
+    bar.addEventListener('click', function (e) {
+      var a = e.target.closest && e.target.closest('a');
+      if (!a || e.metaKey || e.ctrlKey || e.shiftKey) return;
+      if (a.hasAttribute('data-watch')) {
+        var p = document.querySelector('.rr-player[data-embed]');
+        if (!p) return;                       // nothing to play here: open the app
+        e.preventDefault();
+        if (!p.hidden) play(p);
+        p.parentNode.scrollIntoView({ behavior: how, block: 'start' });
+        return;
+      }
+      var id = a.getAttribute('data-reveal'), el = id && document.getElementById(id);
+      if (!el) return;
+      e.preventDefault();
+      if (el.tagName === 'DETAILS') el.open = true;
+      el.scrollIntoView({ behavior: how, block: 'center' });
+      if (el.tagName === 'TEXTAREA') el.focus({ preventScroll: true });
+    });
+  }
+
   function init() {
     setMode(stored());
     document.addEventListener('click', function (e) {
@@ -570,6 +596,7 @@
     document.querySelectorAll('.explore-results .pager').forEach(moreResults);
     document.querySelectorAll('[data-deck]').forEach(deck);
     document.querySelectorAll('[data-save-copied]').forEach(saveCopied);
+    document.querySelectorAll('[data-save-bar]').forEach(saveBar);
     var standalone = navigator.standalone || (window.matchMedia && matchMedia('(display-mode: standalone)').matches);
     if (standalone) document.querySelectorAll('[data-standalone-step]').forEach(function (s) { s.classList.add('is-done'); });
     var said = load('rr-flash', null);

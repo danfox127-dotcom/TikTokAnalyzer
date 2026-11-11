@@ -17,8 +17,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:ital,wght@0,500;0,600;0,800;1,600&display=swap">
-<link rel="stylesheet" href="/static/style.css?v=15">
-<script src="/static/museum.js?v=6" defer></script>
+<link rel="stylesheet" href="/static/style.css?v=16">
+<script src="/static/museum.js?v=7" defer></script>
 </head>
 {% from "_icons.html" import icon %}
 {% from "_more.html" import more_links, sheet %}
@@ -28,7 +28,9 @@
 {% set back = back|default('') %}
 {% set back_label = back_label|default('Back') %}
 {% set chrome = chrome|default('') %}
-{% set more_pages = ('more', 'keep', 'placards', 'year', 'sync', 'setup') %}
+{% set more_pages = ('more', 'keep', 'placards', 'year', 'sync', 'setup', 'connections') %}
+{#- Topics, a month, a creator: the pages Browse leads to. -#}
+{% set browse_pages = ('browse', 'rooms') %}
 <body class="rr{% if chrome == 'deck' %} is-deck{% endif %}"{% if chrome == 'bare' %} data-off-trail{% elif not back %} data-root{% endif %}{% if here is defined %} data-here="{{ here }}"{% endif %}>
 <div class="rr-app rr-page">
 {% if chrome not in ('deck', 'bare') %}
@@ -37,10 +39,10 @@
   <a class="rr-wordmark" href="/"><span class="dot" aria-hidden="true"></span>Faves</a>
   <span class="spacer"></span>
   <nav aria-label="Main">
-    <a href="/"{% if nav == 'home' %} class="is-on" aria-current="page"{% endif %}>Home</a>
+    <a href="/"{% if nav == 'home' %} class="is-on" aria-current="page"{% endif %}>Today</a>
     <a href="/search"{% if nav == 'search' %} class="is-on" aria-current="page"{% endif %}>Search</a>
     <a href="/shuffle"{% if nav == 'shuffle' %} class="is-on" aria-current="page"{% endif %}>Shuffle</a>
-    <a href="/topics"{% if nav == 'rooms' %} class="is-on" aria-current="page"{% endif %}>Topics</a>
+    <a href="/browse"{% if nav in browse_pages %} class="is-on" aria-current="page"{% endif %}>Browse</a>
     <a href="/notes"{% if nav == 'placards' %} class="is-on" aria-current="page"{% endif %}>Notes</a>
   </nav>
   <div class="rr-mode" role="group" aria-label="Colour mode">
@@ -69,14 +71,14 @@
   <a href="/wander">Rabbit hole</a>
   <a href="/year">Your year</a>
   <a href="/topics/sort">Sort things out</a>
-  <a href="/sync">Keep it in sync</a>
+  <a href="/connections">Connections</a>
 </footer>
 
 <nav class="rr-tabbar" aria-label="Main">
-  <a href="/"{% if nav == 'home' %} class="is-on" aria-current="page"{% endif %}>{{ icon('home') }}Home</a>
+  <a href="/"{% if nav == 'home' %} class="is-on" aria-current="page"{% endif %}>{{ icon('home') }}Today</a>
   <a href="/search"{% if nav == 'search' %} class="is-on" aria-current="page"{% endif %}>{{ icon('search') }}Search</a>
   <a class="scoop{% if nav == 'shuffle' %} is-on{% endif %}" href="/shuffle" aria-label="Shuffle: swipe through your saves at random"{% if nav == 'shuffle' %} aria-current="page"{% endif %}><span class="ball">{{ icon('shuffle') }}</span>Shuffle</a>
-  <a href="/topics"{% if nav == 'rooms' %} class="is-on" aria-current="page"{% endif %}>{{ icon('rooms') }}Topics</a>
+  <a href="/browse"{% if nav in browse_pages %} class="is-on" aria-current="page"{% endif %}>{{ icon('rooms') }}Browse</a>
   <a href="/more" data-sheet-open="more"{% if nav in more_pages %} class="is-on" aria-current="page"{% endif %}>{{ icon('dots') }}More</a>
 </nav>
 {% if nav != 'more' %}{% call sheet('more', 'More') %}<div class="body">{{ more_links() }}</div>{% endcall %}{% endif %}

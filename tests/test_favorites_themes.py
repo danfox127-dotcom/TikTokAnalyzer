@@ -303,10 +303,10 @@ class TestPages:
         # number in a pill went unnoticed on first real use.
         page = client.get("/").text
         assert '<a href="/search">Search</a>' in page
-        assert '<a href="/topics">Topics</a>' in page
+        assert '<a href="/browse">Browse</a>' in page
 
-    def test_the_front_page_opens_the_catalogue(self, client):
-        page = client.get("/").text
+    def test_browse_opens_the_catalogue(self, client):
+        page = client.get("/browse").text
         assert "Browse the collection" in page
         assert 'href="/search?theme=Dogs"' in page
         assert 'href="/search?creator=%40goodboy"' in page

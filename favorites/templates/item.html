@@ -52,7 +52,7 @@
         {% else %}
           <p class="rr-muted">No topic yet: nothing in its caption or hashtags said clearly enough what it's about.</p>
         {% endif %}
-        <details class="change-rooms"{% if rooms_open %} open{% endif %}>
+        <details class="change-rooms" id="change-rooms"{% if rooms_open %} open{% endif %}>
           <summary>{{ icon('filter') }}{% if item.themes %}Change topics{% else %}Give it a topic{% endif %}</summary>
           <form action="/item/{{ item.id }}/rooms" method="post" data-inplace="Topics saved">
             <fieldset>
@@ -129,4 +129,13 @@
 {% if related %}
   {{ shelf('More from this creator', related, kicker='💌 Same hands', tone='lilac' if not room_items or look(room)[0] != 'lilac' else 'mint') }}
 {% endif %}
+
+{#- On a phone, what you came to do stays in reach above the tabs, however far
+    down the page you are. Without a script, Note and Topic are plain jumps. -#}
+<nav class="save-bar" aria-label="This save" data-save-bar>
+  <a class="watch" href="{{ browsable_url(item) }}" target="_blank" rel="noopener noreferrer" data-watch>{{ icon('play') }}Watch</a>
+  <a href="#note" data-reveal="note">{{ icon('note') }}Note</a>
+  <a href="#rooms" data-reveal="change-rooms">{{ icon('rooms') }}Topic</a>
+  <a href="{{ wander_href }}">{{ icon('compass') }}Like this</a>
+</nav>
 {% endblock %}

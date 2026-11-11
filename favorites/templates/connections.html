@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% from "_icons.html" import icon %}
+{% set back = '/more' %}{% set back_label = 'More' %}
+{% block title %}Connections · Faves{% endblock %}
+{#- Each row's picture: an icon, or the emoji Keep it in sync uses for that app. -#}
+{% set looks = {
+  'phone': ('phone', 'sky', ''), 'mac': ('laptop', 'lilac', ''),
+  'tiktok': ('', 'pink', '🎵'), 'instagram': ('', 'peach', '📸'), 'youtube': ('', 'butter', '▶️'),
+  'details': ('picture', 'mint', ''), 'library': ('shield', 'sky', '')} %}
+{% block content %}
+
+<section class="page-head conn-head">
+  <p class="rr-label">🔌 Connections</p>
+  <h1 class="rr-h-l">Everything that feeds your library</h1>
+  <p class="conn-sum">{% if needs %}<b>{{ needs }} {{ 'thing needs' if needs == 1 else 'things need' }} you.</b>{% else %}{{ icon('check') }}<span>All working.</span>{% endif %}</p>
+</section>
+
+{% for title, rows in groups %}
+  {% if title %}<h2 class="conn-title">{{ title }}</h2>{% endif %}
+  <ul class="conn-group">
+    {% for r in rows %}{% set lk = looks[r.key] %}
+    <li class="conn-row is-{{ r.state }}">
+      <a class="conn-main" href="{{ r.href }}">
+        <span class="conn-ic tone-{{ lk[1] }}">{% if lk[0] %}{{ icon(lk[0]) }}{% else %}<span class="em" aria-hidden="true">{{ lk[2] }}</span>{% endif %}</span>
+        <span class="conn-t"><b>{{ r.name }}</b>
+          <span class="conn-st">{% if r.state == 'ok' %}<span class="ok">{{ icon('check', 'Working:') }}</span>{% elif r.state == 'need' %}<span class="need">Needs you:</span> {% endif %}{{ r.status }}</span></span>
+        {% if not r.action %}{{ icon('right') }}{% endif %}
+      </a>
+      {#- Only what needs you gets a loud button; the rest stay quiet. -#}
+      {% if r.action %}<a class="rr-btn{% if r.state == 'need' %} rr-btn--primary{% else %} rr-btn--quiet{% endif %} conn-act" href="{{ r.action[1] }}">{{ r.action[0] }}</a>{% endif %}
+    </li>
+    {% endfor %}
+  </ul>
+{% endfor %}
+
+<p class="conn-foot"><a href="/sync">Every detail and how-to is in Keep it in sync →</a></p>
+{% endblock %}
