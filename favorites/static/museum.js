@@ -291,6 +291,7 @@
       if (link && link.hasAttribute('data-embed')) link.hidden = false;
       box.remove();
     });
+    document.querySelectorAll('.rr-deckcard.is-playing').forEach(function (card) { card.classList.remove('is-playing'); });
   }
   function play(link) {
     stopPlaying();
@@ -311,6 +312,11 @@
     box.appendChild(frame);
     link.hidden = true;
     link.parentNode.insertBefore(box, link.nextSibling);
+    // In Shuffle the player only gets the room the words leave, and in topic
+    // mode that left TikTok's player too small to draw anything: while a
+    // video plays, the card makes way for it (see .rr-deckcard.is-playing).
+    var card = link.closest('.rr-deckcard');
+    if (card) card.classList.add('is-playing');
     box.querySelector('.stop').addEventListener('click', function () { stopPlaying(); link.focus(); });
   }
 
