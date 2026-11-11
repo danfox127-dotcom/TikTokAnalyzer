@@ -132,6 +132,16 @@ CREATE TABLE IF NOT EXISTS meta (
     value TEXT
 );
 
+-- Ready-made phone shortcuts the Mac signed for the cloud copy
+-- (favorites/shortcuts.py). Only a Mac can sign one, and a phone being set up
+-- may be nowhere near it, so the Mac leaves them here.
+CREATE TABLE IF NOT EXISTS shortcut_files (
+    slug        TEXT PRIMARY KEY,
+    data        BLOB NOT NULL,
+    fingerprint TEXT NOT NULL,
+    made_at     TEXT NOT NULL
+);
+
 CREATE VIRTUAL TABLE IF NOT EXISTS items_fts USING fts5(
     item_id UNINDEXED,
     title,

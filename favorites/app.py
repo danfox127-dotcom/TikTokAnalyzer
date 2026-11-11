@@ -42,7 +42,7 @@ from . import (backfill, blurb, cloud, db, explore, google_sync, lengths, looks,
                tagging, thumbnails, transcript, watch)
 from . import inbox, platforms, profiles, shortcuts
 from . import themes as theme_vocabulary
-from .resolve import browsable_url, extract_url, platform_label, resolve
+from .resolve import browsable_url, canonical_form, detect_platform, extract_url, platform_label, resolve
 
 logger = logging.getLogger(__name__)
 
@@ -72,6 +72,8 @@ async def lifespan(_: FastAPI):
 #: How often the watched folder is looked at, and YouTube is synced.
 SCAN_EVERY = 60
 YOUTUBE_EVERY = 24 * 3600
+#: How often the Mac checks the shortcuts it signed for the cloud copy.
+SHORTCUTS_EVERY = 3600
 
 
 #: One look in the watched folder at a time: "Look now" pressed during the
@@ -108,6 +110,31 @@ def _shared_waiting() -> bool:
             " AND resolve_attempts < ? LIMIT 1", (backfill.MAX_ATTEMPTS,)).fetchone() is not None
     finally:
         conn.close()
+
+
+def _prepare_for_the_cloud() -> int:
+    """Sign the ready-made shortcuts for the cloud copy and leave them there.
+
+    Only a Mac can sign a shortcut, but a new or restored phone may be set up
+    nowhere near it. Re-signed only when the address, the password or the
+    shortcuts themselves changed. Returns how many it signed.
+    """
+    password = os.environ.get("FAVORITES_TOKEN")
+    if not (db.on_postgres() and password and shortcuts.can_sign()):
+        return 0
+    address, made = cloud.address(), 0
+    conn = db.connect()
+    try:
+        for slug, name in SHORTCUT_SLUGS.items():
+            fp = shortcuts.fingerprint(name, address, password)
+            have = shortcuts.stored(conn, slug)
+            if have and have[1] == fp:
+                continue
+            shortcuts.store(conn, slug, shortcuts.signed(name, address, password), fp, db.now_iso())
+            made += 1
+    finally:
+        conn.close()
+    return made
 
 
 async def _fill_in(limit: int = 50) -> None:
@@ -166,7 +193,7 @@ async def _keep_in_sync() -> None:
     plain run -- and every test -- does nothing here but sleep.
     """
     log = logging.getLogger("uvicorn.error")
-    last_youtube = 0.0
+    last_youtube = last_shortcuts = 0.0
     first_pass = True
     while True:
         try:
@@ -184,6 +211,13 @@ async def _keep_in_sync() -> None:
                 # From the second minute on: a start opens the library for
                 # nothing it hasn't been asked to do.
                 await _fill_in(limit=10)
+            if not first_pass and (not last_shortcuts or time.monotonic() - last_shortcuts > SHORTCUTS_EVERY):
+                last_shortcuts = time.monotonic()
+                try:
+                    if await run_in_threadpool(_prepare_for_the_cloud):
+                        log.info("signed the phone shortcuts for the cloud copy")
+                except shortcuts.CannotSign as exc:
+                    log.warning("couldn't sign the phone shortcuts for the cloud copy: %s", exc)
         except asyncio.CancelledError:
             raise
         except Exception:  # never let one bad export stop the watching
@@ -434,6 +468,12 @@ async def save(
             "Nothing to keep: no link came with this. Share a link to the shortcut "
             "(pressing ▶︎ in the Shortcuts editor sends nothing)."))
 
+    if str(request.query_params.get("auto") or data.get("auto") or "").lower() in ("1", "true", "yes"):
+        kept = await run_in_threadpool(_auto_save_check, conn, extract_url(shared))
+        if kept is not None:
+            log_save(request, f"auto-save: {kept['why']}")
+            return JSONResponse(kept, status_code=200)
+
     log_save(request, f"save received ({urlparse(extract_url(shared)).hostname or 'a link'})")
     try:
         result = await capture(shared, data.get("note"), conn, data.get("collection"))
@@ -447,6 +487,30 @@ async def save(
     log_save(request, f"saved #{result['id']} {result.get('platform') or ''} {looked_up}"
                       f" ({'new' if result['created'] else 'already saved'})")
     return JSONResponse(result, status_code=201 if result["created"] else 200)
+
+
+#: What the automatic shortcut may keep: it sends every link on the clipboard.
+AUTO_SAVE_PLATFORMS = ("tiktok", "instagram", "youtube")
+
+
+def _auto_save_check(conn: sqlite3.Connection, url: str) -> Optional[dict]:
+    """Why a link from the automatic shortcut needs no saving, or None to save it.
+
+    The shortcut runs every time you leave TikTok, Instagram or YouTube, with
+    whatever is on the clipboard: mostly a link already kept, sometimes not a
+    video at all. Neither is looked up -- that would be a page view on the
+    platform for nothing -- and a non-video link is not even named in the log.
+    """
+    platform = detect_platform(url)
+    if platform not in AUTO_SAVE_PLATFORMS:
+        return {"created": False, "skipped": True, "why": "skipped a link that isn't a video"}
+    canonical, _ = canonical_form(url, platform)
+    row = conn.execute("SELECT id FROM items WHERE shared_url = ? OR canonical_url = ? LIMIT 1",
+                       (url, canonical)).fetchone()
+    if row is not None:
+        return {"id": row["id"], "created": False, "already": True,
+                "why": f"#{row['id']} already kept"}
+    return None
 
 
 @app.get("/collections.json")
@@ -1195,7 +1259,7 @@ def sync_page(request: Request, conn: sqlite3.Connection = Depends(get_db)):
         "folders": [str(f) for f in watch.folders_from_env()], "status": watch.STATUS,
         "google": {"configured": google_sync.configured(), "connected": google_sync.connected(conn),
                    "last": google_sync.last_sync(conn)},
-        "here": _on_this_mac(request), "token": token,
+        "on_mac": _on_this_mac(request), "token": token,
         "always_on": (Path.home() / "Library" / "LaunchAgents" / "app.faves.plist").exists(),
         "anywhere": cloud_address or (f"http://{tailscale}:{port}" if tailscale else None),
         "cloud": in_cloud, "address_is_cloud": bool(cloud_address),
@@ -1205,11 +1269,54 @@ def sync_page(request: Request, conn: sqlite3.Connection = Depends(get_db)):
         "shortcut_links": SHORTCUT_SLUGS, "inbox": inbox.STATUS, "inbox_path": str(inbox.path()),
         "q": "", "total": db.count(conn),
         "missing": museum.pending_count(conn), "lookup": LOOKUP,
+        "shortcut_ready": _shortcuts_ready(request, conn),
     })
 
 
 #: The ready-made shortcuts, by the address they download from.
-SHORTCUT_SLUGS = {"save-to-faves": "Save to Faves", "save-copied-link": "Save copied link"}
+SHORTCUT_SLUGS = {"save-to-faves": "Save to Faves", "save-copied-link": "Save copied link",
+                  "auto-save-copied-link": "Auto-save copied link"}
+
+
+def _shortcut_settings(request: Request) -> tuple[str, Optional[str]]:
+    """The address and password a shortcut made for this request carries.
+
+    The cloud copy always offers its main address, never the one a page was
+    opened on: that is what the Mac signed for, and a preview's address goes
+    away.
+    """
+    address = cloud.address() if cloud.active(request) else _phone_address(request)
+    return address, os.environ.get("FAVORITES_TOKEN") or None
+
+
+def _shortcuts_ready(request: Request, conn: sqlite3.Connection) -> dict[str, bool]:
+    """Which shortcuts this device can install right now, by slug."""
+    if not unlocked(request):
+        return dict.fromkeys(SHORTCUT_SLUGS, False)
+    if not cloud.active(request):
+        return dict.fromkeys(SHORTCUT_SLUGS, shortcuts.can_sign())
+    address, password = _shortcut_settings(request)
+    ready = {}
+    for slug, name in SHORTCUT_SLUGS.items():
+        have = shortcuts.stored(conn, slug)
+        ready[slug] = bool(have) and have[1] == shortcuts.fingerprint(name, address, password)
+    return ready
+
+
+@app.get("/setup", response_class=HTMLResponse)
+def setup_page(request: Request, conn: sqlite3.Connection = Depends(get_db)):
+    """A new or restored phone, working in a minute: signed in, the Home
+    Screen icon, and the shortcuts -- with no Mac nearby."""
+    last = conn.execute(
+        "SELECT id, title, canonical_url, saved_at FROM items WHERE source = 'share'"
+        " ORDER BY saved_at DESC, id DESC LIMIT 1").fetchone()
+    return templates.TemplateResponse(request, "setup.html", {
+        "ready": _shortcuts_ready(request, conn), "signed_in": unlocked(request),
+        "has_password": bool(os.environ.get("FAVORITES_TOKEN")),
+        "cloud": cloud.active(request), "on_mac": _on_this_mac(request),
+        "last_share": dict(last) if last else None,
+        "q": "", "total": db.count(conn), "nav": "setup",
+    })
 
 
 def _cloud_address(request: Request) -> Optional[str]:
@@ -1241,24 +1348,32 @@ def _phone_address(request: Request) -> str:
 
 
 @app.get("/shortcuts/{slug}.shortcut")
-async def shortcut_file(slug: str, request: Request):
+async def shortcut_file(slug: str, request: Request, conn: sqlite3.Connection = Depends(get_db)):
     """A ready-made shortcut for the phone, with the address and password in it.
 
-    Only for a device that is unlocked (the Keep page remembers the password),
-    because the file carries the password.
+    Only for a device that is unlocked (signed in, or the Keep page remembers
+    the password), because the file carries the password. The Mac signs one
+    on the spot; the cloud copy offers the one the Mac left in the library.
     """
     name = SHORTCUT_SLUGS.get(slug)
     if name is None:
         raise HTTPException(status_code=404, detail="no such shortcut")
     if not unlocked(request):
         raise HTTPException(status_code=401, detail="Unlock this phone on the Keep page first.")
-    address = _phone_address(request)
-    password = os.environ.get("FAVORITES_TOKEN") or None
-    try:
-        data = await run_in_threadpool(shortcuts.signed, name, address, password)
-    except shortcuts.CannotSign as exc:
-        return Response(f"{exc}\n\nThe Keep it in sync page has the steps to build it yourself.",
-                        status_code=503, media_type="text/plain; charset=utf-8")
+    address, password = _shortcut_settings(request)
+    if cloud.active(request):
+        have = await run_in_threadpool(shortcuts.stored, conn, slug)
+        if not have or have[1] != shortcuts.fingerprint(name, address, password):
+            return Response("Faves on your Mac prepares this shortcut. Open Faves there "
+                            "(double-click start.command), leave it a minute, then try again.",
+                            status_code=503, media_type="text/plain; charset=utf-8")
+        data = have[0]
+    else:
+        try:
+            data = await run_in_threadpool(shortcuts.signed, name, address, password)
+        except shortcuts.CannotSign as exc:
+            return Response(f"{exc}\n\nThe Keep it in sync page has the steps to build it yourself.",
+                            status_code=503, media_type="text/plain; charset=utf-8")
     return Response(data, media_type="application/octet-stream",
                     headers={"Content-Disposition": f'attachment; filename="{name}.shortcut"'})
 

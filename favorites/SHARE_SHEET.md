@@ -64,12 +64,11 @@ Authorization header out entirely if you did not set one).
 
 ---
 
-## The no-setup way: copy, paste, keep
+## The no-setup way: copy, then one tap
 
-Open Faves on your phone and use the **Keep** tab (bottom right): in
-TikTok, Instagram or YouTube tap **Share → Copy link**, then in Faves tap
-**Paste** and **Keep it**. If Faves has a password, it asks for it once on
-each phone and remembers it.
+In TikTok, Instagram or YouTube tap **Share → Copy link**, then open Faves and
+tap **Save copied link** on Home. (Or **More → Keep a link → Paste & keep**.)
+If Faves has a password, it asks for it once on each phone and remembers it.
 
 ## iOS — Save to Faves, in one tap
 
@@ -82,9 +81,12 @@ the top of it.)
 
 ### The easy way: install the ready-made shortcuts
 
-On the phone, open Faves → **Keep it in sync** → **Your phone**. (Unlock the
-phone on the **Keep** tab first, once.) Two buttons install shortcuts that
-already know your address and password:
+On the phone, open Faves → **More** → **Set up this phone**. It walks a new or
+restored phone through everything: sign in, the Home Screen icon, and three
+buttons that install shortcuts already knowing your address and password.
+With the library in the cloud, the Mac leaves the signed shortcuts there, so
+this works with the Mac nowhere near (it only has to have run Faves once since
+the password was last changed).
 
 - **Save to Faves** — then **Share → Save to Faves** in any app. Pin it: in
   any share sheet, scroll the list of actions to the end → **Edit Actions** →
@@ -92,7 +94,14 @@ already know your address and password:
 - **Save copied link** — give it to Back Tap: **Settings → Accessibility →
   Touch → Back Tap → Double Tap → Save copied link**. Then in TikTok or
   Instagram, tap **Copy link** (it's in their own panel) and double-tap the
-  back of the phone.
+  back of the phone. The Action Button and Control Center work too.
+- **Auto-save copied link** — silent, for an iPhone Automation: **Shortcuts →
+  Automation → + → App → TikTok, Instagram, YouTube → Is Closed → Run
+  Immediately**. A link you copy in one of those apps is then kept as you
+  leave it. It sends every link on the clipboard to `/save?auto=1`, where
+  Faves keeps only TikTok, Instagram and YouTube links it doesn't already have
+  — without looking up a repeat, and without naming a non-video link in the
+  log. It skips the inbox: it runs on every visit, mostly with nothing new.
 
 The Mac signs these with macOS's own `shortcuts sign`, which needs macOS 12
 or later and the Mac signed in to iCloud. Without that, the page shows the
