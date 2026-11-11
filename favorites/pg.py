@@ -125,6 +125,29 @@ CREATE TABLE IF NOT EXISTS shortcut_files (
     made_at     TEXT NOT NULL
 );
 
+-- A platform's activity and looked-up likes, for Rewind (see db.py).
+CREATE TABLE IF NOT EXISTS activity (
+    platform TEXT NOT NULL,
+    kind     TEXT NOT NULL,
+    at       TEXT NOT NULL,
+    ref      TEXT NOT NULL,
+    PRIMARY KEY (platform, kind, at, ref)
+);
+CREATE INDEX IF NOT EXISTS activity_kind_at ON activity (kind, at);
+
+CREATE TABLE IF NOT EXISTS videos (
+    platform       TEXT NOT NULL,
+    external_id    TEXT NOT NULL,
+    creator_handle TEXT,
+    creator_name   TEXT,
+    title          TEXT,
+    themes         TEXT,
+    status         TEXT NOT NULL,
+    attempts       INTEGER NOT NULL DEFAULT 0,
+    looked_at      TEXT NOT NULL,
+    PRIMARY KEY (platform, external_id)
+);
+
 -- SQLite's json_each over a JSON list kept as text, and its length.
 CREATE OR REPLACE FUNCTION json_each(text) RETURNS TABLE (key integer, value text)
 LANGUAGE sql IMMUTABLE AS $$

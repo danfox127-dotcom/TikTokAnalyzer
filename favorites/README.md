@@ -520,7 +520,8 @@ and covers only recent months, so importing it buries a multi-year collection of
 deliberate saves under a short burst of taps.
 
 Likes are therefore opt-in (`--include-likes`) and tagged `source='export-like'`
-so you can tell them apart or delete them later.
+so you can tell them apart or delete them later. (Rewind uses them without
+making them saves: see *Rewind* above.)
 
 ### Resolution is slow, and that is fine
 
@@ -569,6 +570,32 @@ Deleted videos and private accounts cannot be recovered by any method. Those
 rows stay in the library with their link and date, and stay off the shelves --
 a wall of untitled URLs is worse than an empty shelf. They still count, and the
 front page tells you how many are outstanding.
+
+## Rewind: a month on TikTok
+
+`/rewind` (in Browse, and on Today once there is a month to show) tells a month
+of your TikTok as five story cards, swiped sideways: how much, when, who, what,
+and the month in one card. It is built from your own data export, which holds
+far more than your favourites:
+
+- **Kept apart from the library.** Importing a TikTok export also keeps each
+  video you opened, each like and each search, with its time, in an `activity`
+  table. None of it becomes a save. A second, overlapping export adds only
+  what the first didn't have. Exports still in the watched folder are read
+  once more after an update that keeps more of them (`watch.READS`), keeping
+  the date they first arrived.
+- **How much and when** come straight from the export: videos opened (and the
+  change on last month), and a week-by-hour clock in your own time zone. The
+  page reports the zone once and the library remembers it.
+- **Who and what** come from the videos you liked and saved, because the
+  export's watch list is bare ids: no creator, no caption. Saves already have
+  their details; the Mac looks likes up a few each minute (`rewind.look_up_likes`,
+  about 300 a month is a quarter of an hour) and keeps what it finds in
+  `videos`, apart from the library. Until they are done, the creators card says
+  how many are still waiting.
+- **One estimate, labelled:** hours, as videos opened × the usual length of
+  what you saved that month (30 seconds if none has a length). The export
+  doesn't say how long you watched.
 
 ## Backfilling your YouTube saves from Google Takeout
 
@@ -817,6 +844,7 @@ library.
 | `cloud.py` | Faves on Vercel: the sign-in, and what the cloud copy leaves to the Mac |
 | `cloud_move.py`, `move-to-cloud.command` | Moves the Mac's library into the cloud |
 | `museum.py` | The digest, the rotating shelves and the hooks (On this day, topics, threads) |
+| `rewind.py` | Rewind: a month on TikTok from your export, and the Mac's look-ups of your likes |
 | `explore.py` | Search and filters, including On this day |
 | `looks.py` | Each theme's band colour, icon and emoji |
 | `templates/`, `static/` | The pages, in the *Faves* design system (version 2, "Sweet Spot"): lavender, candy-colour section bands, round type, subtle scroll motion.: `style.css` holds its tokens and components, `museum.js` the little behaviour a plain page cannot do (carousel dots, the phone filter sheet, suggestions, the colour mode, Back's trail, sheets, saving in place, Shuffle's feed). Every page works without it |

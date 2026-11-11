@@ -101,6 +101,18 @@ def detect(path: Path) -> Optional[str]:
     return None
 
 
+#: Bumped when an importer starts keeping more of an export: the exports
+#: still in the folder are then read once more, for what it now keeps.
+#: (2: TikTok's watch history, likes and searches, for Rewind.)
+READS = {"tiktok": 2}
+
+
+def import_key(fp: str, kind: str) -> str:
+    """The key an import is remembered by: the file's fingerprint, and what
+    was read of it."""
+    return f"{fp}:v{READS[kind]}" if kind in READS else fp
+
+
 def fingerprint(path: Path) -> str:
     """Name, size and date: enough to know a file was seen, without reading
     a multi-gigabyte Takeout through a hash every minute."""
@@ -176,9 +188,15 @@ def scan(conn: sqlite3.Connection, folders: Iterable[Path], now: Optional[float]
                 kind = detect(path)
                 if kind is None:
                     continue
-                key = fingerprint(path)
+                fp = fingerprint(path)
+                key = import_key(fp, kind)
                 if conn.execute("SELECT 1 FROM imports WHERE key = ?", (key,)).fetchone():
                     continue
+                # Read before, for less: it keeps the date it first arrived,
+                # which is when the export was new.
+                earlier = conn.execute(
+                    "SELECT min(imported_at) FROM imports WHERE key = ? OR key LIKE ?",
+                    (fp, fp + ":v%")).fetchone()[0]
                 if not settled(path, now):
                     continue
             except (OSError, zipfile.BadZipFile):
@@ -195,7 +213,7 @@ def scan(conn: sqlite3.Connection, folders: Iterable[Path], now: Optional[float]
                 " VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT (key) DO UPDATE SET filename = excluded.filename,"
                 " platform = excluded.platform, imported_at = excluded.imported_at,"
                 " added = excluded.added, detail = excluded.detail",
-                (key, path.name, PLATFORM_OF[kind], db.now_iso(), item.added,
+                (key, path.name, PLATFORM_OF[kind], earlier or db.now_iso(), item.added,
                  json.dumps({"already": item.already, "error": item.error})))
             conn.commit()
             logger.info("imported %s from %s: %s new", LABEL[kind], path.name, item.added)

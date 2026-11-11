@@ -92,12 +92,18 @@ def _export_text(path: str | Path) -> str:
     return p.read_text(encoding="utf-8")
 
 
-def read_export(path: str | Path) -> dict[str, list[dict]]:
+def _data(source: str | Path | dict) -> dict:
+    """The export's JSON: given already read, or read from ``source``."""
+    return source if isinstance(source, dict) else json.loads(_export_text(source))
+
+
+def read_export(path: str | Path | dict) -> dict[str, list[dict]]:
     """Return ``{"favorites": [...], "likes": [...]}`` of ``{date, link}`` rows.
 
-    ``path`` is user_data_tiktok.json, the folder it came in, or the .zip.
+    ``path`` is user_data_tiktok.json, the folder it came in, or the .zip
+    (or the JSON, already read).
     """
-    data = json.loads(_export_text(path))
+    data = _data(path)
 
     favorites = _first_list(data, [
         ("Likes and Favorites", "Favorite Videos", "FavoriteVideoList"),
@@ -123,6 +129,61 @@ def read_export(path: str | Path) -> dict[str, list[dict]]:
         return out
 
     return {"favorites": normalise(favorites), "likes": normalise(likes)}
+
+
+#: Where each list of activity has lived in the exports TikTok has shipped.
+ACTIVITY_PATHS = {
+    "watch": [("Your Activity", "Video Browsing History", "VideoList"),
+              ("Activity", "Video Browsing History", "VideoList"),
+              ("Your Activity", "Watch History", "VideoList")],
+    "like": [("Likes and Favorites", "Like List", "ItemFavoriteList"),
+             ("Your Activity", "Like List", "ItemFavoriteList"),
+             ("Activity", "Like List", "ItemFavoriteList")],
+    "search": [("Your Activity", "Searches", "SearchList"),
+               ("Activity", "Searches", "SearchList"),
+               ("Your Activity", "Search", "SearchList")],
+}
+
+
+def read_activity(path: str | Path | dict) -> dict[str, list[tuple[str, str]]]:
+    """What you did, for Rewind: ``{"watch": [(at, video id)], "like": [...],
+    "search": [(at, words)]}``, every time in ISO-8601 UTC.
+
+    Rows without a usable date, video id or search words are left out.
+    """
+    data = _data(path)
+    out: dict[str, list[tuple[str, str]]] = {}
+    for kind, paths in ACTIVITY_PATHS.items():
+        rows = []
+        for row in _first_list(data, paths):
+            if not isinstance(row, dict):
+                continue
+            at = parse_date(row.get("Date") or row.get("date") or "")
+            if kind == "search":
+                ref = str(row.get("SearchTerm") or row.get("searchTerm") or row.get("Content") or "").strip()
+            else:
+                m = VIDEO_ID.search(row.get("Link") or row.get("link") or row.get("VideoLink") or "")
+                ref = m.group(1) if m else ""
+            if at and ref:
+                rows.append((at, ref[:300]))
+        out[kind] = rows
+    return out
+
+
+def import_activity(conn: sqlite3.Connection, activity: dict[str, list[tuple[str, str]]]) -> dict[str, int]:
+    """Keep the activity; returns how many of each kind were new. An export
+    overlapping an earlier one adds only what the earlier one didn't have."""
+    added = {}
+    for kind, rows in activity.items():
+        before = conn.execute("SELECT count(*) FROM activity WHERE platform = 'tiktok' AND kind = ?",
+                              (kind,)).fetchone()[0]
+        conn.executemany(
+            "INSERT INTO activity (platform, kind, at, ref) VALUES ('tiktok', ?, ?, ?) ON CONFLICT DO NOTHING",
+            [(kind, at, ref) for at, ref in rows])
+        conn.commit()
+        added[kind] = conn.execute("SELECT count(*) FROM activity WHERE platform = 'tiktok' AND kind = ?",
+                                   (kind,)).fetchone()[0] - before
+    return added
 
 
 def import_rows(
@@ -175,7 +236,8 @@ def import_rows(
 def import_export(
     conn: sqlite3.Connection, path: str | Path, include_likes: bool = False
 ) -> dict:
-    lists = read_export(path)
+    data = _data(path)
+    lists = read_export(data)
     result = {
         "favorites_in_export": len(lists["favorites"]),
         "likes_in_export": len(lists["likes"]),
@@ -184,6 +246,7 @@ def import_export(
     }
     if include_likes:
         result["likes"] = import_rows(conn, lists["likes"], "export-like")
+    result["activity"] = import_activity(conn, read_activity(data))
     return result
 
 

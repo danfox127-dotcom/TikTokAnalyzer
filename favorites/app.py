@@ -16,6 +16,7 @@ import asyncio
 import dataclasses
 import json
 import logging
+import re
 import socket
 import threading
 import time
@@ -40,7 +41,7 @@ from starlette.concurrency import run_in_threadpool
 
 from . import (backfill, blurb, cloud, db, explore, google_sync, lengths, looks, museum,
                tagging, thumbnails, transcript, watch)
-from . import inbox, platforms, profiles, shortcuts
+from . import inbox, platforms, profiles, rewind, shortcuts
 from . import themes as theme_vocabulary
 from .resolve import browsable_url, canonical_form, detect_platform, extract_url, platform_label, resolve
 
@@ -153,6 +154,15 @@ def _mark_the_mac_seen() -> None:
         conn.close()
 
 
+async def _look_up_likes() -> int:
+    """A few liked TikToks looked up for Rewind's creators and topics."""
+    conn = db.connect()
+    try:
+        return await rewind.look_up_likes(conn)
+    finally:
+        conn.close()
+
+
 async def _fill_in(limit: int = 50) -> None:
     """Titles and pictures for what just arrived: a first batch, straight away."""
     conn = db.connect()
@@ -236,6 +246,7 @@ async def _keep_in_sync() -> None:
                     log.warning("couldn't sign the phone shortcuts for the cloud copy: %s", exc)
             if not first_pass:
                 await run_in_threadpool(_mark_the_mac_seen)
+                await _look_up_likes()
         except asyncio.CancelledError:
             raise
         except Exception:  # never let one bad export stop the watching
@@ -288,6 +299,7 @@ templates.env.globals["clean_caption"] = blurb.clean_caption
 templates.env.filters["upto"] = blurb.trim
 templates.env.globals["theme_names"] = list(theme_vocabulary.THEMES)
 templates.env.globals["in_the_cloud"] = cloud.active
+templates.env.globals["month_name"] = rewind.month_name
 
 
 #: Where a phone or a browser extension sends what it saves.
@@ -585,6 +597,7 @@ def home(request: Request, conn: sqlite3.Connection = Depends(get_db)):
         # bug rather than as work still in progress.
         "pending": museum.pending_count(conn),
         "reminders": watch.reminders(conn),
+        "rewind": rewind.latest(conn, rewind.zone(db.get_meta(conn, rewind.TZ_KEY))),
     })
 
 
@@ -968,6 +981,51 @@ def year_page(request: Request, year: str, conn: sqlite3.Connection = Depends(ge
         raise HTTPException(status_code=404, detail="nothing saved that year")
     return templates.TemplateResponse(request, "year.html", {
         "review": review, "year": year, "q": "", "total": db.count(conn)})
+
+
+def _rewind_zone(request: Request, conn: sqlite3.Connection):
+    """The time zone Rewind's clock is told in: the one the page reports
+    (kept for next time), else the last one it reported, else UTC."""
+    asked = rewind.zone(request.query_params.get("tz"))
+    if asked:
+        if db.get_meta(conn, rewind.TZ_KEY) != asked.key:
+            db.set_meta(conn, rewind.TZ_KEY, asked.key)
+        return asked
+    return rewind.zone(db.get_meta(conn, rewind.TZ_KEY))
+
+
+@app.get("/rewind", response_class=HTMLResponse)
+def rewind_latest(request: Request, conn: sqlite3.Connection = Depends(get_db)):
+    """The latest month's Rewind, or how to get one."""
+    zone = _rewind_zone(request, conn)
+    found = rewind.months(conn, zone)
+    if found:
+        tz = request.query_params.get("tz")
+        return RedirectResponse(f"/rewind/{found[0]}" + (f"?{urlencode({'tz': tz})}" if tz else ""), 303)
+    return templates.TemplateResponse(request, "rewind.html", {
+        "m": None, "months": [], "q": "", "total": db.count(conn)})
+
+
+@app.get("/rewind/{key}", response_class=HTMLResponse)
+def rewind_month(request: Request, key: str, conn: sqlite3.Connection = Depends(get_db)):
+    """One month on TikTok, as story cards."""
+    if not re.fullmatch(r"\d{4}-(0[1-9]|1[0-2])", key):
+        raise HTTPException(status_code=404)
+    tz = _rewind_zone(request, conn)
+    found = rewind.months(conn, tz)
+    m = rewind.month(conn, key, tz)
+    if m is None:
+        if found and request.query_params.get("tz"):
+            # The page has just said where you are, and in your time zone
+            # this month is empty (the last hours of a month in UTC can be
+            # the next one's first): your latest month instead.
+            return RedirectResponse(f"/rewind/{found[0]}", 303)
+        raise HTTPException(status_code=404)
+    return templates.TemplateResponse(request, "rewind.html", {
+        "m": m, "months": found, "zone_known": tz is not None,
+        "earlier": next((k for k in found if k < key), None),
+        "later": next((k for k in reversed(found) if k > key), None),
+        "q": "", "total": db.count(conn)})
 
 
 @app.get("/suggest.json")

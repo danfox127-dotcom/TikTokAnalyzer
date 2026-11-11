@@ -142,6 +142,35 @@ CREATE TABLE IF NOT EXISTS shortcut_files (
     made_at     TEXT NOT NULL
 );
 
+-- What you did on a platform, from its data export (favorites/rewind.py):
+-- each video watched or liked (ref = its id) and each search (ref = the
+-- words). Kept apart from the library so a month of likes never buries what
+-- you deliberately saved. The key makes a second, overlapping export add
+-- nothing twice.
+CREATE TABLE IF NOT EXISTS activity (
+    platform TEXT NOT NULL,
+    kind     TEXT NOT NULL,
+    at       TEXT NOT NULL,
+    ref      TEXT NOT NULL,
+    PRIMARY KEY (platform, kind, at, ref)
+);
+CREATE INDEX IF NOT EXISTS activity_kind_at ON activity (kind, at);
+
+-- Liked videos looked up for Rewind's creators and topics: the details a
+-- save would carry, without making the like a save.
+CREATE TABLE IF NOT EXISTS videos (
+    platform       TEXT NOT NULL,
+    external_id    TEXT NOT NULL,
+    creator_handle TEXT,
+    creator_name   TEXT,
+    title          TEXT,
+    themes         TEXT,
+    status         TEXT NOT NULL,
+    attempts       INTEGER NOT NULL DEFAULT 0,
+    looked_at      TEXT NOT NULL,
+    PRIMARY KEY (platform, external_id)
+);
+
 CREATE VIRTUAL TABLE IF NOT EXISTS items_fts USING fts5(
     item_id UNINDEXED,
     title,

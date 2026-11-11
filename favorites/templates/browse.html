@@ -21,6 +21,7 @@
   <ul class="rr-pills is-scroll hooks" aria-label="Ways in">
     {% if on_this_day %}<li><a class="rr-pill is-hook" href="{{ on_this_day.href }}">{{ icon('calendar') }}On this day <span class="n">{{ on_this_day.count }}</span></a></li>{% endif %}
     {% if season %}<li><a class="rr-pill is-room tone-{{ season.tone }}" href="{{ season.href }}">{{ icon(season.icon) }}This {{ season.name | lower }} <span class="n">{{ season.count }}</span></a></li>{% endif %}
+    <li><a class="rr-pill is-hook" href="/rewind">{{ icon('play') }}Rewind</a></li>
     <li><a class="rr-pill is-hook" href="/year">{{ icon('spark') }}Your {{ year_now }}</a></li>
     <li><a class="rr-pill is-hook" href="/wander">{{ icon('compass') }}Rabbit hole</a></li>
     <li><a class="rr-pill is-hook" href="/search">{{ icon('filter') }}Every filter</a></li>
@@ -92,6 +93,7 @@
     <h2 class="rr-h-m" id="months-title">By month</h2>
     <ul class="rr-pills is-scroll browse-months">
       {% for m in months %}<li><a class="rr-pill" href="{{ m.href }}">{{ m.label }} <span class="n">{{ m.count }}</span></a></li>{% endfor %}
+      <li><a class="rr-pill is-hook" href="/rewind">{{ icon('play') }}Rewind: a month on TikTok</a></li>
       <li><a class="rr-pill is-hook" href="/year">{{ icon('spark') }}Your {{ year_now }}</a></li>
     </ul>
   </div>

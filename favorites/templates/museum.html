@@ -60,6 +60,7 @@
     {% if on_this_day %}<li><a class="rr-pill is-hook" href="{{ on_this_day.href }}">{{ icon('calendar') }}On this day <span class="n">{{ on_this_day.count }}</span></a></li>{% endif %}
     <li><a class="rr-pill is-hook" href="/wander">{{ icon('compass') }}Rabbit hole</a></li>
     {% if season %}<li><a class="rr-pill is-room tone-{{ season.tone }}" href="{{ season.href }}">{{ icon(season.icon) }}This {{ season.name | lower }} <span class="n">{{ season.count }}</span></a></li>{% endif %}
+    {% if rewind %}<li><a class="rr-pill is-hook" href="/rewind/{{ rewind }}">{{ icon('play') }}{{ month_name(rewind) }} Rewind</a></li>{% endif %}
     <li><a class="rr-pill is-hook" href="/year">{{ icon('spark') }}Your {{ year_now }}</a></li>
   </ul>
 </section>

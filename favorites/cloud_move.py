@@ -259,7 +259,7 @@ def move(src: sqlite3.Connection, conn, say=print) -> dict:
     if "theme_rules" in tables:
         move_rules(src, conn, ids)
     pictures = move_pictures(src, conn, ids, say) if "thumbnails" in tables else (0, 0, 0)
-    for table in ("imports", "inbox_seen"):
+    for table in ("imports", "inbox_seen", "activity", "videos"):
         if table in tables:
             move_plain(src, conn, table)
     if "meta" in tables:
