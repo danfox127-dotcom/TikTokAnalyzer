@@ -32,7 +32,6 @@ from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 import httpx
 
 from . import platforms
-from .platforms import SHORTENERS
 
 logger = logging.getLogger(__name__)
 
@@ -171,9 +170,9 @@ async def expand(url: str, client: httpx.AsyncClient) -> str:
     Only known shortener hosts are followed. Chasing every link would double
     the work and, worse, turn a save into a page view on the creator's analytics.
     """
-    host = (urlparse(url).hostname or "").lower()
-    if host not in SHORTENERS and not host.removeprefix("www.") in SHORTENERS:
+    if not platforms.is_short_link(url):
         return url
+    host = (urlparse(url).hostname or "").lower()
     for method in ("head", "get"):
         try:
             resp = await getattr(client, method)(
@@ -181,7 +180,11 @@ async def expand(url: str, client: httpx.AsyncClient) -> str:
                 headers={"User-Agent": USER_AGENT},
             )
             final = str(resp.url)
-            if final and urlparse(final).hostname and urlparse(final).hostname.lower() != host:
+            to = (urlparse(final).hostname or "").lower()
+            # Somewhere else, or -- for a short path on the platform's own
+            # host -- a page that names the video. A sign-in or home page it
+            # bounced to is not where the link was going.
+            if to and not platforms.is_short_link(final) and (to != host or platforms.identifies(final)):
                 return final
         except Exception as exc:  # network shape varies; a failure just means no expansion
             logger.debug("expanding %s via %s failed: %s", url, method, exc)

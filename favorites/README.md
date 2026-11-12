@@ -571,6 +571,25 @@ rows stay in the library with their link and date, and stay off the shelves --
 a wall of untitled URLs is worse than an empty shelf. They still count, and the
 front page tells you how many are outstanding.
 
+**Missing details** (`/missing`, from *Titles and pictures* on Keep it in sync)
+is where you settle them yourself, one screen at a time, like Give them a
+topic. Each card plays the video where the platform still has a player for it
+(or opens it in the app), and has two answers:
+
+- **Name it**: a title, and who made it if you like. The save joins the
+  library like any other, marked `named by you`, with a topic read from your
+  words when they say one.
+- **It's gone**: the save is marked `gone`. It is kept, never deleted, but
+  left out of every page and the missing count, and "Look them up again"
+  skips it. `/missing/gone` lists them, each with **Put it back**.
+
+Flicking up skips one; it is still there next time.
+
+TikTok's share sheet sends `www.tiktok.com/t/<code>` links. They are followed
+to the video like any shortener, and only when they land on a page that names
+a video. A save stored under one is filed under its video once looked up, or
+folded into that video if it was already in the library.
+
 ## Rewind: a month on TikTok
 
 `/rewind` (in Browse, and on Today once there is a month to show) tells a month

@@ -285,7 +285,7 @@ def resolved_count(conn: sqlite3.Connection) -> int:
 
 def pending_count(conn: sqlite3.Connection) -> int:
     return int(conn.execute(
-        f"SELECT count(*) AS n FROM items WHERE NOT ({RESOLVED})").fetchone()["n"])
+        f"SELECT count(*) AS n FROM items WHERE {db.MISSING}").fetchone()["n"])
 
 
 def shelves(

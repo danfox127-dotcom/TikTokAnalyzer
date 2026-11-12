@@ -469,7 +469,7 @@ def main(argv: Optional[list[str]] = None) -> int:
         print(f"likes in export      : {result['likes_in_export']} (not imported; --include-likes to add)")
 
     pending = conn.execute(
-        "SELECT count(*) AS n FROM items WHERE resolve_status != 'ok'"
+        f"SELECT count(*) AS n FROM items WHERE {db.MISSING}"
     ).fetchone()["n"]
     print(f"\nlibrary total        : {db.count(conn)}")
     print(f"awaiting resolution  : {pending}")

@@ -352,7 +352,7 @@ def main(argv: Optional[list[str]] = None) -> int:
     try:
         stats = import_playlists(conn, chosen)
         pending = conn.execute(
-            "SELECT count(*) AS n FROM items WHERE resolve_status != 'ok'").fetchone()["n"]
+            f"SELECT count(*) AS n FROM items WHERE {db.MISSING}").fetchone()["n"]
         total = db.count(conn)
     finally:
         conn.close()

@@ -552,6 +552,40 @@
         }).catch(function () { toast("Couldn't save that -- is Faves still running?"); });
       });
     });
+
+    // Missing details: name it, or say it's gone, and on to the next.
+    function onwards(card, said) {
+      card.classList.add('is-done');
+      if (left) { var n = Math.max(0, parseInt(left.textContent, 10) - 1); left.textContent = n + ' left'; }
+      toast(said);
+      setTimeout(function () { step(1); }, 420);
+    }
+    feed.addEventListener('submit', function (e) {
+      var form = e.target.closest && e.target.closest('.goner');
+      if (!form || !window.fetch) return;
+      e.preventDefault();
+      var card = form.closest('.rr-deckcard');
+      post(form).then(function () { onwards(card, 'Marked gone: kept out of the way'); })
+        .catch(function () { form.submit(); });
+    });
+    var nameSheet = document.getElementById('name-sheet');
+    if (nameSheet) {
+      var nameForm = nameSheet.querySelector('form.sheet-form');
+      nameSheet.addEventListener('rr-open', function (e) {
+        forCard = e.detail.closest('.rr-deckcard');
+        nameForm.reset();
+        nameForm.setAttribute('action', '/item/' + forCard.getAttribute('data-id') + '/name');
+      });
+      nameForm.addEventListener('submit', function (e) {
+        e.preventDefault();
+        var card = forCard;
+        post(nameForm).then(function (r) { return r.json(); }).then(function (j) {
+          card.querySelector('[data-title]').textContent = j.title;
+          nameSheet.close();
+          onwards(card, 'In your library' + (j.labels && j.labels.length ? ', under ' + j.labels.join(', ') : '') + ' ✓');
+        }).catch(function () { toast("Couldn't save that -- is Faves still running?"); });
+      });
+    }
   }
 
   /* ---- Save copied link: one tap saves the link already on the clipboard.

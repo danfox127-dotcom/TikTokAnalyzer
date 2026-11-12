@@ -26,7 +26,7 @@ import json
 import re
 from dataclasses import dataclass, field
 from typing import Callable, Optional
-from urllib.parse import ParseResult, parse_qsl
+from urllib.parse import ParseResult, parse_qsl, urlparse
 
 # Identity: the parsed, tracking-stripped URL -> (canonical_url, external_id).
 # Returning None means "no platform-specific identity"; the cleaned URL is used.
@@ -77,6 +77,10 @@ class Platform:
 
     #: Redirect-only hosts this platform owns. Followed on the way in.
     shorteners: tuple[str, ...] = ()
+
+    #: Redirect-only paths on the platform's own hosts (TikTok's app shares
+    #: ``tiktok.com/t/<code>``). Followed on the way in, like a shortener.
+    short_paths: tuple[str, ...] = ()
 
     #: No-auth oEmbed endpoint, where one exists.
     oembed: Optional[str] = None
@@ -378,6 +382,9 @@ PLATFORMS: tuple[Platform, ...] = (
         # its video id is never extracted.
         hosts=("tiktok.com", "tiktokv.com"),
         shorteners=("vm.tiktok.com", "vt.tiktok.com", "m.tiktok.com"),
+        # The app's share sheet now sends www.tiktok.com/t/<code>: the same
+        # host as the video, so it has to be told apart by its path.
+        short_paths=("/t/",),
         oembed="https://www.tiktok.com/oembed",
         host_canonical="www.tiktok.com",
         identity=_tiktok_identity, link=_tiktok_link, page=_tiktok_page, embed=_tiktok_embed,
@@ -452,6 +459,23 @@ GENERIC_SHORTENERS = frozenset({
 SHORTENERS = GENERIC_SHORTENERS | {
     host for p in PLATFORMS for host in p.shorteners
 }
+
+
+def is_short_link(url: str) -> bool:
+    """A link that only redirects to the real one: a shortener's host, or a
+    platform's own short path (``tiktok.com/t/...``)."""
+    parts = urlparse(url or "")
+    host = (parts.hostname or "").lower()
+    if host in SHORTENERS or host.removeprefix("www.") in SHORTENERS:
+        return True
+    return any(parts.path.startswith(p) for p in for_host(host).short_paths)
+
+
+def identifies(url: str) -> bool:
+    """Whether a link names one thing on its platform (a video's number, say)."""
+    parts = urlparse(url or "")
+    identity = for_host(parts.hostname or "").identity
+    return bool(identity and identity(parts))
 
 
 def for_host(host: str) -> Platform:

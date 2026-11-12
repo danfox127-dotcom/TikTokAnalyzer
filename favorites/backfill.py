@@ -44,7 +44,7 @@ def pending(conn: sqlite3.Connection, limit: Optional[int] = None) -> list[dict]
     """Unresolved items, newest first, excluding ones that have failed too often."""
     sql = (
         "SELECT * FROM items"
-        " WHERE resolve_status != 'ok' AND resolve_attempts < ?"
+        f" WHERE {db.MISSING} AND resolve_attempts < ?"
         " ORDER BY saved_at DESC, id DESC"
     )
     params: list = [MAX_ATTEMPTS]
@@ -90,7 +90,7 @@ def stats(conn: sqlite3.Connection) -> dict:
     ).fetchall()
     by_status = {r["s"]: r["n"] for r in rows}
     exhausted = conn.execute(
-        "SELECT count(*) AS n FROM items WHERE resolve_status != 'ok' AND resolve_attempts >= ?",
+        f"SELECT count(*) AS n FROM items WHERE {db.MISSING} AND resolve_attempts >= ?",
         (MAX_ATTEMPTS,),
     ).fetchone()["n"]
     total = sum(by_status.values())
@@ -153,6 +153,10 @@ def _write_back(
     # The export's date is when *you* saved it, which is the truth the museum
     # arranges itself by. Never let a resolution overwrite it.
     payload.pop("shared_url", None)
+    # A short link, followed, names the video itself: file this save under
+    # that (or fold it into the same video already saved), never beside it.
+    if payload.get("canonical_url") and payload["canonical_url"] != item["canonical_url"]:
+        db.rekey(conn, item["id"], payload["canonical_url"])
     payload["resolve_attempts"] = attempts
     payload["resolved_at"] = db.now_iso()
 

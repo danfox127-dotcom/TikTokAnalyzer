@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% from "_icons.html" import icon %}
+{% set back = '/missing' %}{% set back_label = 'Missing details' %}
+{% block title %}Gone · Faves{% endblock %}
+{% block main_class %}is-bands{% endblock %}
+{% block content %}
+
+<section class="rr-hero">
+  <p class="rr-label">🕳️ Gone</p>
+  <h1 class="rr-h-xl">{% if items %}{{ items | length }} {{ 'video' if items | length == 1 else 'videos' }} you found gone{% else %}Nothing marked gone{% endif %}</h1>
+  <p class="lede">Deleted or made private by whoever posted them. Faves keeps each one here, out of the way:
+    it's left out of every page and never looked up again. If you marked one by mistake, put it back.</p>
+</section>
+
+<section class="rr-band tone-lilac" aria-label="The ones you marked gone"><div class="inner">
+  {% if items %}
+  <ul class="gone-list band-pad">
+    {% for item in items %}
+    <li>
+      <span class="t"><b>{{ item.title if item.title and not item.title.startswith('http') else platform_label(item.platform) ~ ' video' }}</b>
+        <span>Saved {{ item.saved_at | day }}{% if item.note %} · “{{ item.note | upto(60) }}”{% endif %}</span></span>
+      <a class="rr-btn rr-btn--icon" href="{{ browsable_url(item) }}" target="_blank" rel="noopener noreferrer" aria-label="Open it in {{ platform_label(item.platform) }}">{{ icon('external') }}</a>
+      <form action="/item/{{ item.id }}/gone" method="post"><input type="hidden" name="back" value="1">
+        <button class="rr-btn" type="submit">Put it back</button></form>
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p class="band-pad all-done">When a video turns out to be deleted, mark it gone in <a href="/missing">Missing details</a> and it waits here.</p>
+  {% endif %}
+</div></section>
+{% endblock %}

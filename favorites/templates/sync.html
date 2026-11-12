@@ -101,7 +101,7 @@
     <h2 class="rr-h-m" id="details-title">{% if missing %}{{ missing }} {{ 'save is' if missing == 1 else 'saves are' }} missing {{ 'its' if missing == 1 else 'their' }} details{% else %}Every save has its details{% endif %}</h2>
     {% if missing %}<p>Usually the video was deleted or made private, so there is nothing left to look up. But the apps change what they share now and then, and looking again can bring some back.</p>{% endif %}
   </div></div>
-  {% if missing or lookup.running or lookup.last %}
+  {% if missing or gone or lookup.running or lookup.last %}
   <div class="band-pad details-body rr-reveal">
     {% if lookup.running %}
       <p class="yt-state">{{ icon('clock') }}<span>Looking them up now. It takes a few minutes; reload this page to see how it went.</span></p>
@@ -114,6 +114,11 @@
       {% elif cloud %}<p>Faves on your Mac can look them up again: Keep it in sync there.</p>
       {% else %}<p>Look them up again from the Mac Faves runs on.</p>{% endif %}
     {% endif %}
+    {% if missing %}
+      <p>Or check them yourself, one at a time: play each one, then give it a title or mark it gone.</p>
+      <a class="rr-btn{% if not on_mac %} rr-btn--primary{% endif %}" href="/missing">{{ icon('play') }}Check them one by one</a>
+    {% endif %}
+    {% if gone %}<p class="rr-muted"><a href="/missing/gone">{{ gone }} you marked gone</a> {{ 'is' if gone == 1 else 'are' }} kept out of the way.</p>{% endif %}
   </div>
   {% endif %}
 </div></section>
