@@ -368,23 +368,31 @@ class TestLighterSearchCards:
 
 
 class TestPlayingInShuffle:
-    """TikTok's player came out ~145px wide in topic mode -- the room the chips
-    left -- and drew nothing. While a video plays, the card makes way for it."""
+    """In a Shuffle card, TikTok's player only had the room the words left --
+    about 210px wide on an iPhone, under the ~325px its player needs to draw
+    -- and stayed blank. In Shuffle a video plays full screen instead."""
 
-    def test_the_script_marks_the_playing_card_and_clears_it(self, client):
+    def test_a_card_plays_its_video_full_screen(self, client):
         js = client.get("/static/museum.js").text
         play = js[js.index("function play(link)"):js.index("/* ---- a word after saving")]
-        assert "link.closest('.rr-deckcard')" in play and "classList.add('is-playing')" in play
+        assert "link.closest('.rr-deckcard')" in play and "showModal()" in play
+        assert "'rr-watch'" in js
         stop = js[js.index("function stopPlaying("):js.index("function play(link)")]
-        assert "classList.remove('is-playing')" in stop
+        assert ".rr-watch[open]" in stop and ".close()" in stop
+        assert "is-playing" not in js
 
-    def test_the_card_folds_its_words_away_but_keeps_the_title_and_buttons(self, client):
+    def test_the_full_screen_player_is_sized_from_the_screen(self, client):
         css = client.get("/static/style.css").text
-        rule = re.search(r"\.rr-deckcard\.is-playing [^{]*\{ display: none; \}", css).group(0)
-        for gone in [".meta", ".by", ".desc", ".note", ".tagger fieldset"]:
-            assert gone in rule
-        assert "h2" not in rule and ".acts" not in rule
-        assert ".rr-deck:has(.rr-deckcard.is-playing) + .deck-hint { display: none; }" in css
+        watch = re.search(r"\.rr-watch \{[^}]*\}", css).group(0)
+        assert "position: fixed" in watch and "inset: 0" in watch and "max-width: none" in watch
+        tall = re.search(r"\.rr-watch \.rr-playing\.is-tall \{[^}]*\}", css).group(0)
+        assert "100vw" in tall and "100dvh" in tall and "safe-area-inset-top" in tall and "cq" not in tall
+        # What the card did before is gone: no player squeezed into the picture's spot.
+        assert ".rr-deckcard.is-playing" not in css and ".rr-deckcard .pic .rr-playing" not in css
+
+    def test_a_saves_page_gives_a_tall_player_room_too(self, client):
+        css = client.get("/static/style.css").text
+        assert ".rr-detail .hang:has(.rr-playing.is-tall) { width: 100%; max-width: 360px; }" in css
 
     def test_a_tiktok_in_topic_mode_has_a_player_to_open(self, client, conn):
         db.upsert_item(conn, {"canonical_url": "https://www.tiktok.com/video/7400000000000000001", "shared_url": "x",
