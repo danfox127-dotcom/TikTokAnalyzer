@@ -282,8 +282,12 @@
      The picture's play button swaps in the platform's own embed player. One
      plays at a time; the close button, flicking on in Shuffle, or leaving the
      page puts the picture back, which is what stops the sound. The way out
-     to the app stays beside the player, as it does on the page. */
+     to the app stays beside the player, as it does on the page.
+     In Shuffle the video plays full screen, over the card: inside the card
+     it only had the room the words left, which on an iPhone was too small
+     for TikTok's player to draw anything. */
   var CLOSE_SVG = '<span class="rr-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6 6 18"/></svg></span>';
+  var watching = null;                       // the card's play button whose video is up full screen
   function stopPlaying(except) {
     document.querySelectorAll('.rr-playing').forEach(function (box) {
       if (box === except) return;
@@ -291,7 +295,28 @@
       if (link && link.hasAttribute('data-embed')) link.hidden = false;
       box.remove();
     });
-    document.querySelectorAll('.rr-deckcard.is-playing').forEach(function (card) { card.classList.remove('is-playing'); });
+    var up = document.querySelector('.rr-watch[open]');
+    if (up) up.close();
+  }
+  // One full-screen layer for the page, made the first time it's needed.
+  // However it closes (×, Escape, leaving the page) the video stops and
+  // you're back on the card, where you were.
+  function watchLayer() {
+    var d = document.querySelector('.rr-watch');
+    if (d) return d;
+    d = document.createElement('dialog');
+    if (typeof d.showModal !== 'function') return null;
+    d.className = 'rr-watch';
+    d.setAttribute('aria-label', 'Video');
+    d.addEventListener('close', function () {
+      if (d.open) return;                    // already showing the next one
+      var link = watching;
+      watching = null;
+      stopPlaying();
+      if (link) link.focus({ preventScroll: true });
+    });
+    document.body.appendChild(d);
+    return d;
   }
   function play(link) {
     stopPlaying();
@@ -310,14 +335,16 @@
     // YouTube refuses to play for a page that doesn't say where it is.
     frame.setAttribute('referrerpolicy', 'strict-origin-when-cross-origin');
     box.appendChild(frame);
-    link.hidden = true;
-    link.parentNode.insertBefore(box, link.nextSibling);
-    // In Shuffle the player only gets the room the words leave, and in topic
-    // mode that left TikTok's player too small to draw anything: while a
-    // video plays, the card makes way for it (see .rr-deckcard.is-playing).
-    var card = link.closest('.rr-deckcard');
-    if (card) card.classList.add('is-playing');
-    box.querySelector('.stop').addEventListener('click', function () { stopPlaying(); link.focus(); });
+    var layer = link.closest('.rr-deckcard') && watchLayer();
+    if (layer) {
+      layer.appendChild(box);
+      watching = link;
+      layer.showModal();
+    } else {
+      link.hidden = true;
+      link.parentNode.insertBefore(box, link.nextSibling);
+    }
+    box.querySelector('.stop').addEventListener('click', function () { stopPlaying(); link.focus({ preventScroll: true }); });
   }
 
   /* ---- a word after saving, carried across the reload ---- */
