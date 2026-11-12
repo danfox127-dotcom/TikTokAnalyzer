@@ -1587,3 +1587,10 @@ html:has(body.is-deck), body.is-deck { height: 100%; overflow: hidden; overscrol
 .rr-deckcard .pic .rr-playing.is-tall { width: min(100cqw, (100cqh - 52px) * 9 / 16); }
 .rr-deckcard .pic .rr-playing.is-wide { width: 100cqw; }
 .rr-deckcard .pic .rr-playing.is-ig-reel, .rr-deckcard .pic .rr-playing.is-ig-post { width: min(100cqw, 400px); }
+/* While a video plays, the card makes way for it: the words fold away so the
+   picture's row grows and the player with it (in topic mode the chips had
+   left TikTok's player too narrow to draw). The title and the buttons stay;
+   closing the player, or flicking on, brings the rest back. */
+.rr-deckcard.is-playing .cap > :is(.meta, .by, .desc, .note), .rr-deckcard.is-playing .tagger fieldset { display: none; }
+/* The first-visit "Flick up" tip would sit over the player's own bar. */
+.rr-deck:has(.rr-deckcard.is-playing) + .deck-hint { display: none; }

@@ -365,3 +365,32 @@ class TestLighterSearchCards:
         # The save's own page still has it.
         item_id = conn.execute("SELECT id FROM items WHERE canonical_url = 'https://example.com/orzo'").fetchone()[0]
         assert "dinner that saves my Sunday night" in client.get(f"/item/{item_id}").text
+
+
+class TestPlayingInShuffle:
+    """TikTok's player came out ~145px wide in topic mode -- the room the chips
+    left -- and drew nothing. While a video plays, the card makes way for it."""
+
+    def test_the_script_marks_the_playing_card_and_clears_it(self, client):
+        js = client.get("/static/museum.js").text
+        play = js[js.index("function play(link)"):js.index("/* ---- a word after saving")]
+        assert "link.closest('.rr-deckcard')" in play and "classList.add('is-playing')" in play
+        stop = js[js.index("function stopPlaying("):js.index("function play(link)")]
+        assert "classList.remove('is-playing')" in stop
+
+    def test_the_card_folds_its_words_away_but_keeps_the_title_and_buttons(self, client):
+        css = client.get("/static/style.css").text
+        rule = re.search(r"\.rr-deckcard\.is-playing [^{]*\{ display: none; \}", css).group(0)
+        for gone in [".meta", ".by", ".desc", ".note", ".tagger fieldset"]:
+            assert gone in rule
+        assert "h2" not in rule and ".acts" not in rule
+        assert ".rr-deck:has(.rr-deckcard.is-playing) + .deck-hint { display: none; }" in css
+
+    def test_a_tiktok_in_topic_mode_has_a_player_to_open(self, client, conn):
+        db.upsert_item(conn, {"canonical_url": "https://www.tiktok.com/video/7400000000000000001", "shared_url": "x",
+                              "platform": "tiktok", "external_id": "7400000000000000001", "title": "a tiktok",
+                              "resolve_status": "ok", "saved_at": "2025-01-10T12:00:00+00:00"})
+        page = client.get("/shuffle", params={"theme": "Undefined", "order": "newest"}).text
+        card = re.search(r'<article class="rr-deckcard[^"]*is-tagging.*?</article>', page, re.S).group(0)
+        assert 'data-embed="https://www.tiktok.com/player/v1/7400000000000000001' in card
+        assert '<fieldset>' in card and '<div class="acts">' in card
