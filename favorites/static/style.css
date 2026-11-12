@@ -1510,6 +1510,17 @@ html:has(body.is-deck), body.is-deck { height: 100%; overflow: hidden; overscrol
 .tagger .lane { display: flex; gap: 8px; width: max-content; }
 .tagger .room-choices::-webkit-scrollbar { display: none; }
 .rr-deckcard.is-done .tagger { opacity: .55; pointer-events: none; }
+/* Missing details: Name it, It's gone and the way out, in one row. */
+.rr-deckcard.is-naming .acts form { display: contents; }
+.rr-deckcard.is-naming.is-done .acts { opacity: .55; pointer-events: none; }
+.rr-sheet-dialog .keep-form { margin-top: 0; }
+/* The ones you marked gone. */
+.gone-list { list-style: none; margin: 0; display: grid; gap: 10px; }
+.gone-list li { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-radius: var(--radius-md); background: var(--wall-raised); border: 2px solid var(--ink); }
+.gone-list .t { flex: 1; min-width: 0; display: grid; gap: 2px; }
+.gone-list .t b { font: 800 16px/22px var(--font-sans); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gone-list .t span { font: 600 14px/20px var(--font-sans); color: var(--ink-muted); }
+.gone-list form { margin: 0; }
 /* The top bar floats over the feed: close, what this is, shuffle again. */
 .rr-deckbar {
   position: fixed; top: 0; left: 0; right: 0; z-index: 25; display: flex; align-items: center; gap: 10px;

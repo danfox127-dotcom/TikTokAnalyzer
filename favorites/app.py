@@ -107,7 +107,7 @@ def _shared_waiting() -> bool:
     conn = db.connect()
     try:
         return conn.execute(
-            "SELECT 1 FROM items WHERE source = 'share' AND resolve_status != 'ok'"
+            f"SELECT 1 FROM items WHERE source = 'share' AND {db.MISSING}"
             " AND resolve_attempts < ? LIMIT 1", (backfill.MAX_ATTEMPTS,)).fetchone() is not None
     finally:
         conn.close()
@@ -1326,6 +1326,64 @@ def update_note(
     return RedirectResponse(f"/item/{item_id}", status_code=303)
 
 
+# --- Missing details: the saves Faves couldn't identify, checked by you ----
+
+@app.get("/missing", response_class=HTMLResponse)
+def missing_page(request: Request, conn: sqlite3.Connection = Depends(get_db)):
+    """Every save Faves couldn't identify, one screen at a time: play it to
+    see if it's still there, then name it or mark it gone."""
+    items = db.rows_to_dicts(db.missing(conn))
+    at = _an_id(request.query_params.get("at"))
+    start = next((n for n, i in enumerate(items) if i["id"] == at), 0)
+    return templates.TemplateResponse(request, "missing.html", {
+        "items": items[start:], "total": len(items),
+        "gone": conn.execute("SELECT count(*) FROM items WHERE resolve_status = ?", (db.GONE,)).fetchone()[0],
+        "nav": "more", "q": "",
+    })
+
+
+@app.get("/missing/gone", response_class=HTMLResponse)
+def gone_page(request: Request, conn: sqlite3.Connection = Depends(get_db)):
+    """The saves you marked gone: kept, out of the way, and undoable."""
+    return templates.TemplateResponse(request, "missing_gone.html", {
+        "items": db.rows_to_dicts(db.gone(conn)), "nav": "more", "q": "", "total": db.count(conn),
+    })
+
+
+def _a_missing_save(conn: sqlite3.Connection, item_id: int):
+    item = db.get_item(conn, item_id)
+    if item is None:
+        raise HTTPException(status_code=404, detail="no such item")
+    return item
+
+
+@app.post("/item/{item_id}/name")
+def name_save(request: Request, item_id: int, title: str = Form(""), creator: str = Form(""),
+              conn: sqlite3.Connection = Depends(get_db)):
+    """You know what it is: give it a title (and who made it, if you like)."""
+    item = _a_missing_save(conn, item_id)
+    title, creator = title.strip()[:300], creator.strip()[:120]
+    if not title:
+        raise HTTPException(status_code=400, detail="a title, please")
+    tags, terms = tagging.enrich(title=title, description=None, note=item["note"], transcript=None)
+    db.name_item(conn, item_id, title, creator, tags, terms)
+    if _wants_json(request):
+        themes = db.rows_to_dicts([db.get_item(conn, item_id)])[0].get("themes") or []
+        return JSONResponse({"title": title, "themes": themes,
+                             "labels": [f"{looks.look(t)[2]} {t}" for t in themes]})
+    return RedirectResponse("/missing", status_code=303)
+
+
+@app.post("/item/{item_id}/gone")
+def gone_save(request: Request, item_id: int, back: int = Form(0), conn: sqlite3.Connection = Depends(get_db)):
+    """You checked and it's gone -- or, with ``back``, it isn't after all."""
+    _a_missing_save(conn, item_id)
+    db.mark_gone(conn, item_id, gone=not back)
+    if _wants_json(request):
+        return JSONResponse({"gone": not back})
+    return RedirectResponse("/missing/gone" if back else "/missing", status_code=303)
+
+
 @app.get("/thumb/{item_id}")
 def thumb(item_id: int, conn: sqlite3.Connection = Depends(get_db)):
     """The kept picture, or the platform's link if none has been kept yet."""
@@ -1420,6 +1478,7 @@ def sync_page(request: Request, conn: sqlite3.Connection = Depends(get_db)):
         "shortcut_links": SHORTCUT_SLUGS, "inbox": inbox.STATUS, "inbox_path": str(inbox.path()),
         "q": "", "total": db.count(conn),
         "missing": museum.pending_count(conn), "lookup": LOOKUP,
+        "gone": conn.execute("SELECT count(*) FROM items WHERE resolve_status = ?", (db.GONE,)).fetchone()[0],
         "shortcut_ready": _shortcuts_ready(request, conn),
     })
 
@@ -1669,7 +1728,7 @@ def _look_again() -> None:
     """
     conn = db.connect()
     try:
-        conn.execute("UPDATE items SET resolve_attempts = 0 WHERE resolve_status != 'ok'")
+        conn.execute(f"UPDATE items SET resolve_attempts = 0 WHERE {db.MISSING}")
         conn.commit()
     finally:
         conn.close()

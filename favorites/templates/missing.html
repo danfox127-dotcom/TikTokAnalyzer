@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% from "_card.html" import player %}
+{% from "_icons.html" import icon %}
+{% from "_more.html" import sheet %}
+{% set chrome = 'deck' %}
+{% set back = '/sync#details' %}{% set back_label = 'Keep it in sync' %}
+{% block title %}Missing details · Faves{% endblock %}
+{% block main_class %}is-deck{% endblock %}
+
+{#- Where a save came from, in a few words. -#}
+{% macro came_from(item) -%}
+{%- if item.source == 'export' %}From your {{ platform_label(item.platform) }} export
+{%- elif item.source == 'youtube-takeout' %}From your Google Takeout
+{%- elif item.source == 'share' %}Shared from your phone
+{%- else %}Saved{% endif -%}
+{%- endmacro %}
+
+{#- One save Faves couldn't identify: the picture's spot holds its player
+    when the platform still has one, then what's known, then the two
+    answers. Skipping is a flick, as everywhere in Shuffle. -#}
+{% macro namecard(item) %}
+{%- set known_title = item.title if item.title and not item.title.startswith('http') else '' %}
+{%- set e = embed(item) %}
+<article class="rr-deckcard tone-peach is-naming" data-id="{{ item.id }}">
+  <div class="backdrop" aria-hidden="true"></div>
+  <div class="pic">{{ player(item) }}<span class="stamp" aria-hidden="true">{{ icon('check') }}</span></div>
+  <div class="cap">
+    <p class="meta"><span>{{ platform_label(item.platform) }}</span><span class="sep"></span><span>Saved {{ item.saved_at | day }}</span></p>
+    <h2 data-title>{{ known_title or "What's this one?" }}</h2>
+    <p class="desc">{{ came_from(item) }}. Faves couldn't find its caption or picture.
+      {% if e %}Tap play to see if it's still there.{% else %}Open it in {{ platform_label(item.platform) }} to see if it's still there.{% endif %}</p>
+    {% if item.note %}<p class="note">{{ item.note | upto(120) }}</p>{% endif %}
+    <div class="acts">
+      <a class="rr-btn rr-btn--primary" href="/item/{{ item.id }}" data-sheet-open="name">{{ icon('note') }}Name it</a>
+      <form class="goner" action="/item/{{ item.id }}/gone" method="post"><button class="rr-btn" type="submit">It's gone</button></form>
+      <a class="rr-btn rr-btn--icon" href="{{ browsable_url(item) }}" target="_blank" rel="noopener noreferrer" aria-label="Open it in {{ platform_label(item.platform) }}">{{ icon('external') }}</a>
+    </div>
+  </div>
+</article>
+{% endmacro %}
+
+{% block content %}
+<div class="rr-deckbar">
+  <a class="rr-deck-btn" href="{{ back }}" data-back aria-label="Close">{{ icon('close') }}</a>
+  <p class="name"><b>Missing details</b>{% if items %}<span data-left>{{ items | length }} left</span>{% endif %}</p>
+  <a class="rr-deck-btn" href="/missing/gone" aria-label="The ones you marked gone">{{ icon('dots') }}</a>
+</div>
+
+<div class="rr-deck" data-deck data-cards="" data-more="0" data-earlier="0" tabindex="-1">
+  {% for item in items %}{{ namecard(item) }}{% endfor %}
+  <section class="rr-deckend tone-mint">
+    <div class="big" aria-hidden="true">{% if items %}🎉{% else %}✨{% endif %}</div>
+    <h2 class="rr-h-l">{% if items %}That's every one for now.{% else %}Every save has its details.{% endif %}</h2>
+    <p>{% if items %}Any you skipped are still here next time.{% else %}Nothing is waiting to be named.{% endif %}
+      {% if gone %}{{ gone }} you marked gone {{ 'is' if gone == 1 else 'are' }} kept out of the way.{% endif %}</p>
+    <div class="acts">
+      <a class="rr-btn rr-btn--primary" href="/">{{ icon('home') }}Back home</a>
+      {% if gone %}<a class="rr-btn" href="/missing/gone">See the gone ones</a>{% endif %}
+    </div>
+  </section>
+</div>
+{% if items %}<p class="deck-hint" hidden>{{ icon('up') }}Flick up to skip one</p>{% endif %}
+
+{% call sheet('name', 'Name it') %}
+  <form class="sheet-form" method="post" data-for-card="name">
+    <div class="body keep-form">
+      <label class="rr-label" for="name-title">📝 What is it?</label>
+      <input type="text" id="name-title" name="title" required maxlength="300" autocomplete="off" placeholder="A few words, like its caption">
+      <label class="rr-label" for="name-creator">👤 Who made it? <span class="opt">(optional)</span></label>
+      <input type="text" id="name-creator" name="creator" maxlength="120" autocomplete="off" placeholder="@handle or name">
+      <p class="hint">It joins your library. Faves picks a topic from your words when it can; if it can't, it waits in Give them a topic.</p>
+    </div>
+    <footer><button class="rr-btn rr-btn--primary" type="submit">{{ icon('check') }}Save it</button></footer>
+  </form>
+{% endcall %}
+{% endblock %}

@@ -688,6 +688,72 @@ def set_note(conn: sqlite3.Connection, item_id: int, note: str) -> None:
     conn.commit()
 
 
+#: A save Faves couldn't identify that you checked and found deleted. It is
+#: kept -- out of every page and the missing count, never looked up again --
+#: and can be put back.
+GONE = "gone"
+
+#: Saves still missing their details: not identified, and not marked gone.
+MISSING = f"resolve_status NOT IN ('ok', '{GONE}')"
+
+
+def name_item(conn: sqlite3.Connection, item_id: int, title: str, creator: str = "",
+              tags: Iterable[str] = (), terms: Iterable[str] = ()) -> None:
+    """Give a save Faves couldn't identify the details you know: it joins the
+    library like any other, its topics read from the words you gave it."""
+    creator = (creator or "").strip()
+    handle = "@" + creator.lstrip("@") if creator.startswith("@") else None
+    conn.execute(
+        "UPDATE items SET title = ?, creator_name = ?, creator_handle = coalesce(?, creator_handle),"
+        " tags = ?, terms = ?, resolve_status = 'ok', resolve_error = 'named by you', resolved_at = ?"
+        " WHERE id = ?",
+        (title.strip(), None if handle else (creator or None), handle,
+         _json_list(list(tags)), _json_list(list(terms)), now_iso(), item_id))
+    index_item(conn, item_id)
+    conn.commit()
+
+
+def mark_gone(conn: sqlite3.Connection, item_id: int, gone: bool = True) -> None:
+    """You checked: the video is gone (or, undoing that, it isn't)."""
+    conn.execute("UPDATE items SET resolve_status = ?, resolve_error = ? WHERE id = ?",
+                 (GONE, "gone: you checked", item_id) if gone else ("unresolved", None, item_id))
+    conn.commit()
+
+
+def missing(conn: sqlite3.Connection) -> list[sqlite3.Row]:
+    """Saves still missing their details, newest first."""
+    return conn.execute(
+        f"SELECT * FROM items WHERE {MISSING} ORDER BY saved_at DESC, id DESC").fetchall()
+
+
+def gone(conn: sqlite3.Connection) -> list[sqlite3.Row]:
+    """Saves you marked gone, newest first."""
+    return conn.execute(
+        "SELECT * FROM items WHERE resolve_status = ? ORDER BY saved_at DESC, id DESC", (GONE,)).fetchall()
+
+
+def rekey(conn: sqlite3.Connection, item_id: int, canonical: str) -> int:
+    """A save's link turned out to lead somewhere more exact (a short link
+    followed to its video): file it under that. If the video is already in
+    the library, the two are one save -- the one already there keeps your note
+    and the earlier date, and this one is folded into it. Returns the id the
+    save now has."""
+    row = conn.execute("SELECT id, note, saved_at FROM items WHERE id = ?", (item_id,)).fetchone()
+    if row is None:
+        return item_id
+    other = conn.execute("SELECT id, note, saved_at FROM items WHERE canonical_url = ? AND id != ?",
+                         (canonical, item_id)).fetchone()
+    if other is None:
+        conn.execute("UPDATE items SET canonical_url = ? WHERE id = ?", (canonical, item_id))
+        return item_id
+    conn.execute("UPDATE items SET note = ?, saved_at = ? WHERE id = ?",
+                 (other["note"] or row["note"], min(other["saved_at"], row["saved_at"]), other["id"]))
+    for table in ("collections", "thumbnails", "items_fts"):
+        conn.execute(f"DELETE FROM {table} WHERE item_id = ?", (item_id,))
+    conn.execute("DELETE FROM items WHERE id = ?", (item_id,))
+    return int(other["id"])
+
+
 def get_item(conn: sqlite3.Connection, item_id: int) -> Optional[sqlite3.Row]:
     return conn.execute("SELECT * FROM items WHERE id = ?", (item_id,)).fetchone()
 
