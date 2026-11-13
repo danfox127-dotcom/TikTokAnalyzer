@@ -104,9 +104,14 @@
   {% if missing or gone or lookup.running or lookup.last %}
   <div class="band-pad details-body rr-reveal">
     {% if lookup.running %}
-      <p class="yt-state">{{ icon('clock') }}<span>Looking them up now. It takes a few minutes; reload this page to see how it went.</span></p>
+      <div class="lookup-progress" data-lookup-progress>
+        <p class="yt-state" role="status">{{ icon('clock') }}<span data-lookup-words>{{ lookup.words }}</span></p>
+        <div class="lookup-bar" role="progressbar" aria-label="Looking them up" aria-valuemin="0"
+             aria-valuemax="{{ lookup.total }}" aria-valuenow="{{ lookup.done }}"><span style="width: {{ lookup.percent }}%"></span></div>
+        <p class="rr-muted lookup-note">It carries on if you leave this page; keep the Mac awake until it's done. This page updates by itself.</p>
+      </div>
     {% elif lookup.last %}
-      <p class="yt-state">{{ icon('check') }}<span>Last looked {{ lookup.last.at[:16] | replace('T', ' ') }}: {{ lookup.last.resolved }} of {{ lookup.last.attempted }} found.</span></p>
+      <p class="yt-state">{{ icon('check') }}<span>Last looked {{ lookup.last_ago }}: {{ lookup.last.resolved }} of {{ lookup.last.attempted }} found.</span></p>
     {% endif %}
     {% if missing and not lookup.running %}
       {% if on_mac %}

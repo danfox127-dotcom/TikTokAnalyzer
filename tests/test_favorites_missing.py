@@ -193,3 +193,44 @@ class TestGone:
     def test_never_deleted(self, client, conn, three):
         client.post(f"/item/{three[1]}/gone")
         assert db.count(conn) == 3
+
+
+class TestLookingThemUpAgain:
+    """"Look them up again" shows how far it has got, rather than leaving you
+    to guess when to reload."""
+
+    @pytest.mark.asyncio
+    @respx.mock
+    async def test_a_run_reports_as_it_goes(self, conn, three):
+        respx.route().mock(return_value=httpx.Response(404))
+        conn.execute("UPDATE items SET resolve_attempts = 0")
+        conn.commit()
+        heard = []
+        await backfill.run(conn, None, quiet=True, transcripts=False, progress=lambda *a: heard.append(a))
+        assert heard[0] == (0, 3, 0) and heard[-1] == (3, 3, 0) and len(heard) == 4
+
+    def test_in_words(self, monkeypatch):
+        monkeypatch.setattr(web, "LOOKUP", {"running": True, "last": None, "done": 0, "total": 0, "found": 0,
+                                            "started": None})
+        assert web.lookup_status()["words"] == "Looking them up now…"
+        now = web.time.monotonic()
+        web.LOOKUP.update(done=20, total=100, found=2, started=now - 60)      # 20 a minute: 4 to go
+        s = web.lookup_status()
+        assert s["words"] == "Checked 20 of 100 · found 2 · about 4 minutes left" and s["percent"] == 20
+        web.LOOKUP.update(done=95, started=now - 95)
+        assert web.lookup_status()["words"].endswith("under a minute left")
+        web.LOOKUP.update(running=False, last={"resolved": 3, "attempted": 100, "failed": 97, "at": "x"})
+        assert web.lookup_status()["words"] == "Done: found 3 of 100."
+        web.LOOKUP["last"]["at"] = web.db.now_iso()
+        assert web.lookup_status()["last_ago"] == "just now"
+
+    def test_the_page_follows_it(self, client, monkeypatch):
+        monkeypatch.setattr(web, "LOOKUP", {"running": True, "last": None, "done": 12, "total": 102, "found": 1,
+                                            "started": web.time.monotonic() - 30})
+        page = client.get("/sync").text
+        assert "data-lookup-progress" in page and 'aria-valuenow="12"' in page and "width: 12%" in page
+        assert "Checked 12 of 102 · found 1" in page and "This page updates by itself." in page
+        s = client.get("/sync/lookup/status").json()
+        assert (s["running"], s["done"], s["total"], s["found"]) == (True, 12, 102, 1)
+        js = client.get("/static/museum.js").text
+        assert "'/sync/lookup/status'" in js and "location.reload()" in js

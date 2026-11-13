@@ -1014,6 +1014,12 @@ a.rr-stat:hover { transform: translateY(-3px); }
 .imports li { overflow-wrap: anywhere; }
 .sync-hero code, .rr-band code { font-size: .92em; background: var(--wall-raised); padding: 1px 7px; border-radius: 6px; overflow-wrap: anywhere; }
 .yt-state { display: flex; gap: 10px; align-items: flex-start; margin: 0; }
+/* "Look them up again", as it goes: how far, in words and as a bar. */
+.lookup-progress { display: grid; gap: 10px; }
+.lookup-bar { height: 14px; border-radius: 7px; background: var(--wall-raised); border: 2px solid var(--ink); overflow: hidden; }
+.lookup-bar span { display: block; height: 100%; min-width: 6px; background: var(--accent); border-radius: 5px; transition: width .6s var(--ease-out); }
+.lookup-note { margin: 0; font-size: 14px; line-height: 20px; }
+@media (prefers-reduced-motion: reduce) { .lookup-bar span { transition: none; } }
 .yt-body .row { display: flex; flex-wrap: wrap; gap: 10px; }
 .setup summary { cursor: pointer; font: 800 15px/22px var(--font-sans); color: var(--accent-ink); }
 .setup ol, .shortcut { margin: 10px 0 0; padding-left: 22px; display: grid; gap: 8px; }

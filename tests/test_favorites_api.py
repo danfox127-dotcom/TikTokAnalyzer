@@ -597,7 +597,7 @@ class TestKeepingInSync:
         self.given_up()
         asked = []
 
-        async def fake_run(conn, limit, quiet=False, transcripts=True):
+        async def fake_run(conn, limit, quiet=False, transcripts=True, progress=None):
             asked.append([r["resolve_attempts"] for r in conn.execute(
                 "SELECT resolve_attempts FROM items WHERE resolve_status != 'ok'").fetchall()])
             return {"attempted": 2, "resolved": 1, "failed": 1, "seconds": 1.0}
