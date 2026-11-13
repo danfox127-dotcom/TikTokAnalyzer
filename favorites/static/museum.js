@@ -634,6 +634,26 @@
     });
   }
 
+  /* ---- "Look them up again": the bar follows the lookup on the Mac, and
+     the page reloads with the new counts when it's done. With no script the
+     numbers are as of the last reload. ---- */
+  function lookupProgress(el) {
+    var words = el.querySelector('[data-lookup-words]'), bar = el.querySelector('.lookup-bar');
+    function tick() {
+      fetch('/sync/lookup/status', { credentials: 'same-origin', headers: { Accept: 'application/json' } })
+        .then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); })
+        .then(function (s) {
+          words.textContent = s.words;
+          bar.firstElementChild.style.width = s.percent + '%';
+          bar.setAttribute('aria-valuemax', s.total); bar.setAttribute('aria-valuenow', s.done);
+          if (s.running) setTimeout(tick, 2000);
+          else setTimeout(function () { location.reload(); }, 1500);
+        })
+        .catch(function () { setTimeout(tick, 5000); });
+    }
+    setTimeout(tick, 1000);
+  }
+
   /* ---- Rewind: tells the page your time zone once (so the clock is
      yours), lights a dash per card as you swipe, and a tap on either side
      moves a card. Swiping is the phone's own scroll-snap. ---- */
@@ -726,6 +746,7 @@
     document.querySelectorAll('[data-save-copied]').forEach(saveCopied);
     document.querySelectorAll('[data-save-bar]').forEach(saveBar);
     document.querySelectorAll('[data-rewind]').forEach(rewind);
+    document.querySelectorAll('[data-lookup-progress]').forEach(lookupProgress);
     document.querySelectorAll('.st-measure').forEach(statsTrend);
     var standalone = navigator.standalone || (window.matchMedia && matchMedia('(display-mode: standalone)').matches);
     if (standalone) document.querySelectorAll('[data-standalone-step]').forEach(function (s) { s.classList.add('is-done'); });

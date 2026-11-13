@@ -29,7 +29,7 @@ import asyncio
 import dataclasses
 import sqlite3
 import time
-from typing import Optional
+from typing import Callable, Optional
 
 import httpx
 
@@ -174,9 +174,13 @@ def _write_back(
 
 async def run(
     conn: sqlite3.Connection, limit: Optional[int], quiet: bool = False,
-    transcripts: bool = True,
+    transcripts: bool = True, progress: Optional[Callable[[int, int, int], None]] = None,
 ) -> dict:
+    """Look up what's pending. ``progress(done, total, found)`` hears about
+    the start and every save looked up, for a progress bar."""
     queue = pending(conn, limit)
+    if progress:
+        progress(0, len(queue), 0)
     if not queue:
         return {"attempted": 0, "resolved": 0, "failed": 0, "seconds": 0.0}
 
@@ -191,6 +195,8 @@ async def run(
             if _write_back(conn, item, result, transcripts, image):
                 resolved_n += 1
             done += 1
+            if progress:
+                progress(done, len(queue), resolved_n)
             if not quiet and (done % 25 == 0 or done == len(queue)):
                 rate = done / max(time.monotonic() - started, 1e-9) * 60
                 print(f"  {done}/{len(queue)}  resolved {resolved_n}"

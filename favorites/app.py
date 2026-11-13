@@ -1477,7 +1477,7 @@ def sync_page(request: Request, conn: sqlite3.Connection = Depends(get_db)):
         "can_sign": shortcuts.can_sign(), "unlocked": unlocked(request),
         "shortcut_links": SHORTCUT_SLUGS, "inbox": inbox.STATUS, "inbox_path": str(inbox.path()),
         "q": "", "total": db.count(conn),
-        "missing": museum.pending_count(conn), "lookup": LOOKUP,
+        "missing": museum.pending_count(conn), "lookup": lookup_status(),
         "gone": conn.execute("SELECT count(*) FROM items WHERE resolve_status = ?", (db.GONE,)).fetchone()[0],
         "shortcut_ready": _shortcuts_ready(request, conn),
     })
@@ -1715,8 +1715,47 @@ def _mac_only(request: Request) -> None:
         raise HTTPException(status_code=403, detail="do this on the Mac Faves runs on")
 
 
-#: "Look them up again" on this Mac: whether it is running, and how it went.
-LOOKUP: dict = {"running": False, "last": None}
+#: "Look them up again" on this Mac: whether it is running, how far it has
+#: got (``done`` of ``total``, ``found`` so far), and how the last one went.
+LOOKUP: dict = {"running": False, "last": None, "done": 0, "total": 0, "found": 0, "started": None}
+
+
+def _lookup_begun() -> None:
+    LOOKUP.update(running=True, done=0, total=0, found=0, started=time.monotonic())
+
+
+def _lookup_progress(done: int, total: int, found: int) -> None:
+    LOOKUP.update(done=done, total=total, found=found)
+
+
+def _time_left(seconds: Optional[int]) -> str:
+    if seconds is None:
+        return ""
+    if seconds < 60:
+        return "under a minute left"
+    minutes = round(seconds / 60)
+    return f"about {minutes} minute{'' if minutes == 1 else 's'} left"
+
+
+def lookup_status() -> dict:
+    """What the "Look them up again" bar shows: how far it has got, in words
+    and as a share, and roughly how long is left from the pace so far."""
+    running, last = LOOKUP.get("running", False), LOOKUP.get("last")
+    done, total, found = LOOKUP.get("done", 0), LOOKUP.get("total", 0), LOOKUP.get("found", 0)
+    left = None
+    if running and total and done >= 3 and LOOKUP.get("started") is not None:
+        left = round((time.monotonic() - LOOKUP["started"]) / done * (total - done))
+    if running and not total:
+        words = "Looking them up now…"
+    elif running:
+        words = " · ".join(filter(None, [f"Checked {done} of {total}", f"found {found}", _time_left(left)]))
+    elif last:
+        words = f"Done: found {last['resolved']} of {last['attempted']}."
+    else:
+        words = ""
+    return {"running": running, "done": done, "total": total, "found": found, "left_seconds": left,
+            "percent": round(100 * done / total) if total else 0, "words": words, "last": last,
+            "last_ago": _ago(last["at"], datetime.now(timezone.utc)) if last else ""}
 
 
 def _look_again() -> None:
@@ -1735,11 +1774,11 @@ def _look_again() -> None:
 
 
 async def _look_up_again() -> None:
-    LOOKUP["running"] = True
+    _lookup_begun()
     try:
         conn = db.connect()
         try:
-            result = await backfill.run(conn, None, quiet=True)
+            result = await backfill.run(conn, None, quiet=True, progress=_lookup_progress)
         finally:
             conn.close()
         LOOKUP["last"] = {**result, "at": db.now_iso()}
@@ -1756,9 +1795,15 @@ async def sync_lookup(request: Request):
     _mac_only(request)
     if not LOOKUP["running"]:
         await run_in_threadpool(_look_again)
-        LOOKUP["running"] = True  # before the task starts, so a second press waits
+        _lookup_begun()  # before the task starts, so a second press waits
         asyncio.create_task(_look_up_again())
     return RedirectResponse("/sync?done=looking#details", status_code=303)
+
+
+@app.get("/sync/lookup/status")
+def sync_lookup_status():
+    """How far "Look them up again" has got, for the page's progress bar."""
+    return JSONResponse(lookup_status())
 
 
 @app.post("/sync/youtube/connect")
