@@ -44,6 +44,7 @@ HOME_PAGE = """<html><head>
 <a href="https://harborcoffee.substack.com/">Newsletter</a>
 <a href="https://www.facebook.com/sharer/sharer.php?u=x">Share</a>
 <a href="/about">About</a>
+<a href="tel:+1-207-555-0142">Call the roastery</a>
 </body></html>"""
 
 
@@ -74,6 +75,7 @@ class TestWebsite:
             ("tiktok.com", "harborcoffee"): "rel=me",
             ("substack.com", "harborcoffee"): "link",
         }
+        assert site.phones == ["+1-207-555-0142"]
 
     @pytest.mark.asyncio
     @respx.mock
@@ -187,6 +189,46 @@ class TestBuild:
         assert data["url"] == "https://harbor.coffee/"
         assert data["sameAs"] == ["https://www.instagram.com/harborcoffee/"]
 
+    def _mail(self, verdict, **kw):
+        return {"domain": "harbor.coffee", "verdict": verdict, "summary": "S.", "advice": "A.", **kw}
+
+    def test_email_that_can_be_faked_is_a_warning(self):
+        report = build("H", ["harborcoffee"], self.website, [], {}, now=NOW, mail=self._mail("open"))
+        (f,) = [f for f in report["findings"] if "@harbor.coffee" in f["title"]]
+        assert f["level"] == "warn"
+        assert f["title"] == "Anyone can send email that looks like it's from @harbor.coffee"
+        assert f["detail"] == "S. Fix: A."
+        assert report["mail"]["verdict"] == "open"
+
+    def test_protected_email_is_good_news(self):
+        report = build("H", ["harborcoffee"], self.website, [], {}, now=NOW, mail=self._mail("protected"))
+        assert any(f["level"] == "good" and "can't easily be faked" in f["title"] for f in report["findings"])
+
+    def test_an_unknown_check_says_nothing(self):
+        report = build("H", ["harborcoffee"], self.website, [], {}, now=NOW, mail=self._mail("unknown"))
+        assert not any("@harbor.coffee" in f["title"] for f in report["findings"])
+
+    def test_the_website_phone_numbers_are_read(self):
+        report = self._report([], [])
+        (number,) = report["phones"]
+        assert number["valid"] and number["international"] == "+1 207-555-0142"
+
+    def test_an_invalid_number_on_the_website_is_flagged(self):
+        site = parse_website(HOME_PAGE.replace("tel:+1-207-555-0142", "tel:555-01"),
+                             "https://harbor.coffee/", SITES)
+        report = build("H", ["harborcoffee"], site, [], {}, now=NOW)
+        assert any("isn't valid: 555-01" in f["title"] for f in report["findings"])
+
+
+def _dns_reject(request):
+    """harbor.coffee's mail records: mail at Google, fakes refused."""
+    name, rtype = request.url.params["name"], request.url.params["type"]
+    data = {("harbor.coffee", "MX"): (15, "1 aspmx.l.google.com."),
+            ("harbor.coffee", "TXT"): (16, "v=spf1 include:_spf.google.com ~all"),
+            ("_dmarc.harbor.coffee", "TXT"): (16, "v=DMARC1; p=reject")}.get((name, rtype))
+    answers = [{"name": name, "type": data[0], "data": data[1]}] if data else []
+    return httpx.Response(200, json={"Status": 0, "Answer": answers})
+
 
 def _honest(request):
     if "harborcoffee" in str(request.url):
@@ -199,6 +241,7 @@ class TestRun:
     @respx.mock
     async def test_streams_the_search_then_the_report(self):
         respx.get("https://harbor.coffee").mock(return_value=httpx.Response(200, text=HOME_PAGE))
+        respx.get("https://dns.google/resolve").mock(side_effect=_dns_reject)
         respx.get(url__regex=r"https://(www\.)?(instagram|tiktok|pinterest|youtube)\.com/.*").mock(
             side_effect=_honest)
         respx.get(url__regex=r"https://x\.com/.*").mock(side_effect=_honest)
@@ -208,10 +251,11 @@ class TestRun:
             events = [e async for e in brand.run("Harbor Coffee", ["@harborcoffee"], "harbor.coffee",
                                                  sites, client)]
         kinds = [k for k, _ in events]
-        assert kinds[0] == "website" and kinds[-1] == "report"
+        assert kinds[:2] == ["website", "mail"] and kinds[-1] == "report"
         assert "result" in kinds and "details" in kinds
         report = events[-1][1]
         assert report["id"]
+        assert report["mail"]["verdict"] == "protected"
         status = {(r["site"], r["username"]): r["status"] for r in report["rows"]}
         # X was checked under the handle the website lists, too.
         assert ("x.com", "harbor_coffee") in status

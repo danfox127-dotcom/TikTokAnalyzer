@@ -9,3 +9,7 @@ jinja2
 # Compares profile photos and makes the small pictures in brand reports.
 # Remove this line and everything still works, minus photo matching.
 Pillow
+
+# Works out what a phone number says about itself (country, line type...),
+# offline. Remove it and phone lookups just say they're unavailable.
+phonenumbers

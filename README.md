@@ -80,7 +80,9 @@ results fill in live as each site answers, the big platforms come first, every
 verdict says how confident it is and why, and broken sites are re-tested and set
 aside daily. It also reads public profiles, scores whether accounts are the same
 person or brand, gives a broad time-zone hint, and builds a **brand consistency
-report** with a ready-to-paste `sameAs` block. Double-click
+report** with a ready-to-paste `sameAs` block. A **Look up** page shows what an
+email address is publicly linked to and whether email from its domain can be
+faked, and what a phone number says about itself (worked out offline). Double-click
 `footprint/start.command` on a Mac. It has its own dependencies
 (`footprint/requirements.txt`).
 

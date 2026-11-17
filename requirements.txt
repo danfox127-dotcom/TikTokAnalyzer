@@ -4,6 +4,7 @@ uvicorn[standard]
 python-multipart
 jinja2                  # server-rendered templates in favorites/ and footprint/
 Pillow                  # footprint/ compares profile photos
+phonenumbers            # footprint/ reads phone numbers, offline
 httpx
 psycopg[binary]>=3.2    # favorites/ keeps its library in Postgres when DATABASE_URL is set
 pytest

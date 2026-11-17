@@ -109,6 +109,38 @@ class TestSearchStream:
         assert n == 3
 
 
+class TestLookup:
+    def test_an_email_in_the_search_box_goes_to_look_up(self, client):
+        r = client.get("/", params={"u": "someone@harbor.coffee"}, follow_redirects=False)
+        assert r.status_code == 303
+        assert r.headers["location"] == "/lookup?q=someone%40harbor.coffee"
+
+    def test_a_username_on_look_up_goes_to_search(self, client):
+        r = client.get("/lookup", params={"q": "@harborcoffee"}, follow_redirects=False)
+        assert r.headers["location"] == "/?u=harborcoffee"
+
+    def test_the_page(self, client):
+        r = client.get("/lookup", params={"q": "+1 212 555 0100"})
+        assert r.status_code == 200
+        assert "linked to" in r.text and "Have I Been Pwned" in r.text
+
+    def test_a_phone_number_streams_its_facts(self, client):
+        with client.stream("GET", "/lookup/stream", params={"q": "+1 212 555 0100"}) as r:
+            events = _events(r)
+        assert [k for k, _ in events] == ["kind", "phone", "done"]
+        assert events[1][1]["area"] == "New York, NY"
+
+    def test_an_email_streams_every_source(self, client):
+        with client.stream("GET", "/lookup/stream", params={"q": "someone@harbor.coffee"}) as r:
+            events = _events(r)
+        kinds = [k for k, _ in events]
+        assert kinds[0] == "kind" and kinds[-1] == "done"
+        assert {"mail", "gravatar", "github", "linked", "handles"} <= set(kinds)
+
+    def test_a_username_is_refused_by_the_stream(self, client):
+        assert client.get("/lookup/stream", params={"q": "harborcoffee"}).status_code == 400
+
+
 class TestBrand:
     def _report(self, client):
         url = "/brand/stream?name=Harbor%20Coffee&site=harbor.coffee&handles=@harborcoffee&scope=all"

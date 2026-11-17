@@ -29,11 +29,11 @@ from dataclasses import asdict, dataclass, field
 from datetime import datetime, timedelta, timezone
 from html.parser import HTMLParser
 from typing import AsyncIterator, Optional
-from urllib.parse import urljoin, urlparse
+from urllib.parse import unquote, urljoin, urlparse
 
 import httpx
 
-from . import check, match, store, tiers
+from . import check, mailcheck, match, phone, store, tiers
 from .manifest import PLACEHOLDER, USER_AGENT, Site, site_key
 from .profile import Profile
 from .profile import fetch as fetch_profile
@@ -160,6 +160,7 @@ class Website:
     name: Optional[str] = None
     description: Optional[str] = None
     profiles: list[dict] = field(default_factory=list)   # {site, username, url, how}
+    phones: list[str] = field(default_factory=list)     # numbers in tel: links, as written
     error: Optional[str] = None
 
     def to_dict(self) -> dict:
@@ -198,6 +199,11 @@ def parse_website(page: str, url: str, sites: dict[str, Site]) -> Website:
                 continue
             seen.add(found)
             site.profiles.append(dict(site=found[0], username=found[1], url=absolute, how=how))
+    for link in reader.links:
+        if link.strip().lower().startswith("tel:"):
+            number = unquote(link.strip()[4:]).strip()
+            if number and number not in site.phones:
+                site.phones.append(number)
     return site
 
 
@@ -259,8 +265,12 @@ def _days_since(iso_time: Optional[str], now: datetime) -> Optional[int]:
 
 
 def build(brand_name: str, handles: list[str], website: Website, results: list[dict],
-          profiles: dict[tuple[str, str], Profile], *, now: Optional[datetime] = None) -> dict:
-    """Assemble the report from what the search found. Pure: no network."""
+          profiles: dict[tuple[str, str], Profile], *, now: Optional[datetime] = None,
+          mail: Optional[dict] = None) -> dict:
+    """Assemble the report from what the search found. Pure: no network.
+
+    ``mail`` is :func:`footprint.mailcheck.check` for the website's domain.
+    """
     now = now or datetime.now(timezone.utc)
     primary = handles[0] if handles else ""
     me = _website_profile(website, brand_name)
@@ -339,7 +349,8 @@ def build(brand_name: str, handles: list[str], website: Website, results: list[d
                          reason=PLAIN.get((status, confidence), main.get("reason", "")),
                          detail=main.get("reason", ""), big=main.get("big", False), profile=None))
 
-    findings = consistency(website, rows, ours, now)
+    phones = [phone.facts(n) for n in website.phones[:5]]
+    findings = consistency(website, rows, ours, now, mail=mail, phones=phones)
     posting = time_hint([t for p in ours for t in p.post_times], [p.name for p in ours if p.post_times])
     same_as = [r["url"] for r in rows if r["status"] in ("confirmed", "probably")]
     return dict(
@@ -347,10 +358,12 @@ def build(brand_name: str, handles: list[str], website: Website, results: list[d
         website=website.to_dict(), rows=rows, findings=findings, posting=posting.to_dict(),
         same_as=same_as, jsonld=jsonld(brand_name, website.url, same_as),
         counts={s: sum(1 for r in rows if r["status"] == s) for s in ROW_WORDS},
+        mail=mail, phones=phones,
     )
 
 
-def consistency(website: Website, rows: list[dict], ours: list[Profile], now: datetime) -> list[dict]:
+def consistency(website: Website, rows: list[dict], ours: list[Profile], now: datetime, *,
+                mail: Optional[dict] = None, phones: Optional[list[dict]] = None) -> list[dict]:
     """What a reader should fix, in plain words. Each finding: level, title, detail."""
     out: list[dict] = []
 
@@ -363,6 +376,21 @@ def consistency(website: Website, rows: list[dict], ours: list[Profile], now: da
         add("warn", f"{website.domain} doesn't link to any social profiles",
             "Search engines and AI assistants use those links (and the sameAs list) to tie "
             "your accounts to you. The JSON-LD block below is a starting point.")
+
+    # A forged "From" line impersonates a brand without any account at all.
+    verdict = (mail or {}).get("verdict")
+    if verdict == "protected":
+        add("good", f"Email from @{mail['domain']} can't easily be faked", mail["summary"])
+    elif verdict in ("partly", "watching", "open"):
+        title = {"partly": "Fake email from @{d} is only partly blocked",
+                 "watching": "Fake email from @{d} is still delivered",
+                 "open": "Anyone can send email that looks like it's from @{d}"}[verdict]
+        add("warn", title.format(d=mail["domain"]), f"{mail['summary']} Fix: {mail['advice']}")
+
+    for number in phones or []:
+        if not number.get("valid"):
+            add("warn", f"Your website lists a phone number that isn't valid: {number['input']}",
+                number.get("summary", ""))
 
     names: dict[str, list[str]] = {}
     for p in ours:
@@ -457,12 +485,14 @@ async def run(brand_name: str, handles: list[str], website_url: str, sites: dict
               client: httpx.AsyncClient, conn=None, *, big_only: bool = True) -> AsyncIterator[tuple[str, dict]]:
     """The whole report, as a stream of ``(event, data)`` for the page to show live.
 
-    Events: ``website``, ``result``, ``details``, then ``report`` (saved, with
-    its ``id``).
+    Events: ``website``, ``mail``, ``result``, ``details``, then ``report``
+    (saved, with its ``id``).
     """
     handles = [h.strip().lstrip("@") for h in handles if h.strip().lstrip("@")]
     website = await read_website(website_url, sites, client)
     yield "website", website.to_dict()
+    mail = (await mailcheck.check(website.domain, client)).to_dict()
+    yield "mail", mail
 
     results: list[dict] = []
     profiles: dict[tuple[str, str], Profile] = {}
@@ -508,7 +538,7 @@ async def run(brand_name: str, handles: list[str], website_url: str, sites: dict
     while not queue.empty():
         yield queue.get_nowait()
 
-    report = build(brand_name, handles, website, results, profiles)
+    report = build(brand_name, handles, website, results, profiles, mail=mail)
     report["id"] = new_id()
     report["created_at"] = store.now_iso()
     report["scope"] = "big" if big_only else "all"

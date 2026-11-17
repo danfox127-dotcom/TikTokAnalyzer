@@ -94,6 +94,61 @@
     very_likely: 'Very likely the same', possibly: 'Possibly the same', no_evidence: 'No evidence'
   };
 
+  /* A found account's public details, drawn into its .who slot. */
+  function drawWho(who, p) {
+    who.textContent = '';
+    var pic = p.photo_thumb || safeHref(p.avatar_url);
+    who.appendChild(pic ? el('img', { src: pic, alt: '', loading: 'lazy', referrerpolicy: 'no-referrer' }) : el('span', { class: 'ph' }));
+    var facts = el('div', { class: 'facts' });
+    if (p.hidden) facts.appendChild(el('span', { class: 'hidden-note', text: p.note }));
+    if (p.location) facts.appendChild(el('span', { text: '📍 ' + p.location }));
+    if (p.last_active) facts.appendChild(el('span', { text: 'active ' + ago(p.last_active) }));
+    else if (p.created_at) facts.appendChild(el('span', { text: 'joined ' + ago(p.created_at) }));
+    if (p.links && p.links.length) facts.appendChild(el('span', { text: p.links.length + (p.links.length === 1 ? ' link' : ' links') }));
+    who.appendChild(el('div', {}, [
+      p.display_name ? el('div', { class: 'dn', text: p.display_name }) : null,
+      p.bio ? el('div', { class: 'bio', text: p.bio }) : null,
+      facts
+    ]));
+  }
+
+  /* The "same person?" scores. Returns false when there's nothing to compare. */
+  function drawMatch(a, names, main, grid) {
+    var sites = Object.keys(a.profiles);
+    if (sites.length < 2) return false;
+    main.textContent = a.main.length > 1
+      ? 'Very likely the same person or brand: ' + a.main.map(function (s) { return names[s] || s; }).join(' · ')
+      : 'No two accounts here show strong evidence of being the same person.';
+    grid.textContent = '';
+    sites.sort(function (x, y) { return a.profiles[y].score - a.profiles[x].score; });
+    sites.forEach(function (s) {
+      var m = a.profiles[s];
+      var bar = el('div', { class: 'scorebar' }, [el('span')]);
+      bar.firstChild.style.width = m.score + '%';
+      var reasons = el('ul');
+      m.reasons.concat(m.notes || []).forEach(function (r) { reasons.appendChild(el('li', { text: r })); });
+      if (!m.reasons.length && !(m.notes || []).length) reasons.appendChild(el('li', { text: 'Nothing on the profile links it to the others.' }));
+      grid.appendChild(el('div', { class: 'match-card' }, [
+        el('div', { class: 'head' }, [
+          el('strong', { text: names[s] || s }),
+          el('span', { class: 'band ' + m.band, text: BAND_WORDS[m.band] + ' · ' + m.score })
+        ]),
+        m['with'] ? el('div', { class: 'why', text: 'compared with ' + (names[m['with']] || m['with']) }) : null,
+        bar, reasons
+      ]));
+    });
+    return true;
+  }
+
+  /* Email addresses and phone numbers go to the Look up page. */
+  function lookupKind(text) {
+    var t = (text || '').trim();
+    if (/^[A-Za-z0-9._%+'\-]+@([A-Za-z0-9-]+\.)+[A-Za-z]{2,}$/.test(t)) return 'email';
+    var digits = t.replace(/\D/g, '');
+    if (/^\+?[\d\s().\-]+$/.test(t) && digits.length >= 7 && digits.length <= 15) return 'phone';
+    return null;
+  }
+
   /* ---------------------------------------------------------------- search */
   function initSearch() {
     var form = $('#search-form');
@@ -188,51 +243,12 @@
 
     function onDetails(p) {
       var t = tiles[p.site];
-      if (!t) return;
-      var who = $('.who', t);
-      if (!who) return;
-      who.textContent = '';
-      var pic = p.photo_thumb || safeHref(p.avatar_url);
-      who.appendChild(pic ? el('img', { src: pic, alt: '', loading: 'lazy', referrerpolicy: 'no-referrer' }) : el('span', { class: 'ph' }));
-      var facts = el('div', { class: 'facts' });
-      if (p.hidden) facts.appendChild(el('span', { class: 'hidden-note', text: p.note }));
-      if (p.location) facts.appendChild(el('span', { text: '📍 ' + p.location }));
-      if (p.last_active) facts.appendChild(el('span', { text: 'active ' + ago(p.last_active) }));
-      else if (p.created_at) facts.appendChild(el('span', { text: 'joined ' + ago(p.created_at) }));
-      if (p.links && p.links.length) facts.appendChild(el('span', { text: p.links.length + (p.links.length === 1 ? ' link' : ' links') }));
-      who.appendChild(el('div', {}, [
-        p.display_name ? el('div', { class: 'dn', text: p.display_name }) : null,
-        p.bio ? el('div', { class: 'bio', text: p.bio }) : null,
-        facts
-      ]));
+      var who = t && $('.who', t);
+      if (who) drawWho(who, p);
     }
 
     function onMatch(a) {
-      var sites = Object.keys(a.profiles);
-      if (sites.length < 2) return;
-      $('#same').hidden = false;
-      var main = $('#same-main');
-      main.textContent = a.main.length > 1
-        ? 'Very likely the same person or brand: ' + a.main.map(function (s) { return names[s] || s; }).join(' · ')
-        : 'No two accounts here show strong evidence of being the same person.';
-      var grid = $('#same-grid');
-      sites.sort(function (x, y) { return a.profiles[y].score - a.profiles[x].score; });
-      sites.forEach(function (s) {
-        var m = a.profiles[s];
-        var bar = el('div', { class: 'scorebar' }, [el('span')]);
-        bar.firstChild.style.width = m.score + '%';
-        var reasons = el('ul');
-        m.reasons.concat(m.notes || []).forEach(function (r) { reasons.appendChild(el('li', { text: r })); });
-        if (!m.reasons.length && !(m.notes || []).length) reasons.appendChild(el('li', { text: 'Nothing on the profile links it to the others.' }));
-        grid.appendChild(el('div', { class: 'match-card' }, [
-          el('div', { class: 'head' }, [
-            el('strong', { text: names[s] || s }),
-            el('span', { class: 'band ' + m.band, text: BAND_WORDS[m.band] + ' · ' + m.score })
-          ]),
-          m['with'] ? el('div', { class: 'why', text: 'compared with ' + (names[m['with']] || m['with']) }) : null,
-          bar, reasons
-        ]));
-      });
+      if (drawMatch(a, names, $('#same-main'), $('#same-grid'))) $('#same').hidden = false;
     }
 
     function onTimezone(h) {
@@ -255,6 +271,10 @@
     }
 
     function start() {
+      if (lookupKind($('#u').value)) {
+        location.href = '/lookup?q=' + encodeURIComponent($('#u').value.trim());
+        return;
+      }
       var u = $('#u').value.trim().replace(/^@/, '');
       if (!u) return;
       var scope = form.querySelector('input[name=scope]:checked').value;
@@ -331,6 +351,7 @@
         $('#b-phase').textContent = 'Checking the handles…';
         $('#b-fill').style.width = Math.min(90, 10 + answered / 2) + '%';
       });
+      on('mail', function () { $('#b-phase').textContent = 'Checking the handles…'; });
       on('details', function () { $('#b-phase').textContent = 'Reading the public profiles…'; });
       on('report', function (r) {
         $('#b-fill').style.width = '100%';
@@ -375,6 +396,7 @@
       (r.findings.length ? r.findings : [{ level: 'good', title: 'Nothing to fix that this report can see.' }]).forEach(function (f) {
         findings.appendChild(el('li', { class: f.level }, [el('div', { class: 't', text: f.title }), f.detail ? el('div', { class: 'd', text: f.detail }) : null]));
       });
+      contact(r);
       var rows = $('#b-rows');
       rows.textContent = '';
       r.rows.forEach(function (row) {
@@ -406,6 +428,33 @@
       }
       picks(r);
       $('#b-json').href = '/brand/report/' + encodeURIComponent(r.id) + '.json';
+    }
+
+    function contact(r) {
+      var m = r.mail, phones = r.phones || [];
+      var showMail = m && ['protected', 'partly', 'watching', 'open', 'no_domain'].indexOf(m.verdict) >= 0;
+      $('#b-contact').hidden = !showMail && !phones.length;
+      var mail = $('#b-mail');
+      mail.textContent = '';
+      mail.hidden = !showMail;
+      if (showMail) {
+        mail.appendChild(el('p', { class: 'title', text: 'Can email from @' + m.domain + ' be faked?' }));
+        mail.appendChild(el('p', {}, [el('span', { class: 'verdict ' + m.verdict, text: VERDICT_WORDS[m.verdict] })]));
+        mail.appendChild(el('p', { class: 'sub', text: m.summary }));
+        if (m.advice) mail.appendChild(el('p', { class: 'advice', text: 'Fix: ' + m.advice }));
+        if (m.provider) mail.appendChild(el('p', { class: 'why', text: 'Mail run by ' + m.provider }));
+      }
+      var box = $('#b-phones');
+      box.textContent = '';
+      box.hidden = !phones.length;
+      if (phones.length) {
+        box.appendChild(el('p', { class: 'title', text: 'Phone numbers on your website' }));
+        var ul = el('ul', { class: 'evidence' });
+        phones.forEach(function (f) {
+          ul.appendChild(el('li', { text: (f.international || f.input) + ' — ' + f.summary }));
+        });
+        box.appendChild(ul);
+      }
     }
 
     function picks(r) {
@@ -450,10 +499,221 @@
     });
   }
 
+  /* ---------------------------------------------------------------- lookup */
+  var VERDICT_WORDS = {
+    protected: 'Protected', partly: 'Partly protected', watching: 'Watching only',
+    open: 'Open to fakes', webmail: 'Personal webmail', no_domain: 'No such domain', unknown: "Couldn't check"
+  };
+
+  function initLookup() {
+    var form = $('#lookup-form');
+    if (!form) return;
+    var source = null, tiles = {}, names = {}, linkedCount = 0;
+
+    form.addEventListener('submit', function (e) { e.preventDefault(); start(); });
+    if ($('#q').value.trim()) start();
+
+    function card(id, title, kids) {
+      var c = $(id);
+      c.textContent = '';
+      c.appendChild(el('p', { class: 'title', text: title }));
+      kids.forEach(function (k) { if (k) c.appendChild(k); });
+      c.hidden = false;
+      return c;
+    }
+
+    function facts(rows) {
+      var dl = el('dl', { class: 'factlist' });
+      rows.forEach(function (r) {
+        if (r[1] === null || r[1] === undefined || r[1] === '') return;
+        dl.appendChild(el('dt', { text: r[0] }));
+        dl.appendChild(el('dd', { text: String(r[1]) }));
+      });
+      return dl;
+    }
+
+    function link(url, text) {
+      return el('a', { href: safeHref(url), target: '_blank', rel: 'noopener', text: text || url });
+    }
+
+    function onKind(k) {
+      var title = $('#l-title');
+      title.textContent = '';
+      var hero = el('span', { class: 'accent', id: 'l-hero', text: k.query });
+      if (k.kind === 'phone') { title.append('What does ', hero, ' say about itself?'); }
+      else { title.append('What is ', hero, ' linked to?'); }
+      $('#l-email').hidden = k.kind !== 'email';
+      $('#l-phone-wrap').hidden = k.kind !== 'phone';
+      $('#l-phase').textContent = k.kind === 'email' ? 'Asking Gravatar, GitHub and the domain…'
+        : k.kind === 'phone' ? 'Reading the number…' : "That isn't an email address or a phone number.";
+    }
+
+    function onMail(m) {
+      var verdict = el('span', { class: 'verdict ' + m.verdict, text: VERDICT_WORDS[m.verdict] || m.verdict });
+      var rows = [['Domain', m.domain], ['Mail run by', m.provider]];
+      if (m.receives_mail !== undefined && m.receives_mail !== null) rows.push(['Receives email', m.receives_mail ? 'Yes' : 'No']);
+      if (m.verdict !== 'webmail' && m.verdict !== 'no_domain' && m.verdict !== 'unknown') {
+        rows.push(['Allowed senders (SPF)', m.spf ? 'Listed' : 'Not listed']);
+        rows.push(['Fake-mail policy (DMARC)', m.policy ? m.policy + (m.pct < 100 ? ' for ' + m.pct + '%' : '')
+          + (m.dmarc_from && m.dmarc_from !== m.domain ? ' (set on ' + m.dmarc_from + ')' : '') : 'None']);
+      }
+      var notes = el('ul', { class: 'evidence' });
+      (m.notes || []).forEach(function (n) { notes.appendChild(el('li', { text: n })); });
+      card('#l-mail', 'Can email from this domain be faked?', [
+        el('p', {}, [verdict]), el('p', { class: 'sub', text: m.summary }),
+        m.advice ? el('p', { class: 'advice', text: 'Fix: ' + m.advice }) : null,
+        facts(rows), (m.notes || []).length ? notes : null
+      ]);
+    }
+
+    function onGravatar(g) {
+      if (g.found) {
+        names['gravatar.com'] = 'Gravatar';
+        var accts = el('ul', { class: 'evidence' });
+        g.accounts.forEach(function (a) { accts.appendChild(el('li', {}, [a.label + ': ', link(a.url)])); });
+        card('#l-gravatar', 'Gravatar', [
+          el('p', { class: 'sub', text: 'A public profile the owner attached to this address.' }),
+          facts([['Name', g.display_name], ['Work', [g.job_title, g.company].filter(Boolean).join(', ')],
+                 ['Location', g.location], ['Pronouns', g.pronouns]]),
+          g.description ? el('p', { class: 'bio-quote', text: g.description }) : null,
+          g.accounts.length ? el('p', { class: 'why', text: 'Accounts they verified:' }) : null,
+          g.accounts.length ? accts : null,
+          el('p', {}, [link(g.profile_url, 'Open the profile')])
+        ]);
+      } else {
+        card('#l-gravatar', 'Gravatar', [el('p', { class: 'sub', text: g.error || 'No public Gravatar profile for this address.' })]);
+      }
+    }
+
+    function years(first, last) {
+      if (!first) return '';
+      var a = first.slice(0, 4), b = (last || first).slice(0, 4);
+      return ', ' + (a === b ? 'in ' + a : a + '–' + b);
+    }
+
+    function onGithub(gh) {
+      if (gh.error) { card('#l-github', 'GitHub', [el('p', { class: 'sub', text: gh.error })]); return; }
+      if (!gh.total) { card('#l-github', 'GitHub', [el('p', { class: 'sub', text: 'No public commits made with this address.' })]); return; }
+      var kids = [el('p', { class: 'sub', text: gh.total + ' public commit' + (gh.total === 1 ? '' : 's') + ' made with this address'
+        + years(gh.first_seen, gh.last_seen) + '.' })];
+      if (gh.accounts.length) {
+        var ul = el('ul', { class: 'evidence' });
+        gh.accounts.forEach(function (a) {
+          ul.appendChild(el('li', {}, [link(a.url, '@' + a.login), ' — GitHub ties ' + a.commits + ' of them to this account']));
+        });
+        kids.push(ul);
+      } else {
+        kids.push(el('p', { class: 'why', text: "GitHub hasn't tied them to an account"
+          + (gh.likely_owner ? ', but most are in @' + gh.likely_owner.login + "'s projects." : '.') }));
+      }
+      kids.push(facts([['Name on the commits', gh.names.join(', ')], ['Projects', gh.repos.slice(0, 5).join(', ')]]));
+      card('#l-github', 'GitHub', kids);
+    }
+
+    function onFediverse(f) {
+      if (!f.found) return;
+      card('#l-fediverse', 'Fediverse', [
+        el('p', { class: 'sub', text: "The address's own domain says this profile is theirs." }),
+        el('p', {}, [link(f.profile_url)])
+      ]);
+    }
+
+    function onLinked(l) {
+      linkedCount = l.accounts.length;
+      var grid = $('#l-linked');
+      grid.textContent = '';
+      $('#l-linked-wrap').hidden = false;
+      $('#l-linked-empty').hidden = linkedCount > 0;
+      l.accounts.forEach(function (a) {
+        names[a.site] = a.name;
+        var why = el('ul', { class: 'evidence' });
+        a.sources.forEach(function (s) { why.appendChild(el('li', { text: s })); });
+        var badge = a.strength === 'verified' ? 'confirmed' : 'likely';
+        var t = el('article', { class: 'tile found just ' + badge }, [
+          el('div', { class: 'site', text: a.name }),
+          el('div', { class: 'state' }, [el('span', { class: 'badge ' + badge, text: a.strength })]),
+          link(a.url, a.url.replace(/^https?:\/\/(www\.)?/, '')),
+          why, el('div', { class: 'who' })
+        ]);
+        grid.appendChild(t);
+        tiles[a.url] = t;
+      });
+      $('#l-phase').textContent = linkedCount ? 'Reading the linked profiles…' : 'Done.';
+    }
+
+    function onDetails(p) {
+      var t = tiles[p.url];
+      var who = t && $('.who', t);
+      if (who) drawWho(who, p);
+    }
+
+    function onHandles(h) {
+      var box = $('#l-handles');
+      box.textContent = '';
+      h.handles.forEach(function (x) {
+        box.appendChild(el('a', { class: 'handle', href: '/?u=' + encodeURIComponent(x.handle) }, [
+          el('strong', { text: 'Search @' + x.handle + ' everywhere' }), el('span', { text: x.why })
+        ]));
+      });
+      $('#l-handles-wrap').hidden = !h.handles.length;
+    }
+
+    function onPhone(f) {
+      var rows = [['Written as', f.international], ['Line', f.type], ['Area', f.area], ['Country', f.country],
+                  ['First issued by', f.carrier], ['Time zone', (f.time_zones || []).join(', ')]];
+      card('#l-phone', f.valid ? 'What the number says about itself' : 'Not a valid number', [
+        el('p', { class: 'sub', text: f.summary }),
+        f.valid ? facts(rows) : null,
+        f.valid && f.assumed_region ? el('p', { class: 'why', text: 'Read as a ' + f.assumed_region
+          + ' number because it has no +country code.' }) : null,
+        f.valid ? el('p', {}, [el('a', { href: f.tel, text: 'Call it' })]) : null
+      ]);
+    }
+
+    function stop(phase) {
+      if (source) source.close();
+      source = null;
+      $('#l-go').disabled = false;
+      if (phase) $('#l-phase').textContent = phase;
+    }
+
+    function start() {
+      var q = $('#q').value.trim();
+      if (!q) return;
+      if (!lookupKind(q)) {
+        location.href = '/?u=' + encodeURIComponent(q.replace(/^@/, ''));
+        return;
+      }
+      try { history.replaceState(null, '', '/lookup?q=' + encodeURIComponent(q)); } catch (e) {}
+      stop();
+      tiles = {}; names = {}; linkedCount = 0;
+      $('#l-run').hidden = false;
+      ['#l-mail', '#l-gravatar', '#l-github', '#l-fediverse', '#l-phone', '#l-linked-wrap', '#l-same',
+       '#l-handles-wrap', '#l-linked-empty'].forEach(function (s) { $(s).hidden = true; });
+      $('#l-go').disabled = true;
+      source = new EventSource('/lookup/stream?q=' + encodeURIComponent(q));
+      var on = function (name, fn) { source.addEventListener(name, function (e) { fn(JSON.parse(e.data)); }); };
+      on('kind', onKind);
+      on('mail', onMail);
+      on('gravatar', onGravatar);
+      on('github', onGithub);
+      on('fediverse', onFediverse);
+      on('linked', onLinked);
+      on('details', onDetails);
+      on('match', function (a) { if (drawMatch(a, names, $('#l-same-main'), $('#l-same-grid'))) $('#l-same').hidden = false; });
+      on('handles', onHandles);
+      on('phone', onPhone);
+      on('done', function () { stop('Done.'); });
+      on('failed', function (f) { stop('Something went wrong: ' + f.message); });
+      source.onerror = function () { if (source) stop('The connection dropped. Look it up again to retry.'); };
+    }
+  }
+
   document.addEventListener('DOMContentLoaded', function () {
     initMode();
     initHealthChip();
     initSearch();
     initBrand();
+    initLookup();
   });
 })();
