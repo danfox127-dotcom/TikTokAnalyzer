@@ -74,6 +74,21 @@
     {% endfor %}
   </ul>
 
+  {% set m = r.mail %}
+  {% set show_mail = m and m.verdict in ['protected', 'partly', 'watching', 'open', 'no_domain'] %}
+  {% if show_mail or r.phones %}
+  <h2>Email and phone</h2>
+  {% if show_mail %}
+    <p><strong>Can email from @{{ m.domain }} be faked?</strong>
+      <span class="pill {{ {'protected': 'confirmed', 'partly': 'possibly', 'watching': 'possibly'}.get(m.verdict, 'taken') }}">{{ {'protected': 'Protected', 'partly': 'Partly protected', 'watching': 'Watching only', 'open': 'Open to fakes', 'no_domain': 'No such domain'}[m.verdict] }}</span></p>
+    <p class="small">{{ m.summary }}{% if m.advice %} Fix: {{ m.advice }}{% endif %}{% if m.provider %} Mail run by {{ m.provider }}.{% endif %}</p>
+  {% endif %}
+  {% if r.phones %}
+    <p><strong>Phone numbers on the website</strong></p>
+    <ul class="ev">{% for f in r.phones %}<li>{{ f.international or f.input }} — {{ f.summary }}</li>{% endfor %}</ul>
+  {% endif %}
+  {% endif %}
+
   <h2>Platform by platform</h2>
   <table>
     <thead><tr><th>Platform</th><th>Account</th><th>Verdict</th><th>Why</th></tr></thead>

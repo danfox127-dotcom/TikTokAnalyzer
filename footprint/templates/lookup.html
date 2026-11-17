@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% block title %}Footprint — look up an email or phone number{% endblock %}
+{% block body %}
+<section class="hero">
+  <p class="kicker">Look up</p>
+  <h1 id="l-title">What is <span class="accent" id="l-hero">an address</span> linked to?</h1>
+  <form id="lookup-form" autocomplete="off">
+    <div class="searchbar">
+      <input id="q" name="q" value="{{ q }}" placeholder="email address or phone number" required maxlength="200"
+             spellcheck="false" autocapitalize="off" aria-label="Email address or phone number">
+      <button class="btn" type="submit" id="l-go">Look up</button>
+    </div>
+  </form>
+  <p class="lede" style="margin-top:14px">Only places where the owner chose to publish the link are checked.
+    Phone numbers never leave this computer. Numbers without a + country code are read as {{ region }}.</p>
+</section>
+
+<section id="l-run" hidden aria-live="polite">
+  <div class="meter"><div class="meter-stats"><span id="l-phase"></span></div></div>
+
+  <div id="l-email" hidden>
+    <div id="l-linked-wrap" hidden>
+      <h2>Linked accounts</h2>
+      <p class="sub" id="l-linked-empty" hidden>No accounts are publicly linked to this address. That's common:
+        most people don't publish theirs anywhere.</p>
+      <div id="l-linked" class="tiles"></div>
+    </div>
+
+    <h2>Where the links come from</h2>
+    <div class="cards">
+      <section id="l-gravatar" class="panel" hidden></section>
+      <section id="l-github" class="panel" hidden></section>
+      <section id="l-fediverse" class="panel" hidden></section>
+      <section id="l-mail" class="panel" hidden></section>
+    </div>
+
+    <section id="l-same" class="panel" hidden>
+      <p class="title">Do these profiles agree?</p>
+      <p class="sub">Beyond how each link is known, this compares what the profiles say about themselves —
+        links to each other, matching photos, names, bios, location.</p>
+      <p id="l-same-main"></p>
+      <div id="l-same-grid" class="match-grid"></div>
+    </section>
+
+    <div id="l-handles-wrap" hidden>
+      <h2>Search their usernames</h2>
+      <div id="l-handles" class="handles"></div>
+    </div>
+
+    <details class="drawer">
+      <summary>What this looked up, and what it won't</summary>
+      <div class="body">
+        <ul class="reasons">
+          <li><span class="k">Gravatar</span><span class="v">Asked with a scrambled code made from the address,
+            the way Gravatar lookups always work.</span></li>
+          <li><span class="k">GitHub</span><span class="v">Searched for public commits made with the address.</span></li>
+          <li><span class="k">The address's domain</span><span class="v">Asked whether it points to a fediverse
+            profile (never big webmail providers), and its public mail records were read — only the domain name
+            is sent for those.</span></li>
+          <li><span class="k">Not done</span><span class="v">Trying sign-up or password-reset pages to see whether the
+            address has an account somewhere: that misuses those systems and can send the owner an alert.</span></li>
+          <li><span class="k">Your own address</span><span class="v">To see whether it's in known data breaches, type it
+            into <a href="{{ breach_check }}" target="_blank" rel="noopener">Have I Been Pwned</a> yourself.</span></li>
+        </ul>
+      </div>
+    </details>
+  </div>
+
+  <div id="l-phone-wrap" hidden>
+    <section id="l-phone" class="panel" hidden></section>
+    <div class="note-plain">
+      <p><strong>Why there's no "who owns this number".</strong> A number's facts come from how phone numbers are
+        laid out, so nothing is sent anywhere. The area is where the number's prefix was first assigned, not where
+        anyone is, and numbers move between carriers. Services that name a number's owner are data brokers, and
+        checking messaging apps for a number exposes the owner — Footprint does neither.</p>
+    </div>
+  </div>
+</section>
+{% endblock %}

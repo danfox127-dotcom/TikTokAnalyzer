@@ -1,5 +1,6 @@
-"""The web app: a search page whose results fill in live, a brand report, and
-the daily health check's findings.
+"""The web app: a search page whose results fill in live, a lookup for email
+addresses and phone numbers, a brand report, and the daily health check's
+findings.
 
 Run it with ``footprint/start.command`` (double-click on a Mac) or::
 
@@ -21,6 +22,7 @@ import time
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import AsyncIterator, Optional
+from urllib.parse import urlencode
 
 import httpx
 from fastapi import FastAPI, HTTPException, Query, Request
@@ -28,7 +30,8 @@ from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Resp
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from . import brand, check, health, manifest, match, store, tiers
+from . import brand, check, health, lookup, manifest, match, store, tiers
+from . import phone as phone_mod
 from . import profile as profile_mod
 from .timezone import hint as time_hint
 
@@ -105,8 +108,18 @@ def create_app(*, sites: Optional[dict] = None, client: Optional[httpx.AsyncClie
 
     @app.get("/", response_class=HTMLResponse)
     async def home(request: Request, u: str = ""):
+        if lookup.kind(u) in ("email", "phone"):
+            return RedirectResponse("/lookup?" + urlencode({"q": u.strip()}), status_code=303)
         return templates.TemplateResponse(request, "search.html",
                                           dict(status=status(request), page="search", u=u))
+
+    @app.get("/lookup", response_class=HTMLResponse)
+    async def lookup_page(request: Request, q: str = ""):
+        if lookup.kind(q) == "username":
+            return RedirectResponse("/?" + urlencode({"u": q.strip().lstrip("@")}), status_code=303)
+        return templates.TemplateResponse(request, "lookup.html", dict(
+            status=status(request), page="lookup", q=q, region=phone_mod.default_region(),
+            breach_check=lookup.BREACH_CHECK))
 
     @app.get("/brand", response_class=HTMLResponse)
     async def brand_page(request: Request):
@@ -218,6 +231,25 @@ def create_app(*, sites: Optional[dict] = None, client: Optional[httpx.AsyncClie
                     yield _sse(*item)
             finally:
                 worker.cancel()
+
+        return StreamingResponse(events(), media_type="text/event-stream",
+                                 headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+
+    # ------------------------------------------------------------ lookup --
+
+    @app.get("/lookup/stream")
+    async def lookup_stream(request: Request, q: str = Query(..., min_length=1, max_length=200)):
+        st = request.app.state
+        if lookup.kind(q) not in ("email", "phone"):
+            raise HTTPException(400, "Look up takes an email address or a phone number")
+
+        async def events() -> AsyncIterator[str]:
+            try:
+                async for kind, data in lookup.run(q, st.sites, st.client):
+                    yield _sse(kind, data)
+            except Exception as exc:  # tell the page rather than hang it
+                logger.exception("lookup failed")
+                yield _sse("failed", dict(message=str(exc)))
 
         return StreamingResponse(events(), media_type="text/event-stream",
                                  headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})

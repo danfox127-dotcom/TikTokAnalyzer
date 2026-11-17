@@ -94,9 +94,17 @@ def webmail(domain: str) -> Optional[str]:
     return WEBMAIL.get(domain) or WEBMAIL_FAMILIES.get(domain.split(".")[0])
 
 
+# Shared inboxes: the part before the @ says nothing about anyone's username.
+ROLE_ADDRESSES = {"hello", "hi", "info", "contact", "support", "help", "admin", "team", "press",
+                  "media", "sales", "office", "mail", "email", "noreply", "no-reply", "hr", "jobs",
+                  "careers", "billing", "accounts", "marketing", "partners", "enquiries", "inquiries"}
+
+
 def local_handle(email: str) -> Optional[str]:
     """The part before the @, without a +tag: a guess at a username."""
     local = email.split("@", 1)[0].split("+", 1)[0]
+    if local.lower() in ROLE_ADDRESSES:
+        return None
     return local if len(local) >= 3 and re.search(r"[a-z]", local, re.I) else None
 
 

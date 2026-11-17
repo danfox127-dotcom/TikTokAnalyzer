@@ -65,6 +65,7 @@ class TestKind:
     def test_local_handle(self):
         assert local_handle("marisol.cooks+news@x.com") == "marisol.cooks"
         assert local_handle("12@x.com") is None
+        assert local_handle("hello@marisol.kitchen") is None  # a shared inbox, not a username
 
 
 @pytest.mark.asyncio
