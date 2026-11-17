@@ -131,6 +131,8 @@ Give it a brand name, the official website, and up to five handles.
    - different handles on different platforms
    - accounts with no public post in 180 days
    - profiles that are probably yours but missing from the website
+   - email from your domain that can be faked (see below)
+   - a phone number on your website that isn't a valid number
 5. **When your accounts post**, as a 24-hour chart.
 6. **A ready-to-paste JSON-LD block** with the `sameAs` list. Search engines and
    AI assistants use it to tie your accounts to your organisation. Untick
@@ -139,6 +141,59 @@ Give it a brand name, the official website, and up to five handles.
 Download it as a single self-contained HTML file to share. It has no outside
 fonts, scripts or pictures, so it opens the same in an email attachment. You
 can also download the data as JSON.
+
+## Look up an email address or a phone number
+
+The **Look up** page (or the search box: type an address or a number) shows what
+an email address is publicly linked to, and what a phone number says about
+itself.
+
+**An email address** is checked only where its owner chose to publish the link:
+
+- **Gravatar** — the public profile some people attach to their address,
+  including the accounts they have *verified* there (X, LinkedIn, GitHub,
+  Instagram…).
+- **GitHub** — public commits made with the address. When GitHub has verified
+  the address belongs to an account, the commits name that account. When it
+  hasn't but most of the commits sit in one person's projects, that account is
+  shown as *likely*.
+- **The address's own domain** — whether it points the address to a
+  fediverse (Mastodon-style) profile. Big webmail providers are never asked.
+
+Each linked account is marked **verified** (the owner or the platform proved
+the link) or **likely** (inferred), then read like a search result: public
+profile details, photo, and the same-person score. The usernames found are one
+click from a full search.
+
+**Can email from the domain be faked?** Anyone can put any address in an
+email's "From" line. Whether inboxes believe it depends on three public records
+the domain publishes: which servers receive its mail (MX), which may send it
+(SPF), and what to do with mail that fails the check (DMARC). The verdict is one
+of *protected* (fakes are refused or sent to spam), *partly protected*,
+*watching only* (fakes are reported but still delivered), *open to fakes*, or
+*no such domain* — with the fix in one line. Only the domain name is sent, to
+Google's public DNS service. The brand report runs the same check on the
+brand's website domain.
+
+**A phone number** never leaves your computer. Google's libphonenumber data (the
+same data Android uses) says whether it's a valid number, its country and the
+area its prefix was assigned to, the kind of line (mobile, landline, toll-free,
+internet), the carrier the number was first issued by, and its time zone. That's
+all a number says about itself: the area isn't where anyone is, and numbers move
+between carriers. Numbers without a `+` country code are read as US numbers;
+set `FOOTPRINT_PHONE_REGION` (for example `GB`) to change that.
+
+**What it deliberately doesn't do:**
+
+- **Try sign-up or password-reset pages to see whether an address or number has
+  an account somewhere.** Some tools do this; it misuses those systems, can send
+  the owner a reset alert, and breaks the sites' terms.
+- **Name a phone number's owner.** That's data-broker territory, and checking
+  messaging apps for a number exposes the owner.
+- **Search data breaches.** To check your own address, type it into
+  [Have I Been Pwned](https://haveibeenpwned.com/) yourself.
+
+Nothing about a lookup is kept.
 
 ## Using it responsibly
 
@@ -167,6 +222,9 @@ repository. Bot-wall fingerprints are Sherlock's.
 | `health.py` | The daily self-test |
 | `profile.py`, `match.py`, `timezone.py` | Profile details, the same-person score, the time-zone hint |
 | `brand.py` | The brand report |
+| `lookup.py` | Email lookup: Gravatar, GitHub, WebFinger, then profiles and scores |
+| `mailcheck.py` | Can email from a domain be faked? MX, SPF and DMARC via public DNS |
+| `phone.py` | What a phone number says about itself, offline |
 | `app.py` | The web app; results stream as Server-Sent Events |
 
 Tests: `pytest tests/test_footprint_*.py`. They use made-up sites and mocked
