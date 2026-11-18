@@ -431,9 +431,29 @@
     }
 
     function contact(r) {
-      var m = r.mail, phones = r.phones || [];
+      var m = r.mail, phones = r.phones || [], br = r.breaches;
       var showMail = m && ['protected', 'partly', 'watching', 'open', 'no_domain'].indexOf(m.verdict) >= 0;
-      $('#b-contact').hidden = !showMail && !phones.length;
+      $('#b-contact').hidden = !showMail && !phones.length && !br;
+      var bbox = $('#b-breaches');
+      bbox.textContent = '';
+      bbox.hidden = !br;
+      if (br) {
+        bbox.appendChild(el('p', { class: 'title', text: 'Has ' + br.domain + ' had a data breach?' }));
+        if (!br.checked) {
+          bbox.appendChild(el('p', { class: 'sub', text: br.error || "Couldn't check." }));
+        } else if (!br.breaches.length) {
+          bbox.appendChild(el('p', {}, [el('span', { class: 'verdict protected', text: 'None known' })]));
+          bbox.appendChild(el('p', { class: 'sub', text: 'No breach of this website is in the public catalogue.' }));
+        } else {
+          bbox.appendChild(el('p', {}, [el('span', { class: 'verdict open',
+            text: br.breaches.length + ' known breach' + (br.breaches.length === 1 ? '' : 'es') })]));
+          var bl = el('ul', { class: 'evidence' });
+          br.breaches.forEach(function (b) { bl.appendChild(el('li', { text: b.summary })); });
+          bbox.appendChild(bl);
+          bbox.appendChild(el('p', { class: 'sub', text: "This is what people find when they search your brand's name with \u201cbreach\u201d. A short page on what happened and what changed helps." }));
+        }
+        bbox.appendChild(el('p', { class: 'why' }, [el('a', { href: br.credit_url, target: '_blank', rel: 'noopener', text: br.credit })]));
+      }
       var mail = $('#b-mail');
       mail.textContent = '';
       mail.hidden = !showMail;

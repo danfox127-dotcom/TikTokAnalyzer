@@ -208,6 +208,31 @@ class TestBuild:
         report = build("H", ["harborcoffee"], self.website, [], {}, now=NOW, mail=self._mail("unknown"))
         assert not any("@harbor.coffee" in f["title"] for f in report["findings"])
 
+    def _breaches(self, found, checked=True):
+        return {"domain": "harbor.coffee", "checked": checked, "error": None, "breaches": [
+            {"name": n, "title": n, "domain": "harbor.coffee", "date": "2021-06-01", "added": "2021-07-01",
+             "count": 5200, "data": ["Email addresses", "Passwords"], "verified": True,
+             "fabricated": False, "sensitive": False, "spam_list": False} for n in found]}
+
+    def test_a_breach_of_the_website_is_a_warning(self):
+        report = build("H", ["harborcoffee"], self.website, [], {}, now=NOW,
+                       breaches=self._breaches(["HarborShop"]))
+        (f,) = [f for f in report["findings"] if "breach" in f["title"]]
+        assert f["level"] == "warn"
+        assert f["title"] == "harbor.coffee has had 1 known data breach"
+        assert f["detail"] == ("HarborShop, Jun 2021: 5,200 accounts — email addresses, passwords. "
+                               "Breach data from Have I Been Pwned.")
+
+    def test_no_breaches_is_good_news(self):
+        report = build("H", ["harborcoffee"], self.website, [], {}, now=NOW, breaches=self._breaches([]))
+        assert any(f["level"] == "good" and f["title"] == "No known data breaches of harbor.coffee"
+                   for f in report["findings"])
+
+    def test_an_unchecked_lookup_says_nothing(self):
+        report = build("H", ["harborcoffee"], self.website, [], {}, now=NOW,
+                       breaches=self._breaches([], checked=False))
+        assert not any("breach" in f["title"] for f in report["findings"])
+
     def test_the_website_phone_numbers_are_read(self):
         report = self._report([], [])
         (number,) = report["phones"]
@@ -242,6 +267,7 @@ class TestRun:
     async def test_streams_the_search_then_the_report(self):
         respx.get("https://harbor.coffee").mock(return_value=httpx.Response(200, text=HOME_PAGE))
         respx.get("https://dns.google/resolve").mock(side_effect=_dns_reject)
+        respx.get("https://haveibeenpwned.com/api/v3/breaches").mock(return_value=httpx.Response(200, json=[]))
         respx.get(url__regex=r"https://(www\.)?(instagram|tiktok|pinterest|youtube)\.com/.*").mock(
             side_effect=_honest)
         respx.get(url__regex=r"https://x\.com/.*").mock(side_effect=_honest)
@@ -251,11 +277,13 @@ class TestRun:
             events = [e async for e in brand.run("Harbor Coffee", ["@harborcoffee"], "harbor.coffee",
                                                  sites, client)]
         kinds = [k for k, _ in events]
-        assert kinds[:2] == ["website", "mail"] and kinds[-1] == "report"
+        assert kinds[:3] == ["website", "mail", "breaches"] and kinds[-1] == "report"
         assert "result" in kinds and "details" in kinds
         report = events[-1][1]
         assert report["id"]
         assert report["mail"]["verdict"] == "protected"
+        assert report["breaches"]["checked"] and report["breaches"]["breaches"] == []
+        assert any(f["title"] == "No known data breaches of harbor.coffee" for f in report["findings"])
         status = {(r["site"], r["username"]): r["status"] for r in report["rows"]}
         # X was checked under the handle the website lists, too.
         assert ("x.com", "harbor_coffee") in status
