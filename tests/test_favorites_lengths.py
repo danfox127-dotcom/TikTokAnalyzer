@@ -154,7 +154,9 @@ class TestCatchingUp:
 class TestSavingFromThePhone:
     @respx.mock
     def test_a_share_records_its_length(self, tmp_path, monkeypatch):
+        """Straight after the save has answered, on the Mac."""
         monkeypatch.setenv("FAVORITES_DB", str(tmp_path / "favorites.db"))
+        monkeypatch.setenv("FAVES_FINISH_LATER", "1")
         respx.get(host="www.tiktok.com", path="/oembed").mock(return_value=httpx.Response(
             200, json={"title": "zoning #localgov", "author_name": "City Desk",
                        "author_unique_id": "citydesk"}))

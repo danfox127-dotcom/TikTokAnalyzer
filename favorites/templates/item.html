@@ -11,7 +11,7 @@
 {% elif just_saved %}<p class="rr-notice flash">{{ icon('placard') }}<span>Saved. Add a note below while you remember why.</span></p>{% endif %}
 
 <section class="rr-band detail-band"><div class="inner">
-<article class="rr-detail detail">
+<article class="rr-detail detail"{% if finishing %} data-finish="/item/{{ item.id }}/finish"{% endif %}>
   <div class="hang">{{ player(item) }}</div>
 
   <div class="detail-body">

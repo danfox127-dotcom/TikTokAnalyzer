@@ -26,6 +26,13 @@ def _never_the_real_footprint(tmp_path, monkeypatch):
 
 
 @pytest.fixture(autouse=True)
+def _nothing_finished_later(monkeypatch):
+    """A save's extras (its length, a video's words) are fetched after it's
+    kept. Tests have no internet for that, so it's off unless a test asks."""
+    monkeypatch.setenv("FAVES_FINISH_LATER", "0")
+
+
+@pytest.fixture(autouse=True)
 def _never_the_real_inbox(tmp_path, monkeypatch):
     """Faves reads the phone's inbox file from iCloud Drive. Tests point it at
     a temporary file instead (missing unless a test writes it)."""

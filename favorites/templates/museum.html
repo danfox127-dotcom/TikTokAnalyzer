@@ -11,6 +11,7 @@
 {% set ns = namespace(i=0) %}
 {% block main_class %}{% if total and not (pending and total == pending) %}is-bands{% endif %}{% endblock %}
 {% block content %}
+{% if finishing %}<span hidden data-finish="/saves/finish"></span>{% endif %}
 
 {% if pending and total == pending %}
   <section class="rr-empty pending-notice">
