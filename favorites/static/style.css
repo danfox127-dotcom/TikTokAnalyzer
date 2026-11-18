@@ -1050,7 +1050,15 @@ a.rr-stat:hover { transform: translateY(-3px); }
 .keep-hero { max-width: 640px; }
 .keep-form { margin-top: 22px; display: grid; gap: 8px; }
 .keep-form .hint { margin: 0 0 6px; font: 600 14px/20px var(--font-sans); color: var(--ink-muted); }
-.keep-form input[type="url"], .keep-form input[type="text"], .keep-form input[type="password"] {
+.keep-form textarea#link { height: 50px; padding: 13px 16px; resize: none; overflow: hidden; line-height: 22px; display: block; }
+.keep-form .link-row { align-items: flex-start; flex-wrap: wrap; }
+.keep-form .link-row textarea#link { flex: 1 1 260px; }
+.keep-form .link-row .paste-btn { min-height: 50px; }
+.keep-batch { margin-top: 18px; background: var(--band-mint); }
+.keep-batch p { margin: 0; }
+.keep-batch ul { margin: 8px 0 0; padding-left: 20px; display: grid; gap: 4px; }
+.keep-batch a { color: var(--accent-ink); font-weight: 700; }
+.keep-form input[type="url"], .keep-form input[type="text"], .keep-form input[type="password"], .keep-form textarea#link {
   width: 100%; min-height: 50px; padding: 0 16px; border-radius: var(--radius-md); box-sizing: border-box;
   border: 2px solid var(--ink); background: var(--wall-raised); color: var(--ink); font: 600 16px/22px var(--font-sans);
 }
@@ -1589,6 +1597,17 @@ html:has(body.is-deck), body.is-deck { height: 100%; overflow: hidden; overscrol
   display: block; width: 100%; max-height: calc(100cqh - 52px); border: 0; border-radius: var(--radius-md);
   background: #000; box-shadow: var(--shadow-pop);
 }
+/* While the player loads: the save's own picture, softened and pulsing,
+   then the player fades in over it. */
+.rr-playing .screen { position: relative; border-radius: var(--radius-md); background: #000; }
+.rr-playing .screen .poster { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover;
+  border-radius: var(--radius-md); filter: blur(6px) brightness(.8); opacity: .9; }
+.rr-playing .screen.is-loading .poster { animation: rr-pulse 1.4s ease-in-out infinite; }
+.rr-playing .screen iframe { position: relative; transition: opacity .3s var(--ease-out); }
+.rr-playing .screen.is-loading iframe { opacity: 0; }
+.rr-playing.is-slow .out::before { content: "Slow to load? "; font-weight: 600; margin-right: .25em; }
+@keyframes rr-pulse { 50% { opacity: .55; } }
+@media (prefers-reduced-motion: reduce) { .rr-playing .screen.is-loading .poster { animation: none; } }
 .rr-playing.is-tall iframe { aspect-ratio: 9 / 16; }
 .rr-playing.is-wide iframe { aspect-ratio: 16 / 9; }
 /* Instagram's player brings its own header and footer: room for both. */

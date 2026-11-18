@@ -23,7 +23,7 @@ class TestBuild:
         workflow = plistlib.loads(plistlib.dumps(
             shortcuts.build("Save to Faves", "http://100.1.2.3:8000", "sesame"), fmt=plistlib.FMT_BINARY))
         steps = actions(workflow)
-        assert [name for name, _ in steps] == ["gettext", "file.append", "downloadurl", "notification"]
+        assert [name for name, _ in steps] == ["gettext", "file.append", "downloadurl", "getvalueforkey", "notification"]
         assert workflow["WFWorkflowTypes"] == ["ActionExtension"]
         line = steps[0][1]["WFTextActionText"]["Value"]
         assert line["string"] == "￼\t￼"
@@ -40,6 +40,12 @@ class TestBuild:
         [field] = send["WFJSONValues"]["Value"]["WFDictionaryFieldValueItems"]
         assert field["WFKey"]["Value"]["string"] == "url"
         assert field["WFValue"]["Value"]["attachmentsByRange"]["{0, 1}"] == {"Type": "ExtensionInput"}
+        # The notification says what Faves said back, not a fixed "Saved".
+        said, note = steps[3][1], steps[4][1]
+        assert said["WFDictionaryKey"] == "said" and said["WFInput"]["Value"]["OutputUUID"] == send["UUID"]
+        body = note["WFNotificationActionBody"]["Value"]
+        assert body["string"] == "￼" and body["attachmentsByRange"]["{0, 1}"]["OutputUUID"] == said["UUID"]
+        assert "Saved to Faves ✓" not in str(workflow)
 
     def test_save_copied_link_starts_from_the_clipboard(self):
         workflow = shortcuts.build("Save copied link", "http://100.1.2.3:8000", None)

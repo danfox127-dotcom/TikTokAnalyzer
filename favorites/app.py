@@ -35,6 +35,8 @@ from urllib.parse import urlencode, urlparse
 import httpx
 from fastapi import Depends, FastAPI, Form, HTTPException, Query, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
+from fastapi.exception_handlers import http_exception_handler
+from starlette.exceptions import HTTPException as StarletteHTTPException
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from starlette.concurrency import run_in_threadpool
@@ -43,7 +45,7 @@ from . import (backfill, blurb, cloud, db, explore, google_sync, lengths, looks,
                tagging, thumbnails, transcript, watch)
 from . import inbox, known, platforms, profiles, rewind, shortcuts
 from . import themes as theme_vocabulary
-from .resolve import browsable_url, canonical_form, detect_platform, extract_url, platform_label, resolve
+from .resolve import URL_RE, browsable_url, canonical_form, detect_platform, extract_url, platform_label, resolve
 
 logger = logging.getLogger(__name__)
 
@@ -504,6 +506,8 @@ async def save(
         kept = await run_in_threadpool(_auto_save_check, conn, extract_url(shared))
         if kept is not None:
             log_save(request, f"auto-save: {kept['why']}")
+            if kept.get("already"):
+                kept["said"] = said(conn, kept["id"], False)
             return JSONResponse(kept, status_code=200)
 
     log_save(request, f"save received ({urlparse(extract_url(shared)).hostname or 'a link'})")
@@ -518,7 +522,43 @@ async def save(
         looked_up += f": {(row['resolve_error'] or '')[:120]}" if row is not None else ""
     log_save(request, f"saved #{result['id']} {result.get('platform') or ''} {looked_up}"
                       f" ({'new' if result['created'] else 'already saved'})")
+    result["said"] = said(conn, result["id"], result["created"])
     return JSONResponse(result, status_code=201 if result["created"] else 200)
+
+
+def said(conn: sqlite3.Connection, item_id: int, created: bool) -> str:
+    """What a save says back, in words a phone notification can show: what
+    was kept, or that it was already here -- since when, and your note."""
+    row = db.get_item(conn, item_id)
+    if row is None:
+        return "Saved ✓"
+    name = blurb.headline(dict(row)) or ""
+    name = name if len(name) <= 70 else name[:69].rstrip() + "…"
+    if created:
+        return f"Saved ✓ {name}".strip()
+    words = f"Already in Faves since {known.day(row['saved_at'])}"
+    if row["note"]:
+        words += f". Your note: “{blurb.trim(row['note'], 80)}”"
+    return words
+
+
+#: What a phone hears when /save turns a link away, by status.
+SAVE_REFUSED = {
+    401: "Faves didn't accept the password. Set this phone up again from Faves.",
+}
+
+
+@app.exception_handler(StarletteHTTPException)
+async def _save_refused(request: Request, exc: StarletteHTTPException):
+    """A refused save still answers with ``said``, so the phone's notification
+    tells the truth instead of a cheerful "Saved"."""
+    if request.url.path != "/save":
+        return await http_exception_handler(request, exc)
+    words = SAVE_REFUSED.get(exc.status_code) if exc.status_code != 400 else str(exc.detail)
+    return JSONResponse(
+        {"detail": exc.detail, "said": words or "Faves couldn't save it just now. It's in your "
+                                                "inbox, and Faves will add it from there."},
+        status_code=exc.status_code, headers=getattr(exc, "headers", None))
 
 
 #: What the automatic shortcut may keep: it sends every link on the clipboard.
@@ -578,7 +618,7 @@ async def share_target(
         result = await capture(shared, None, conn)
     except HTTPException:
         return RedirectResponse("/?error=save-failed", status_code=303)
-    return RedirectResponse(f"/item/{result['id']}?saved=1", status_code=303)
+    return RedirectResponse(f"/item/{result['id']}?saved={1 if result['created'] else 2}", status_code=303)
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -871,11 +911,26 @@ def more_page(request: Request, conn: sqlite3.Connection = Depends(get_db)):
 
 # ---- keeping a link from the phone -------------------------------------------
 
+#: Most links one paste keeps: each is looked up in turn, and a cloud request
+#: has a minute or so.
+BATCH = 10
+
+
+def _ids(raw: str) -> list[int]:
+    return [int(x) for x in raw.split(",") if x.isdigit()][:BATCH]
+
+
 @app.get("/keep", response_class=HTMLResponse)
-def keep_page(request: Request, error: str = "", conn: sqlite3.Connection = Depends(get_db)):
-    """Paste a link and keep it: the way in that needs no Shortcut."""
+def keep_page(request: Request, error: str = "", kept: str = "", had: str = "", failed: int = 0,
+              left: int = 0, conn: sqlite3.Connection = Depends(get_db)):
+    """Paste a link -- or several -- and keep it: the way in that needs no Shortcut."""
+    def rows(ids):
+        got = [db.get_item(conn, i) for i in ids]
+        return db.rows_to_dicts([r for r in got if r is not None])
+    batch = {"kept": rows(_ids(kept)), "had": rows(_ids(had)), "failed": failed, "left": left} \
+        if (kept or had or failed) else None
     return templates.TemplateResponse(request, "keep.html", {
-        "locked": not unlocked(request), "error": error,
+        "locked": not unlocked(request), "error": error, "batch": batch, "batch_size": BATCH,
         "has_password": bool(os.environ.get("FAVORITES_TOKEN")),
         "remembered": bool(request.cookies.get(KEY_COOKIE)),
         "q": "", "total": db.count(conn), "nav": "keep",
@@ -890,11 +945,26 @@ async def keep_link(request: Request, url: str = Form(""), note: str = Form(""),
     shared = url.strip()
     if not extract_url(shared):
         return RedirectResponse("/keep?error=no-link", status_code=303)
+    links = list(dict.fromkeys(m.rstrip(".,;:!?)") for m in URL_RE.findall(shared)))
+    if len(links) > 1:
+        # Several pasted at once (a list from Notes, say): each kept in turn,
+        # then one page saying how it went.
+        kept, had, failed = [], [], 0
+        for link in links[:BATCH]:
+            try:
+                result = await capture(link, note.strip() or None, conn)
+            except HTTPException:
+                failed += 1
+                continue
+            (kept if result["created"] else had).append(str(result["id"]))
+        return RedirectResponse("/keep?" + urlencode({
+            "kept": ",".join(kept), "had": ",".join(had), "failed": failed,
+            "left": max(0, len(links) - BATCH)}), status_code=303)
     try:
         result = await capture(shared, note.strip() or None, conn)
     except HTTPException:
         return RedirectResponse("/keep?error=failed", status_code=303)
-    return RedirectResponse(f"/item/{result['id']}?saved=1", status_code=303)
+    return RedirectResponse(f"/item/{result['id']}?saved={1 if result['created'] else 2}", status_code=303)
 
 
 @app.get("/signin", response_class=HTMLResponse)
@@ -1277,7 +1347,7 @@ def item_page(
     ).fetchall())
     room, room_items = museum.same_room(conn, item)
     return templates.TemplateResponse(request, "item.html", {
-        "item": item, "related": related, "just_saved": bool(saved),
+        "item": item, "related": related, "just_saved": saved,
         "reasons": db.room_reasons(conn, item_id), "rooms_open": bool(rooms),
         "surprise": bool(surprise),
         "hand_filed": conn.execute("SELECT 1 FROM theme_rules WHERE kind = 'item' AND key = ?",

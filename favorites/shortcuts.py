@@ -48,7 +48,7 @@ SHORTCUTS = {
 }
 
 #: Changes whenever the actions do, so the Mac re-signs what it stored.
-VERSION = "3"
+VERSION = "4"
 
 
 def _text(string: str, attachments: Optional[dict] = None) -> dict:
@@ -78,11 +78,11 @@ def _ref(output: str, uuid_: str) -> dict:
             "WFSerializationType": "WFTextTokenAttachment"}
 
 
-def _post(address: str, password: Optional[str], link: dict, query: str = "") -> dict:
+def _post(address: str, password: Optional[str], link: dict, query: str = "", **extra) -> dict:
     """Send one link to Faves: POST /save with the password."""
     headers = [_field("Authorization", _text(f"Bearer {password}"))] if password else []
     return _action(
-        "downloadurl", WFURL=f"{address.rstrip('/')}/save{query}", WFHTTPMethod="POST",
+        "downloadurl", **extra, WFURL=f"{address.rstrip('/')}/save{query}", WFHTTPMethod="POST",
         ShowHeaders=bool(headers), WFHTTPHeaders=_dictionary(*headers),
         WFHTTPBodyType="JSON", WFJSONValues=_dictionary(_field("url", _text(OBJ, {"{0, 1}": link}))))
 
@@ -126,10 +126,15 @@ def build(name: str, address: str, password: Optional[str]) -> dict:
         WFInput={"Value": {"Type": "ActionOutput", "OutputName": "Text", "OutputUUID": line},
                  "WFSerializationType": "WFTextTokenAttachment"}))
     # 3. Then straight to Faves.
-    actions.append(_post(address, password, link))
-    # 4. A word to say it worked.
+    sent, reply = str(uuid.uuid4()).upper(), str(uuid.uuid4()).upper()
+    actions.append(_post(address, password, link, UUID=sent))
+    # 4. What Faves said: "Saved ✓ <title>", "Already in Faves since …", or
+    #    why it turned the link away -- never a cheerful word on a failure.
+    actions.append(_action("getvalueforkey", UUID=reply, WFDictionaryKey="said",
+                           WFInput=_ref("Contents of URL", sent)))
     actions.append(_action("notification", WFNotificationActionTitle="Faves",
-                           WFNotificationActionBody="Saved to Faves ✓"))
+                           WFNotificationActionBody=_text(OBJ, {"{0, 1}": {
+                               "Type": "ActionOutput", "OutputName": "Dictionary Value", "OutputUUID": reply}})))
     return _workflow(actions, in_share_sheet)
 
 

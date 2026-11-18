@@ -15,6 +15,18 @@
       'password': "That password didn't match. It's FAVORITES_TOKEN in ~/.favorites.env on your Mac."}.get(error, 'Something went wrong.') }}</span></p>
   {% endif %}
 
+  {% if batch %}
+    <div class="rr-notice keep-batch">{{ icon('check') }}<div>
+      <p><b>Kept {{ batch.kept | length }}</b>{% if batch.had %} · {{ batch.had | length }} already in Faves{% endif %}
+        {%- if batch.failed %} · {{ batch.failed }} couldn't be kept{% endif %}.
+        {%- if batch.left %} {{ batch.left }} more were left out: paste up to {{ batch_size }} at a time.{% endif %}</p>
+      {% if batch.kept or batch.had %}<ul>
+        {% for i in batch.kept %}<li><a href="/item/{{ i.id }}">{{ headline(i) or browsable_url(i) }}</a></li>{% endfor %}
+        {% for i in batch.had %}<li><a href="/item/{{ i.id }}">{{ headline(i) or browsable_url(i) }}</a> <span class="rr-muted">already kept, since {{ i.saved_at | day }}</span></li>{% endfor %}
+      </ul>{% endif %}
+    </div></div>
+  {% endif %}
+
   {% if locked %}
     <form class="rr-placard keep-form unlock" action="/unlock" method="post">
       <label class="rr-label" for="pw">🔑 First, your Faves password</label>
@@ -27,7 +39,8 @@
     <form class="rr-placard keep-form" action="/keep" method="post">
       <label class="rr-label" for="link">🔗 The link</label>
       <div class="link-row">
-        <input type="url" inputmode="url" id="link" name="url" placeholder="Paste a TikTok, Instagram or YouTube link" required autocomplete="off">
+        <textarea id="link" name="url" rows="1" inputmode="url" required autocomplete="off" autocapitalize="off" spellcheck="false"
+                  placeholder="Paste a link (or several)"></textarea>
         <button class="rr-btn paste-btn" type="button" data-paste hidden>{{ icon('placard') }}Paste &amp; keep</button>
       </div>
       <label class="rr-label" for="note">📝 Your note <span class="opt">(optional)</span></label>
@@ -47,14 +60,26 @@
   {% endif %}
 </section>
 <script>
+  // Enter keeps it, as it did when this was one line; Shift+Enter starts another.
+  (function () {
+    var f = document.getElementById('link');
+    if (!f) return;
+    f.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' && !e.shiftKey && f.form.requestSubmit) { e.preventDefault(); f.form.requestSubmit(); }
+    });
+    // One line tall, growing as links are pasted in.
+    function fit() { f.style.height = ''; if (f.scrollHeight > f.clientHeight) f.style.height = Math.min(f.scrollHeight + 4, 220) + 'px'; }
+    f.addEventListener('input', fit);
+  })();
   (function () {
     var b = document.querySelector('[data-paste]'), f = document.getElementById('link');
     if (!b || !f || !(navigator.clipboard && navigator.clipboard.readText)) return;
     b.hidden = false;
     b.addEventListener('click', function () {
       navigator.clipboard.readText().then(function (t) {
-        var m = (t || '').match(/https?:\/\/\S+/);
-        f.value = m ? m[0] : (t || '').trim();
+        var all = (t || '').match(/https?:\/\/\S+/g), m = all && all[0];
+        f.value = all ? all.join('\n') : (t || '').trim();
+        f.dispatchEvent(new Event('input'));
         // A link: keep it now, with whatever note is already typed.
         if (m && f.form.requestSubmit) f.form.requestSubmit(); else f.focus();
       }).catch(function () { f.focus(); });

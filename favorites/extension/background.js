@@ -16,14 +16,21 @@ async function keepAndTell(url) {
   }
 }
 
-const opened = new Map();
+// Which save each notification opens. Kept in session storage, not in this
+// worker's memory: Chrome stops an idle worker after about 30 seconds, and a
+// click on the notification after that would otherwise do nothing.
 function notify(title, message, link) {
   chrome.notifications.create({ type: 'basic', iconUrl: 'icons/icon-128.png', title, message: message || '' }, (id) => {
-    if (link) opened.set(id, link);
+    if (link) chrome.storage.session.set({ ['open:' + id]: link });
   });
 }
-chrome.notifications.onClicked.addListener((id) => {
-  if (opened.has(id)) chrome.tabs.create({ url: opened.get(id) });
+chrome.notifications.onClicked.addListener(async (id) => {
+  const key = 'open:' + id;
+  const { [key]: link } = await chrome.storage.session.get(key);
+  if (link) {
+    chrome.tabs.create({ url: link });
+    chrome.storage.session.remove(key);
+  }
 });
 
 chrome.contextMenus.onClicked.addListener((info, tab) => {

@@ -752,7 +752,7 @@ class TestKeepingFromThePhone:
         assert "Another surprise" in client.get(resp.headers["location"]).text
 
     def test_keeping_a_link(self, client, tiktok_ok):
-        assert "Paste a TikTok" in client.get("/keep").text
+        assert "Paste a link (or several)" in client.get("/keep").text
         resp = client.post("/keep", data={"url": "https://www.tiktok.com/@citydesk/video/7123",
                                           "note": "for later"}, follow_redirects=False)
         assert resp.status_code == 303 and resp.headers["location"].endswith("?saved=1")
@@ -770,7 +770,7 @@ class TestKeepingFromThePhone:
                            follow_redirects=False).headers["location"] == "/keep?error=password"
         resp = locked.post("/unlock", data={"password": "sesame-123"}, follow_redirects=False)
         assert "favorites_key" in resp.headers["set-cookie"] and "HttpOnly" in resp.headers["set-cookie"]
-        assert "Paste a TikTok" in locked.get("/keep").text
+        assert "Paste a link (or several)" in locked.get("/keep").text
         resp = locked.post("/keep", data={"url": "https://www.tiktok.com/@citydesk/video/7123"},
                            follow_redirects=False)
         assert resp.headers["location"].endswith("?saved=1")
