@@ -117,7 +117,7 @@ class TestThePage:
 
     def test_the_player_shows_the_picture_while_it_loads(self, client):
         js = client.get("/static/museum.js").text
-        play = js[js.index("function play(link)"):js.index("/* ---- a word after saving")]
+        play = js[js.index("function play(link, waiting)"):js.index("/* ---- a word after saving")]
         assert "'screen is-loading'" in play and "poster" in play and "'load'" in play and "is-slow" in play
         css = client.get("/static/style.css").text
         assert ".rr-playing .screen.is-loading iframe { opacity: 0; }" in css

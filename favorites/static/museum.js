@@ -295,6 +295,7 @@
       if (link && link.hasAttribute('data-embed')) link.hidden = false;
       box.remove();
     });
+    document.querySelectorAll('.rr-deckcard.is-ready').forEach(function (card) { card.classList.remove('is-ready'); });
     var up = document.querySelector('.rr-watch[open]');
     if (up) up.close();
   }
@@ -318,10 +319,36 @@
     document.body.appendChild(d);
     return d;
   }
-  function play(link) {
+  // TikTok on a phone. Apple only lets a video in another site's player start
+  // with sound from a tap inside that player, and TikTok starts muted when
+  // asked to play by itself -- so a tap on Faves' own play button cost three:
+  // ours, TikTok's play, TikTok's sound. Instead TikTok's player is loaded
+  // ready (not playing) where you'll tap it: on a save's page, and on the
+  // Shuffle or Rescue card you're on. One tap, on TikTok's own play, with sound.
+  var TOUCH = window.matchMedia && matchMedia('(hover: none)').matches;
+  function isTikTok(link) { return /tiktok\.com\/player\//.test(link.getAttribute('data-embed') || ''); }
+  function src(link, waiting) {
+    var u = link.getAttribute('data-embed');
+    // Asked to autoplay, TikTok's player starts muted: on a phone, wait for the tap.
+    return isTikTok(link) && (waiting || TOUCH) ? u.replace(/([?&])autoplay=1&?/, '$1').replace(/[?&]$/, '') : u;
+  }
+  // Whatever the player says it's muted by default, ask it for sound once it's ready.
+  window.addEventListener('message', function (e) {
+    if (e.origin !== 'https://www.tiktok.com' || !e.source) return;
+    var d = e.data;
+    if (typeof d === 'string') { try { d = JSON.parse(d); } catch (err) { return; } }
+    if (d && d['x-tiktok-player'] && d.type === 'onPlayerReady') {
+      e.source.postMessage({ 'x-tiktok-player': true, type: 'unMute' }, 'https://www.tiktok.com');
+    }
+  });
+  function ready(link) {
+    if (!link || link.hidden || !isTikTok(link)) return;
+    play(link, true);
+  }
+  function play(link, waiting) {
     stopPlaying();
     var box = document.createElement('div');
-    box.className = 'rr-playing is-' + link.getAttribute('data-shape');
+    box.className = 'rr-playing is-' + link.getAttribute('data-shape') + (waiting ? ' is-ready' : '');
     box.innerHTML = '<div class="bar"><a class="out" target="_blank" rel="noopener noreferrer"></a>' +
       '<button type="button" class="stop" aria-label="Close the player">' + CLOSE_SVG + '</button></div>';
     var out = box.querySelector('.out');
@@ -341,7 +368,7 @@
     var frame = document.createElement('iframe');
     frame.addEventListener('load', function () { screen.classList.remove('is-loading'); box.classList.remove('is-slow'); });
     setTimeout(function () { if (screen.classList.contains('is-loading')) box.classList.add('is-slow'); }, 7000);
-    frame.src = link.getAttribute('data-embed');
+    frame.src = src(link, waiting);
     frame.title = (link.getAttribute('data-label') || 'Video') + ' player';
     frame.setAttribute('allow', 'autoplay; encrypted-media; picture-in-picture; fullscreen');
     frame.setAttribute('allowfullscreen', '');
@@ -349,7 +376,9 @@
     frame.setAttribute('referrerpolicy', 'strict-origin-when-cross-origin');
     screen.appendChild(frame);
     box.appendChild(screen);
-    var layer = link.closest('.rr-deckcard') && watchLayer();
+    var card = link.closest('.rr-deckcard');
+    var layer = card && !waiting && watchLayer();
+    if (card && waiting) card.classList.add('is-ready');
     if (layer) {
       layer.appendChild(box);
       watching = link;
@@ -509,6 +538,7 @@
       if (card && card.getAttribute('data-id') && card.getAttribute('data-id') !== shown) {
         shown = card.getAttribute('data-id');
         stopPlaying();                                       // flicking on stops the last one
+        if (!card.classList.contains('is-tagging')) ready(card.querySelector('.pic a.rr-player'));
         var p = new URLSearchParams(location.search);
         p.set('at', shown); p.delete('after');
         history.replaceState(history.state, '', location.pathname + '?' + p.toString());
@@ -790,6 +820,7 @@
     document.querySelectorAll('[data-deck]').forEach(deck);
     document.querySelectorAll('[data-save-copied]').forEach(saveCopied);
     document.querySelectorAll('[data-save-bar]').forEach(saveBar);
+    document.querySelectorAll('.hang a.rr-player').forEach(ready);
     document.querySelectorAll('[data-rewind]').forEach(rewind);
     document.querySelectorAll('[data-lookup-progress]').forEach(lookupProgress);
     document.querySelectorAll('.st-measure').forEach(statsTrend);

@@ -1639,6 +1639,18 @@ html:has(body.is-deck), body.is-deck { height: 100%; overflow: hidden; overscrol
 /* The "filed" tick sits over the middle of the picture, where the play
    button is: it's for looking at, never for catching a tap. */
 .rr-deckcard .pic .stamp { pointer-events: none; }
+/* A card's TikTok, loaded ready for the one tap that plays it with sound:
+   it takes the picture's place, as big as the card allows, and the words
+   fold to a single line (the card's own buttons stay). Flicking on puts the
+   picture back. */
+.rr-deckcard .pic .rr-playing.is-ready { width: min(100cqw, 100cqh * 9 / 16); }
+.rr-deckcard .pic .rr-playing.is-ready .bar { display: none; }
+.rr-deckcard .pic .rr-playing.is-ready iframe { max-height: 100cqh; }
+.rr-deckcard.is-ready .cap > :is(.meta, .by, .desc, .note) { display: none; }
+.rr-deckcard.is-ready h2 { -webkit-line-clamp: 1; }
+.rr-deckcard.is-ready .why { flex-wrap: nowrap; overflow: hidden; }
+/* In Rescue the reasons say more than a title usually unknown: they stay. */
+.rr-deckcard.is-rescue.is-ready h2 { display: none; }
 /* In Shuffle a video plays full screen, over its card (museum.js puts the
    player in this layer). In the card it only had the room the words left --
    about 210px across on an iPhone, too small for TikTok's player to draw --
