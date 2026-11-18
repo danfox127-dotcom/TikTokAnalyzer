@@ -33,7 +33,7 @@ from typing import Optional
 from urllib.parse import urlencode, urlparse
 
 import httpx
-from fastapi import Depends, FastAPI, Form, HTTPException, Query, Request
+from fastapi import BackgroundTasks, Depends, FastAPI, Form, HTTPException, Query, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
 from fastapi.exception_handlers import http_exception_handler
 from starlette.exceptions import HTTPException as StarletteHTTPException
@@ -45,7 +45,7 @@ from . import (backfill, blurb, cloud, db, explore, google_sync, lengths, looks,
                tagging, thumbnails, transcript, watch)
 from . import inbox, known, platforms, profiles, rescue, rewind, shortcuts
 from . import themes as theme_vocabulary
-from .resolve import URL_RE, browsable_url, canonical_form, detect_platform, extract_url, platform_label, resolve
+from .resolve import URL_RE, Resolved, browsable_url, canonical_form, detect_platform, extract_url, platform_label, resolve
 
 logger = logging.getLogger(__name__)
 
@@ -165,6 +165,18 @@ async def _look_up_likes() -> int:
         conn.close()
 
 
+async def _finish_recent() -> None:
+    """The newest saves' lengths and words, wherever they were saved from:
+    the phone's shortcut never opens a page that could ask for them."""
+    if not finishing_on():
+        return
+    conn = db.connect()
+    try:
+        await finish_recent(conn)
+    finally:
+        conn.close()
+
+
 async def _fill_in(limit: int = 50) -> None:
     """Titles and pictures for what just arrived: a first batch, straight away."""
     conn = db.connect()
@@ -248,6 +260,7 @@ async def _keep_in_sync() -> None:
                     log.warning("couldn't sign the phone shortcuts for the cloud copy: %s", exc)
             if not first_pass:
                 await run_in_threadpool(_mark_the_mac_seen)
+                await _finish_recent()
                 await _look_up_likes()
         except asyncio.CancelledError:
             raise
@@ -403,44 +416,85 @@ def _how_supplied(request: Request) -> str:
     return "nothing"
 
 
+#: How long a save waits for the quick lookup (the video's name, who made it,
+#: where its picture is) before keeping the bare link and finishing it later.
+QUICK = 6.0
+#: ...and for the picture itself, fetched while its link is fresh.
+PICTURE = 4.0
+
+
+def _bare(shared: str) -> Resolved:
+    """The link alone, for a lookup too slow to wait for."""
+    url = extract_url(shared) or (shared or "").strip()
+    platform = detect_platform(url)
+    canonical, external_id = canonical_form(url, platform) if url else ("", None)
+    return Resolved(canonical_url=canonical, shared_url=url, platform=platform,
+                    external_id=external_id, resolve_status="pending",
+                    resolve_error="slow to answer: finished after the save")
+
+
+def _seconds(since: float) -> float:
+    return round(time.monotonic() - since, 2)
+
+
 async def capture(
     shared: str, note: Optional[str], conn: sqlite3.Connection,
     collection: Optional[str] = None, saved_at: Optional[str] = None,
 ) -> dict:
     """Resolve a shared link and shelve it. Never raises on a bad link.
 
+    Only the quick part happens here, within a few seconds: the name, who
+    made it and its picture. Its length and a YouTube video's words come
+    afterwards (see ``finish``), so a phone isn't kept waiting for them.
+
     ``collection`` files it under a category in the same motion -- YouTube's
     "save to playlist" and TikTok's "add to collection", without a second step.
     Leaving it out is "just save".
     """
+    took: dict[str, float] = {}
     async with httpx.AsyncClient() as client:
-        item = await resolve(shared, client)
+        started = time.monotonic()
+        try:
+            item = await asyncio.wait_for(resolve(shared, client), QUICK)
+        except asyncio.TimeoutError:
+            item = _bare(shared)
+        took["lookup"] = _seconds(started)
         # Fetched now, while the link is fresh -- a TikTok thumbnail link is
         # dead within a day or two, and the picture with it.
-        image = await thumbnails.fetch(item.thumbnail_url, client)
-        # One more page view, for the one fact no quick lookup carries.
-        duration = None
-        if item.resolve_status == "ok":
-            duration = await lengths.fetch(dataclasses.asdict(item), client)
+        image = None
+        if item.thumbnail_url:
+            started = time.monotonic()
+            try:
+                image = await asyncio.wait_for(thumbnails.fetch(item.thumbnail_url, client), PICTURE)
+            except asyncio.TimeoutError:
+                image = None
+            took["picture"] = _seconds(started)
 
     if not item.canonical_url:
         raise HTTPException(status_code=400, detail=item.resolve_error or "no URL found")
 
-    # The transcript library is synchronous and does network I/O, so it goes to
-    # the threadpool rather than stalling the event loop.
-    text = await run_in_threadpool(transcript.fetch, item.platform, item.external_id)
-
-    payload = dataclasses.asdict(item)
+    started = time.monotonic()
+    before = await run_in_threadpool(
+        lambda: conn.execute("SELECT * FROM items WHERE canonical_url = ?", (item.canonical_url,)).fetchone())
+    if before is not None and item.resolve_status != "ok" and before["resolve_status"] == "ok":
+        # Kept before, and this lookup came back empty-handed: what the earlier
+        # one learned stays. Only a new note or category is news.
+        payload = {k: before[k] for k in db.WRITABLE if k in before.keys()}
+        item = dataclasses.replace(item, title=before["title"], description=before["description"],
+                                   platform=before["platform"], resolve_status="ok", thumbnail_url=None)
+    else:
+        payload = dataclasses.asdict(item)
+        payload["resolved_at"] = db.now_iso()
+    # Words already found stay found: this save doesn't look for them.
+    text = before["transcript"] if before is not None else None
     payload["note"] = (note or "").strip() or None
     payload["transcript"] = text
-    payload["resolved_at"] = db.now_iso()
     if saved_at:
         # When it was really shared (the phone's inbox), not when it arrived.
         payload["saved_at"] = saved_at
-    payload["duration"] = duration
     payload["tags"], payload["terms"] = tagging.enrich(
         title=item.title, description=item.description,
-        note=payload["note"], transcript=text,
+        note=payload["note"] or (before["note"] if before is not None else None), transcript=text,
     )
 
     item_id, created = await run_in_threadpool(db.upsert_item, conn, payload)
@@ -448,7 +502,8 @@ async def capture(
         await run_in_threadpool(thumbnails.store, conn, item_id, image, item.thumbnail_url)
     filed = None
     if isinstance(collection, str) and collection.strip():
-        filed = await run_in_threadpool(db.file_under, conn, item_id, collection, payload["resolved_at"])
+        filed = await run_in_threadpool(db.file_under, conn, item_id, collection, db.now_iso())
+    took["keep"] = _seconds(started)
     return {
         "id": item_id,
         "created": created,
@@ -458,12 +513,152 @@ async def capture(
         "resolve_status": item.resolve_status,
         "has_transcript": bool(text),
         "collection": filed,
+        "took": took,
     }
+
+
+# ---- finishing a save after it was kept --------------------------------------
+
+#: Saves this recent are finished off after the fact. Older ones belong to
+#: the big lookups, so nothing is asked of TikTok again and again.
+FRESH = timedelta(days=2)
+#: Tries per save while Faves runs: a video whose page never says how long it
+#: is isn't asked about every minute.
+TRIES = 2
+_tried: Counter = Counter()
+
+
+def finishing_on() -> bool:
+    """Off only in tests that don't ask for it (FAVES_FINISH_LATER=0): they
+    have no internet to finish with."""
+    return os.environ.get("FAVES_FINISH_LATER", "1") != "0"
+
+
+def _fresh(saved_at) -> bool:
+    try:
+        when = datetime.fromisoformat(str(saved_at).replace("Z", "+00:00"))
+    except ValueError:
+        return False
+    if when.tzinfo is None:
+        when = when.replace(tzinfo=timezone.utc)
+    return datetime.now(timezone.utc) - when < FRESH
+
+
+def lacks(conn: sqlite3.Connection, row) -> list[str]:
+    """What a recent save is still waiting for, in the order it's fetched:
+    "details", "picture", "length", "words". Empty for anything older than
+    ``FRESH``, or already tried ``TRIES`` times."""
+    if row is None or not _fresh(row["saved_at"]) or _tried[row["id"]] >= TRIES:
+        return []
+    if row["resolve_status"] == "pending":
+        return ["details"]
+    if row["resolve_status"] != "ok":
+        return []
+    wanted = []
+    if row["thumbnail_url"] and thumbnails.get(conn, row["id"]) is None:
+        wanted.append("picture")
+    if row["duration"] is None and row["platform"] in lengths.readable_platforms():
+        wanted.append("length")
+    if not row["transcript"] and row["platform"] in transcript.SUPPORTED and row["external_id"]:
+        wanted.append("words")
+    return wanted
+
+
+async def finish(conn: sqlite3.Connection, item_id: int) -> dict:
+    """Fill in what a save still lacks. Returns {"id", "filled": [...]}:
+    the id can change, when a short link turns out to be a video already kept."""
+    row = db.get_item(conn, item_id)
+    wanted = lacks(conn, row)
+    filled: list[str] = []
+    if not wanted:
+        return {"id": item_id, "filled": filled}
+    _tried[item_id] += 1
+    item = dict(row)
+    async with httpx.AsyncClient() as client:
+        if "details" in wanted:
+            resolved = await resolve(item["shared_url"] or item["canonical_url"], client)
+            image = None
+            if resolved.resolve_status == "ok" and resolved.thumbnail_url:
+                image = await thumbnails.fetch(resolved.thumbnail_url, client)
+            if not await run_in_threadpool(backfill._write_back, conn, item, resolved, False, image):
+                return {"id": item_id, "filled": filled}
+            filled.append("details")
+            moved = conn.execute("SELECT id FROM items WHERE canonical_url = ?",
+                                 (resolved.canonical_url,)).fetchone()
+            item_id = int(moved["id"]) if moved is not None else item_id
+            row = db.get_item(conn, item_id)
+            if row is None:
+                return {"id": item_id, "filled": filled}
+            item = dict(row)
+            wanted = [w for w in ("length", "words") if w in lacks(conn, row)]
+        if "picture" in wanted:
+            image = await thumbnails.fetch(item["thumbnail_url"], client)
+            if image:
+                await run_in_threadpool(thumbnails.store, conn, item_id, image, item["thumbnail_url"])
+                filled.append("picture")
+        if "length" in wanted:
+            seconds = await lengths.fetch(item, client)
+            if seconds:
+                conn.execute("UPDATE items SET duration = ? WHERE id = ?", (seconds, item_id))
+                conn.commit()
+                filled.append("length")
+    if "words" in wanted:
+        text = await run_in_threadpool(transcript.fetch, item["platform"], item["external_id"])
+        if text:
+            tags, terms = tagging.enrich(title=item["title"], description=item["description"],
+                                         note=item["note"], transcript=text)
+            conn.execute("UPDATE items SET transcript = ?, tags = ?, terms = ? WHERE id = ?",
+                         (text, json.dumps(tags, ensure_ascii=False),
+                          json.dumps(terms, ensure_ascii=False), item_id))
+            db.index_item(conn, item_id)
+            conn.commit()
+            filled.append("words")
+    return {"id": item_id, "filled": filled}
+
+
+def unfinished(conn: sqlite3.Connection, limit: int = 5) -> list[int]:
+    """The newest saves still waiting for something, newest first."""
+    since = (datetime.now(timezone.utc) - FRESH).isoformat()
+    rows = conn.execute("SELECT * FROM items WHERE saved_at >= ? ORDER BY saved_at DESC, id DESC LIMIT 40",
+                        (since,)).fetchall()
+    return [r["id"] for r in rows if lacks(conn, r)][:limit]
+
+
+async def finish_recent(conn: sqlite3.Connection, limit: int = 5) -> list[dict]:
+    """Finish the newest unfinished saves, one at a time."""
+    done = []
+    for item_id in await run_in_threadpool(unfinished, conn, limit):
+        result = await finish(conn, item_id)
+        if result["filled"]:
+            done.append(result)
+    return done
+
+
+async def finish_later(item_id: int) -> None:
+    """After the phone has heard back: what the save left for later. Its own
+    connection -- the save's is closed by now."""
+    if not finishing_on():
+        return
+    conn = db.connect()
+    try:
+        await finish(conn, item_id)
+    except Exception:  # a save is kept either way; this was only the extras
+        logging.getLogger("uvicorn.error").exception("couldn't finish save #%s", item_id)
+    finally:
+        conn.close()
+
+
+def _took(result: dict) -> str:
+    took = result.get("took") or {}
+    if not took:
+        return ""
+    return f" in {sum(took.values()):.1f}s (" + ", ".join(f"{k} {v:.1f}s" for k, v in took.items()) + ")"
 
 
 @app.post("/save")
 async def save(
     request: Request,
+    background: BackgroundTasks,
     conn: sqlite3.Connection = Depends(get_db),
     _: None = Depends(require_token),
 ):
@@ -521,9 +716,18 @@ async def save(
         row = db.get_item(conn, result["id"])
         looked_up += f": {(row['resolve_error'] or '')[:120]}" if row is not None else ""
     log_save(request, f"saved #{result['id']} {result.get('platform') or ''} {looked_up}"
-                      f" ({'new' if result['created'] else 'already saved'})")
+                      f" ({'new' if result['created'] else 'already saved'}){_took(result)}")
     result["said"] = said(conn, result["id"], result["created"])
+    _finish_after(request, background, result["id"])
     return JSONResponse(result, status_code=201 if result["created"] else 200)
+
+
+def _finish_after(request: Request, background: BackgroundTasks, item_id: int) -> None:
+    """On the Mac, the rest of a save is fetched straight after it answers.
+    The cloud stops working once it has answered, so there a save is finished
+    when you next open it or Today, or by the Mac within a minute."""
+    if not cloud.active(request):
+        background.add_task(finish_later, item_id)
 
 
 def said(conn: sqlite3.Connection, item_id: int, created: bool) -> str:
@@ -600,6 +804,7 @@ def collections_json(
 @app.get("/share-target")
 async def share_target(
     request: Request,
+    background: BackgroundTasks,
     conn: sqlite3.Connection = Depends(get_db),
     _: None = Depends(require_token),
     url: str = Query(""),
@@ -618,6 +823,7 @@ async def share_target(
         result = await capture(shared, None, conn)
     except HTTPException:
         return RedirectResponse("/?error=save-failed", status_code=303)
+    _finish_after(request, background, result["id"])
     return RedirectResponse(f"/item/{result['id']}?saved={1 if result['created'] else 2}", status_code=303)
 
 
@@ -638,6 +844,7 @@ def home(request: Request, conn: sqlite3.Connection = Depends(get_db)):
         # an empty-looking front page over a four-figure item count reads as a
         # bug rather than as work still in progress.
         "pending": museum.pending_count(conn),
+        "finishing": finishing_on() and bool(unfinished(conn, limit=1)),
         "reminders": watch.reminders(conn),
         "rewind": rewind.latest(conn, rewind.zone(db.get_meta(conn, rewind.TZ_KEY))),
     })
@@ -938,7 +1145,7 @@ def keep_page(request: Request, error: str = "", kept: str = "", had: str = "", 
 
 
 @app.post("/keep")
-async def keep_link(request: Request, url: str = Form(""), note: str = Form(""),
+async def keep_link(request: Request, background: BackgroundTasks, url: str = Form(""), note: str = Form(""),
                     conn: sqlite3.Connection = Depends(get_db)):
     if not unlocked(request):
         return RedirectResponse("/keep", status_code=303)
@@ -957,6 +1164,7 @@ async def keep_link(request: Request, url: str = Form(""), note: str = Form(""),
                 failed += 1
                 continue
             (kept if result["created"] else had).append(str(result["id"]))
+            _finish_after(request, background, result["id"])
         return RedirectResponse("/keep?" + urlencode({
             "kept": ",".join(kept), "had": ",".join(had), "failed": failed,
             "left": max(0, len(links) - BATCH)}), status_code=303)
@@ -964,7 +1172,27 @@ async def keep_link(request: Request, url: str = Form(""), note: str = Form(""),
         result = await capture(shared, note.strip() or None, conn)
     except HTTPException:
         return RedirectResponse("/keep?error=failed", status_code=303)
+    _finish_after(request, background, result["id"])
     return RedirectResponse(f"/item/{result['id']}?saved={1 if result['created'] else 2}", status_code=303)
+
+
+@app.post("/item/{item_id}/finish")
+async def finish_one(item_id: int, conn: sqlite3.Connection = Depends(get_db)):
+    """A save's page asks for what the save left for later: its length, a
+    YouTube video's words, or all of it after a slow lookup. Says what came,
+    so the page redraws only when there's something new."""
+    if not finishing_on():
+        return {"id": item_id, "filled": []}
+    return await finish(conn, item_id)
+
+
+@app.post("/saves/finish")
+async def finish_some(conn: sqlite3.Connection = Depends(get_db)):
+    """Today asks for the newest saves to be finished: the cloud's way of
+    catching up on what the phone saved, without the Mac."""
+    if not finishing_on():
+        return {"finished": 0}
+    return {"finished": len(await finish_recent(conn, limit=3))}
 
 
 @app.get("/signin", response_class=HTMLResponse)
@@ -1348,6 +1576,8 @@ def item_page(
     room, room_items = museum.same_room(conn, item)
     return templates.TemplateResponse(request, "item.html", {
         "item": item, "related": related, "just_saved": saved,
+        # Still waiting for its length or words: the page asks for them.
+        "finishing": finishing_on() and bool(lacks(conn, row)),
         "reasons": db.room_reasons(conn, item_id), "rooms_open": bool(rooms),
         "surprise": bool(surprise),
         "hand_filed": conn.execute("SELECT 1 FROM theme_rules WHERE kind = 'item' AND key = ?",

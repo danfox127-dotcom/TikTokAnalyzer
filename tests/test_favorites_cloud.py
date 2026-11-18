@@ -180,8 +180,11 @@ class TestTheLogOfShares:
                                headers={"authorization": "Bearer sesame"})
         assert r.status_code == 201
         assert r.json()["resolve_status"] == "unresolved"
-        assert self.lines(capsys)[-1] == (f"faves: saved #{r.json()['id']} tiktok unresolved:"
-                                          " only placeholder metadata available (new)")
+        line = self.lines(capsys)[-1]
+        assert line.startswith(f"faves: saved #{r.json()['id']} tiktok unresolved:"
+                               " only placeholder metadata available (new) in ")
+        # How long each step took, to find what makes a share slow.
+        assert "(lookup " in line and ", keep " in line and set(r.json()["took"]) == {"lookup", "keep"}
         assert web._shared_waiting()
 
     def test_nothing_is_logged_on_the_mac(self, tmp_path, monkeypatch, capsys):

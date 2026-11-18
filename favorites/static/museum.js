@@ -729,6 +729,24 @@
     setTimeout(tick, 1000);
   }
 
+  /* ---- a save's extras, fetched after it was kept: its length, a YouTube
+     video's words, or everything after a slow lookup. The page redraws when
+     something came -- unless you're writing in it. ---- */
+  function finishing(el) {
+    fetch(el.getAttribute('data-finish'), { method: 'POST', credentials: 'same-origin', headers: { Accept: 'application/json' } })
+      .then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); })
+      .then(function (j) {
+        if (!j.filled || !j.filled.length) return;
+        var body = document.querySelector('.detail-body');
+        if (!body) return;
+        var busy = body.contains(document.activeElement) && /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName);
+        var typed = Array.prototype.some.call(body.querySelectorAll('textarea, input[type=text]'),
+          function (f) { return f.value !== f.defaultValue; });
+        if (!busy && !typed) redraw().catch(function () {});
+      })
+      .catch(function () {});
+  }
+
   /* ---- Rewind: tells the page your time zone once (so the clock is
      yours), lights a dash per card as you swipe, and a tap on either side
      moves a card. Swiping is the phone's own scroll-snap. ---- */
@@ -823,6 +841,7 @@
     document.querySelectorAll('.hang a.rr-player').forEach(ready);
     document.querySelectorAll('[data-rewind]').forEach(rewind);
     document.querySelectorAll('[data-lookup-progress]').forEach(lookupProgress);
+    document.querySelectorAll('[data-finish]').forEach(finishing);
     document.querySelectorAll('.st-measure').forEach(statsTrend);
     var standalone = navigator.standalone || (window.matchMedia && matchMedia('(display-mode: standalone)').matches);
     if (standalone) document.querySelectorAll('[data-standalone-step]').forEach(function (s) { s.classList.add('is-done'); });
