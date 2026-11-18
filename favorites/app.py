@@ -1139,7 +1139,7 @@ def stats_month(request: Request, key: str, conn: sqlite3.Connection = Depends(g
 
     return templates.TemplateResponse(request, "stats.html", {
         "m": m, "months": found, "zone_known": tz is not None, "trend": trend,
-        "most": {k: max([t[k] for t in trend] + [1]) for k in ("opened", "liked", "saved", "searched")},
+        "most": {k: max([t[k] for t in trend] + [1]) for k in ("opened", "liked", "saved", "searched", "hours")},
         "changes": {k: change(k) for k in ("opened", "liked", "saved", "searched")},
         "before": before, "q": "", "total": db.count(conn)})
 

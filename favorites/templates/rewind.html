@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% from "_icons.html" import icon %}
-{% from "_rewind.html" import hr, clock, ranks, topic_bars %}
+{% from "_rewind.html" import hr, clock, ranks, topic_bars, attention_bar, mins %}
 {% set nav = 'browse' %}
 {% set chrome = 'deck' %}
 {% set back = '/browse' %}{% set back_label = 'Browse' %}
@@ -10,7 +10,7 @@
 {% block content %}
 <div class="rw"{% if m %} data-rewind data-tz="{{ m.tz }}"{% if not zone_known %} data-tz-unknown{% endif %}{% endif %}>
   <header class="rw-top">
-    {% if m %}<div class="rw-dashes" aria-hidden="true">{% for i in range(5) %}<span{% if loop.first %} class="is-on"{% endif %}></span>{% endfor %}</div>{% endif %}
+    {% if m %}<div class="rw-dashes" aria-hidden="true">{% for i in range(6 if m.attention else 5) %}<span{% if loop.first %} class="is-on"{% endif %}></span>{% endfor %}</div>{% endif %}
     <div class="rw-bar">
       <span class="rw-brand">Rewind</span>
       {% if m %}<span class="rw-month">{{ m.name }} {{ m.year }}</span>{% endif %}
@@ -31,7 +31,7 @@
     </div></section>
   </div>
 {% else %}
-  <div class="rw-track" tabindex="0" aria-label="{{ m.name }} on TikTok, in five cards">
+  <div class="rw-track" tabindex="0" aria-label="{{ m.name }} on TikTok, in cards">
 
     {#- 1. How much. -#}
     <section class="rw-card tone-lilac" aria-label="How much"><div class="rw-in">
@@ -42,7 +42,7 @@
         <p class="rw-vs">{% if m.change is not none %}{{ '↑' if m.change > 0 else '↓' if m.change < 0 else '=' }} {{ m.change | abs }}% on {{ m.prev_name }} ({{ '{:,}'.format(m.prev_opened) }}){% else %}Your first month in the export{% endif %}</p>
         <div class="rw-panel">
           <p class="rw-est"><b>About {{ m.hours }} {{ 'hour' if m.hours == 1 else 'hours' }}</b> <span class="rw-tag">estimate</span></p>
-          <p class="rw-note">TikTok lists each video you opened, not how long you watched. This assumes {{ m.seconds }} seconds each{% if not m.seconds_guessed %}, the usual length of what you saved this month{% endif %}.</p>
+          <p class="rw-note">TikTok lists when you opened each video, not how long you watched. Each one counts until the next opened, up to 3 minutes; a break of 10 minutes ends a session.</p>
         </div>
       {% else %}
         <p class="rw-hero">{{ '{:,}'.format(m.liked) }}</p>
@@ -50,6 +50,20 @@
         <p class="rw-vs">This month's export has no watch history.</p>
       {% endif %}
     </div></section>
+
+    {#- How you watched: how long you stayed, in sessions. -#}
+    {% set a = m.attention %}{% if a %}
+    <section class="rw-card tone-butter" aria-label="How you watched"><div class="rw-in">
+      <p class="rw-kicker">How you watched</p>
+      <h2 class="rw-title">{% if a.bands[0].share >= a.bands[3].share %}{{ a.bands[0].share }}% of videos, gone in under 2 seconds{% else %}You stayed on {{ a.bands[3].share }}% of videos for 45 seconds or more{% endif %}</h2>
+      <div class="rw-panel">{{ attention_bar(a) }}
+        <p class="rw-note">A typical video held you {{ a.typical }} seconds{% if a.liked %}; one you liked, {{ a.liked }}{% endif %}.</p>
+      </div>
+      <p class="rw-est"><b>{{ '{:,}'.format(a.sessions) }} sessions, usually {{ a.session_videos }} videos over {{ mins(a.session_minutes) }}</b></p>
+      <p class="rw-note">The longest: {{ '{:,}'.format(a.longest.videos) }} videos over {{ mins(a.longest.minutes) }}, {{ a.longest.when }}.
+        {% if a.late %}{{ a.late_share }}% started between 11pm and 4am.{% endif %}</p>
+    </div></section>
+    {% endif %}
 
     {#- 2. When: the week as a clock. -#}
     <section class="rw-card tone-sky" aria-label="When"><div class="rw-in">

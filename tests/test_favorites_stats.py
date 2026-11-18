@@ -21,8 +21,10 @@ def client():
 class TestTheNumbers:
     def test_every_month_at_a_glance(self, october):
         assert rewind.trend(october, NY) == [
-            {"key": "2026-09", "name": "September", "year": 2026, "opened": 11, "liked": 0, "saved": 7, "searched": 0},
-            {"key": "2026-10", "name": "October", "year": 2026, "opened": 23, "liked": 6, "saved": 4, "searched": 4}]
+            {"key": "2026-09", "name": "September", "year": 2026, "opened": 11, "liked": 0, "saved": 7, "searched": 0,
+             "hours": 0, "flicked": 0},
+            {"key": "2026-10", "name": "October", "year": 2026, "opened": 23, "liked": 6, "saved": 4, "searched": 4,
+             "hours": 0, "flicked": 13}]                     # three of Saturday night's four opened at once
 
     def test_every_month_is_your_month(self, october):
         utc = {t["key"]: t["opened"] for t in rewind.trend(october)}
@@ -89,5 +91,5 @@ class TestThePage:
     def test_the_ways_in(self, client, october):
         story = client.get("/rewind/2026-10?tz=America/New_York").text
         assert 'href="/stats/2026-10">' in story and "See it all on one page" in story
-        assert story.count('class="rw-card') == 5
+        assert story.count('class="rw-card') == 6
         assert 'href="/stats"' in client.get("/browse").text

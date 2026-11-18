@@ -49,3 +49,21 @@
   {% endfor %}
 </ul>
 {%- endmacro %}
+
+
+{#- Minutes in words: "11 minutes", "2h 24m". -#}
+{% macro mins(n) %}{% if n >= 60 %}{{ n // 60 }}h {{ n % 60 }}m{% else %}{{ n }} minute{{ '' if n == 1 else 's' }}{% endif %}{% endmacro %}
+
+{#- How long you stayed: one bar in four bands, shortest to longest, in
+    steps of one colour; the legend under it says each band in words. -#}
+{% macro attention_bar(a) %}
+{%- set steps = [28, 48, 72, 100] %}
+<div class="at-bar" role="img" aria-label="{% for b in a.bands %}{{ b.name }}: {{ b.share }}%{{ ', ' if not loop.last }}{% endfor %}">
+  {% for b in a.bands %}<span style="flex-grow: {{ [b.count, 0.0001] | max }}; background: color-mix(in oklab, var(--accent) {{ steps[loop.index0] }}%, var(--wall-raised))"
+    title="{{ b.name }}: {{ '{:,}'.format(b.count) }} videos ({{ b.share }}%)"></span>{% endfor %}
+</div>
+<ul class="at-legend">
+  {% for b in a.bands %}<li><span class="sw" style="background: color-mix(in oklab, var(--accent) {{ steps[loop.index0] }}%, var(--wall-raised))" aria-hidden="true"></span>
+    <span><b>{{ b.share }}%</b> {{ b.name | lower }}<small class="rng">{% if b.to %}{% if b.from %}{{ b.from | int }}–{% else %}under {% endif %}{{ b.to }}s{% else %}{{ b.from | int }}s or more{% endif %}</small></span></li>{% endfor %}
+</ul>
+{%- endmacro %}
