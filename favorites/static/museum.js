@@ -602,6 +602,17 @@
       post(form).then(function () { onwards(card, 'Marked gone: kept out of the way'); })
         .catch(function () { form.submit(); });
     });
+    // Rescue: Keep or Pass, then on to the next, saying how it went.
+    feed.addEventListener('submit', function (e) {
+      var form = e.target.closest && e.target.closest('form[data-onwards]');
+      if (!form || !window.fetch) return;
+      e.preventDefault();
+      var card = form.closest('.rr-deckcard');
+      card.classList.add('is-busy');
+      post(form).then(function (r) { return r.json(); })
+        .then(function (j) { card.classList.remove('is-busy'); onwards(card, j.said || form.getAttribute('data-onwards')); })
+        .catch(function () { card.classList.remove('is-busy'); toast("Couldn't do that just now -- try again."); });
+    });
     var nameSheet = document.getElementById('name-sheet');
     if (nameSheet) {
       var nameForm = nameSheet.querySelector('form.sheet-form');

@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% from "_card.html" import player %}
+{% from "_icons.html" import icon %}
+{% set chrome = 'deck' %}
+{% set back = '/stats' %}{% set back_label = 'Your TikTok stats' %}
+{% block title %}Rescue · Faves{% endblock %}
+{% block main_class %}is-deck{% endblock %}
+
+{#- One video your export says you valued: its player, why it's here, and
+    the two answers. Flicking on leaves it for next time. -#}
+{% macro rescuecard(item) %}
+<article class="rr-deckcard tone-mint is-naming" data-id="{{ item.ref }}">
+  <div class="backdrop" aria-hidden="true"></div>
+  <div class="pic">{{ player(item) }}<span class="stamp" aria-hidden="true">{{ icon('check') }}</span></div>
+  <div class="cap">
+    <p class="meta"><span>TikTok</span><span class="sep"></span><span>Last seen {{ item.last | day }}</span></p>
+    <h2>{{ headline(item) or "A video you didn't save" }}</h2>
+    {% if item.creator_name or item.creator_handle %}<p class="by">{{ item.creator_name or item.creator_handle }}</p>{% endif %}
+    <ul class="why">{% for w in item.why %}<li>{{ w }}</li>{% endfor %}</ul>
+    <div class="acts">
+      <form action="/rescue/{{ item.ref }}/keep" method="post" data-onwards="Kept ✓"><button class="rr-btn rr-btn--primary" type="submit">{{ icon('plus') }}Keep it</button></form>
+      <form action="/rescue/{{ item.ref }}/skip" method="post" data-onwards="Passed: it won't come up again"><button class="rr-btn" type="submit">Pass</button></form>
+      <a class="rr-btn rr-btn--icon" href="{{ browsable_url(item) }}" target="_blank" rel="noopener noreferrer" aria-label="Open it in TikTok">{{ icon('external') }}</a>
+    </div>
+  </div>
+</article>
+{% endmacro %}
+
+{% block content %}
+<div class="rr-deckbar">
+  <a class="rr-deck-btn" href="{{ back }}" data-back aria-label="Close">{{ icon('close') }}</a>
+  <p class="name"><b>Rescue</b>{% if items %}<span data-left>{{ items | length }} left</span>{% endif %}</p>
+  <span class="rr-deck-btn" aria-hidden="true" style="visibility: hidden"></span>
+</div>
+
+<div class="rr-deck" data-deck data-cards="" data-more="0" data-earlier="0" tabindex="-1">
+  {% if items %}
+  <section class="rr-deckend tone-mint rescue-intro">
+    <div class="big" aria-hidden="true">🛟</div>
+    <h1 class="rr-h-l">{{ '{:,}'.format(total) }} {{ 'save' if total == 1 else 'saves' }} you forgot to make</h1>
+    <p>Your TikTok export says these mattered: you shared them, watched them again in another session, or liked them and stayed for a minute and a half or more. None is in Faves.</p>
+    <p>{% if total > items | length %}Here are the {{ items | length }} it's surest about. {% endif %}Keep the ones you want, pass on the rest. Flick up to begin.</p>
+  </section>
+  {% endif %}
+  {% for item in items %}{{ rescuecard(item) }}{% endfor %}
+  <section class="rr-deckend tone-butter">
+    <div class="big" aria-hidden="true">{% if items %}🎉{% else %}✨{% endif %}</div>
+    <h2 class="rr-h-l">{% if items %}That's all of them.{% else %}Nothing to rescue.{% endif %}</h2>
+    <p>{% if items %}Any you flicked past are still here next time.{% else %}Every video you shared or came back to is in Faves, or you passed on it. Your next TikTok export may bring more.{% endif %}</p>
+    <div class="acts"><a class="rr-btn rr-btn--primary" href="/stats">Your TikTok stats</a></div>
+  </section>
+</div>
+{% endblock %}
