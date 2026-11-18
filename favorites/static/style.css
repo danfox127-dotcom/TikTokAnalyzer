@@ -1397,6 +1397,7 @@ a.st-col.is-on:hover .bar { background: var(--accent); }
 .at-legend .rng { display: block; color: var(--ink-muted); font: 500 13px/18px var(--font-sans); }
 .at-tiles { margin-top: 18px; }
 .at-holds { margin: 14px 0 0; font: 500 15px/22px var(--font-sans); }
+.at-rescue { margin: 16px 0 0; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
 .st-tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 16px; }
 @container rr (min-width: 760px) { .st-tiles { grid-template-columns: repeat(5, minmax(0, 1fr)); } }
 .st-tile p { margin: 0; }
@@ -1539,6 +1540,11 @@ html:has(body.is-deck), body.is-deck { height: 100%; overflow: hidden; overscrol
 .rr-deckcard.is-naming .acts form { display: contents; }
 .rr-deckcard.is-naming.is-done .acts { opacity: .55; pointer-events: none; }
 .rr-sheet-dialog .keep-form { margin-top: 0; }
+/* Rescue: why each video is here, as small tags. */
+.rr-deckcard .why { list-style: none; margin: 6px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.rr-deckcard .why li { padding: 4px 10px; border-radius: 999px; background: var(--wall-raised); font: 700 13px/18px var(--font-sans); }
+.rr-deckcard.is-busy .acts { opacity: .55; pointer-events: none; }
+.rescue-intro p { max-width: 32em; }
 /* The ones you marked gone. */
 .gone-list { list-style: none; margin: 0; display: grid; gap: 10px; }
 .gone-list li { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-radius: var(--radius-md); background: var(--wall-raised); border: 2px solid var(--ink); }

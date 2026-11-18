@@ -104,8 +104,9 @@ def detect(path: Path) -> Optional[str]:
 #: Bumped when an importer starts keeping more of an export: the exports
 #: still in the folder are then read once more, for what it now keeps.
 #: (2: TikTok's watch history, likes and searches, for Rewind.
-#: 3: the summary of what TikTok keeps, for What TikTok knows.)
-READS = {"tiktok": 3}
+#: 3: the summary of what TikTok keeps, for What TikTok knows.
+#: 4: the videos you shared, for Rescue.)
+READS = {"tiktok": 4}
 
 
 def import_key(fp: str, kind: str) -> str:

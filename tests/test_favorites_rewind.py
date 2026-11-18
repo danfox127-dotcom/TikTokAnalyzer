@@ -106,7 +106,7 @@ class TestReadingTheExport:
         assert tiktok_export.read_activity(p) == {
             "watch": [("2026-10-05T14:22:01+00:00", "7001")],
             "like": [("2026-10-07T20:00:00+00:00", "7003")],
-            "search": [("2026-10-06T09:00:00+00:00", "orzo")]}
+            "share": [], "search": [("2026-10-06T09:00:00+00:00", "orzo")]}
 
     @pytest.mark.parametrize("shape", [("Activity", "Video Browsing History"), ("Your Activity", "Watch History")])
     def test_older_and_newer_shapes(self, tmp_path, shape):
@@ -126,7 +126,7 @@ class TestReadingTheExport:
                          "Favorite Videos": {"FavoriteVideoList": [{"Date": "2026-10-04 10:00:00", "Link": link(7100)}]},
                          "Like List": {"ItemFavoriteList": [{"Date": "2026-10-07 20:00:00", "Link": link(7003)}]}}})
         r = tiktok_export.import_export(conn, p)
-        assert r["favorites"]["imported"] == 1 and r["activity"] == {"watch": 1, "like": 1, "search": 0}
+        assert r["favorites"]["imported"] == 1 and r["activity"] == {"watch": 1, "like": 1, "share": 0, "search": 0}
         assert [row[0] for row in conn.execute("SELECT external_id FROM items")] == ["7100"]
 
 

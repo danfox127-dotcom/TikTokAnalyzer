@@ -182,6 +182,14 @@ CREATE TABLE IF NOT EXISTS videos (
     PRIMARY KEY (platform, external_id)
 );
 
+-- Videos you passed on in Rescue: not asked about again.
+CREATE TABLE IF NOT EXISTS rescue_skipped (
+    platform TEXT NOT NULL,
+    ref      TEXT NOT NULL,
+    at       TEXT NOT NULL,
+    PRIMARY KEY (platform, ref)
+);
+
 CREATE VIRTUAL TABLE IF NOT EXISTS items_fts USING fts5(
     item_id UNINDEXED,
     title,

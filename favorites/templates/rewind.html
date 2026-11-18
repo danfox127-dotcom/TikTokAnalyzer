@@ -62,6 +62,7 @@
       <p class="rw-est"><b>{{ '{:,}'.format(a.sessions) }} sessions, usually {{ a.session_videos }} videos over {{ mins(a.session_minutes) }}</b></p>
       <p class="rw-note">The longest: {{ '{:,}'.format(a.longest.videos) }} videos over {{ mins(a.longest.minutes) }}, {{ a.longest.when }}.
         {% if a.late %}{{ a.late_share }}% started between 11pm and 4am.{% endif %}</p>
+      <p><a class="rr-btn" href="/rescue">🛟 Rescue the saves you forgot to make</a></p>
     </div></section>
     {% endif %}
 

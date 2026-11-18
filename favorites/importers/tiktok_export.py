@@ -140,6 +140,9 @@ ACTIVITY_PATHS = {
     "like": [("Likes and Favorites", "Like List", "ItemFavoriteList"),
              ("Your Activity", "Like List", "ItemFavoriteList"),
              ("Activity", "Like List", "ItemFavoriteList")],
+    # Videos you sent someone: the date and the video, never who it went to.
+    "share": [("Your Activity", "Share History", "ShareHistoryList"),
+              ("Activity", "Share History", "ShareHistoryList")],
     "search": [("Your Activity", "Searches", "SearchList"),
                ("Activity", "Searches", "SearchList"),
                ("Your Activity", "Search", "SearchList")],

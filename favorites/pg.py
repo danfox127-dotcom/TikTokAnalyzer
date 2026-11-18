@@ -159,6 +159,14 @@ CREATE TABLE IF NOT EXISTS videos (
     PRIMARY KEY (platform, external_id)
 );
 
+-- Videos you passed on in Rescue: not asked about again.
+CREATE TABLE IF NOT EXISTS rescue_skipped (
+    platform TEXT NOT NULL,
+    ref      TEXT NOT NULL,
+    at       TEXT NOT NULL,
+    PRIMARY KEY (platform, ref)
+);
+
 -- SQLite's json_each over a JSON list kept as text, and its length.
 CREATE OR REPLACE FUNCTION json_each(text) RETURNS TABLE (key integer, value text)
 LANGUAGE sql IMMUTABLE AS $$

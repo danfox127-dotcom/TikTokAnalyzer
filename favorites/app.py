@@ -43,7 +43,7 @@ from starlette.concurrency import run_in_threadpool
 
 from . import (backfill, blurb, cloud, db, explore, google_sync, lengths, looks, museum,
                tagging, thumbnails, transcript, watch)
-from . import inbox, known, platforms, profiles, rewind, shortcuts
+from . import inbox, known, platforms, profiles, rescue, rewind, shortcuts
 from . import themes as theme_vocabulary
 from .resolve import URL_RE, browsable_url, canonical_form, detect_platform, extract_url, platform_label, resolve
 
@@ -1397,6 +1397,47 @@ def update_note(
 
 
 # --- Missing details: the saves Faves couldn't identify, checked by you ----
+
+# --- Rescue: the saves you forgot to make ---------------------------------
+
+@app.get("/rescue", response_class=HTMLResponse)
+def rescue_page(request: Request, conn: sqlite3.Connection = Depends(get_db)):
+    """Videos your export says you valued -- shared, came back to, stayed on --
+    that aren't in Faves, one screen at a time: keep it, pass, or flick on."""
+    found = rescue.candidates(conn, None)
+    return templates.TemplateResponse(request, "rescue.html", {
+        "items": found[:rescue.LIMIT], "total": len(found), "nav": "more", "q": "",
+    })
+
+
+def _a_video(ref: str) -> str:
+    if not (ref.isdigit() and len(ref) < 30):
+        raise HTTPException(status_code=404, detail="no such video")
+    return ref
+
+
+@app.post("/rescue/{ref}/keep")
+async def rescue_keep(request: Request, ref: str, conn: sqlite3.Connection = Depends(get_db)):
+    """Keep it: looked up and saved like any link you share."""
+    try:
+        result = await capture(rescue.share_link(_a_video(ref)), None, conn)
+    except HTTPException:
+        if _wants_json(request):
+            return JSONResponse({"said": "Couldn't keep that one just now."}, status_code=502)
+        return RedirectResponse("/rescue", status_code=303)
+    if _wants_json(request):
+        return JSONResponse({"id": result["id"], "said": said(conn, result["id"], result["created"])})
+    return RedirectResponse(f"/item/{result['id']}?saved=1", status_code=303)
+
+
+@app.post("/rescue/{ref}/skip")
+def rescue_skip(request: Request, ref: str, conn: sqlite3.Connection = Depends(get_db)):
+    """Pass on it: Rescue won't ask about it again."""
+    rescue.skip(conn, _a_video(ref))
+    if _wants_json(request):
+        return JSONResponse({"skipped": True})
+    return RedirectResponse("/rescue", status_code=303)
+
 
 @app.get("/missing", response_class=HTMLResponse)
 def missing_page(request: Request, conn: sqlite3.Connection = Depends(get_db)):
