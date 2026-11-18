@@ -33,6 +33,7 @@ from urllib.parse import unquote, urljoin, urlparse
 
 import httpx
 
+from . import breaches as breach_check
 from . import check, mailcheck, match, phone, store, tiers
 from .manifest import PLACEHOLDER, USER_AGENT, Site, site_key
 from .profile import Profile
@@ -266,10 +267,11 @@ def _days_since(iso_time: Optional[str], now: datetime) -> Optional[int]:
 
 def build(brand_name: str, handles: list[str], website: Website, results: list[dict],
           profiles: dict[tuple[str, str], Profile], *, now: Optional[datetime] = None,
-          mail: Optional[dict] = None) -> dict:
+          mail: Optional[dict] = None, breaches: Optional[dict] = None) -> dict:
     """Assemble the report from what the search found. Pure: no network.
 
-    ``mail`` is :func:`footprint.mailcheck.check` for the website's domain.
+    ``mail`` is :func:`footprint.mailcheck.check` for the website's domain;
+    ``breaches`` is :func:`footprint.breaches.for_domain` for it.
     """
     now = now or datetime.now(timezone.utc)
     primary = handles[0] if handles else ""
@@ -350,7 +352,7 @@ def build(brand_name: str, handles: list[str], website: Website, results: list[d
                          detail=main.get("reason", ""), big=main.get("big", False), profile=None))
 
     phones = [phone.facts(n) for n in website.phones[:5]]
-    findings = consistency(website, rows, ours, now, mail=mail, phones=phones)
+    findings = consistency(website, rows, ours, now, mail=mail, phones=phones, breaches=breaches)
     posting = time_hint([t for p in ours for t in p.post_times], [p.name for p in ours if p.post_times])
     same_as = [r["url"] for r in rows if r["status"] in ("confirmed", "probably")]
     return dict(
@@ -358,12 +360,13 @@ def build(brand_name: str, handles: list[str], website: Website, results: list[d
         website=website.to_dict(), rows=rows, findings=findings, posting=posting.to_dict(),
         same_as=same_as, jsonld=jsonld(brand_name, website.url, same_as),
         counts={s: sum(1 for r in rows if r["status"] == s) for s in ROW_WORDS},
-        mail=mail, phones=phones,
+        mail=mail, phones=phones, breaches=breaches,
     )
 
 
 def consistency(website: Website, rows: list[dict], ours: list[Profile], now: datetime, *,
-                mail: Optional[dict] = None, phones: Optional[list[dict]] = None) -> list[dict]:
+                mail: Optional[dict] = None, phones: Optional[list[dict]] = None,
+                breaches: Optional[dict] = None) -> list[dict]:
     """What a reader should fix, in plain words. Each finding: level, title, detail."""
     out: list[dict] = []
 
@@ -386,6 +389,17 @@ def consistency(website: Website, rows: list[dict], ours: list[Profile], now: da
                  "watching": "Fake email from @{d} is still delivered",
                  "open": "Anyone can send email that looks like it's from @{d}"}[verdict]
         add("warn", title.format(d=mail["domain"]), f"{mail['summary']} Fix: {mail['advice']}")
+
+    # A breach of the brand's own site is what people find when they search it.
+    if breaches and breaches.get("checked"):
+        found = breaches.get("breaches") or []
+        d = breaches["domain"]
+        if found:
+            add("warn", f"{d} has had {len(found)} known data breach{'es' if len(found) != 1 else ''}",
+                "; ".join(breach_check.describe(b) for b in found[:5])
+                + f". {breach_check.CREDIT}.")
+        else:
+            add("good", f"No known data breaches of {d}", f"{breach_check.CREDIT}.")
 
     for number in phones or []:
         if not number.get("valid"):
@@ -485,7 +499,7 @@ async def run(brand_name: str, handles: list[str], website_url: str, sites: dict
               client: httpx.AsyncClient, conn=None, *, big_only: bool = True) -> AsyncIterator[tuple[str, dict]]:
     """The whole report, as a stream of ``(event, data)`` for the page to show live.
 
-    Events: ``website``, ``mail``, ``result``, ``details``, then ``report``
+    Events: ``website``, ``mail``, ``breaches``, ``result``, ``details``, then ``report``
     (saved, with its ``id``).
     """
     handles = [h.strip().lstrip("@") for h in handles if h.strip().lstrip("@")]
@@ -493,6 +507,8 @@ async def run(brand_name: str, handles: list[str], website_url: str, sites: dict
     yield "website", website.to_dict()
     mail = (await mailcheck.check(website.domain, client)).to_dict()
     yield "mail", mail
+    known_breaches = await breach_check.for_domain(website.domain, client)
+    yield "breaches", known_breaches
 
     results: list[dict] = []
     profiles: dict[tuple[str, str], Profile] = {}
@@ -538,7 +554,8 @@ async def run(brand_name: str, handles: list[str], website_url: str, sites: dict
     while not queue.empty():
         yield queue.get_nowait()
 
-    report = build(brand_name, handles, website, results, profiles, mail=mail)
+    report = build(brand_name, handles, website, results, profiles, mail=mail,
+                   breaches=known_breaches)
     report["id"] = new_id()
     report["created_at"] = store.now_iso()
     report["scope"] = "big" if big_only else "all"

@@ -34,6 +34,11 @@ def _handler(request: httpx.Request) -> httpx.Response:
     url = str(request.url)
     if request.url.host == "harbor.coffee":
         return httpx.Response(200, text=HOME, headers={"content-type": "text/html"})
+    if request.url.host == "haveibeenpwned.com":
+        return httpx.Response(200, json=[{
+            "Name": "HarborShop", "Title": "Harbor Shop", "Domain": "harbor.coffee",
+            "BreachDate": "2021-06-01", "AddedDate": "2021-07-01T00:00:00Z", "PwnCount": 5200,
+            "DataClasses": ["Email addresses"], "IsVerified": True}])
     if "harborcoffee" in url and request.url.host != "small.test":
         page = ('<html><head><meta property="og:title" content="Harbor Coffee (@harborcoffee)">'
                 '<meta property="og:description" content="Roasters. harbor.coffee/shop"></head>'
@@ -166,6 +171,9 @@ class TestBrand:
         assert 'filename="harbor-coffee-report.html"' in r.headers["content-disposition"]
         assert keep in r.text and "evil.test" not in r.text
         assert "<script src" not in r.text  # self-contained
+        # Breach data shown to others must credit Have I Been Pwned, with a link.
+        assert "Harbor Shop, Jun 2021: 5,200 accounts" in r.text
+        assert '<a href="https://haveibeenpwned.com/">Breach data from Have I Been Pwned</a>' in r.text
 
     def test_unknown_report(self, client):
         assert client.get("/brand/report/nope").status_code == 404

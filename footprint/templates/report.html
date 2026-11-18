@@ -75,13 +75,21 @@
   </ul>
 
   {% set m = r.mail %}
+  {% set br = r.breaches %}
   {% set show_mail = m and m.verdict in ['protected', 'partly', 'watching', 'open', 'no_domain'] %}
-  {% if show_mail or r.phones %}
-  <h2>Email and phone</h2>
+  {% if show_mail or r.phones or (br and br.checked) %}
+  <h2>Email, phone and breaches</h2>
   {% if show_mail %}
     <p><strong>Can email from @{{ m.domain }} be faked?</strong>
       <span class="pill {{ {'protected': 'confirmed', 'partly': 'possibly', 'watching': 'possibly'}.get(m.verdict, 'taken') }}">{{ {'protected': 'Protected', 'partly': 'Partly protected', 'watching': 'Watching only', 'open': 'Open to fakes', 'no_domain': 'No such domain'}[m.verdict] }}</span></p>
     <p class="small">{{ m.summary }}{% if m.advice %} Fix: {{ m.advice }}{% endif %}{% if m.provider %} Mail run by {{ m.provider }}.{% endif %}</p>
+  {% endif %}
+  {% if br and br.checked %}
+    <p><strong>Has {{ br.domain }} had a data breach?</strong>
+      {% if br.breaches %}<span class="pill taken">{{ br.breaches|length }} known breach{{ 'es' if br.breaches|length != 1 else '' }}</span>
+      {% else %}<span class="pill confirmed">None known</span>{% endif %}</p>
+    {% if br.breaches %}<ul class="ev">{% for b in br.breaches %}<li>{{ b.summary }}</li>{% endfor %}</ul>{% endif %}
+    <p class="small"><a href="{{ br.credit_url }}">{{ br.credit }}</a> (CC BY 4.0).</p>
   {% endif %}
   {% if r.phones %}
     <p><strong>Phone numbers on the website</strong></p>
