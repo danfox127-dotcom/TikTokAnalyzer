@@ -374,10 +374,10 @@ class TestPlayingInShuffle:
 
     def test_a_card_plays_its_video_full_screen(self, client):
         js = client.get("/static/museum.js").text
-        play = js[js.index("function play(link)"):js.index("/* ---- a word after saving")]
+        play = js[js.index("function play(link, waiting)"):js.index("/* ---- a word after saving")]
         assert "link.closest('.rr-deckcard')" in play and "showModal()" in play
         assert "'rr-watch'" in js
-        stop = js[js.index("function stopPlaying("):js.index("function play(link)")]
+        stop = js[js.index("function stopPlaying("):js.index("function play(link, waiting)")]
         assert ".rr-watch[open]" in stop and ".close()" in stop
         assert "is-playing" not in js
 
@@ -387,8 +387,10 @@ class TestPlayingInShuffle:
         assert "position: fixed" in watch and "inset: 0" in watch and "max-width: none" in watch
         tall = re.search(r"\.rr-watch \.rr-playing\.is-tall \{[^}]*\}", css).group(0)
         assert "100vw" in tall and "100dvh" in tall and "safe-area-inset-top" in tall and "cq" not in tall
-        # What the card did before is gone: no player squeezed into the picture's spot.
-        assert ".rr-deckcard.is-playing" not in css and ".rr-deckcard .pic .rr-playing" not in css
+        # What the card did before is gone: no tapped player squeezed into the
+        # picture's spot (a card's player loaded ready is another matter: see
+        # TestOneTapForSound).
+        assert ".rr-deckcard.is-playing" not in css and "(100cqh - 52px) * 9 / 16" not in css
 
     def test_a_saves_page_gives_a_tall_player_room_too(self, client):
         css = client.get("/static/style.css").text
@@ -402,3 +404,29 @@ class TestPlayingInShuffle:
         card = re.search(r'<article class="rr-deckcard[^"]*is-tagging.*?</article>', page, re.S).group(0)
         assert 'data-embed="https://www.tiktok.com/player/v1/7400000000000000001' in card
         assert '<fieldset>' in card and '<div class="acts">' in card
+
+
+class TestOneTapForSound:
+    """On an iPhone a video in TikTok's player gets sound only from a tap inside
+    it, and TikTok starts muted when asked to play by itself: tapping Faves'
+    own play button cost three taps. TikTok's player is now loaded ready (not
+    playing) where you'll tap it, so one tap on its own play button does it."""
+
+    def test_the_player_waits_for_the_tap(self, client):
+        js = client.get("/static/museum.js").text
+        assert "function ready(link)" in js and "play(link, true)" in js
+        src = js[js.index("function src(link, waiting)"):js.index("function ready(link)")]
+        assert "autoplay=1" in src and "TOUCH" in src            # on a phone, never asked to autoplay
+        assert "type: 'unMute'" in js and "onPlayerReady" in js
+
+    def test_it_is_ready_where_you_land(self, client):
+        js = client.get("/static/museum.js").text
+        assert "document.querySelectorAll('.hang a.rr-player').forEach(ready)" in js       # a save's page
+        scroll = js[js.index("function onScroll()"):js.index("var tick;")]
+        assert "ready(card.querySelector('.pic a.rr-player'))" in scroll and "is-tagging" in scroll
+
+    def test_the_card_makes_room(self, client):
+        css = client.get("/static/style.css").text
+        assert ".rr-deckcard .pic .rr-playing.is-ready { width: min(100cqw, 100cqh * 9 / 16); }" in css
+        assert ".rr-deckcard.is-ready .cap > :is(.meta, .by, .desc, .note) { display: none; }" in css
+        assert ".rr-deckcard.is-rescue.is-ready h2 { display: none; }" in css

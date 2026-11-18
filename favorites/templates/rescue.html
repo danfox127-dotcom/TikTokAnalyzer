@@ -9,7 +9,7 @@
 {#- One video your export says you valued: its player, why it's here, and
     the two answers. Flicking on leaves it for next time. -#}
 {% macro rescuecard(item) %}
-<article class="rr-deckcard tone-mint is-naming" data-id="{{ item.ref }}">
+<article class="rr-deckcard tone-mint is-naming is-rescue" data-id="{{ item.ref }}">
   <div class="backdrop" aria-hidden="true"></div>
   <div class="pic">{{ player(item) }}<span class="stamp" aria-hidden="true">{{ icon('check') }}</span></div>
   <div class="cap">
