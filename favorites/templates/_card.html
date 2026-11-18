@@ -31,9 +31,16 @@
 {%- endif -%}
 {%- endmacro %}
 
+{#- On a playable save's picture: watch it full screen, then flick on through
+    the rest of the page's videos. museum.js gathers them as you tap; with no
+    script it is this one video. -#}
+{% macro watch(item) -%}
+{%- if embed(item) %}<a class="rr-watchbtn" href="/watch?ids={{ item.id }}&amp;at={{ item.id }}" data-watch="{{ item.id }}" aria-label="Watch, then flick to the next">{{ icon('play') }}</a>{% endif -%}
+{%- endmacro %}
+
 {% macro card(item, size='', top=None, note=True) %}
 <article class="card rr-card{% if size %} rr-card--{{ size }}{% endif %}">
-  <a href="/item/{{ item.id }}" tabindex="-1" aria-hidden="true">{{ frame(item, top) }}</a>
+  <a href="/item/{{ item.id }}" tabindex="-1" aria-hidden="true">{{ frame(item, top) }}</a>{{ watch(item) }}
   <div class="wall">
     <a class="title" href="/item/{{ item.id }}">{{ headline(item) or browsable_url(item) }}</a>
     {% if item.creator_name or item.creator_handle %}
@@ -47,7 +54,7 @@
 {#- A carousel slide: the picture, then a wall label that says what it is. -#}
 {% macro slide(item, i, n) %}
 <li class="rr-slide" aria-roledescription="slide" aria-label="{{ i }} of {{ n }}">
-  <a href="/item/{{ item.id }}" tabindex="-1" aria-hidden="true">{{ frame(item) }}</a>
+  <a href="/item/{{ item.id }}" tabindex="-1" aria-hidden="true">{{ frame(item) }}</a>{{ watch(item) }}
   {%- set theme = (item.themes or [none])[0] %}{% set lk = look(theme) %}
   <div class="cap tone-{{ lk[0] }}">
     <div class="meta">
@@ -68,7 +75,7 @@
 {% macro piece(item) %}
 {%- set sh = shape(item) %}{% set theme = (item.themes or [none])[0] %}{% set lk = look(theme) %}
 <article class="rr-piece is-{{ sh }}{% if item.note %} is-feature{% endif %}">
-  <a href="/item/{{ item.id }}" tabindex="-1" aria-hidden="true">{{ frame(item, shape=sh) }}</a>
+  <a href="/item/{{ item.id }}" tabindex="-1" aria-hidden="true">{{ frame(item, shape=sh) }}</a>{{ watch(item) }}
   <div class="cap tone-{{ lk[0] }}">
     <div class="meta"><span>{% if theme %}{{ lk[2] }} {{ theme }}{% else %}{{ platform_label(item.platform) }}{% endif %}</span><span class="sep"></span><span>{{ item.saved_at[:4] }}</span></div>
     <h3><a href="/item/{{ item.id }}">{{ headline(item) or browsable_url(item) }}</a></h3>

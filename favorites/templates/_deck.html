@@ -56,15 +56,23 @@
 {% endmacro %}
 
 {#- The last screen of a feed. -#}
-{% macro deck_end(total, tagging, again_href, list_href) %}
+{% macro deck_end(total, tagging, again_href, list_href, watching=False) %}
 <section class="rr-deckend tone-butter">
   <div class="big" aria-hidden="true">{% if tagging %}🎉{% else %}🍦{% endif %}</div>
   <h2 class="rr-h-l">{% if tagging %}That's every one for now.{% else %}That's all {{ total }}.{% endif %}</h2>
+  {% if watching %}
+  <p>Every video from that page. Go back to where you were, or shuffle everything you've kept.</p>
+  <div class="acts">
+    <a class="rr-btn rr-btn--primary" href="{{ list_href }}" data-back>{{ icon('left') }}Back to where you were</a>
+    <a class="rr-btn" href="{{ again_href }}">{{ icon('shuffle') }}Shuffle everything</a>
+  </div>
+  {% else %}
   <p>{% if tagging %}Saves you skipped are still waiting -- shuffle to see them again.{% else %}Shuffle to deal them again in a new order.{% endif %}</p>
   <div class="acts">
     <a class="rr-btn rr-btn--primary" href="{{ again_href }}">{{ icon('shuffle') }}Shuffle{% if tagging %} the rest{% else %} again{% endif %}</a>
     <a class="rr-btn" href="{{ list_href }}">{{ icon('filter') }}See them as a list</a>
   </div>
+  {% endif %}
 </section>
 {% endmacro %}
 

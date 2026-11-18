@@ -1,23 +1,23 @@
 {% extends "base.html" %}
 {% from "_deck.html" import deckcard, deck_end, deck_next, deck_sheets %}
 {% from "_icons.html" import icon %}
-{% set nav = 'shuffle' %}
+{% set nav = 'shuffle' if not watching else '' %}
 {% set chrome = 'deck' %}
-{% set back = '/' %}{% set back_label = 'Home' %}
+{% set back = back_to or '/' %}{% set back_label = 'Back' if watching else 'Home' %}
 {% block title %}{{ title }} · Faves{% endblock %}
 {% block main_class %}is-deck{% endblock %}
 {% block content %}
 <div class="rr-deckbar">
   <a class="rr-deck-btn" href="{{ back }}" data-back aria-label="Close">{{ icon('close') }}</a>
   <p class="name"><b>{% if tagging %}Give them a topic{% else %}{{ title }}{% endif %}</b>
-    {%- if items %}<span{% if tagging %} data-left{% endif %}>{{ total }} {% if tagging %}left{% else %}{{ 'save' if total == 1 else 'saves' }}{% endif %}</span>{% endif %}</p>
-  <a class="rr-deck-btn" href="{{ again_href }}" aria-label="{% if order == 'shuffle' %}Shuffle again{% else %}Shuffle these{% endif %}">{{ icon('shuffle') }}</a>
+    {%- if items %}<span{% if tagging %} data-left{% endif %}>{{ total }} {% if tagging %}left{% elif watching %}{{ 'video' if total == 1 else 'videos' }}{% else %}{{ 'save' if total == 1 else 'saves' }}{% endif %}</span>{% endif %}</p>
+  <a class="rr-deck-btn" href="{{ again_href }}" aria-label="{% if watching %}Shuffle everything{% elif order == 'shuffle' %}Shuffle again{% else %}Shuffle these{% endif %}">{{ icon('shuffle') }}</a>
 </div>
 
 {% if items %}
 <div class="rr-deck" data-deck data-cards="{{ cards_href }}" data-more="{{ 1 if more else 0 }}" data-earlier="{{ 1 if earlier else 0 }}" tabindex="-1">
   {% for item in items %}{{ deckcard(item, tagging, deck_here, topics) }}{% endfor %}
-  {% if more %}{{ deck_next(deck_here, items[-1].id) }}{% else %}{{ deck_end(total, tagging, again_href, list_href) }}{% endif %}
+  {% if more %}{{ deck_next(deck_here, items[-1].id) }}{% else %}{{ deck_end(total, tagging, again_href, list_href, watching) }}{% endif %}
 </div>
 <p class="deck-hint" hidden>{{ icon('up') }}Flick up for the next one</p>
 {{ deck_sheets(topics) }}

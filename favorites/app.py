@@ -1108,6 +1108,85 @@ def shuffle_cards(request: Request, conn: sqlite3.Connection = Depends(get_db)):
     return resp
 
 
+# ---- watching a list: any page's videos as a feed ----------------------------
+
+#: Most videos one watch feed holds: a page of search results and then some.
+WATCH_MOST = 200
+
+
+def _watch_ids(raw: str) -> list[int]:
+    """The feed's videos, in the page's order, each once."""
+    ids = [int(x) for x in str(raw or "").split(",") if x.strip().isdigit() and len(x.strip()) < 12]
+    return list(dict.fromkeys(ids))[:WATCH_MOST]
+
+
+def _watch_batch(conn: sqlite3.Connection, ids: list[int], start: int, stop: int) -> list[dict]:
+    wanted = ids[max(start, 0):max(stop, 0)]
+    if not wanted:
+        return []
+    rows = conn.execute(f"SELECT * FROM items WHERE id IN ({', '.join('?' * len(wanted))})",
+                        tuple(wanted)).fetchall()
+    by_id = {r["id"]: r for r in rows}
+    return db.rows_to_dicts([by_id[i] for i in wanted if i in by_id])
+
+
+def _watch_href(ids: list[int], back: str, path: str = "/watch") -> str:
+    return path + "?" + urlencode({"ids": ",".join(map(str, ids)), "from": back})
+
+
+@app.get("/watch", response_class=HTMLResponse)
+def watch_list(request: Request, ids: str = Query("", max_length=3000), at: str = Query(""),
+               after: str = Query(""),
+               back: str = Query("/", alias="from", max_length=400),
+               conn: sqlite3.Connection = Depends(get_db)):
+    """The videos of whatever page you were on -- Today's shelf, a search, a
+    topic -- full screen, one at a time, starting from the one you tapped.
+    Flick up for the next, as in Shuffle."""
+    order = _watch_ids(ids)
+    back = _back(back, "/")
+    first, past = _an_id(at), _an_id(after)
+    # "after" is the page with no script's "Keep going": the batch past that one.
+    i = order.index(first) if first in order else order.index(past) + 1 if past in order else 0
+    items = _watch_batch(conn, order, i, i + explore.DECK_BATCH)
+    more = i + explore.DECK_BATCH < len(order)
+    here = _watch_href(order, back)
+    return templates.TemplateResponse(request, "shuffle.html", {
+        "items": items, "total": len(order), "more": more, "earlier": i > 0,
+        "title": "Watching", "order": "watch", "tagging": False, "watching": True,
+        "deck_here": here, "cards_href": _watch_href(order, back, "/watch/cards"),
+        "again_href": "/shuffle", "list_href": back, "back_to": back,
+        "topics": _topic_order(conn), "nav": "", "q": "",
+    })
+
+
+@app.get("/watch/cards", response_class=HTMLResponse)
+def watch_cards(request: Request, ids: str = Query("", max_length=3000),
+                back: str = Query("/", alias="from", max_length=400),
+                after: str = Query(""), before: str = Query(""),
+                conn: sqlite3.Connection = Depends(get_db)):
+    """The next (or, flicking back up, the previous) few of a watch feed."""
+    order = _watch_ids(ids)
+    back = _back(back, "/")
+    n = explore.DECK_BATCH
+    a, b = _an_id(after), _an_id(before)
+    if b in order:
+        start, stop = max(order.index(b) - n, 0), order.index(b)
+        more = start > 0
+    else:
+        start = order.index(a) + 1 if a in order else 0
+        stop = start + n
+        more = stop < len(order)
+    items = _watch_batch(conn, order, start, stop)
+    resp = templates.TemplateResponse(request, "deck_cards.html", {
+        "items": items, "total": len(order), "end": not more and not b, "watching": True,
+        "tagging": False, "deck_here": _watch_href(order, back),
+        "again_href": "/shuffle", "list_href": back, "topics": _topic_order(conn),
+    })
+    resp.headers["X-Deck-More"] = "1" if more else "0"
+    resp.headers["X-Deck-Total"] = str(len(order))
+    return resp
+
+
 @app.get("/more", response_class=HTMLResponse)
 def more_page(request: Request, conn: sqlite3.Connection = Depends(get_db)):
     """Everything that isn't a tab -- on a phone this opens as a sheet instead."""

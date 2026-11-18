@@ -551,9 +551,11 @@
       }
       if (earlier && !busy && all.length && i <= 1) {
         batch('before', all[0].getAttribute('data-id')).then(function (b) {
-          var tall = feed.scrollHeight;
+          var here = feed.children[Math.round(feed.scrollTop / (feed.clientHeight || 1))];
           feed.insertBefore(b.nodes, feed.firstChild);
-          feed.scrollTop += feed.scrollHeight - tall;          // Safari has no scroll anchoring: stay on this card
+          // Stay on this card. Chrome keeps the place by itself and Safari
+          // doesn't, so set it outright rather than adding the difference.
+          if (here) feed.scrollTop = here.offsetTop - feed.firstElementChild.offsetTop;
           earlier = b.more;
         }).catch(function () {});
       }
@@ -729,6 +731,25 @@
     setTimeout(tick, 1000);
   }
 
+  /* ---- watch from anywhere: the play button on a card opens a feed of
+     every playable save on this part of the page (a shelf, a page of
+     results), in its order, starting from that one. ---- */
+  function watchFrom(e) {
+    var a = e.target.closest && e.target.closest('a[data-watch]');
+    if (!a || e.defaultPrevented || e.button || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    var scope = a.closest('.rr-carousel, .rr-track, .rr-salon, .page-grid, main') || document;
+    var ids = [];
+    scope.querySelectorAll('a[data-watch]').forEach(function (b) {
+      var id = b.getAttribute('data-watch');
+      if (ids.indexOf(id) < 0 && ids.length < 200) ids.push(id);
+    });
+    if (ids.indexOf(a.getAttribute('data-watch')) < 0) ids.push(a.getAttribute('data-watch'));
+    e.preventDefault();
+    location.href = '/watch?' + new URLSearchParams({
+      ids: ids.join(','), at: a.getAttribute('data-watch'), from: location.pathname + location.search
+    }).toString();
+  }
+
   /* ---- a save's extras, fetched after it was kept: its length, a YouTube
      video's words, or everything after a slow lookup. The page redraws when
      something came -- unless you're writing in it. ---- */
@@ -822,6 +843,7 @@
     document.querySelectorAll('form[data-suggest]').forEach(suggest);
     arrive(false);
     document.addEventListener('click', goBack);
+    document.addEventListener('click', watchFrom);
     document.addEventListener('click', function (e) {
       var a = e.target.closest && e.target.closest('[data-sheet-open]');
       if (a && openSheet(a.getAttribute('data-sheet-open'), a)) e.preventDefault();
