@@ -6,7 +6,7 @@ import json
 import re
 import time
 import tomllib
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import pytest
@@ -152,7 +152,7 @@ class TestAMonth:
         m = rewind.month(october, "2026-10", NY, now=DECEMBER)
         assert (m["opened"], m["prev_opened"], m["change"]) == (23, 11, 109)
         assert m["coverage"] == "Oct 3–21"
-        assert (m["seconds"], m["seconds_guessed"], m["hours"]) == (40, False, 0)
+        assert m["hours"] == 0 and m["attention"]["sessions"] == 20     # Oct 3-21, one a day; Saturday night's four make one more
         assert m["tz"] == "America/New_York"
 
     def test_the_month_is_your_month_not_utcs(self, october):
@@ -185,10 +185,10 @@ class TestAMonth:
         activity(conn, "watch", "2026-10-02T12:00:00+00:00", "1")
         assert rewind.month(conn, "2026-10", NY, now=DECEMBER)["jump"] is None  # Style 10% -> 20%, only two saves
 
-    def test_a_guess_when_nothing_saved_has_a_length(self, conn):
+    def test_one_video_alone_counts_for_a_typical_one(self, conn):
         activity(conn, "watch", "2026-10-02T12:00:00+00:00", "1")
-        m = rewind.month(conn, "2026-10", NY, now=DECEMBER)
-        assert (m["seconds"], m["seconds_guessed"]) == (rewind.GUESS_SECONDS, True)
+        a = rewind.month(conn, "2026-10", NY, now=DECEMBER)["attention"]
+        assert (a["typical"], a["sessions"], a["came_back"]) == (12, 1, 0)
 
     def test_the_month_so_far(self, october):
         assert rewind.month(october, "2026-10", NY, now=datetime(2026, 10, 25, tzinfo=timezone.utc))["coverage"] == "Oct 3–21"
@@ -265,7 +265,8 @@ class TestThePage:
         page = client.get(r.headers["location"]).text
         assert db.get_meta(october, rewind.TZ_KEY) == "America/New_York"
         assert 'data-tz="America/New_York"' in page and "data-tz-unknown" not in page
-        assert page.count('class="rw-card') == 5
+        assert page.count('class="rw-card') == 6
+        assert "How you watched" in page and 'class="at-bar"' in page
         assert '<p class="rw-hero">23</p>' in page and "↑ 109% on September (11)" in page
         assert "Busiest: Saturdays, 11pm–12am" in page
         assert "@caseebrim" in page and "up from 3rd" in page
@@ -314,3 +315,50 @@ class TestThePage:
 def test_the_cloud_installs_the_time_zone_list():
     deps = tomllib.loads((ROOT / "pyproject.toml").read_text())["project"]["dependencies"]
     assert any(d.startswith("tzdata") for d in deps)
+
+
+class TestHowYouWatched:
+    """Attention, read from the gaps between videos, on a month made by hand:
+
+    - Monday 5 Oct, 8pm: five videos, the next after 1s, 5s, 30s and 100s,
+      then a 1,000-second break -- the end of a session.
+    - 11:30pm: two more, 400s apart (counted as 3 minutes: a phone set down).
+      The first is the same video as 8pm's first: came back to it.
+
+    The typical gap is 30s, which is what the last video of each session gets.
+    """
+
+    @pytest.fixture
+    def evening(self, conn):
+        base = datetime(2026, 10, 5, 20, 0, tzinfo=timezone.utc)
+        for i, (offset, ref) in enumerate([(0, "1"), (1, "2"), (6, "3"), (36, "4"), (136, "5"),
+                                           (12600, "1"), (13000, "6")]):
+            activity(conn, "watch", (base + timedelta(seconds=offset)).isoformat(), ref)
+        return conn
+
+    def test_four_bands(self, evening):
+        a = rewind.attention(evening, "2026-10")
+        assert [(b["name"], b["count"], b["share"]) for b in a["bands"]] == [
+            ("Flicked past", 1, 14), ("Sampled", 1, 14), ("Watched", 3, 43), ("Stayed", 2, 29)]
+        assert a["typical"] == 30
+
+    def test_sessions(self, evening):
+        a = rewind.attention(evening, "2026-10")
+        assert (a["sessions"], a["per_day"], a["session_videos"], a["session_minutes"]) == (2, 2.0, 4, 3)
+        assert a["longest"] == {"videos": 2, "minutes": 4, "when": "Monday 5 October, from 11pm"}
+        assert (a["late"], a["late_share"], a["came_back"]) == (1, 50, 1)
+        assert a["hours"] == 0                    # 376 seconds in all
+
+    def test_what_holds_you(self, evening):
+        assert rewind.attention(evening, "2026-10")["liked"] is None      # too few to say
+        for ref in "12345":
+            activity(evening, "like", "2026-10-05T21:00:00+00:00", ref)
+        assert rewind.attention(evening, "2026-10")["liked"] == 30         # 1, 5, 30, 100, 30 and 180 -> 30
+
+    def test_the_next_month_ends_the_last_gap(self, evening):
+        activity(evening, "watch", "2026-11-01T00:00:00+00:00", "9")
+        a = rewind.attention(evening, "2026-10")
+        assert a["sessions"] == 2                 # still a break: weeks later
+
+    def test_no_watching(self, conn):
+        assert rewind.attention(conn, "2026-10") is None

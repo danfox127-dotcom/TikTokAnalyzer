@@ -11,8 +11,9 @@ id: no creator, no caption. So:
   (:func:`look_up_likes`) and kept in ``videos``, apart from the library, so
   a month of likes never buries what you chose to keep.
 
-Every number is a count of rows you own. The one estimate -- hours -- says
-what it assumed.
+Every number is a count of rows you own, or read from their times: how long
+you stayed on a video is the gap until the next one opened (see
+:func:`attention`), so hours are an estimate, and say so.
 """
 
 from __future__ import annotations
@@ -40,8 +41,18 @@ LOOKUP_BATCH = 20
 RETRY_AFTER = timedelta(days=1)
 #: Where the time zone the page last reported is kept.
 TZ_KEY = "timezone"
-#: The estimate's bounds, in seconds per video opened.
-GUESS_SECONDS, MOST_SECONDS = 30, 90
+#: Watch time, read from the gaps: a video lasts until the next one starts,
+#: but counts for at most CAP seconds (a phone set down on the counter), and a
+#: gap of more than BREAK seconds ends a session. The last video of a session
+#: has no next one, and counts for the month's typical time.
+CAP, BREAK = 180, 600
+#: How long you stayed on a video, in four bands: under 2 seconds, under 10,
+#: under 45, and longer.
+BANDS = (("Flicked past", 2), ("Sampled", 10), ("Watched", 45), ("Stayed", None))
+#: Sessions that start between these hours count as late at night.
+LATE_FROM, LATE_TO = 23, 4
+#: Fewest videos a "what holds you" figure is worked out from.
+ENOUGH = 5
 DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
 
 
@@ -241,6 +252,95 @@ def _ordinal(n: int) -> str:
     return f"{n}{'th' if 10 <= n % 100 <= 20 else {1: 'st', 2: 'nd', 3: 'rd'}.get(n % 10, 'th')}"
 
 
+def _dwell(times: list[datetime], after: Optional[datetime] = None) -> tuple[list[float], list[list[int]]]:
+    """How long each video held you, and the sessions (lists of indexes).
+
+    ``times`` are when each video opened, oldest first; ``after`` is when the
+    next one opened, past the end of the list, if any."""
+    gaps = [(b - a).total_seconds() for a, b in zip(times, times[1:])]
+    gaps.append((after - times[-1]).total_seconds() if after and times else BREAK + 1)
+    inside = [g for g in gaps if g <= BREAK]
+    typical = min(median(inside), CAP) if inside else 12.0
+    dwell = [min(g, CAP) if g <= BREAK else typical for g in gaps]
+    sessions, current = [], []
+    for i, g in enumerate(gaps):
+        current.append(i)
+        if g > BREAK:
+            sessions.append(current)
+            current = []
+    if current:
+        sessions.append(current)
+    return dwell, sessions
+
+
+def _clock_words(t: datetime) -> str:
+    return f"{DAYS[t.weekday()]} {t.day} {MONTH_NAMES[t.month - 1]}, from {_hour(t.hour)}"
+
+
+def _hour(h: int) -> str:
+    return f"{(h % 12) or 12}{'am' if h < 12 else 'pm'}"
+
+
+def attention(conn: sqlite3.Connection, key: str, tz: Optional[ZoneInfo] = None) -> Optional[dict]:
+    """How a month's watching went, read from the times alone: how long you
+    stayed on each video (in four bands), the hours that adds up to, your
+    sessions, how many started late at night, the videos you came back to in
+    another session, and how much longer you stayed on what you liked and
+    saved than on everything else."""
+    tz = tz or timezone.utc
+    start, end = _bounds(key, tz)
+    lo, hi = _utc(start), _utc(end)
+    rows = conn.execute(
+        "SELECT at, ref FROM activity WHERE platform = 'tiktok' AND kind = 'watch' AND at >= ? AND at < ?"
+        " ORDER BY at", (lo, hi)).fetchall()
+    if not rows:
+        return None
+    nxt = conn.execute(
+        "SELECT at FROM activity WHERE platform = 'tiktok' AND kind = 'watch' AND at >= ? ORDER BY at LIMIT 1",
+        (hi,)).fetchone()
+    times = [_when(r["at"], tz) for r in rows]
+    refs = [r["ref"] for r in rows]
+    dwell, sessions = _dwell(times, _when(nxt[0], tz) if nxt else None)
+
+    bands, low = [], 0.0
+    for name, upto in BANDS:
+        n = sum(1 for d in dwell if d >= low and (upto is None or d < upto))
+        bands.append({"name": name, "count": n, "share": round(100 * n / len(dwell)),
+                      "from": low, "to": upto})
+        low = upto or low
+
+    per = [{"videos": len(s), "seconds": sum(dwell[i] for i in s), "start": times[s[0]]} for s in sessions]
+    longest = max(per, key=lambda x: (x["seconds"], x["videos"]))
+    late = [x for x in per if x["start"].hour >= LATE_FROM or x["start"].hour < LATE_TO]
+    days_seen = len({t.date() for t in times})
+
+    session_of = {}
+    for n, s in enumerate(sessions):
+        for i in s:
+            session_of.setdefault(refs[i], set()).add(n)
+    came_back = sum(1 for v in session_of.values() if len(v) > 1)
+
+    liked = {r[0] for r in conn.execute("SELECT DISTINCT ref FROM activity WHERE platform = 'tiktok' AND kind = 'like'")}
+    saved = {r[0] for r in conn.execute("SELECT external_id FROM items WHERE platform = 'tiktok' AND external_id IS NOT NULL")}
+
+    def typical_for(keep: set) -> Optional[int]:
+        picked = [d for d, r in zip(dwell, refs) if r in keep]
+        return round(median(picked)) if len(picked) >= ENOUGH else None
+
+    every = round(median(dwell))
+    return {
+        "hours": round(sum(dwell) / 3600), "bands": bands, "typical": every,
+        "sessions": len(per), "per_day": round(len(per) / days_seen, 1) if days_seen else 0,
+        "session_minutes": round(median(x["seconds"] for x in per) / 60),
+        "session_videos": round(median(x["videos"] for x in per)),
+        "longest": {"videos": longest["videos"], "minutes": round(longest["seconds"] / 60),
+                    "when": _clock_words(longest["start"])},
+        "late": len(late), "late_share": round(100 * len(late) / len(per)),
+        "came_back": came_back,
+        "liked": typical_for(liked), "saved": typical_for(saved),
+    }
+
+
 def trend(conn: sqlite3.Connection, tz: Optional[ZoneInfo] = None) -> list[dict]:
     """Every month at a glance, oldest first: videos opened, likes, saves and
     searches, each counted in your own time zone, like the month itself."""
@@ -251,10 +351,13 @@ def trend(conn: sqlite3.Connection, tz: Optional[ZoneInfo] = None) -> list[dict]
     opened: Counter[str] = Counter()
     searched: Counter[str] = Counter()
     liked: dict[str, set] = {}
-    for r in conn.execute("SELECT kind, at, ref FROM activity WHERE platform = 'tiktok'"):
-        key = _when(r["at"], tz).strftime("%Y-%m")
+    watches: list[datetime] = []
+    for r in conn.execute("SELECT kind, at, ref FROM activity WHERE platform = 'tiktok' ORDER BY at"):
+        when = _when(r["at"], tz)
+        key = when.strftime("%Y-%m")
         if r["kind"] == "watch":
             opened[key] += 1
+            watches.append(when)
         elif r["kind"] == "search":
             searched[key] += 1
         elif r["kind"] == "like":
@@ -266,8 +369,19 @@ def trend(conn: sqlite3.Connection, tz: Optional[ZoneInfo] = None) -> list[dict]
             saved[_when(r[0], tz).strftime("%Y-%m")] += 1
         except (TypeError, ValueError):
             continue
+    # Attention, month by month: hours, and how much of it was flicking past.
+    seconds: Counter[str] = Counter()
+    flicked: Counter[str] = Counter()
+    if watches:
+        dwell, _ = _dwell(watches)
+        for when, d in zip(watches, dwell):
+            key = when.strftime("%Y-%m")
+            seconds[key] += d
+            flicked[key] += d < BANDS[0][1]
     return [{"key": k, "name": month_name(k), "year": int(k[:4]), "opened": opened[k],
-             "liked": len(liked.get(k, ())), "saved": saved[k], "searched": searched[k]} for k in keys]
+             "liked": len(liked.get(k, ())), "saved": saved[k], "searched": searched[k],
+             "hours": round(seconds[k] / 3600),
+             "flicked": round(100 * flicked[k] / opened[k]) if opened[k] else 0} for k in keys]
 
 
 def month(conn: sqlite3.Connection, key: str, tz: Optional[ZoneInfo] = None,
@@ -341,12 +455,8 @@ def month(conn: sqlite3.Connection, key: str, tz: Optional[ZoneInfo] = None,
                     jump = {"name": t, "share": round(100 * share), "before": round(100 * before),
                             "by": share - before}
 
-    # The one estimate: hours, from the length of what you saved that month.
-    lengths = [r[0] for r in conn.execute(
-        "SELECT duration FROM items WHERE platform = 'tiktok' AND duration > 0"
-        " AND saved_at >= ? AND saved_at < ?", (lo, hi))]
-    seconds = min(int(median(lengths)), MOST_SECONDS) if lengths else GUESS_SECONDS
-    hours = len(watched) * seconds / 3600
+    # How the watching went, and the hours it adds up to.
+    att = attention(conn, key, tz)
 
     words = Counter(s.strip().lower() for s in searched if s.strip())
     return {
@@ -355,7 +465,7 @@ def month(conn: sqlite3.Connection, key: str, tz: Optional[ZoneInfo] = None,
         "opened": len(watched), "prev_opened": prev_opened,
         "change": round(100 * (len(watched) - prev_opened) / prev_opened) if prev_opened else None,
         "coverage": coverage, "ongoing": ongoing,
-        "hours": round(hours), "seconds": seconds, "seconds_guessed": not lengths,
+        "hours": att["hours"] if att else 0, "attention": att,
         "clock": clock, "peak": max(max(r) for r in clock),
         "days": days, "day_peak": max(days) if days else 0, "weekday_one": start.weekday(),
         "busiest": {"day": DAYS[busiest[0]], "hour": busiest[1]} if watched else None,

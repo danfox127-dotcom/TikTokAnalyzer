@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% from "_icons.html" import icon %}
-{% from "_rewind.html" import hr, clock, ranks, topic_bars %}
+{% from "_rewind.html" import hr, clock, ranks, topic_bars, attention_bar, mins %}
 {% set nav = 'browse' %}
 {% set back = '/browse' %}{% set back_label = 'Browse' %}
 {% block title %}{% if m %}{{ m.name }} {{ m.year }} · {% endif %}Your TikTok stats · Faves{% endblock %}
@@ -40,7 +40,8 @@
   {#- Every month: one column each, this month in the accent, the rest muted.
       Each column is a way to its month; the table below holds every number. -#}
   {%- set measures = [('opened', 'Videos', 'Videos opened each month.'), ('liked', 'Likes', 'Videos liked each month.'),
-                      ('saved', 'Saves', 'TikToks saved to Faves each month.'), ('searched', 'Searches', 'Searches each month.')] %}
+                      ('saved', 'Saves', 'TikToks saved to Faves each month.'), ('searched', 'Searches', 'Searches each month.'),
+                      ('hours', 'Hours', 'Hours watched each month, estimated from the gaps between videos.')] %}
   {%- set every = [1, ((trend | length) / 8) | round(0, 'ceil') | int] | max %}
   <section class="st-panel is-wide" aria-labelledby="st-trend-t">
     <div class="st-panel-head">
@@ -55,7 +56,7 @@
         <a class="st-col{% if on %} is-on{% endif %}" href="/stats/{{ t.key }}"
            {% for key, _, _ in measures %} data-h-{{ key }}="{{ (100 * t[key] / most[key]) | round(1) }}" data-n-{{ key }}="{{ num(t[key]) }}"{% endfor %}
            aria-label="{{ t.name }} {{ t.year }}: {{ num(t.opened) }} videos opened, {{ num(t.liked) }} likes, {{ num(t.saved) }} saves, {{ num(t.searched) }} searches"
-           title="{{ t.name }} {{ t.year }}: {{ num(t.opened) }} opened · {{ num(t.liked) }} likes · {{ num(t.saved) }} saves · {{ num(t.searched) }} searches"{% if on %} aria-current="page"{% endif %}>
+           title="{{ t.name }} {{ t.year }}: {{ num(t.opened) }} opened · {{ num(t.liked) }} likes · {{ num(t.saved) }} saves · {{ num(t.searched) }} searches · about {{ num(t.hours) }} hours"{% if on %} aria-current="page"{% endif %}>
           <span class="v">{% if on %}{{ num(t.opened) }}{% endif %}</span>
           <span class="plot"><span class="bar" style="height: {{ (100 * t.opened / most.opened) | round(1) }}%"></span></span>
           <span class="lab">{% if on or loop.index0 % every == 0 %}{{ t.name[:3] }}{% if loop.first or t.key[5:] == '01' %}<small>{{ t.year }}</small>{% endif %}{% endif %}</span>
@@ -65,10 +66,10 @@
     <details class="st-table">
       <summary>Every month's numbers</summary>
       <table>
-        <thead><tr><th scope="col">Month</th><th scope="col">Opened</th><th scope="col">Likes</th><th scope="col">Saves</th><th scope="col">Searches</th></tr></thead>
+        <thead><tr><th scope="col">Month</th><th scope="col">Opened</th><th scope="col">Likes</th><th scope="col">Saves</th><th scope="col">Searches</th><th scope="col">Hours</th><th scope="col">Flicked past</th></tr></thead>
         <tbody>
           {% for t in trend | reverse %}<tr{% if t.key == m.key %} class="is-on"{% endif %}><th scope="row"><a href="/stats/{{ t.key }}">{{ t.name }} {{ t.year }}</a></th>
-            <td>{{ num(t.opened) }}</td><td>{{ num(t.liked) }}</td><td>{{ num(t.saved) }}</td><td>{{ num(t.searched) }}</td></tr>{% endfor %}
+            <td>{{ num(t.opened) }}</td><td>{{ num(t.liked) }}</td><td>{{ num(t.saved) }}</td><td>{{ num(t.searched) }}</td><td>{{ num(t.hours) }}</td><td>{{ t.flicked }}%</td></tr>{% endfor %}
         </tbody>
       </table>
     </details>
@@ -80,8 +81,27 @@
     <div class="st-tile"><p class="lab">Likes</p><p class="val">{{ num(m.liked) }}</p><p class="delta">{{ change(changes.liked, m.prev_name) }}</p></div>
     <div class="st-tile"><p class="lab">Saved to Faves</p><p class="val">{{ num(m.saved) }}</p><p class="delta">{{ change(changes.saved, m.prev_name) }}</p></div>
     <div class="st-tile"><p class="lab">Searches</p><p class="val">{{ num(m.searched) }}</p><p class="delta">{{ change(changes.searched, m.prev_name) }}</p></div>
-    <div class="st-tile"><p class="lab">Hours <span class="rw-tag">estimate</span></p><p class="val">About {{ m.hours }}</p><p class="delta">at {{ m.seconds }} seconds a video{% if not m.seconds_guessed %}, the usual length of what you saved{% endif %}</p></div>
+    <div class="st-tile"><p class="lab">Hours <span class="rw-tag">estimate</span></p><p class="val">About {{ m.hours }}</p><p class="delta">from the gaps between videos</p></div>
   </section>
+
+  {#- How you watched. -#}
+  {% set a = m.attention %}{% if a %}
+  <section class="st-panel is-wide" aria-labelledby="st-how-t">
+    <div class="st-panel-head"><h2 id="st-how-t">How you watched</h2></div>
+    <p class="st-note">How long you stayed on each video you opened: until the next one opened, up to 3 minutes.</p>
+    {{ attention_bar(a) }}
+    <div class="st-tiles at-tiles">
+      <div class="st-tile"><p class="lab">Sessions</p><p class="val">{{ num(a.sessions) }}</p><p class="delta">about {{ a.per_day }} a day you watched</p></div>
+      <div class="st-tile"><p class="lab">A typical session</p><p class="val">{{ mins(a.session_minutes) }}</p><p class="delta">{{ a.session_videos }} videos</p></div>
+      <div class="st-tile"><p class="lab">The longest</p><p class="val">{{ mins(a.longest.minutes) }}</p><p class="delta">{{ num(a.longest.videos) }} videos, {{ a.longest.when }}</p></div>
+      <div class="st-tile"><p class="lab">Late at night</p><p class="val">{{ a.late_share }}%</p><p class="delta">of sessions started 11pm–4am</p></div>
+      <div class="st-tile"><p class="lab">Came back to</p><p class="val">{{ num(a.came_back) }}</p><p class="delta">videos, in another session</p></div>
+    </div>
+    <p class="at-holds"><b>What holds you:</b> a typical video, {{ a.typical }} seconds
+      {%- if a.liked %}; one you liked, {{ a.liked }} seconds{% endif %}
+      {%- if a.saved %}; one you saved, {{ a.saved }} seconds{% endif %}.</p>
+  </section>
+  {% endif %}
 
   {#- Day by day. -#}
   {%- set daynames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'] %}
