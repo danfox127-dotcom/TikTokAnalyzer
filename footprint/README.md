@@ -133,6 +133,11 @@ Give it a brand name, the official website, and up to five handles.
    - profiles that are probably yours but missing from the website
    - email from your domain that can be faked (see below)
    - a phone number on your website that isn't a valid number
+   - a known data breach of your website, from
+     [Have I Been Pwned](https://haveibeenpwned.com/)'s public catalogue: when,
+     how many accounts, and what leaked. It's what people find when they search
+     your brand's name with "breach". Only the domain is sent, and no key is
+     needed.
 5. **When your accounts post**, as a 24-hour chart.
 6. **A ready-to-paste JSON-LD block** with the `sameAs` list. Search engines and
    AI assistants use it to tie your accounts to your organisation. Untick
@@ -190,8 +195,11 @@ set `FOOTPRINT_PHONE_REGION` (for example `GB`) to change that.
   the owner a reset alert, and breaks the sites' terms.
 - **Name a phone number's owner.** That's data-broker territory, and checking
   messaging apps for a number exposes the owner.
-- **Search data breaches.** To check your own address, type it into
-  [Have I Been Pwned](https://haveibeenpwned.com/) yourself.
+- **Search data breaches for an address.** To check your own, type it into
+  [Have I Been Pwned](https://haveibeenpwned.com/) yourself. (HIBP's API can do
+  this for a few dollars a month, and with a verified domain can list every
+  breached address at your organisation; Footprint uses only its free breach
+  catalogue, for the brand report.)
 
 Nothing about a lookup is kept.
 
@@ -208,6 +216,8 @@ time-zone guess.
 
 Site lists from [Sherlock](https://github.com/sherlock-project/sherlock) (MIT)
 and [WhatsMyName](https://github.com/WebBreacher/WhatsMyName) (CC BY-SA 4.0).
+Breach data from [Have I Been Pwned](https://haveibeenpwned.com/) (CC BY 4.0),
+credited wherever a report shows it.
 They are downloaded to your computer at run time, not copied into this
 repository. Bot-wall fingerprints are Sherlock's.
 
@@ -224,6 +234,7 @@ repository. Bot-wall fingerprints are Sherlock's.
 | `brand.py` | The brand report |
 | `lookup.py` | Email lookup: Gravatar, GitHub, WebFinger, then profiles and scores |
 | `mailcheck.py` | Can email from a domain be faked? MX, SPF and DMARC via public DNS |
+| `breaches.py` | Has a website had a known data breach? Have I Been Pwned's free catalogue |
 | `phone.py` | What a phone number says about itself, offline |
 | `app.py` | The web app; results stream as Server-Sent Events |
 
