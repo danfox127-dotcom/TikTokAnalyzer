@@ -327,14 +327,28 @@
     var out = box.querySelector('.out');
     out.href = link.href;
     out.textContent = 'Open in ' + (link.getAttribute('data-label') || 'the app') + ' ↗';
+    // The save's own picture waits behind the player, softly pulsing, until
+    // the platform's player has loaded; if it is slow to, the way out to the
+    // app says so.
+    var screen = document.createElement('div');
+    screen.className = 'screen is-loading';
+    var pic = link.querySelector('img[data-frame]');
+    if (pic && pic.getAttribute('src')) {
+      var poster = document.createElement('img');
+      poster.className = 'poster'; poster.alt = ''; poster.src = pic.getAttribute('src');
+      screen.appendChild(poster);
+    }
     var frame = document.createElement('iframe');
+    frame.addEventListener('load', function () { screen.classList.remove('is-loading'); box.classList.remove('is-slow'); });
+    setTimeout(function () { if (screen.classList.contains('is-loading')) box.classList.add('is-slow'); }, 7000);
     frame.src = link.getAttribute('data-embed');
     frame.title = (link.getAttribute('data-label') || 'Video') + ' player';
     frame.setAttribute('allow', 'autoplay; encrypted-media; picture-in-picture; fullscreen');
     frame.setAttribute('allowfullscreen', '');
     // YouTube refuses to play for a page that doesn't say where it is.
     frame.setAttribute('referrerpolicy', 'strict-origin-when-cross-origin');
-    box.appendChild(frame);
+    screen.appendChild(frame);
+    box.appendChild(screen);
     var layer = link.closest('.rr-deckcard') && watchLayer();
     if (layer) {
       layer.appendChild(box);
@@ -402,6 +416,23 @@
       return r;
     });
   }
+  // A save's page after an edit: its words are drawn afresh from the server
+  // and swapped in, while the player beside them -- and a video playing in
+  // it -- is left alone.
+  function redraw() {
+    var here = document.querySelector('.detail-body');
+    if (!here || !window.DOMParser) return Promise.reject(new Error('no page to redraw'));
+    return fetch(location.pathname + location.search, { credentials: 'same-origin' })
+      .then(function (r) { if (!r.ok) throw new Error(r.status); return r.text(); })
+      .then(function (html) {
+        var fresh = new DOMParser().parseFromString(html, 'text/html').querySelector('.detail-body');
+        if (!fresh) throw new Error('no page to redraw');
+        fresh = document.importNode(fresh, true);
+        here.replaceWith(fresh);
+        fresh.querySelectorAll('.rr-reveal').forEach(function (el) { el.classList.add('is-in'); });
+        fresh.querySelectorAll('form[data-inplace]').forEach(inplace);
+      });
+  }
   function inplace(form) {
     form.addEventListener('submit', function (e) {
       if (form.hasAttribute('data-plain') || !window.fetch || !window.FormData) return;
@@ -409,8 +440,11 @@
       var by = e.submitter;
       form.classList.add('is-busy');
       post(form, by).then(function () {
-        keep('rr-flash', form.getAttribute('data-inplace') + ' ✓');
-        location.reload();                                    // the same page, the same place in history
+        var said = form.getAttribute('data-inplace') + ' ✓';
+        return redraw().then(function () { toast(said); }, function () {
+          keep('rr-flash', said);
+          location.reload();                                  // the same page, the same place in history
+        });
       }).catch(function () {
         form.classList.remove('is-busy');
         form.setAttribute('data-plain', '');
