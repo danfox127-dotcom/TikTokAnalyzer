@@ -391,13 +391,56 @@
   }
 
   /* ---- a word after saving, carried across the reload ---- */
-  function toast(text) {
+  function toast(text, undo) {
     var t = document.querySelector('.rr-toast');
     if (!t || !text) return;
     t.hidden = true; t.textContent = text;
+    t.classList.toggle('has-undo', !!undo);
+    if (undo) t.appendChild(undoButton(function () { t.hidden = true; undo(); }));
+    document.querySelectorAll('.deck-hint').forEach(function (h) { h.hidden = true; });   // the same spot
     void t.offsetWidth;                                       // restart the animation
     t.hidden = false;
-    clearTimeout(toast.timer); toast.timer = setTimeout(function () { t.hidden = true; }, 2700);
+    clearTimeout(toast.timer); toast.timer = setTimeout(function () { t.hidden = true; }, undo ? 5200 : 2700);
+  }
+  function undoButton(then) {
+    var b = document.createElement('button');
+    b.type = 'button'; b.className = 'undo'; b.textContent = 'Undo';
+    b.addEventListener('click', then);
+    return b;
+  }
+  // Said beside the form when it's in a sheet (the page's own message sits
+  // under the sheet there, out of reach), as a message at the foot otherwise.
+  function tell(form, text, undo) {
+    var spot = form.closest('dialog') && form.querySelector('.said');
+    if (!spot) { toast(text, undo); return; }
+    spot.textContent = text + ' ';
+    if (undo) spot.appendChild(undoButton(function () { spot.textContent = ''; undo(); }));
+  }
+
+  /* ---- topics save as you tap: there is no Save button ----
+     Each tap sends the whole choice, one request after another so they land
+     in the order you tapped, and says what changed, with an Undo. */
+  function topicTap(form, box, after) {
+    if (!box.matches || !box.matches('input[name="room"]') || !window.fetch || !window.FormData) return;
+    var now = [].map.call(form.querySelectorAll('input[name="room"]:checked'), function (b) { return b.value; });
+    var before = box.checked ? now.filter(function (v) { return v !== box.value; }) : now.concat([box.value]);
+    function save(text, undo) {
+      form.rrWaiting = (form.rrWaiting || 0) + 1;
+      form.rrQueue = (form.rrQueue || Promise.resolve()).then(function () {
+        return post(form).then(function (r) { return r.json(); }).then(function (j) {
+          form.rrWaiting--;
+          if (after) after(j, !form.rrWaiting);
+          tell(form, text, undo);
+        });
+      }).catch(function () {
+        form.rrWaiting = Math.max(0, form.rrWaiting - 1);
+        tell(form, "Couldn't save that -- is Faves still running?");
+      });
+    }
+    save((box.checked ? 'Added to ' : 'Taken out of ') + box.value + ' ✓', function () {
+      form.querySelectorAll('input[name="room"]').forEach(function (b) { b.checked = before.indexOf(b.value) >= 0; });
+      save('Put back as it was ✓');
+    });
   }
 
   /* ---- sheets: open, close on the scrim, pull down to close ---- */
@@ -448,7 +491,10 @@
   // A save's page after an edit: its words are drawn afresh from the server
   // and swapped in, while the player beside them -- and a video playing in
   // it -- is left alone.
-  function redraw() {
+  // ``keep`` names a part to leave exactly as it is -- the topic picker you are
+  // tapping in, open, with your finger's place in it -- while the rest is
+  // redrawn round it.
+  function redraw(keep) {
     var here = document.querySelector('.detail-body');
     if (!here || !window.DOMParser) return Promise.reject(new Error('no page to redraw'));
     return fetch(location.pathname + location.search, { credentials: 'same-origin' })
@@ -457,12 +503,28 @@
         var fresh = new DOMParser().parseFromString(html, 'text/html').querySelector('.detail-body');
         if (!fresh) throw new Error('no page to redraw');
         fresh = document.importNode(fresh, true);
+        var live = keep && here.querySelector(keep), slot = keep && fresh.querySelector(keep);
+        var focused = live && live.contains(document.activeElement) ? document.activeElement : null;
+        if (live && slot) {
+          var row = slot.querySelector('.row'), liveRow = live.querySelector('.row');
+          if (row && liveRow) liveRow.replaceWith(row);       // "Let Faves decide again", now you've chosen
+          slot.replaceWith(live);
+        }
         here.replaceWith(fresh);
+        if (focused && document.contains(focused)) focused.focus({ preventScroll: true });
         fresh.querySelectorAll('.rr-reveal').forEach(function (el) { el.classList.add('is-in'); });
         fresh.querySelectorAll('form[data-inplace]').forEach(inplace);
       });
   }
   function inplace(form) {
+    if (form.rrInplace) return;
+    form.rrInplace = true;
+    if (form.hasAttribute('data-instant') && window.fetch && window.FormData) {
+      form.classList.add('is-instant');
+      form.addEventListener('change', function (e) {
+        topicTap(form, e.target, function (j, last) { if (last) redraw('#change-rooms').catch(function () {}); });
+      });
+    }
     form.addEventListener('submit', function (e) {
       if (form.hasAttribute('data-plain') || !window.fetch || !window.FormData) return;
       e.preventDefault();
@@ -571,20 +633,24 @@
     feed.focus({ preventScroll: true });
     onScroll();
 
-    // Untagged: tap a topic or two, Done, and on to the next.
+    // Untagged: tap a topic or two -- each tap is saved -- then Next.
+    feed.addEventListener('change', function (e) {
+      var form = e.target.closest && e.target.closest('.tagger');
+      if (!form) return;
+      var card = form.closest('.rr-deckcard');
+      topicTap(form, e.target, function (j) {
+        paintTopics(card, j);
+        var filed = (j.themes || []).length > 0;
+        if (filed === card.classList.contains('is-done')) return;
+        card.classList.toggle('is-done', filed);              // one fewer to go -- or, undone, one more
+        if (left) { var n = Math.max(0, parseInt(left.textContent, 10) + (filed ? -1 : 1)); left.textContent = n + ' left'; }
+      });
+    });
     feed.addEventListener('submit', function (e) {
       var form = e.target.closest && e.target.closest('.tagger');
       if (!form || !window.fetch) return;
-      e.preventDefault();
-      var card = form.closest('.rr-deckcard');
-      if (!form.querySelector('input[name="room"]:checked')) { toast('Tap a topic first'); return; }
-      post(form).then(function (r) { return r.json(); }).then(function (j) {
-        card.classList.add('is-done');
-        paintTopics(card, j);
-        if (left) { var n = Math.max(0, parseInt(left.textContent, 10) - 1); left.textContent = n + ' left'; }
-        toast('Filed under ' + (j.labels || []).join(', ') + ' ✓');
-        setTimeout(function () { step(1); }, 420);
-      }).catch(function () { form.submit(); });
+      e.preventDefault();                                    // already saved, tap by tap
+      step(1);
     });
 
     // Every other card: topics and a note, in sheets over the feed.
@@ -599,7 +665,13 @@
       forCard = e.detail.closest('.rr-deckcard');
       var have = (forCard.getAttribute('data-themes') || '').split('|');
       topicSheet.querySelectorAll('input[name="room"]').forEach(function (b) { b.checked = have.indexOf(b.value) >= 0; });
-      topicSheet.querySelector('form.sheet-form').setAttribute('action', '/item/' + forCard.getAttribute('data-id') + '/rooms');
+      var form = topicSheet.querySelector('form.sheet-form'), said = form.querySelector('.said');
+      form.setAttribute('action', '/item/' + forCard.getAttribute('data-id') + '/rooms');
+      if (said) said.textContent = '';
+    });
+    if (topicSheet) topicSheet.addEventListener('change', function (e) {
+      var card = forCard, form = topicSheet.querySelector('form.sheet-form');
+      topicTap(form, e.target, function (j) { paintTopics(card, j); });
     });
     if (noteSheet) noteSheet.addEventListener('rr-open', function (e) {
       forCard = e.detail.closest('.rr-deckcard');
@@ -610,10 +682,10 @@
       if (!d) return;
       d.querySelector('form.sheet-form').addEventListener('submit', function (e) {
         e.preventDefault();
+        if (d === topicSheet) { d.close(); return; }        // each tap was saved as you made it
         var card = forCard;
         post(e.target).then(function (r) { return r.json(); }).then(function (j) {
-          if (d === topicSheet) { paintTopics(card, j); toast('Topics saved ✓'); }
-          else { var n = card.querySelector('[data-note]'); n.textContent = j.note; n.hidden = !j.note; toast('Note saved ✓'); }
+          var n = card.querySelector('[data-note]'); n.textContent = j.note; n.hidden = !j.note; toast('Note saved ✓');
           d.close();
         }).catch(function () { toast("Couldn't save that -- is Faves still running?"); });
       });

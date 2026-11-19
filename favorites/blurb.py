@@ -62,6 +62,33 @@ def unwrap(text: Optional[str]) -> str:
     return text
 
 
+_STANDIN_TITLE = re.compile(r"^\s*(.{1,80}?)\s+on\s+Instagram\s*(:.*)?$", re.S)
+_WRAPPER_HANDLE = re.compile(r"[-–—]\s*([\w.]{2,60})\s+on\s+[A-Z][a-z]+\s+\d{1,2},\s*\d{4}\s*:")
+
+
+def instagram_standin(title: Optional[str], creator_name: Optional[str],
+                      description: Optional[str]) -> Optional[dict]:
+    """Instagram's link preview, read without signing in, often titles a post
+    with its account ("GigiSketch on Instagram") and names Instagram itself
+    as the author. The account is the creator, and the caption -- after a
+    colon in the title, or else in the description -- is the real title.
+
+    Returns the details to use instead (``title``, ``creator_name``, and
+    ``creator_handle`` where the preview gave it), or None when there is
+    nothing to fix."""
+    found = _STANDIN_TITLE.match(title or "")
+    if not found or (creator_name or "").strip().lower() not in ("", "instagram"):
+        return None
+    caption = unwrap(title if found.group(2) else description).strip()
+    if caption[:1] in "\"“" and not re.search(r"[\"”]", caption[1:]):
+        caption = caption[1:].lstrip()          # a quote the preview cut off before it closed
+    fixed = {"title": caption or None, "creator_name": found.group(1).strip()}
+    handle = _WRAPPER_HANDLE.search(description or "")
+    if handle:
+        fixed["creator_handle"] = "@" + handle.group(1).lower()
+    return fixed
+
+
 def clean_caption(text: Optional[str]) -> str:
     """A caption as a person would write it: no preview wrapper, no hashtag pile."""
     if not text:

@@ -66,13 +66,15 @@ def requeue_placeholders(conn: sqlite3.Connection) -> dict:
     creator is put back in the queue so the fixed logic can rule on it.
     """
     rows = db.rows_to_dicts(conn.execute(
-        "SELECT id, platform, title, creator_name, creator_handle"
+        "SELECT id, platform, title, creator_name, creator_handle, edited"
         " FROM items WHERE resolve_status = 'ok'").fetchall())
 
     cleared = requeued = 0
     for row in rows:
         if not _is_placeholder_title(row["title"], row["platform"]):
             continue
+        if "title" in db.edits_of(row["edited"]):
+            continue                                  # a title you wrote yourself
         conn.execute("UPDATE items SET title = NULL WHERE id = ?", (row["id"],))
         cleared += 1
         if not (row["creator_name"] or row["creator_handle"]):

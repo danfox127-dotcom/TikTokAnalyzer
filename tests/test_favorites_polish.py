@@ -112,7 +112,7 @@ class TestThePage:
         js = client.get("/static/museum.js").text
         inplace = js[js.index("function inplace(form)"):js.index("function moreResults")]
         assert "redraw()" in inplace and "location.reload()" in inplace   # reload only if the redraw fails
-        redraw = js[js.index("function redraw()"):js.index("function inplace(form)")]
+        redraw = js[js.index("function redraw(keep)"):js.index("function inplace(form)")]
         assert "'.detail-body'" in redraw and "replaceWith" in redraw
 
     def test_the_player_shows_the_picture_while_it_loads(self, client):

@@ -1045,6 +1045,25 @@ def choose_rooms(
     return RedirectResponse(_back(next, f"/item/{item_id}"), status_code=303)
 
 
+@app.post("/item/{item_id}/details")
+def edit_save_details(
+    request: Request, item_id: int,
+    title: Optional[str] = Form(None), creator_name: Optional[str] = Form(None),
+    creator_handle: Optional[str] = Form(None), undo: int = Form(0),
+    conn: sqlite3.Connection = Depends(get_db),
+):
+    """A save's title and creator in your own words -- or, with ``undo``, the
+    platform's back. A detail not sent is left as it is."""
+    if db.get_item(conn, item_id) is None:
+        raise HTTPException(status_code=404, detail="no such item")
+    changed = db.undo_edits(conn, item_id) if undo else db.edit_details(
+        conn, item_id, title=title, creator_name=creator_name, creator_handle=creator_handle)
+    if _wants_json(request):
+        item = db.get_item(conn, item_id)
+        return JSONResponse({"changed": changed, **{f: item[f] for f in db.EDITABLE}})
+    return RedirectResponse(f"/item/{item_id}", status_code=303)
+
+
 @app.get("/surprise")
 def surprise(conn: sqlite3.Connection = Depends(get_db)):
     """One save at random -- the museum's "show me something"."""
@@ -1679,7 +1698,8 @@ def write_placard(
 def item_page(
     request: Request, item_id: int, saved: int = Query(0),
     trail: str = Query("", max_length=200), via: str = Query("", max_length=120),
-    rooms: int = Query(0), surprise: int = Query(0), conn: sqlite3.Connection = Depends(get_db),
+    rooms: int = Query(0), surprise: int = Query(0), edit: int = Query(0),
+    conn: sqlite3.Connection = Depends(get_db),
 ):
     row = db.get_item(conn, item_id)
     if row is None:
@@ -1696,7 +1716,9 @@ def item_page(
         # Still waiting for its length or words: the page asks for them.
         "finishing": finishing_on() and bool(lacks(conn, row)),
         "reasons": db.room_reasons(conn, item_id), "rooms_open": bool(rooms),
-        "surprise": bool(surprise),
+        "surprise": bool(surprise), "editing": bool(edit),
+        # The platform's version of what you changed: you can go back to it.
+        "edited": db.edits_of(item.get("edited")),
         "hand_filed": conn.execute("SELECT 1 FROM theme_rules WHERE kind = 'item' AND key = ?",
                                    (str(item_id),)).fetchone() is not None,
         "threads": museum.threads(conn, item),

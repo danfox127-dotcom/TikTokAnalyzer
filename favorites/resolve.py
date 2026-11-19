@@ -32,6 +32,7 @@ from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 import httpx
 
 from . import platforms
+from .blurb import instagram_standin
 
 logger = logging.getLogger(__name__)
 
@@ -452,6 +453,11 @@ async def resolve(shared: str, client: httpx.AsyncClient) -> Resolved:
         hollow = _placeholder_names(platform, site_name)
         if (item.creator_name or "").strip().lower() in hollow:
             item.creator_name = None
+    if platform == "instagram":
+        fixed = instagram_standin(item.title, item.creator_name, item.description)
+        if fixed:
+            item.title, item.creator_name = fixed["title"], fixed["creator_name"]
+            item.creator_handle = item.creator_handle or fixed.get("creator_handle")
     # TikTok's stub page repeats its slogan as the description, too.
     if item.description and _is_placeholder_title(item.description, platform, site_name):
         item.description = None
