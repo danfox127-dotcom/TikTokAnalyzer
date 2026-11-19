@@ -171,7 +171,7 @@ class TestRefiling:
     def test_every_change_to_the_rules_moves_the_generation_on(self):
         # Changed the words or the rules? Add one to GENERATION and put the new
         # VERSION here: an older Faves then can't undo the newer one's work.
-        assert (themes.GENERATION, themes.VERSION) == (6, "e4c9fe973a67")
+        assert (themes.GENERATION, themes.VERSION) == (7, "f6c1a313455f")
 
 
 class TestThePage:
@@ -237,3 +237,52 @@ class TestAfterTheFirstRefiling:
     def test_more_ways_in(self):
         assert themes._tag_hits("howtocutamango")[0] == {"How-to & learning"}
         assert about(["coverletter"], "Don't submit a cover letter until you do this") == ["Money & work"]
+
+
+class TestAfterTheSecondRefiling:
+    """#82's "What changed": 175 saves gained a second or third topic, half of
+    them noise from hashtag piles and a few double-meaning tags."""
+
+    HUSKY = ["husky", "siberianhusky", "huskylove", "huskiesofinstagram", "huskygram", "huskies",
+             "huskypuppy", "huskylife", "huskyphotography", "dogsofinstagram", "huskybaby", "petsofig"]
+
+    def test_one_stray_tag_in_a_pile_isnt_a_topic(self):
+        assert about(self.HUSKY, "Husky sings to Rihanna") == ["Dogs"]
+        ev = themes.weigh(self.HUSKY, ["Husky sings"])
+        assert {k for k, _, _ in ev["Dogs"]} == {"pile"}
+
+    def test_two_in_a_pile_still_are(self):
+        tags = ["photoshop", "photoshoptutorial", "graphicdesign", "graphicdesigner", "art", "adobe",
+                "lightroom", "edit", "creative", "reels", "shorts", "fyp"]
+        assert "Art & design" in about(tags, "Box labeling in Photoshop")
+
+    def test_a_dog_isnt_also_animals_and_wildlife(self):
+        assert about(["pets", "dogs", "siberianhusky"], "Her weakness") == ["Dogs"]
+        assert about(["pets", "ducks"], "MAGDA - MY FAMOUS DUCK") == ["Animals & wildlife"]
+
+    def test_but_you_can_still_put_it_there(self):
+        ev = themes.weigh(["dogs"], ["a good boy"], item_id=3,
+                          rules=themes.Rules(item_add={3: {"Animals & wildlife"}}))
+        assert "Animals & wildlife" in themes.decide(ev)
+
+    @pytest.mark.parametrize("tags, text", [
+        (["series", "potato", "roastpotatoes"], "All about the Sides, 17 of 50. Roast Potatoes"),
+        (["foodtiktok", "vegetable", "pancakes"], "Korean Style Vegetable Pancakes"),
+        (["foodtok", "cannellinibeans", "beans"], "Beans beans bean"),
+        (["easyrecipes", "noodles", "homecooking"], "Peanut Chilli Noodles"),
+    ])
+    def test_a_recipe_is_just_food(self, tags, text):
+        assert about(tags, text) == ["Food & cooking"]
+
+    def test_a_drawing_sketch_isnt_comedy(self):
+        assert "Comedy & humour" not in about(["art", "drawing", "sketch"], "drawing composition")
+
+    def test_a_football_club_isnt_a_city(self):
+        assert about(["chelseafc", "mancity", "premierleague", "football"], "Chelsea next season") == [
+            "Sport & fitness"]
+
+    def test_the_second_topics_worth_keeping_stay(self):
+        assert about(["nyc", "travel", "newyork", "visitnyc"], "A Hidden Tree House in NYC") == [
+            "New York", "Travel"]
+        assert about(["newyork", "nyc", "datenight", "nycfood", "jazz"], "i love this night") == [
+            "New York", "Food & cooking", "Music"]
