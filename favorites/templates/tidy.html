@@ -10,8 +10,12 @@
 <section class="rr-hero tidy-hero">
   <p class="rr-label">🧹 Sort things out</p>
   <h1 class="rr-h-xl">Teach Faves what things are about</h1>
-  <p class="lede">It sorts saves by what their captions and hashtags say. Tell it what the hashtags it
-    doesn't know mean, and settle the saves it's only guessing about. Every answer re-sorts the whole library.</p>
+  <p class="lede">It sorts saves by what their captions and hashtags say, and by TikTok's and YouTube's own
+    labels for them. Tell it what the hashtags it doesn't know mean, and settle the saves it's only guessing
+    about. Every answer re-sorts the whole library.</p>
+  {% set lr = labels_read %}{% if lr and lr[1] and lr[0] < lr[1] %}<p class="labels-progress rr-muted">📡 Reading TikTok's and YouTube's own labels:
+    {{ '{:,}'.format(lr[0]) }} of {{ '{:,}'.format(lr[1]) }} saves so far. Faves on the Mac reads a few a minute,
+    the saves without a topic first.</p>{% endif %}
   {% if changed %}<a class="rr-notice changes-note" href="/topics/changes">{{ icon('rooms') }}<span><b>The latest topic update moved {{ changed }} {{ 'save' if changed == 1 else 'saves' }}.</b>
     See what changed, and fix any it got wrong.</span>{{ icon('right') }}</a>{% endif %}
   <ul class="rr-stats tidy-stats">

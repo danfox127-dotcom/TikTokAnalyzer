@@ -31,8 +31,8 @@
 {% block content %}
 <section class="rr-hero">
   <p class="rr-label">🔁 What changed</p>
-  <h1 class="rr-h-xl">{% if moved_total %}The new topic rules moved {{ moved_total }} {{ 'save' if moved_total == 1 else 'saves' }}{% else %}Nothing moved{% endif %}</h1>
-  <p class="lede">{% if at %}When Faves learned new words and rules ({{ at | day }}), it sorted everything again. {% endif %}Here's every save that ended up somewhere new.
+  <h1 class="rr-h-xl">{% if moved_total %}The latest topic changes moved {{ moved_total }} {{ 'save' if moved_total == 1 else 'saves' }}{% else %}Nothing moved{% endif %}</h1>
+  <p class="lede">{% if at %}Faves sorts everything again when it learns new words and rules, and files a save again when it reads TikTok's or YouTube's own labels for it (latest: {{ at | day }}). {% endif %}Here's every save that ended up somewhere new.
     Saves you filed yourself never move. If one looks wrong, tap {{ icon('rooms') }} to set its topics, and that sticks.</p>
   {% if moved_total %}
   <ul class="rr-stats tidy-stats">

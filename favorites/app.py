@@ -43,7 +43,7 @@ from starlette.concurrency import run_in_threadpool
 
 from . import (backfill, blurb, cloud, db, explore, google_sync, lengths, looks, museum,
                tagging, thumbnails, transcript, watch)
-from . import inbox, known, platforms, profiles, rescue, rewind, shortcuts
+from . import inbox, known, labels, platforms, profiles, rescue, rewind, shortcuts
 from . import themes as theme_vocabulary
 from .resolve import URL_RE, Resolved, browsable_url, canonical_form, detect_platform, extract_url, platform_label, resolve
 
@@ -177,6 +177,18 @@ async def _finish_recent() -> None:
         conn.close()
 
 
+async def _read_labels() -> None:
+    """A few older saves' TikTok and YouTube labels, read in the background
+    until the library has caught up (see favorites.labels)."""
+    if not finishing_on():
+        return
+    conn = db.connect()
+    try:
+        await labels.run(conn)
+    finally:
+        conn.close()
+
+
 async def _fill_in(limit: int = 50) -> None:
     """Titles and pictures for what just arrived: a first batch, straight away."""
     conn = db.connect()
@@ -261,6 +273,7 @@ async def _keep_in_sync() -> None:
             if not first_pass:
                 await run_in_threadpool(_mark_the_mac_seen)
                 await _finish_recent()
+                await _read_labels()
                 await _look_up_likes()
         except asyncio.CancelledError:
             raise
@@ -597,11 +610,15 @@ async def finish(conn: sqlite3.Connection, item_id: int) -> dict:
                 await run_in_threadpool(thumbnails.store, conn, item_id, image, item["thumbnail_url"])
                 filled.append("picture")
         if "length" in wanted:
-            seconds = await lengths.fetch(item, client)
+            # One visit: its length, and the platform's own labels for it.
+            seconds, found, _ = await lengths.page_facts(item, client)
             if seconds:
                 conn.execute("UPDATE items SET duration = ? WHERE id = ?", (seconds, item_id))
                 conn.commit()
                 filled.append("length")
+            if found is not None and item.get("labels") is None:
+                await run_in_threadpool(labels.store, conn, item_id, found)
+                filled.append("labels")
     if "words" in wanted:
         text = await run_in_threadpool(transcript.fetch, item["platform"], item["external_id"])
         if text:
@@ -962,6 +979,7 @@ def tidy_page(request: Request, conn: sqlite3.Connection = Depends(get_db)):
         "taught": db.taught_count(conn), "q": "", "total": db.count(conn),
         "changed": conn.execute("SELECT count(*) FROM theme_changes c JOIN items i ON i.id = c.item_id"
                                 " WHERE i.resolve_status = 'ok'").fetchone()[0],
+        "labels_read": labels.counts(conn),
     })
 
 

@@ -136,6 +136,12 @@ class Platform:
     #: How to read the caption, creator and picture from the data the item's
     #: own page carries, for when the quick lookup (oEmbed) comes back bare.
     details_from_page: Optional[Details] = None
+    #: The platform's own labels for a video, read from its page: its
+    #: categories (TikTok's topic labels, YouTube's category), keywords
+    #: (TikTok's search suggestions, a YouTube video's tags) and places.
+    #: None when the page doesn't carry the video's data at all (a stub page
+    #: served to the cloud, a deleted video), so it's tried again later.
+    labels_from_page: Optional[Callable[[str], Optional[dict]]] = None
 
 
 # --- identity rules ---------------------------------------------------------
@@ -331,6 +337,41 @@ def _tiktok_item(page: str) -> dict:
     return item if isinstance(item, dict) else {}
 
 
+def _strings(value) -> list[str]:
+    return [v.strip() for v in value if isinstance(v, str) and v.strip()][:40] if isinstance(value, list) else []
+
+
+def _tiktok_labels(page: str) -> Optional[dict]:
+    # TikTok files each video under labels of its own ("Comedy", "Pets") and
+    # suggests searches for it ("funny husky videos"): what it thinks the
+    # video is about, even when the caption says nothing.
+    item = _tiktok_item(page)
+    if not item:
+        return None
+    poi = item.get("poi") if isinstance(item.get("poi"), dict) else {}
+    return {"source": "TikTok",
+            "categories": _strings(item.get("diversificationLabels")),
+            "keywords": _strings(item.get("suggestedWords")),
+            "places": _strings([poi.get("name"), poi.get("city")])}
+
+
+def _youtube_labels(page: str) -> Optional[dict]:
+    # The player data carries the category the uploader chose ("Music",
+    # "Howto & Style") and the video's tags.
+    if "ytInitialPlayerResponse" not in page and '"videoDetails"' not in page:
+        return None
+    category = re.search(r'"playerMicroformatRenderer"\s*:\s*\{.*?"category"\s*:\s*"([^"]{1,60})"', page, re.S)
+    keywords: list[str] = []
+    m = re.search(r'"videoDetails"\s*:\s*\{[^{}]*?"keywords"\s*:\s*(\[[^\]]*\])', page)
+    if m:
+        try:
+            keywords = _strings(json.loads(m.group(1)))
+        except ValueError:
+            keywords = []
+    return {"source": "YouTube", "categories": [category.group(1)] if category else [],
+            "keywords": keywords, "places": []}
+
+
 def _tiktok_details(page: str) -> dict:
     # TikTok's oEmbed sometimes answers with only a player and the video's
     # number. The page itself still carries the caption, who posted it and
@@ -392,7 +433,7 @@ PLATFORMS: tuple[Platform, ...] = (
         # What a share link opens to from a cloud server, where TikTok won't
         # show the video: a page about TikTok, not about the thing you saved.
         stub_titles=("TikTok - Make Your Day",),
-        details_from_page=_tiktok_details,
+        details_from_page=_tiktok_details, labels_from_page=_tiktok_labels,
     ),
     Platform(
         name="youtube", label="YouTube",
@@ -400,7 +441,7 @@ PLATFORMS: tuple[Platform, ...] = (
         oembed="https://www.youtube.com/oembed",
         identity=_youtube_identity, link=_youtube_link, embed=_youtube_embed, transcripts=True,
         format_from_url=_youtube_format, short_form_probe=_youtube_short_probe,
-        length_from_page=_youtube_length,
+        length_from_page=_youtube_length, labels_from_page=_youtube_labels,
     ),
     Platform(
         name="instagram", label="Instagram",

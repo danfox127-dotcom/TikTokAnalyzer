@@ -35,21 +35,34 @@ def readable_platforms() -> tuple[str, ...]:
     return tuple(p.name for p in platforms.PLATFORMS if p.length_from_page)
 
 
-async def fetch_explained(item: dict, client: httpx.AsyncClient) -> tuple[Optional[int], str]:
-    """(seconds, why) for one item. Never raises."""
-    reader = platforms.get(item.get("platform") or "").length_from_page
-    if reader is None:
-        return None, "this platform does not say"
+async def page_facts(item: dict, client: httpx.AsyncClient) -> tuple[Optional[int], Optional[dict], str]:
+    """(seconds, labels, why) from one visit to an item's own page: how long
+    it is, and the platform's own labels for it (see platforms). Never raises."""
+    p = platforms.get(item.get("platform") or "")
+    if p.length_from_page is None and p.labels_from_page is None:
+        return None, None, "this platform does not say"
     try:
         resp = await client.get(
             browsable_url(item), timeout=TIMEOUT, follow_redirects=True,
             headers={"User-Agent": USER_AGENT, "Accept-Language": "en;q=0.9"})
     except Exception:
-        return None, "network error"
+        return None, None, "network error"
     if resp.status_code != 200:
-        return None, "unavailable (usually a deleted video)"
-    seconds = reader(resp.text)
-    return (seconds, "ok") if seconds else (None, "not on the page")
+        return None, None, "unavailable (usually a deleted video)"
+    seconds = p.length_from_page(resp.text) if p.length_from_page else None
+    try:
+        labels = p.labels_from_page(resp.text) if p.labels_from_page else None
+    except Exception:  # a page laid out some new way: no labels, not a failed save
+        labels = None
+    return seconds, labels, "ok" if seconds else "not on the page"
+
+
+async def fetch_explained(item: dict, client: httpx.AsyncClient) -> tuple[Optional[int], str]:
+    """(seconds, why) for one item. Never raises."""
+    if platforms.get(item.get("platform") or "").length_from_page is None:
+        return None, "this platform does not say"
+    seconds, _, why = await page_facts(item, client)
+    return (seconds, why) if seconds else (None, why)
 
 
 async def fetch(item: dict, client: httpx.AsyncClient) -> Optional[int]:

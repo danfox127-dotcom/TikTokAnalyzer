@@ -151,7 +151,7 @@ class TestFinishing:
         assert f'data-finish="/item/{item_id}/finish"' in client.get(f"/item/{item_id}").text
         respx.route(host="www.tiktok.com", path__regex=r"video/7123$").mock(
             return_value=httpx.Response(200, text=tiktok_page(video=41)))
-        assert client.post(f"/item/{item_id}/finish").json() == {"id": item_id, "filled": ["length"]}
+        assert client.post(f"/item/{item_id}/finish").json() == {"id": item_id, "filled": ["length", "labels"]}
         page = client.get(f"/item/{item_id}").text
         assert "0:41 long" in page and "data-finish" not in page
         js = client.get("/static/museum.js").text
@@ -168,9 +168,9 @@ class TestFinishing:
                             title="The zoning meeting", creator_handle="@citydesk", resolve_status="ok")
 
         async def length(item, client):
-            return 26
+            return 26, None, "ok"
         monkeypatch.setattr(web, "resolve", found)
-        monkeypatch.setattr(web.lengths, "fetch", length)
+        monkeypatch.setattr(web.lengths, "page_facts", length)
         assert asyncio.run(web.finish(conn, item_id)) == {"id": item_id, "filled": ["details", "length"]}
         row = db.get_item(conn, item_id)
         assert (row["canonical_url"], row["title"], row["duration"]) == (KEY, "The zoning meeting", 26)
@@ -193,7 +193,8 @@ class TestFinishing:
 
         async def nothing(item, client):
             calls.append(item["id"])
-        monkeypatch.setattr(web.lengths, "fetch", nothing)
+            return None, None, "not on the page"
+        monkeypatch.setattr(web.lengths, "page_facts", nothing)
         for _ in range(3):
             asyncio.run(web.finish_recent(conn))
         assert calls == [new, new] and web.unfinished(conn) == []
@@ -204,7 +205,7 @@ class TestFinishing:
         assert 'data-finish="/saves/finish"' in client.get("/").text
 
         async def length(item, client):
-            return 26
-        monkeypatch.setattr(web.lengths, "fetch", length)
+            return 26, None, "ok"
+        monkeypatch.setattr(web.lengths, "page_facts", length)
         assert client.post("/saves/finish").json() == {"finished": 1}
         assert 'data-finish' not in client.get("/").text
