@@ -111,7 +111,7 @@ THEMES: dict[str, str] = {
     "History": """history historical ancient archaeology museum medieval holocaust wwii ww2""",
     "News & politics": """news politics political election government policy localgov
         council vote voting congress senate president protest democracy journalism
-        homeless leftist""",
+        homeless leftist nytimes""",
     "Cities & urbanism": """urbanism urbanplanning transit architecture housing zoning
         bike bikes cycling #trains #train subway streetscape walkable nycsubway #city #cities""",
     "New York": """nyc newyork newyorkcity brooklyn bronx harlem statenisland #manhattan
@@ -119,7 +119,7 @@ THEMES: dict[str, str] = {
     "Money & work": """money finance investing career careers job jobs business
         entrepreneur productivity economy jobsearch jobhunting powerpoint
         #excel #resume #budget #budgeting #work wfh corporate savings careeradvice jobtips
-        coworker coworkers salary""",
+        coworker coworkers salary coverletter linkedin""",
     "Marketing & media": """marketing socialmedia contentcreator contentcreation branding
         seo advertising copywriting communications newsletter radiohost
         #content #media #pr""",
@@ -127,9 +127,9 @@ THEMES: dict[str, str] = {
         dadlife bluey #parent #parents #family mother father daughter""",
     "Wellness": """mentalhealth therapy anxiety wellness selfcare adhd mindfulness
         meditation somatic vagusnerve nervoussystem thesafemethod #healing #sleep #health
-        nutrition trauma therapist psychology narcissist narcissism nocontact detox guthealth""",
+        nutrition trauma psychology narcissist narcissism nocontact detox guthealth""",
     "Gaming": """gaming gamer videogame videogames nintendo playstation xbox minecraft
-        fortnite pokemon zelda #game #games streamer streamers twitch esports
+        fortnite pokemon zelda streamer streamers twitch esports
         callofduty oculus metaquest""",
     "Cars & vehicles": """car cars truck trucks motorcycle motorcycles racing f1 formula1
         jeep #auto toyota honda tesla mazda subaru porsche""",
@@ -145,7 +145,7 @@ _WORD = re.compile(r"[a-z0-9]+")
 #: caption saying "New York" or "mental health" reads as the word the
 #: vocabulary knows. The longer phrase comes first ("new york city").
 PHRASES: dict[str, str] = {
-    "new york city": "newyorkcity", "new york": "newyork",
+    "new york times": "nytimes", "new york city": "newyorkcity", "new york": "newyork",
     "mental health": "mentalhealth", "graphic design": "graphicdesign",
     "interior design": "interiordesign", "home decor": "homedecor",
     "social media": "socialmedia", "content creator": "contentcreator",
@@ -182,10 +182,10 @@ def _glue(text: str) -> str:
 #: #njfood, #brunchinnyc, #metmuseum. Only endings no everyday word ends with
 #: ("dance" is out: #guidance), so an unknown first part can't mislead.
 HEADS = ("foods", "food", "recipes", "recipe", "cooking", "baking", "music", "gaming",
-         "fitness", "workout", "travel", "fashion", "makeup", "skincare", "history",
+         "workout", "travel", "fashion", "makeup", "skincare", "history",
          "science", "comedy", "museum", "gardening", "nyc")
-#: ...and the one beginning that does: #nycdating, #nycbrunch.
-HEAD_STARTS = ("nyc",)
+#: ...and the beginnings that do: #nycdating, #nycbrunch, #howtocutamango.
+HEAD_STARTS = ("nyc", "howto")
 
 #: Animals that are mostly dinner. One of these and nothing else for
 #: Animals, on a save that is also about food, is a recipe: #chicken on a
@@ -201,6 +201,7 @@ EVERYDAY = frozenset({
     "job", "money", "business", "car", "truck", "trip", "book", "cook", "artist",
     "sketch", "fact", "tip", "band", "plant", "kid", "mother", "father", "daughter",
     "internet", "privacy", "corporate", "saving", "sauce", "episode", "interior",
+    "nytime",
 })
 
 
@@ -297,7 +298,7 @@ _MATCHING = 5
 #: suite holds it to VERSION, so a change can't ship without it. A library
 #: filed by a higher generation is never refiled by a lower one: an older
 #: Faves still running somewhere doesn't undo a newer one's work.
-GENERATION = 5
+GENERATION = 6
 
 
 @lru_cache(maxsize=4096)
@@ -384,6 +385,10 @@ WEIGHTS = {
     "transcript": 1,    # a word said at least twice (at most 2 per theme)
 }
 MAX_THEMES = 3
+#: Evidence beyond this makes a theme no surer: two hashtags are as certain as
+#: twelve. A second theme is measured against this much at most, so a save
+#: with ten #nyc tags can still be about food.
+CERTAIN = 4
 #: Captions that brush past this many subjects once each say nothing sure
 #: about any of them: "on the radio talking about surfing and his new song".
 SCATTERED = 3
@@ -525,15 +530,18 @@ def decide(ev: dict[str, list[tuple[str, str, int]]]) -> list[str]:
         return []
     order = list(THEMES)
     scores = {t: score(e) for t, e in ev.items()}
-    ranked = sorted(scores, key=lambda t: (-scores[t], order.index(t)))
-    top = scores[ranked[0]]
-    if top <= 1 and len(ranked) >= SCATTERED:
-        return []
 
     def only_in_passing(t: str) -> bool:
         return all(k == "passing" for k, _, _ in ev[t])
 
-    return [t for t in ranked if scores[t] * 2 >= top
+    # At a tie, a theme with real evidence leads one with only everyday words.
+    ranked = sorted(scores, key=lambda t: (-scores[t], only_in_passing(t), order.index(t)))
+    top = scores[ranked[0]]
+    if top <= 1 and len(ranked) >= SCATTERED:
+        return []
+    # Your own choices still outweigh everything; anything else is "certain" at CERTAIN.
+    bar = top if top >= WEIGHTS["you"] else min(top, CERTAIN)
+    return [t for t in ranked if scores[t] * 2 >= bar
             and (t == ranked[0] or not only_in_passing(t))][:MAX_THEMES]
 
 
