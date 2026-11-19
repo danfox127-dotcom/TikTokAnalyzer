@@ -67,7 +67,7 @@ THEMES: dict[str, str] = {
     "Drinks": """coffee espresso latte cocktail cocktails mixology bartender wine beer
         brewery whiskey tequila matcha boba smoothie #tea #drinks ipa""",
     "Comedy & humour": """funny comedy comedian humor humour joke jokes lol lmao meme
-        memes skit skits standup prank pranks satire parody sketch""",
+        memes skit skits standup prank pranks satire parody""",
     "Music": """music song songs singer singing guitar piano drums drummer band concert
         rap rapper hiphop jazz dj producer lyrics musician #bass vinyl album livemusic
         radiohead spotify playlist charlixcx taylorswift rollingstone raptok
@@ -75,7 +75,7 @@ THEMES: dict[str, str] = {
         #u2 #rock #pop #cover #beat""",
     "Dance": """dance dancing dancer choreography ballet tapdance salsa""",
     "Film & TV": """movie movies film films cinema netflix trailer actor actress
-        filmmaking director anime hbomax bluey sopranos pauliewalnuts spiderman #hbo #tv #series #show
+        filmmaking director anime hbomax bluey sopranos pauliewalnuts spiderman #hbo #tv #show
         episode episodes sitcom documentary marvel marvelstudios disney disneyplus #pbs""",
     "Books & writing": """book books booktok reading reader novel novels author writing
         writer poetry poem poems bookstagram #library""",
@@ -92,7 +92,7 @@ THEMES: dict[str, str] = {
         cleantok organization organizing apartment woodworking homedecor nycapartment #home
         #house realestate realtor""",
     "Gardening & plants": """garden gardening gardener plant plants houseplant houseplants
-        flower flowers seeds vegetables compost farm farming homestead #bean #beans""",
+        flower flowers seeds vegetables compost farm farming homestead""",
     "Travel": """travel traveling travelling trip vacation hotel beach roadtrip tourism
         wanderlust backpacking airport flight""",
     "Sport & fitness": """workout gym fitness #running runner yoga exercise training
@@ -135,7 +135,7 @@ THEMES: dict[str, str] = {
         jeep #auto toyota honda tesla mazda subaru porsche""",
     "Satisfying & ASMR": """asmr satisfying oddlysatisfying""",
     "Nostalgia & retro": """nostalgia nostalgic throwback retro genx millennial millennials
-        #tbt #y2k #grunge #90s #80s #70s fbf flashbackfriday""",
+        #tbt #y2k #grunge #90s #80s #70s""",
     "Language": """language languages linguistics #spanish #french grammar etymology""",
 }
 
@@ -191,6 +191,17 @@ HEAD_STARTS = ("nyc", "howto")
 #: Animals, on a save that is also about food, is a recipe: #chicken on a
 #: roast chicken. (Magda the pet duck has #pets, and stays an animal.)
 FOOD_ANIMALS = frozenset({"chicken", "duck", "pig", "cow", "fish"})
+#: ...and plants that are mostly ingredients: a vegetable pancake isn't gardening.
+FOOD_PLANTS = frozenset({"vegetable", "plant", "seed", "herb", "bean"})
+
+#: More hashtags than this and a save's hashtags are a pile (an Instagram
+#: post's thirty), where one stray tag says little: #huskyphotography under a
+#: husky video. There, a second theme needs two of them.
+PILE = 10
+
+#: Dogs and Cats are kinds of animal: a save in either isn't in Animals &
+#: wildlife as well, just for being a pet.
+WITHIN = {"Animals & wildlife": ("Dogs", "Cats")}
 
 #: Words that name a subject but turn up in everyday talk about anything:
 #: "a beautiful *job*", "*money*-back guarantee", "sitting in my *car*". Said
@@ -229,7 +240,9 @@ def _norm(word: str) -> str:
 # farm animal. (Where the same word is a plain word elsewhere -- chicken is
 # food -- that sense still reads inside a hashtag.)
 _WHOLE_ONLY = frozenset({"rock", "chicken", "chickens", "duck", "ducks", "pig", "pigs",
-                         "cow", "cows", "fish"})
+                         "cow", "cows", "fish",
+                         # #homecooking is cooking; #mancity is football
+                         "home", "city", "cities"})
 
 #: The glue of compound hashtags: words that say nothing about a subject but
 #: let a hashtag split cleanly around one -- #dogsoftiktok, #easyrecipes,
@@ -298,7 +311,7 @@ _MATCHING = 5
 #: suite holds it to VERSION, so a change can't ship without it. A library
 #: filed by a higher generation is never refiled by a lower one: an older
 #: Faves still running somewhere doesn't undo a newer one's work.
-GENERATION = 6
+GENERATION = 7
 
 
 @lru_cache(maxsize=4096)
@@ -377,6 +390,7 @@ WEIGHTS = {
     "category": 3,      # a word in a category name you chose
     "hashtag": 2,       # a hashtag that is a vocabulary word
     "compound": 2,      # a hashtag that splits into one
+    "pile": 2,          # either, in a pile of more than PILE hashtags
     "creator": 2,       # the creator's handle says it
     "regular": 2,       # most of this creator's other saves are here
     "note": 3,          # a word in your own note
@@ -446,6 +460,7 @@ def weigh(
     """Every piece of evidence for every theme: theme -> [(kind, word, weight)]."""
     ev: dict[str, list[tuple[str, str, int]]] = {}
     tags = list(tags or ())
+    piled = len({tag_key(t) for t in tags}) > PILE
 
     def add(theme: str, kind: str, word: str, weight: Optional[int] = None) -> None:
         ev.setdefault(theme, []).append((kind, word, WEIGHTS[kind] if weight is None else weight))
@@ -460,7 +475,7 @@ def weigh(
             continue
         found, exact = _tag_hits(tag)
         for theme in found:
-            add(theme, "hashtag" if exact else "compound", "#" + tag)
+            add(theme, "pile" if piled else "hashtag" if exact else "compound", "#" + tag)
     for name in categories or ():
         for word in _WORD.findall(name.lower()):
             for theme in TAG_WORDS.get(_norm(word), ()):
@@ -496,11 +511,12 @@ def weigh(
                 if per_theme[theme] < 2:
                     per_theme[theme] += 1
                     add(theme, "transcript", SAID_AS.get(word, word))
-    animals, food = ev.get("Animals & wildlife"), "Food & cooking" in ev
-    if animals and food and all(
-            k in ("hashtag", "caption", "passing", "note", "transcript")
-            and _norm(tag_key(w)) in FOOD_ANIMALS for k, w, _ in animals):
-        ev.pop("Animals & wildlife")      # #chicken on a recipe is dinner
+    if "Food & cooking" in ev:
+        # #chicken on a recipe is dinner; vegetables in it aren't a garden.
+        for theme, foods in (("Animals & wildlife", FOOD_ANIMALS), ("Gardening & plants", FOOD_PLANTS)):
+            if theme in ev and all(k in ("hashtag", "pile", "caption", "passing", "note", "transcript")
+                                   and _norm(tag_key(w)) in foods for k, w, _ in ev[theme]):
+                ev.pop(theme)
     # Your own fixes come last and win.
     blocked = set(rules.creator_remove.get(key, ())) if key else set()
     if item_id is not None:
@@ -531,18 +547,25 @@ def decide(ev: dict[str, list[tuple[str, str, int]]]) -> list[str]:
     order = list(THEMES)
     scores = {t: score(e) for t, e in ev.items()}
 
-    def only_in_passing(t: str) -> bool:
-        return all(k == "passing" for k, _, _ in ev[t])
+    def too_weak(t: str) -> bool:
+        """Never enough for a second theme: everyday words only, or a single
+        hashtag lost in a pile of them."""
+        kinds = {k for k, _, _ in ev[t]}
+        return kinds <= {"passing"} or (kinds <= {"pile", "passing"} and scores[t] < CERTAIN)
 
-    # At a tie, a theme with real evidence leads one with only everyday words.
-    ranked = sorted(scores, key=lambda t: (-scores[t], only_in_passing(t), order.index(t)))
+    # At a tie, a theme with real evidence leads one with only weak evidence.
+    ranked = sorted(scores, key=lambda t: (-scores[t], too_weak(t), order.index(t)))
     top = scores[ranked[0]]
     if top <= 1 and len(ranked) >= SCATTERED:
         return []
     # Your own choices still outweigh everything; anything else is "certain" at CERTAIN.
     bar = top if top >= WEIGHTS["you"] else min(top, CERTAIN)
-    return [t for t in ranked if scores[t] * 2 >= bar
-            and (t == ranked[0] or not only_in_passing(t))][:MAX_THEMES]
+    kept = [t for t in ranked if scores[t] * 2 >= bar and (t == ranked[0] or not too_weak(t))]
+    for broad, narrower in WITHIN.items():
+        if broad in kept and any(n in kept for n in narrower) and not any(
+                k in ("you", "creator rule", "taught") for k, _, _ in ev[broad]):
+            kept.remove(broad)
+    return kept[:MAX_THEMES]
 
 
 def themes_for(
@@ -606,7 +629,7 @@ def lean(themed: Iterable[list[str]]) -> list[str]:
 _KIND_WORDS = {
     "you": "you put it here", "creator rule": "you filed everything by {w} here",
     "taught": "{w} (you taught this)", "hashtag": "{w}", "category": "your category “{w}”",
-    "compound": "{w}", "creator": "{w}", "regular": "most saves by {w} are here",
+    "compound": "{w}", "pile": "{w}", "creator": "{w}", "regular": "most saves by {w} are here",
     "caption": "“{w}” in the caption", "transcript": "“{w}” said in it",
     "note": "“{w}” in your note", "passing": "“{w}” in the caption",
 }
