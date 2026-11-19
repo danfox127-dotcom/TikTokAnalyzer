@@ -69,6 +69,8 @@ CREATE TABLE IF NOT EXISTS items (
     duration       INTEGER,
     raw            TEXT
 );
+-- Added after the first release: a library made earlier gains it here.
+ALTER TABLE items ADD COLUMN IF NOT EXISTS labels TEXT;
 CREATE INDEX IF NOT EXISTS idx_items_saved_at ON items(saved_at DESC);
 CREATE INDEX IF NOT EXISTS idx_items_platform ON items(platform);
 CREATE INDEX IF NOT EXISTS idx_items_creator  ON items(creator_handle);

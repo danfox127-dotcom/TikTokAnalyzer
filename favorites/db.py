@@ -231,6 +231,9 @@ MIGRATIONS = {
     "format": "TEXT",
     "themes": "TEXT NOT NULL DEFAULT '[]'",
     "duration": "INTEGER",
+    # The platform's own labels for a video (platforms.labels_from_page), as
+    # JSON; NULL until its page has been read.
+    "labels": "TEXT",
 }
 
 
@@ -353,7 +356,7 @@ def load_rules(conn: sqlite3.Connection) -> theme_vocabulary.Rules:
 
 
 _THEME_COLUMNS = ("id, title, description, note, tags, transcript,"
-                  " creator_handle, creator_name")
+                  " creator_handle, creator_name, labels")
 
 
 def _filed(conn: sqlite3.Connection) -> dict[int, list[str]]:

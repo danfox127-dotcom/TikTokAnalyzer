@@ -200,6 +200,49 @@ FOOD_PLANTS = frozenset({"vegetable", "plant", "seed", "herb", "bean"})
 #: husky video. There, a second theme needs two of them.
 PILE = 10
 
+#: The platforms' own labels (TikTok's topic labels, YouTube's categories),
+#: lower-cased, and the theme each means. Labels that say nothing about a
+#: subject ("Entertainment", "People & Blogs", "Daily Life") map to None and
+#: are skipped; one not listed is read word by word against the vocabulary.
+LABEL_THEMES: dict[str, Optional[str]] = {
+    # TikTok
+    "pets": "Animals & wildlife", "animals": "Animals & wildlife", "comedy": "Comedy & humour",
+    "food": "Food & cooking", "cooking": "Food & cooking", "food & drink": "Food & cooking",
+    "drinks": "Drinks", "sports": "Sport & fitness", "fitness": "Sport & fitness",
+    "beauty": "Fashion & beauty", "style": "Fashion & beauty", "fashion": "Fashion & beauty",
+    "music": "Music", "dance": "Dance", "gaming": "Gaming", "games": "Gaming",
+    "travel": "Travel", "education": "How-to & learning", "science": "Science & tech",
+    "technology": "Science & tech", "tech": "Science & tech", "diy": "Home & DIY",
+    "life hacks": "How-to & learning", "art": "Art & design", "family": "Parenting & family",
+    "parenting": "Parenting & family", "auto & vehicle": "Cars & vehicles", "cars": "Cars & vehicles",
+    "outdoors": "Nature & outdoors", "nature": "Nature & outdoors", "news": "News & politics",
+    "home & garden": "Home & DIY", "gardening": "Gardening & plants", "anime & comics": "Film & TV",
+    "movies": "Film & TV", "tv": "Film & TV", "photography": "Photography & editing",
+    "finance": "Money & work", "career": "Money & work", "health": "Wellness",
+    "wellness": "Wellness", "mental health": "Wellness", "history": "History",
+    "language": "Language", "asmr": "Satisfying & ASMR", "satisfying": "Satisfying & ASMR",
+    "entertainment": None, "talents": None, "daily life": None, "society": None,
+    "relationship": None, "lifestyle": None, "others": None,
+    # YouTube
+    "film & animation": "Film & TV", "autos & vehicles": "Cars & vehicles",
+    "pets & animals": "Animals & wildlife", "travel & events": "Travel",
+    "people & blogs": None, "news & politics": "News & politics", "howto & style": "How-to & learning",
+    "science & technology": "Science & tech", "nonprofits & activism": "News & politics",
+    "shows": "Film & TV", "trailers": "Film & TV",
+}
+
+
+def label_themes(label: str) -> set[str]:
+    """The themes a platform's label stands for."""
+    key = re.sub(r"\s+", " ", (label or "").strip().lower())
+    if key in LABEL_THEMES:
+        return {LABEL_THEMES[key]} - {None}
+    found: set[str] = set()
+    for word in _WORD.findall(key):
+        found |= TAG_WORDS.get(_norm(word), set())
+    return found
+
+
 #: Dogs and Cats are kinds of animal: a save in either isn't in Animals &
 #: wildlife as well, just for being a pet.
 WITHIN = {"Animals & wildlife": ("Dogs", "Cats")}
@@ -299,7 +342,8 @@ def _rebuild() -> None:
         TAG_WORDS.setdefault(w, set()).update(t)
     _PIECES = _pieces()
     VERSION = hashlib.sha1(json.dumps(
-        [_MATCHING, THEMES, sorted(AFFIXES), PHRASES, HEADS, HEAD_STARTS, sorted(_WHOLE_ONLY)],
+        [_MATCHING, THEMES, sorted(AFFIXES), PHRASES, HEADS, HEAD_STARTS, sorted(_WHOLE_ONLY),
+         LABEL_THEMES],
         sort_keys=True).encode()).hexdigest()[:12]
     _split.cache_clear()
 
@@ -312,7 +356,7 @@ _MATCHING = 5
 #: suite holds it to VERSION, so a change can't ship without it. A library
 #: filed by a higher generation is never refiled by a lower one: an older
 #: Faves still running somewhere doesn't undo a newer one's work.
-GENERATION = 8
+GENERATION = 9
 
 
 @lru_cache(maxsize=4096)
@@ -392,6 +436,8 @@ WEIGHTS = {
     "hashtag": 2,       # a hashtag that is a vocabulary word
     "compound": 2,      # a hashtag that splits into one
     "pile": 2,          # either, in a pile of more than PILE hashtags
+    "label": 2,         # the platform's own label for it (TikTok's, YouTube's)
+    "keyword": 1,       # its keywords there: TikTok's search suggestions, YouTube tags
     "creator": 2,       # the creator's handle says it
     "regular": 2,       # most of this creator's other saves are here
     "note": 3,          # a word in your own note
@@ -457,6 +503,7 @@ def weigh(
     rules: Rules = NO_RULES,
     item_id: Optional[int] = None,
     note: Optional[str] = None,
+    labels: Optional[dict] = None,
 ) -> dict[str, list[tuple[str, str, int]]]:
     """Every piece of evidence for every theme: theme -> [(kind, word, weight)]."""
     ev: dict[str, list[tuple[str, str, int]]] = {}
@@ -518,6 +565,21 @@ def weigh(
                 if per_theme[theme] < 2:
                     per_theme[theme] += 1
                     add(theme, "transcript", SAID_AS.get(word, word))
+    if labels:
+        # What the platform itself files it under, and what it suggests
+        # searching for it: words from outside the caption, for the captions
+        # that say nothing ("Wait for the end 💀").
+        source = str(labels.get("source") or "")
+        for label in labels.get("categories") or ():
+            for theme in label_themes(str(label)):
+                add(theme, "label", f"{source}’s own label: “{label}”" if source else f"“{label}”")
+        heard: Counter[str] = Counter()
+        for phrase in [*(labels.get("keywords") or ()), *(labels.get("places") or ())]:
+            for word in {_norm(w) for w in _WORD.findall(_glue(str(phrase)))}:
+                for theme in ANYWHERE.get(word, ()):
+                    if heard[theme] < 2 and word not in EVERYDAY:
+                        heard[theme] += 1
+                        add(theme, "keyword", SAID_AS.get(word, word))
     if "Food & cooking" in ev:
         # #chicken on a recipe is dinner; vegetables in it aren't a garden.
         for theme, foods in (("Animals & wildlife", FOOD_ANIMALS), ("Gardening & plants", FOOD_PLANTS)):
@@ -590,6 +652,16 @@ def themes_for(
     return decide(weigh(tags, texts, categories, **kw))
 
 
+def _labels(raw) -> Optional[dict]:
+    if not raw:
+        return None
+    try:
+        found = json.loads(raw) if isinstance(raw, str) else raw
+    except ValueError:
+        return None
+    return found if isinstance(found, dict) else None
+
+
 def _row_args(row) -> dict:
     raw_tags = row["tags"] if row["tags"] else "[]"
     tags = json.loads(raw_tags) if isinstance(raw_tags, str) else list(raw_tags)
@@ -599,6 +671,7 @@ def _row_args(row) -> dict:
         "tags": tags,
         "texts": (row["title"], row["description"]),
         "note": row["note"],
+        "labels": _labels(get("labels")),
         "transcript": get("transcript"),
         "creator": creator_key(get("creator_handle"), get("creator_name")),
         "item_id": get("id"),
@@ -610,7 +683,7 @@ def evidence_for_row(row, categories: Iterable[str] = (), *, rules: Rules = NO_R
     a = _row_args(row)
     return weigh(a["tags"], a["texts"], categories, transcript=a["transcript"],
                  creator=a["creator"], regular=regular, rules=rules, item_id=a["item_id"],
-                 note=a["note"])
+                 note=a["note"], labels=a["labels"])
 
 
 def for_row(row, categories: Iterable[str] = (), *, rules: Rules = NO_RULES,
@@ -639,6 +712,7 @@ _KIND_WORDS = {
     "compound": "{w}", "pile": "{w}", "creator": "{w}", "regular": "most saves by {w} are here",
     "caption": "“{w}” in the caption", "transcript": "“{w}” said in it",
     "note": "“{w}” in your note", "passing": "“{w}” in the caption",
+    "label": "{w}", "keyword": "“{w}” in its keywords",
 }
 
 

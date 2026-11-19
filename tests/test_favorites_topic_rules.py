@@ -171,7 +171,7 @@ class TestRefiling:
     def test_every_change_to_the_rules_moves_the_generation_on(self):
         # Changed the words or the rules? Add one to GENERATION and put the new
         # VERSION here: an older Faves then can't undo the newer one's work.
-        assert (themes.GENERATION, themes.VERSION) == (8, "31a61a8560b5")
+        assert (themes.GENERATION, themes.VERSION) == (9, "8fe8e18da088")
 
 
 class TestThePage:
@@ -186,7 +186,7 @@ class TestThePage:
         db.retheme_if_stale(conn)
         with TestClient(web.app) as client:
             page = client.get("/topics/changes").text
-            assert "The new topic rules moved 2 saves" in page
+            assert "The latest topic changes moved 2 saves" in page
             assert "Found a topic" in page and "New York</span>" in page
             assert "Lost every topic" in page and "Money &amp; work" in page
             assert f'href="/item/{lost}?rooms=1#rooms"' in page
