@@ -35,7 +35,7 @@ from dataclasses import dataclass, field
 from functools import lru_cache
 from typing import Iterable, Optional
 
-from .blurb import unwrap
+from .blurb import clean_caption, unwrap
 from .tagging import STOPWORDS, TOKEN_RE, is_noise
 
 #: The one "theme" that is not a subject: the saves no theme recognises yet.
@@ -98,7 +98,8 @@ THEMES: dict[str, str] = {
     "Sport & fitness": """workout gym fitness #running runner yoga exercise training
         sport sports football soccer basketball baseball nba nfl tennis golf climbing
         bouldering cycling skateboarding skateboard surfing swimming frisbee #ultimate
-        hockey boxing marathon pilates #run skate skates skater skating wwe wrestling espn""",
+        hockey boxing marathon pilates #run skate skates skater skating wwe wrestling espn
+        billiards snooker""",
     "Nature & outdoors": """nature hiking hike camping outdoors mountain mountains forest
         ocean sunset sunrise nationalpark waterfall lake river wilderness""",
     "Science & tech": """science tech technology ai coding programming engineering physics
@@ -135,7 +136,7 @@ THEMES: dict[str, str] = {
         jeep #auto toyota honda tesla mazda subaru porsche""",
     "Satisfying & ASMR": """asmr satisfying oddlysatisfying""",
     "Nostalgia & retro": """nostalgia nostalgic throwback retro genx millennial millennials
-        #tbt #y2k #grunge #90s #80s #70s""",
+        #tbt #y2k #grunge #90s #80s #70s fbf flashbackfriday""",
     "Language": """language languages linguistics #spanish #french grammar etymology""",
 }
 
@@ -311,7 +312,7 @@ _MATCHING = 5
 #: suite holds it to VERSION, so a change can't ship without it. A library
 #: filed by a higher generation is never refiled by a lower one: an older
 #: Faves still running somewhere doesn't undo a newer one's work.
-GENERATION = 7
+GENERATION = 8
 
 
 @lru_cache(maxsize=4096)
@@ -475,7 +476,10 @@ def weigh(
             continue
         found, exact = _tag_hits(tag)
         for theme in found:
-            add(theme, "pile" if piled else "hashtag" if exact else "compound", "#" + tag)
+            # In a pile, an everyday word (#business, #money) is filler, not a subject.
+            kind = ("passing" if _norm(tag) in EVERYDAY else "pile") if piled else (
+                "hashtag" if exact else "compound")
+            add(theme, kind, "#" + tag)
     for name in categories or ():
         for word in _WORD.findall(name.lower()):
             for theme in TAG_WORDS.get(_norm(word), ()):
@@ -490,10 +494,13 @@ def weigh(
             add(theme, "creator rule", "@" + key)
     for theme in regular or ():
         add(theme, "regular", "@" + key if key else "this creator")
-    # A caption quotes its own hashtags ("... #localgov"): those count once, as hashtags.
+    # A caption quotes its own hashtags ("... #localgov"): those count once, as
+    # hashtags. A word its sentences say as well ("a double espresso over ice
+    # #espresso") counts twice: said in words, it's no stray tag.
     hashed = {_norm(tag_key(t)) for t in tags or ()}
     words = {_norm(w) for text in texts or () for w in _WORD.findall(_glue(unwrap(text)))}
-    for word in sorted(words - hashed):
+    said = {_norm(w) for text in texts or () for w in _WORD.findall(_glue(clean_caption(text)))}
+    for word in sorted((words - hashed) | (said & hashed)):
         for theme in ANYWHERE.get(word, ()):
             add(theme, "passing" if word in EVERYDAY else "caption", SAID_AS.get(word, word))
     # Your note is the surest thing said about a save: it counts like a

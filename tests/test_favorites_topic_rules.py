@@ -171,7 +171,7 @@ class TestRefiling:
     def test_every_change_to_the_rules_moves_the_generation_on(self):
         # Changed the words or the rules? Add one to GENERATION and put the new
         # VERSION here: an older Faves then can't undo the newer one's work.
-        assert (themes.GENERATION, themes.VERSION) == (7, "f6c1a313455f")
+        assert (themes.GENERATION, themes.VERSION) == (8, "31a61a8560b5")
 
 
 class TestThePage:
@@ -249,7 +249,7 @@ class TestAfterTheSecondRefiling:
     def test_one_stray_tag_in_a_pile_isnt_a_topic(self):
         assert about(self.HUSKY, "Husky sings to Rihanna") == ["Dogs"]
         ev = themes.weigh(self.HUSKY, ["Husky sings"])
-        assert {k for k, _, _ in ev["Dogs"]} == {"pile"}
+        assert {k for k, _, _ in ev["Photography & editing"]} == {"pile"}     # the stray one
 
     def test_two_in_a_pile_still_are(self):
         tags = ["photoshop", "photoshoptutorial", "graphicdesign", "graphicdesigner", "art", "adobe",
@@ -286,3 +286,29 @@ class TestAfterTheSecondRefiling:
             "New York", "Travel"]
         assert about(["newyork", "nyc", "datenight", "nycfood", "jazz"], "i love this night") == [
             "New York", "Food & cooking", "Music"]
+
+
+class TestAfterTheThirdRefiling:
+    """#83's "What changed": 69 saves lost a stray topic, as meant -- and four
+    lost a real one."""
+
+    def test_a_word_said_in_the_caption_isnt_a_stray_tag(self):
+        tags = ["iced", "double", "espresso", "icedespresso", "espressooverice", "nizza", "lacolombe",
+                "parkslope", "southslope", "brooklyn", "nyc"]
+        text = "Enjoy a double espresso over ice! " + " ".join("#" + t for t in tags)
+        assert about(tags, text) == ["New York", "Drinks"]
+
+    def test_but_a_hashtag_quoted_at_the_end_still_counts_once(self):
+        ev = themes.weigh(["localgov"], ["zoning meeting #localgov"])
+        assert [k for k, _, _ in ev["News & politics"]] == ["hashtag"]
+
+    def test_filler_tags_in_a_pile_arent_a_subject(self):
+        tags = ["succession", "hbo", "loganroy", "romanroy", "shiv", "kendallroy", "familydrama",
+                "family", "omg", "shocking", "toxicfamily", "business", "money", "wealth"]
+        assert about(tags, "this was juicyyyyyy") == ["Film & TV"]
+
+    def test_flashback_friday_about_yourself(self):
+        assert about(["fbf", "memories"], "#fbf to when I cut my bangs off") == ["Nostalgia & retro"]
+
+    def test_billiards_is_a_sport(self):
+        assert "Sport & fitness" in about(["billiards", "tips", "tutorial", "pool", "snooker"], "the easiest way")
