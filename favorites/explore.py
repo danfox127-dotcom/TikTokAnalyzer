@@ -383,7 +383,10 @@ class Option:
 
 
 # Saves no theme recognises yet: the "Undefined" option.
-_UNTHEMED = "json_array_length(coalesce(nullif(i.themes, ''), '[]')) = 0"
+# Identified saves only: a video that's gone, or not identified yet, has no
+# words to find a topic in (those wait in Missing details instead).
+_UNTHEMED = ("json_array_length(coalesce(nullif(i.themes, ''), '[]')) = 0"
+             " AND i.resolve_status = 'ok'")
 
 
 @dataclass

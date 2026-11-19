@@ -182,6 +182,15 @@ CREATE TABLE IF NOT EXISTS videos (
     PRIMARY KEY (platform, external_id)
 );
 
+-- What the latest change to the topic rules did: each save it moved, from
+-- which topics to which. Replaced at every re-filing, so you can look it over.
+CREATE TABLE IF NOT EXISTS theme_changes (
+    item_id INTEGER PRIMARY KEY,
+    was     TEXT NOT NULL,
+    became  TEXT NOT NULL,
+    at      TEXT NOT NULL
+);
+
 -- Videos you passed on in Rescue: not asked about again.
 CREATE TABLE IF NOT EXISTS rescue_skipped (
     platform TEXT NOT NULL,
@@ -393,23 +402,36 @@ def hunches(conn: sqlite3.Connection, limit: int = 12) -> tuple[list[int], int]:
     return found[:limit], len(found)
 
 
-def retheme(conn: sqlite3.Connection) -> int:
+def retheme(conn: sqlite3.Connection, record: bool = False) -> int:
     """Work every item's themes out again. Returns how many items there are.
 
     Two passes: the first themes each save on its own, which shows which rooms
     each creator's saves mostly sit in; the second adds that lean, so a save
     by a creator you keep for their music leans towards Music.
+
+    ``record`` keeps a list of the saves that moved (``theme_changes``), for
+    looking over what a change to the rules did.
     """
     rules = load_rules(conn)
     filed = _filed(conn)
-    rows = conn.execute(f"SELECT {_THEME_COLUMNS} FROM items").fetchall()
+    rows = conn.execute(f"SELECT {_THEME_COLUMNS}, themes FROM items").fetchall()
     leans = _leans(rows, filed, rules)
-    conn.executemany(
-        "UPDATE items SET themes = ? WHERE id = ?",
-        [(json.dumps(theme_vocabulary.for_row(
-            r, filed.get(r["id"], ()), rules=rules, regular=leans.get(_key(r), ()))), r["id"])
-         for r in rows],
-    )
+    new = [(json.dumps(theme_vocabulary.for_row(
+        r, filed.get(r["id"], ()), rules=rules, regular=leans.get(_key(r), ()))), r["id"])
+        for r in rows]
+    conn.executemany("UPDATE items SET themes = ? WHERE id = ?", new)
+    if record:
+        old = {r["id"]: r["themes"] or "[]" for r in rows}
+        at = now_iso()
+        conn.execute("DELETE FROM theme_changes")
+        conn.executemany(
+            # Two requests can refile at the same moment in the cloud: the
+            # second one's list replaces the first's rather than failing.
+            "INSERT INTO theme_changes (item_id, was, became, at) VALUES (?, ?, ?, ?)"
+            " ON CONFLICT (item_id) DO UPDATE SET was = excluded.was, became = excluded.became,"
+            " at = excluded.at",
+            [(i, old[i], after, at) for after, i in new
+             if set(loads_list(old[i])) != set(loads_list(after))])
     conn.commit()
     return len(rows)
 
@@ -425,10 +447,20 @@ def retheme_if_stale(conn: sqlite3.Connection) -> int:
     row = conn.execute("SELECT value FROM meta WHERE key = 'themes_version'").fetchone()
     if row is not None and row["value"] == theme_vocabulary.VERSION:
         return 0
-    n = retheme(conn)
-    conn.execute("INSERT INTO meta (key, value) VALUES ('themes_version', ?)"
-                 " ON CONFLICT (key) DO UPDATE SET value = excluded.value",
-                 (theme_vocabulary.VERSION,))
+    if os.environ.get("VERCEL_ENV") == "preview":
+        # A preview of a change not yet merged shares the library with the
+        # real site: it must not refile your saves for rules that may never ship.
+        return 0
+    gen = conn.execute("SELECT value FROM meta WHERE key = 'themes_generation'").fetchone()
+    if gen is not None and str(gen["value"]).isdigit() and int(gen["value"]) > theme_vocabulary.GENERATION:
+        # A newer Faves (the cloud, say, while the Mac still runs last
+        # week's) filed them by newer rules: leave them be.
+        return 0
+    n = retheme(conn, record=row is not None)
+    for key, value in (("themes_version", theme_vocabulary.VERSION),
+                       ("themes_generation", str(theme_vocabulary.GENERATION))):
+        conn.execute("INSERT INTO meta (key, value) VALUES (?, ?)"
+                     " ON CONFLICT (key) DO UPDATE SET value = excluded.value", (key, value))
     conn.commit()
     return n
 

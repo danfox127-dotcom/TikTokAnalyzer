@@ -35,6 +35,7 @@ from dataclasses import dataclass, field
 from functools import lru_cache
 from typing import Iterable, Optional
 
+from .blurb import unwrap
 from .tagging import STOPWORDS, TOKEN_RE, is_noise
 
 #: The one "theme" that is not a subject: the saves no theme recognises yet.
@@ -49,18 +50,22 @@ THEMES: dict[str, str] = {
     "Cats": """cat cats kitten kittens kitty catsoftiktok catsofinstagram catmom catlover
         feline meow""",
     "Animals & wildlife": """animal animals wildlife bird birds birding horse horses
-        cow cows babygoat sheep pig pigs chicken chickens duck ducks bunny rabbit
-        hamster reptile snake turtle frog fish aquarium zoo elephant #bear #bears
-        otter otters raccoon squirrel owl whale shark octopus capybara #pet #pets""",
+        #cow #cows babygoat sheep #pig #pigs #chicken #chickens #duck #ducks bunny rabbit
+        hamster reptile snake turtle frog #fish aquarium zoo elephant #bear #bears
+        backyardchickens
+        otter otters raccoon squirrel owl whale shark octopus capybara #pet #pets
+        iguana iguanas lizard lizards""",
     "Food & cooking": """food foodie foodtok recipe recipes cooking cook cooks baking
         bake baked bakery bread sourdough dumpling dumplings pasta noodle noodles ramen
         dinner lunch breakfast brunch dessert desserts cake cakes cookie cookies soup
         salad chef kitchen meal meals mealprep restaurant eats snack snacks pizza taco
         tacos bbq barbecue grill grilling vegan vegetarian cuisine spicy delicious yummy
         tasty sushi cheese chocolate homemade foodporn airfryer sandwich burger steak tomato
-        tomatoes potato potatoes egg eggs appetizer appetizers garlic foodgif foodgifs nycfood nyceats""",
+        tomatoes potato potatoes egg eggs appetizer appetizers garlic foodgif foodgifs nycfood nyceats
+        chicken fish pork beef salmon shrimp rice spaghetti sauce foodreview foodreviews
+        mukbang curry""",
     "Drinks": """coffee espresso latte cocktail cocktails mixology bartender wine beer
-        brewery whiskey tequila matcha boba smoothie #tea #drinks""",
+        brewery whiskey tequila matcha boba smoothie #tea #drinks ipa""",
     "Comedy & humour": """funny comedy comedian humor humour joke jokes lol lmao meme
         memes skit skits standup prank pranks satire parody sketch""",
     "Music": """music song songs singer singing guitar piano drums drummer band concert
@@ -70,7 +75,8 @@ THEMES: dict[str, str] = {
         #u2 #rock #pop #cover #beat""",
     "Dance": """dance dancing dancer choreography ballet tapdance salsa""",
     "Film & TV": """movie movies film films cinema netflix trailer actor actress
-        filmmaking director anime hbomax bluey sopranos pauliewalnuts spiderman #hbo #tv #series #show""",
+        filmmaking director anime hbomax bluey sopranos pauliewalnuts spiderman #hbo #tv #series #show
+        episode episodes sitcom documentary marvel marvelstudios disney disneyplus #pbs""",
     "Books & writing": """book books booktok reading reader novel novels author writing
         writer poetry poem poems bookstagram #library""",
     "Art & design": """artist drawing painting illustration typography graphicdesign
@@ -84,7 +90,7 @@ THEMES: dict[str, str] = {
         #nails thrift thrifting vintage streetwear sneakers #style #hair""",
     "Home & DIY": """diy decor interiordesign interior renovation furniture cleaning
         cleantok organization organizing apartment woodworking homedecor nycapartment #home
-        #house""",
+        #house realestate realtor""",
     "Gardening & plants": """garden gardening gardener plant plants houseplant houseplants
         flower flowers seeds vegetables compost farm farming homestead #bean #beans""",
     "Travel": """travel traveling travelling trip vacation hotel beach roadtrip tourism
@@ -92,16 +98,17 @@ THEMES: dict[str, str] = {
     "Sport & fitness": """workout gym fitness #running runner yoga exercise training
         sport sports football soccer basketball baseball nba nfl tennis golf climbing
         bouldering cycling skateboarding skateboard surfing swimming frisbee #ultimate
-        hockey boxing marathon pilates #run""",
+        hockey boxing marathon pilates #run skate skates skater skating wwe wrestling espn""",
     "Nature & outdoors": """nature hiking hike camping outdoors mountain mountains forest
         ocean sunset sunrise nationalpark waterfall lake river wilderness""",
     "Science & tech": """science tech technology ai coding programming engineering physics
         chemistry biology astronomy nasa robot robotics gadget gadgets computer software
-        chatgpt openai artificialintelligence onlinetools #google #claude #website #websites #apps #space""",
+        chatgpt openai artificialintelligence onlinetools #google #claude #website #websites #apps #space
+        iphone android cybersecurity cyber privacy dataprivacy internet darkweb""",
     "How-to & learning": """tutorial howto tips lifehack lifehacks hack hacks learn homework
         learning education explained facts didyouknow todayilearned
         #tricks علمني""",
-    "History": """history historical ancient archaeology museum medieval""",
+    "History": """history historical ancient archaeology museum medieval holocaust wwii ww2""",
     "News & politics": """news politics political election government policy localgov
         council vote voting congress senate president protest democracy journalism
         homeless leftist""",
@@ -111,25 +118,90 @@ THEMES: dict[str, str] = {
         nyclife nycfood nyceats nyctiktok nycsubway nycapartment""",
     "Money & work": """money finance investing career careers job jobs business
         entrepreneur productivity economy jobsearch jobhunting powerpoint
-        #excel #resume #budget #budgeting #work""",
+        #excel #resume #budget #budgeting #work wfh corporate savings careeradvice jobtips
+        coworker coworkers salary""",
     "Marketing & media": """marketing socialmedia contentcreator contentcreation branding
         seo advertising copywriting communications newsletter radiohost
         #content #media #pr""",
     "Parenting & family": """parenting #mom #dad #baby #babies kid kids toddler momlife
-        dadlife bluey #parent #parents #family""",
+        dadlife bluey #parent #parents #family mother father daughter""",
     "Wellness": """mentalhealth therapy anxiety wellness selfcare adhd mindfulness
-        meditation somatic vagusnerve nervoussystem thesafemethod #healing #sleep #health""",
+        meditation somatic vagusnerve nervoussystem thesafemethod #healing #sleep #health
+        nutrition trauma therapist psychology narcissist narcissism nocontact detox guthealth""",
     "Gaming": """gaming gamer videogame videogames nintendo playstation xbox minecraft
-        fortnite pokemon zelda""",
+        fortnite pokemon zelda #game #games streamer streamers twitch esports
+        callofduty oculus metaquest""",
     "Cars & vehicles": """car cars truck trucks motorcycle motorcycles racing f1 formula1
-        jeep #auto""",
+        jeep #auto toyota honda tesla mazda subaru porsche""",
     "Satisfying & ASMR": """asmr satisfying oddlysatisfying""",
     "Nostalgia & retro": """nostalgia nostalgic throwback retro genx millennial millennials
-        #tbt #y2k #grunge""",
+        #tbt #y2k #grunge #90s #80s #70s fbf flashbackfriday""",
     "Language": """language languages linguistics #spanish #french grammar etymology""",
 }
 
 _WORD = re.compile(r"[a-z0-9]+")
+
+#: Subjects written as two words in a sentence and as one in a hashtag: a
+#: caption saying "New York" or "mental health" reads as the word the
+#: vocabulary knows. The longer phrase comes first ("new york city").
+PHRASES: dict[str, str] = {
+    "new york city": "newyorkcity", "new york": "newyork",
+    "mental health": "mentalhealth", "graphic design": "graphicdesign",
+    "interior design": "interiordesign", "home decor": "homedecor",
+    "social media": "socialmedia", "content creator": "contentcreator",
+    "live music": "livemusic", "hip hop": "hiphop", "tap dance": "tapdance",
+    "meal prep": "mealprep", "air fryer": "airfryer",
+    "national park": "nationalpark", "national parks": "nationalpark",
+    "road trip": "roadtrip", "video game": "videogame", "video games": "videogames",
+    "real estate": "realestate", "job search": "jobsearch", "work from home": "wfh",
+    "artificial intelligence": "artificialintelligence", "dark web": "darkweb",
+    "data privacy": "dataprivacy", "oddly satisfying": "oddlysatisfying",
+    "life hack": "lifehack", "life hacks": "lifehacks", "did you know": "didyouknow",
+    "today i learned": "todayilearned", "gen x": "genx",
+}
+_PHRASE_RE = re.compile(r"\b(" + "|".join(
+    re.escape(p).replace(r"\ ", r"[\s-]+") for p in sorted(PHRASES, key=len, reverse=True)) + r")\b")
+# "Stand-up" only before what makes it comedy ("stand up for yourself" isn't),
+# and "how to" only where a sentence starts with it ("I don't know how to feel").
+_STANDUP = re.compile(r"\bstand[\s-]?up(?=\s+(?:comedy|comedian|comic|special|set)\b)")
+_HOW_TO = re.compile(r"(^|[.!?:\n]\s*)how[\s-]+to\b")
+#: Glued word -> how a sentence writes it, for "Why it's in these topics".
+SAID_AS = {g: p for p, g in sorted(PHRASES.items(), key=lambda kv: -len(kv[0]))}
+SAID_AS.update({"standup": "stand-up", "howto": "how to"})
+
+
+def _glue(text: str) -> str:
+    """Lower-case text with its two-word subjects joined up: "new york" ->
+    "newyork", so a sentence reads the way a hashtag does."""
+    text = _PHRASE_RE.sub(lambda m: PHRASES[re.sub(r"[\s-]+", " ", m.group(1))], text.lower())
+    text = _STANDUP.sub("standup", text)
+    return _HOW_TO.sub(lambda m: m.group(1) + "howto", text)
+
+
+#: Endings that name a subject whatever comes before them: #italianfood,
+#: #njfood, #brunchinnyc, #metmuseum. Only endings no everyday word ends with
+#: ("dance" is out: #guidance), so an unknown first part can't mislead.
+HEADS = ("foods", "food", "recipes", "recipe", "cooking", "baking", "music", "gaming",
+         "fitness", "workout", "travel", "fashion", "makeup", "skincare", "history",
+         "science", "comedy", "museum", "gardening", "nyc")
+#: ...and the one beginning that does: #nycdating, #nycbrunch.
+HEAD_STARTS = ("nyc",)
+
+#: Animals that are mostly dinner. One of these and nothing else for
+#: Animals, on a save that is also about food, is a recipe: #chicken on a
+#: roast chicken. (Magda the pet duck has #pets, and stays an animal.)
+FOOD_ANIMALS = frozenset({"chicken", "duck", "pig", "cow", "fish"})
+
+#: Words that name a subject but turn up in everyday talk about anything:
+#: "a beautiful *job*", "*money*-back guarantee", "sitting in my *car*". Said
+#: in a caption they can still give a save its topic when nothing else does
+#: (“do this with your money instead”), but they never tag along as a second
+#: topic beside a stronger one -- unlike "zoning" beside #localgov.
+EVERYDAY = frozenset({
+    "job", "money", "business", "car", "truck", "trip", "book", "cook", "artist",
+    "sketch", "fact", "tip", "band", "plant", "kid", "mother", "father", "daughter",
+    "internet", "privacy", "corporate", "saving", "sauce", "episode", "interior",
+})
 
 
 # Words that end in "s" without being plurals, where folding them would make
@@ -143,14 +215,20 @@ def _norm(word: str) -> str:
         return word
     if len(word) > 4 and word.endswith("ies"):
         return word[:-3] + "y"
+    # "sandwiches", "dishes", "boxes", "glasses": the -es goes, not just the s.
+    if len(word) > 5 and word.endswith(("ches", "shes", "xes", "sses", "zes")):
+        return word[:-2]
     if len(word) > 3 and word.endswith("s") and not word.endswith("ss"):
         return word[:-1]
     return word
 
 
-# Recognised only as a whole hashtag, never inside one: "rock" is in #rocket
-# and #shamrock.
-_WHOLE_ONLY = frozenset({"rock"})
+# Hashtag-only words recognised only as a whole hashtag, never inside one:
+# "rock" is in #rocket and #shamrock, and #chickenrecipe is dinner, not a
+# farm animal. (Where the same word is a plain word elsewhere -- chicken is
+# food -- that sense still reads inside a hashtag.)
+_WHOLE_ONLY = frozenset({"rock", "chicken", "chickens", "duck", "ducks", "pig", "pigs",
+                         "cow", "cows", "fish"})
 
 #: The glue of compound hashtags: words that say nothing about a subject but
 #: let a hashtag split cleanly around one -- #dogsoftiktok, #easyrecipes,
@@ -166,7 +244,7 @@ AFFIXES = frozenset("""
     amazing beautiful official page fan fans core aesthetic vibes vibe world
     addict addicts things stuff hack hacks tip tips video videos clip clips
     girl girls boy boys guy guys man men woman women lady queen king
-    new old era pov story storytime check lessons lesson
+    new old era pov story storytime check lessons lesson me advice national into being
 """.split())
 
 
@@ -188,8 +266,9 @@ def _pieces() -> dict[str, set[str]]:
     table: dict[str, set[str]] = {}
     for theme, words in THEMES.items():
         for raw in words.split():
+            whole_only = raw.startswith("#") and raw.lstrip("#") in _WHOLE_ONLY
             raw = raw.lstrip("#")
-            if raw in _WHOLE_ONLY or not raw.isascii():
+            if whole_only or not raw.isascii():
                 continue
             for form in {raw, _norm(raw)}:
                 table.setdefault(form, set()).add(theme)
@@ -205,13 +284,20 @@ def _rebuild() -> None:
         TAG_WORDS.setdefault(w, set()).update(t)
     _PIECES = _pieces()
     VERSION = hashlib.sha1(json.dumps(
-        [_MATCHING, THEMES, sorted(AFFIXES)], sort_keys=True).encode()).hexdigest()[:12]
+        [_MATCHING, THEMES, sorted(AFFIXES), PHRASES, HEADS, HEAD_STARTS, sorted(_WHOLE_ONLY)],
+        sort_keys=True).encode()).hexdigest()[:12]
     _split.cache_clear()
 
 
 #: Bumped when the way words are matched or weighed changes, as VERSION's hash
 #: cannot see it.
-_MATCHING = 4
+_MATCHING = 5
+
+#: Goes up by one with every change to the rules or the words -- the test
+#: suite holds it to VERSION, so a change can't ship without it. A library
+#: filed by a higher generation is never refiled by a lower one: an older
+#: Faves still running somewhere doesn't undo a newer one's work.
+GENERATION = 5
 
 
 @lru_cache(maxsize=4096)
@@ -252,7 +338,7 @@ def _tag_hits(tag: str) -> tuple[set[str], bool]:
         return set(exact), True
     parts = _split(tag) or _split(_norm(tag))
     if not parts or len(parts) < 2:
-        return set(), False
+        return _by_its_ends(tag), False
     subjects = [p for p in parts if p in _PIECES and p not in AFFIXES]
     if not any(len(p) >= 4 for p in subjects):
         return set(), False
@@ -260,6 +346,18 @@ def _tag_hits(tag: str) -> tuple[set[str], bool]:
     for p in subjects:
         found |= _PIECES[p]
     return found, False
+
+
+def _by_its_ends(tag: str) -> set[str]:
+    """Themes a hashtag's safe ending or beginning names, when the rest of it
+    is no word the vocabulary knows: #italianfood is food, whatever Italian is."""
+    for head in HEADS:
+        if tag.endswith(head) and len(tag) - len(head) >= 2:
+            return set(_PIECES.get(head) or TAG_WORDS.get(_norm(head), ()))
+    for head in HEAD_STARTS:
+        if tag.startswith(head) and len(tag) - len(head) >= 3:
+            return set(_PIECES.get(head) or TAG_WORDS.get(_norm(head), ()))
+    return set()
 
 
 def _from_tag(tag: str) -> set[str]:
@@ -280,7 +378,9 @@ WEIGHTS = {
     "compound": 2,      # a hashtag that splits into one
     "creator": 2,       # the creator's handle says it
     "regular": 2,       # most of this creator's other saves are here
-    "caption": 1,       # a word in the title, caption or your placard
+    "note": 3,          # a word in your own note
+    "caption": 1,       # a word in the title or caption
+    "passing": 1,       # an everyday word in it (EVERYDAY): never a second topic
     "transcript": 1,    # a word said at least twice (at most 2 per theme)
 }
 MAX_THEMES = 3
@@ -336,6 +436,7 @@ def weigh(
     regular: Iterable[str] = (),
     rules: Rules = NO_RULES,
     item_id: Optional[int] = None,
+    note: Optional[str] = None,
 ) -> dict[str, list[tuple[str, str, int]]]:
     """Every piece of evidence for every theme: theme -> [(kind, word, weight)]."""
     ev: dict[str, list[tuple[str, str, int]]] = {}
@@ -371,12 +472,17 @@ def weigh(
         add(theme, "regular", "@" + key if key else "this creator")
     # A caption quotes its own hashtags ("... #localgov"): those count once, as hashtags.
     hashed = {_norm(tag_key(t)) for t in tags or ()}
-    words = {_norm(w) for text in texts or () for w in _WORD.findall((text or "").lower())}
+    words = {_norm(w) for text in texts or () for w in _WORD.findall(_glue(unwrap(text)))}
     for word in sorted(words - hashed):
         for theme in ANYWHERE.get(word, ()):
-            add(theme, "caption", word)
+            add(theme, "passing" if word in EVERYDAY else "caption", SAID_AS.get(word, word))
+    # Your note is the surest thing said about a save: it counts like a
+    # category you chose, though only for words that mean one thing in a sentence.
+    for word in sorted({_norm(w) for w in _WORD.findall(_glue(note or ""))}):
+        for theme in ANYWHERE.get(word, ()):
+            add(theme, "passing" if word in EVERYDAY else "note", SAID_AS.get(word, word))
     if transcript:
-        said = Counter(_norm(w) for w in _WORD.findall(transcript.lower()))
+        said = Counter(_norm(w) for w in _WORD.findall(_glue(transcript)))
         per_theme: Counter[str] = Counter()
         for word, n in said.most_common():
             if n < 2:
@@ -384,7 +490,12 @@ def weigh(
             for theme in ANYWHERE.get(word, ()):
                 if per_theme[theme] < 2:
                     per_theme[theme] += 1
-                    add(theme, "transcript", word)
+                    add(theme, "transcript", SAID_AS.get(word, word))
+    animals, food = ev.get("Animals & wildlife"), "Food & cooking" in ev
+    if animals and food and all(
+            k in ("hashtag", "caption", "passing", "note", "transcript")
+            and _norm(tag_key(w)) in FOOD_ANIMALS for k, w, _ in animals):
+        ev.pop("Animals & wildlife")      # #chicken on a recipe is dinner
     # Your own fixes come last and win.
     blocked = set(rules.creator_remove.get(key, ())) if key else set()
     if item_id is not None:
@@ -407,6 +518,8 @@ def decide(ev: dict[str, list[tuple[str, str, int]]]) -> list[str]:
     A theme is kept at half the strongest theme's evidence or more. When all
     there is are single words in passing, up to two are kept; three or more
     subjects mentioned once each is a caption wandering, and files nothing.
+    An everyday word (``EVERYDAY``) is never enough for a second theme: "a
+    beautiful *job*" under a #pottery video is not about work.
     """
     if not ev:
         return []
@@ -416,7 +529,12 @@ def decide(ev: dict[str, list[tuple[str, str, int]]]) -> list[str]:
     top = scores[ranked[0]]
     if top <= 1 and len(ranked) >= SCATTERED:
         return []
-    return [t for t in ranked if scores[t] * 2 >= top][:MAX_THEMES]
+
+    def only_in_passing(t: str) -> bool:
+        return all(k == "passing" for k, _, _ in ev[t])
+
+    return [t for t in ranked if scores[t] * 2 >= top
+            and (t == ranked[0] or not only_in_passing(t))][:MAX_THEMES]
 
 
 def themes_for(
@@ -441,7 +559,8 @@ def _row_args(row) -> dict:
     get = (lambda k: row[k] if k in keys else None)
     return {
         "tags": tags,
-        "texts": (row["title"], row["description"], row["note"]),
+        "texts": (row["title"], row["description"]),
+        "note": row["note"],
         "transcript": get("transcript"),
         "creator": creator_key(get("creator_handle"), get("creator_name")),
         "item_id": get("id"),
@@ -452,7 +571,8 @@ def evidence_for_row(row, categories: Iterable[str] = (), *, rules: Rules = NO_R
                      regular: Iterable[str] = ()) -> dict[str, list[tuple[str, str, int]]]:
     a = _row_args(row)
     return weigh(a["tags"], a["texts"], categories, transcript=a["transcript"],
-                 creator=a["creator"], regular=regular, rules=rules, item_id=a["item_id"])
+                 creator=a["creator"], regular=regular, rules=rules, item_id=a["item_id"],
+                 note=a["note"])
 
 
 def for_row(row, categories: Iterable[str] = (), *, rules: Rules = NO_RULES,
@@ -480,6 +600,7 @@ _KIND_WORDS = {
     "taught": "{w} (you taught this)", "hashtag": "{w}", "category": "your category “{w}”",
     "compound": "{w}", "creator": "{w}", "regular": "most saves by {w} are here",
     "caption": "“{w}” in the caption", "transcript": "“{w}” said in it",
+    "note": "“{w}” in your note", "passing": "“{w}” in the caption",
 }
 
 

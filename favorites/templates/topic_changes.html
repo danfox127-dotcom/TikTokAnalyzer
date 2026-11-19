@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% from "_icons.html" import icon %}
+{% set nav = 'rooms' %}
+{% set back = '/topics/sort' %}{% set back_label = 'Sort things out' %}
+{% block title %}What changed · Faves{% endblock %}
+{% block main_class %}is-bands{% endblock %}
+
+{#- One save the new rules moved: what it's called, where it was, where it is. -#}
+{% macro moved(c) %}
+<li>
+  <span class="t"><a href="/item/{{ c.item.id }}"><b>{{ headline(c.item) or platform_label(c.item.platform) ~ ' video' }}</b></a>
+    <span class="was-now">
+      {%- if c.was %}<span class="was">{% for t in c.was %}{{ look(t)[2] }} {{ t }}{% if not loop.last %}, {% endif %}{% endfor %}</span>{% else %}<span class="was">No topic</span>{% endif -%}
+      <span class="arrow" aria-label="now">→</span>
+      {%- if c.became %}<span class="now">{% for t in c.became %}{{ look(t)[2] }} {{ t }}{% if not loop.last %}, {% endif %}{% endfor %}</span>{% else %}<span class="now">No topic</span>{% endif -%}
+    </span></span>
+  <a class="rr-btn rr-btn--icon" href="/item/{{ c.item.id }}?rooms=1#rooms" aria-label="Change its topics">{{ icon('rooms') }}</a>
+</li>
+{% endmacro %}
+
+{% macro group(title, label, tone, rows, empty) %}
+<section class="rr-band tone-{{ tone }}" aria-label="{{ title }}"><div class="inner">
+  <div class="rr-shelf-head"><div><p class="rr-label">{{ label }}</p><h2 class="rr-h-m">{{ title }}</h2></div></div>
+  {% if rows %}
+  <ul class="gone-list changes-list band-pad">{% for c in rows[:150] %}{{ moved(c) }}{% endfor %}</ul>
+  {% if rows | length > 150 %}<p class="band-pad rr-muted">And {{ rows | length - 150 }} more.</p>{% endif %}
+  {% else %}<p class="band-pad all-done">{{ empty }}</p>{% endif %}
+</div></section>
+{% endmacro %}
+
+{% block content %}
+<section class="rr-hero">
+  <p class="rr-label">🔁 What changed</p>
+  <h1 class="rr-h-xl">{% if moved_total %}The new topic rules moved {{ moved_total }} {{ 'save' if moved_total == 1 else 'saves' }}{% else %}Nothing moved{% endif %}</h1>
+  <p class="lede">{% if at %}When Faves learned new words and rules ({{ at | day }}), it sorted everything again. {% endif %}Here's every save that ended up somewhere new.
+    Saves you filed yourself never move. If one looks wrong, tap {{ icon('rooms') }} to set its topics, and that sticks.</p>
+  {% if moved_total %}
+  <ul class="rr-stats tidy-stats">
+    <li class="rr-stat"><span class="em" aria-hidden="true">✨</span><b>{{ found | length }}</b><span>found a topic</span></li>
+    <li class="rr-stat"><span class="em" aria-hidden="true">🔀</span><b>{{ moved_on | length }}</b><span>changed topics</span></li>
+    <li class="rr-stat"><span class="em" aria-hidden="true">🫥</span><b>{{ lost | length }}</b><span>lost every topic</span></li>
+  </ul>
+  {% endif %}
+</section>
+{% if moved_total %}
+{{ group('Found a topic', '✨ Were undefined', 'mint', found, 'None this time.') }}
+{{ group('Changed topics', '🔀 Moved', 'sky', moved_on, 'None this time.') }}
+{{ group('Lost every topic', '🫥 Now undefined', 'butter', lost, 'None: nothing went back to Undefined.') }}
+{% endif %}
+{% endblock %}

@@ -1684,3 +1684,11 @@ html:has(body.is-deck), body.is-deck { height: 100%; overflow: hidden; overscrol
 .rr-watchbtn:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
 .rr-card--s .rr-watchbtn { width: 38px; height: 38px; top: 6px; right: 6px; }
 .rr-card--s .rr-watchbtn .rr-icon { width: 17px; height: 17px; }
+
+/* ---- what the latest topic rules changed ---- */
+.changes-list .t a { display: block; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: inherit; text-decoration: none; }
+.changes-list .was-now { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 6px; }
+.changes-list .was { text-decoration: line-through; text-decoration-thickness: 1.5px; opacity: .8; }
+.changes-list .now { color: var(--ink); font-weight: 800; }
+.changes-list .arrow { font-weight: 800; }
+.changes-note { margin-bottom: 18px; }

@@ -920,6 +920,24 @@ def rooms_page(request: Request, conn: sqlite3.Connection = Depends(get_db)):
     })
 
 
+@app.get("/topics/changes", response_class=HTMLResponse)
+def topic_changes(request: Request, conn: sqlite3.Connection = Depends(get_db)):
+    """What the latest change to the topic rules did: every save it moved."""
+    rows = conn.execute(
+        "SELECT i.*, c.was, c.became, c.at AS changed_at FROM theme_changes c"
+        " JOIN items i ON i.id = c.item_id WHERE i.resolve_status = 'ok'"
+        " ORDER BY i.saved_at DESC, i.id DESC").fetchall()
+    changes = [{"item": item, "was": db.loads_list(r["was"]), "became": db.loads_list(r["became"])}
+               for r, item in zip(rows, db.rows_to_dicts(rows))]
+    return templates.TemplateResponse(request, "topic_changes.html", {
+        "found": [c for c in changes if not c["was"]],
+        "lost": [c for c in changes if c["was"] and not c["became"]],
+        "moved_on": [c for c in changes if c["was"] and c["became"]],
+        "moved_total": len(changes), "at": rows[0]["changed_at"] if rows else None,
+        "q": "", "total": db.count(conn),
+    })
+
+
 @app.get("/topics/sort", response_class=HTMLResponse)
 def tidy_page(request: Request, conn: sqlite3.Connection = Depends(get_db)):
     """Sort things out: teach the hashtags it doesn't know, settle its guesses."""
@@ -942,6 +960,8 @@ def tidy_page(request: Request, conn: sqlite3.Connection = Depends(get_db)):
         "unknown": unknown, "hunches": [by_id[i] for i in hunch_ids if i in by_id],
         "hunch_count": hunch_count, "undefined": undefined,
         "taught": db.taught_count(conn), "q": "", "total": db.count(conn),
+        "changed": conn.execute("SELECT count(*) FROM theme_changes c JOIN items i ON i.id = c.item_id"
+                                " WHERE i.resolve_status = 'ok'").fetchone()[0],
     })
 
 
