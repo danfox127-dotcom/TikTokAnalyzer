@@ -1668,3 +1668,19 @@ html:has(body.is-deck), body.is-deck { height: 100%; overflow: hidden; overscrol
 .rr-watch .rr-playing.is-tall { width: min(100vw - 24px, (100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 76px) * 9 / 16); }
 .rr-watch .rr-playing.is-wide { width: 100%; }
 .rr-watch .rr-playing.is-ig-reel, .rr-watch .rr-playing.is-ig-post { width: min(100vw - 24px, 400px); }
+
+/* ---- watch from anywhere: a play button on every playable card opens the
+   page's videos as a full-screen feed, starting from that one ---- */
+.rr-card, .rr-slide, .rr-piece { position: relative; }
+.rr-watchbtn {
+  position: absolute; top: 8px; right: 8px; z-index: 2; width: 44px; height: 44px;
+  display: grid; place-items: center; border-radius: 50%;
+  background: var(--accent); color: var(--on-accent); border: 2.5px solid var(--wall-raised);
+  box-shadow: 0 2px 0 var(--ink), var(--shadow-soft); transition: transform .15s ease;
+}
+.rr-watchbtn .rr-icon { width: 20px; height: 20px; margin-left: 2px; }
+.rr-watchbtn:active { transform: translateY(2px) scale(.94); box-shadow: 0 0 0 var(--ink), var(--shadow-soft); }
+@media (hover: hover) { .rr-watchbtn:hover { transform: scale(1.08); } }
+.rr-watchbtn:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
+.rr-card--s .rr-watchbtn { width: 38px; height: 38px; top: 6px; right: 6px; }
+.rr-card--s .rr-watchbtn .rr-icon { width: 17px; height: 17px; }
