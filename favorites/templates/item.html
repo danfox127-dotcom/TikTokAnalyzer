@@ -22,6 +22,7 @@
         <span>{{ platform_label(item.platform) }}</span>
         {% if item.duration %}<span>{{ item.duration | clock }} long</span>{% endif %}
         <span>Saved {{ item.saved_at[:10] }}</span>
+        {% if edited %}<span>Edited by you</span>{% endif %}
         {% if item.resolve_status != 'ok' %}<span class="warn">unresolved</span>{% endif %}
       </p>
 
@@ -31,6 +32,27 @@
         <p class="byline">by <a href="/creator/{{ (item.creator_handle or item.creator_name) | urlencode }}">{{ item.creator_name or item.creator_handle }}</a>
           {% if item.creator_handle and item.creator_name %}<span class="rr-muted">{{ item.creator_handle }}</span>{% endif %}</p>
       {% endif %}
+
+      {#- The title and creator in your own words. A save with no creator asks
+          for one; what you write is never overwritten by a later lookup. -#}
+      {% set who = item.creator_name or item.creator_handle %}
+      <details class="edit-details{% if not who %} is-asking{% endif %}" id="edit-details"{% if editing or not who %} open{% endif %}>
+        <summary>{{ icon('note') }}{% if who %}Edit title and creator{% else %}Who made this? Add the creator{% endif %}</summary>
+        <form action="/item/{{ item.id }}/details" method="post" data-inplace="Details saved">
+          {% if not who %}<p class="ask">{{ platform_label(item.platform) }} didn't say who made this. <a href="{{ browsable_url(item) }}" target="_blank" rel="noopener noreferrer">Open it</a> to check, then add them here.</p>{% endif %}
+          <label class="field"><span>Title</span>
+            <textarea name="title" rows="2" placeholder="What's it about?">{{ item.title or '' }}</textarea></label>
+          <label class="field"><span>Creator's name</span>
+            <input type="text" name="creator_name" value="{{ item.creator_name or '' }}" placeholder="As it shows on their profile" autocomplete="off"></label>
+          <label class="field"><span>Handle</span>
+            <span class="at"><span aria-hidden="true">@</span><input type="text" name="creator_handle" value="{{ (item.creator_handle or '') | replace('@', '', 1) }}" placeholder="theirhandle" autocapitalize="none" autocomplete="off" spellcheck="false"></span></label>
+          <p class="hint">If you've saved from them before, this save joins their others. Your words stay put: Faves won't overwrite them when it looks this save up again.</p>
+          <div class="row">
+            <button class="rr-btn rr-btn--primary" type="submit">Save</button>
+            {% if edited %}<button class="rr-btn" type="submit" name="undo" value="1">Go back to {{ platform_label(item.platform) }}'s version</button>{% endif %}
+          </div>
+        </form>
+      </details>
 
       {% set b = detail(item) %}{% if b %}<p class="desc">{{ b }}</p>{% endif %}
       {%- set raw = item.description or item.title %}
@@ -56,9 +78,12 @@
         {% endif %}
         <details class="change-rooms" id="change-rooms"{% if rooms_open %} open{% endif %}>
           <summary>{{ icon('filter') }}{% if item.themes %}Change topics{% else %}Give it a topic{% endif %}</summary>
-          <form action="/item/{{ item.id }}/rooms" method="post" data-inplace="Topics saved">
+          {#- Each tap is saved as you make it (museum.js); the Save button is
+              for a page with no script. -#}
+          <form action="/item/{{ item.id }}/rooms" method="post" data-inplace="Topics saved" data-instant>
             <fieldset>
               <legend class="rr-label is-muted">Topics</legend>
+              <p class="instant-hint">Tap to add or take away. Each tap is saved.</p>
               <div class="room-choices">
                 {% for t in theme_names %}{% set lk = look(t) %}
                   <label class="choice tone-{{ lk[0] }}"><input type="checkbox" name="room" value="{{ t }}"{% if t in item.themes %} checked{% endif %}><span>{{ lk[2] }} {{ t }}</span></label>
@@ -66,9 +91,9 @@
               </div>
             </fieldset>
             {% set who = item.creator_name or item.creator_handle %}
-            {% if who %}<label class="whole-creator"><input type="checkbox" name="whole_creator" value="1"> Do the same for everything by {{ who }}</label>{% endif %}
             <div class="row">
-              <button class="rr-btn rr-btn--primary" type="submit">Save topics</button>
+              <button class="rr-btn rr-btn--primary save-topics" type="submit">Save topics</button>
+              {% if who %}<button class="rr-btn" type="submit" name="whole_creator" value="1">Do the same for everything by {{ who }}</button>{% endif %}
               {% if hand_filed %}<button class="rr-btn" type="submit" name="reset" value="1">Let Faves decide again</button>{% endif %}
             </div>
           </form>

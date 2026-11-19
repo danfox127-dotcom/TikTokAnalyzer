@@ -26,6 +26,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable, Optional
 
+from . import blurb
 from . import themes as theme_vocabulary
 
 # The home folder, not the project folder: a default that depends on where the
@@ -234,6 +235,9 @@ MIGRATIONS = {
     # The platform's own labels for a video (platforms.labels_from_page), as
     # JSON; NULL until its page has been read.
     "labels": "TEXT",
+    # The platform's version of each detail you changed (see edit_details), as
+    # JSON; NULL for a save you haven't edited.
+    "edited": "TEXT",
 }
 
 
@@ -286,6 +290,7 @@ def connect(path: str | os.PathLike | None = None) -> sqlite3.Connection:
         from . import pg  # only needed, and only installed, where Postgres is used
         conn = pg.connect()
         retheme_if_stale(conn)
+        tidy_once(conn)
         return conn
     target = resolve_path(path)
     if target != ":memory:":
@@ -304,6 +309,7 @@ def connect(path: str | os.PathLike | None = None) -> sqlite3.Connection:
     conn.commit()
     migrate(conn)
     retheme_if_stale(conn)
+    tidy_once(conn)
     return conn
 
 
@@ -535,17 +541,26 @@ def set_rooms(conn: sqlite3.Connection, item_id: int, chosen: Iterable[str],
     adds, removes = (chosen if confirm else chosen - auto), auto - chosen
     key = _key(row)
     conn.execute("DELETE FROM theme_rules WHERE kind = 'item' AND key = ?", (str(item_id),))
-    kind, rule_key = ("creator", key) if whole_creator and key else ("item", str(item_id))
-    if kind == "creator":
+    rows = []
+    if whole_creator and key:
         conn.execute("DELETE FROM theme_rules WHERE kind = 'creator' AND key = ? AND theme IN"
                      f" ({','.join('?' * len(adds | removes)) or 'NULL'})",
                      (key, *(adds | removes)))
+        rows += [("creator", key, t, "add") for t in adds] + [("creator", key, t, "remove") for t in removes]
+    # A topic of your own outweighs everything worked out (themes.decide), so
+    # the ones you left ticked beside it are yours too -- or adding Music to a
+    # save in Food would quietly take it out of Food. For this save that holds
+    # with the creator's rule too: it keeps exactly what you ticked, and their
+    # other saves gain only what you added.
+    if adds:
+        rows += [("item", str(item_id), t, "add") for t in chosen]
+    if adds or not (whole_creator and key):
+        rows += [("item", str(item_id), t, "remove") for t in removes]
     conn.executemany(
         "INSERT INTO theme_rules (kind, key, theme, action, created_at) VALUES (?, ?, ?, ?, ?)"
         " ON CONFLICT (kind, key, theme) DO UPDATE"
         " SET action = excluded.action, created_at = excluded.created_at",
-        [(kind, rule_key, t, "add", now_iso()) for t in adds]
-        + [(kind, rule_key, t, "remove", now_iso()) for t in removes])
+        [(*r, now_iso()) for r in rows])
     retheme(conn)
 
 
@@ -634,7 +649,7 @@ def upsert_item(conn: sqlite3.Connection, payload: dict) -> tuple[int, bool]:
         data["raw"] = json.dumps(data["raw"], ensure_ascii=False)
 
     existing = conn.execute(
-        "SELECT id, note FROM items WHERE canonical_url = ?", (data["canonical_url"],)
+        "SELECT id, note, edited FROM items WHERE canonical_url = ?", (data["canonical_url"],)
     ).fetchone()
 
     if existing is None:
@@ -655,6 +670,13 @@ def upsert_item(conn: sqlite3.Connection, payload: dict) -> tuple[int, bool]:
                 # earlier one established.
                 data.pop(learned, None)
         data.pop("saved_at", None)  # keep the original save date
+        kept = edits_of(existing["edited"])
+        if kept:
+            # Your words stay. What the platform says now is kept beside them,
+            # for if you go back to its version.
+            for field in [f for f in kept if f in data]:
+                kept[field] = data.pop(field)
+            data["edited"] = json.dumps(kept, ensure_ascii=False)
         assignments = ", ".join(f"{k} = ?" for k in data)
         conn.execute(
             f"UPDATE items SET {assignments} WHERE id = ?", (*data.values(), item_id)
@@ -754,6 +776,137 @@ def name_item(conn: sqlite3.Connection, item_id: int, title: str, creator: str =
          _json_list(list(tags)), _json_list(list(terms)), now_iso(), item_id))
     index_item(conn, item_id)
     conn.commit()
+
+
+#: The details of a save you can put in your own words.
+EDITABLE = ("title", "creator_name", "creator_handle")
+
+
+def edits_of(value: Any) -> dict:
+    """The platform's version of each detail you changed, from the ``edited``
+    column ({} for a save you haven't edited)."""
+    if isinstance(value, dict):
+        return dict(value)
+    try:
+        found = json.loads(value) if value else {}
+    except (TypeError, ValueError):
+        return {}
+    return {k: v for k, v in found.items() if k in EDITABLE} if isinstance(found, dict) else {}
+
+
+def _tidy_text(text: str, limit: int, one_line: bool = False) -> Optional[str]:
+    """Words as typed, without stray spaces; a form's line breaks (\\r\\n) as
+    the plain ones a caption has."""
+    text = text.replace("\r\n", "\n").replace("\r", "\n")
+    if one_line:
+        text = re.sub(r"\s+", " ", text)
+    text = "\n".join(re.sub(r"[ \t]+", " ", line).strip() for line in text.split("\n"))
+    return re.sub(r"\n{3,}", "\n\n", text).strip()[:limit] or None
+
+
+def as_handle(text: Optional[str]) -> Optional[str]:
+    """"@theirhandle" from however it was typed ("theirhandle", " @TheirHandle",
+    a link to their profile); None for nothing usable."""
+    text = re.sub(r"^.*/", "", (text or "").strip().rstrip("/")).lstrip("@")
+    text = re.sub(r"[^\w.]", "", text)[:60].lower()      # handles are the same in any case
+    return "@" + text if text else None
+
+
+def edit_details(conn: sqlite3.Connection, item_id: int, title: Optional[str] = None,
+                 creator_name: Optional[str] = None, creator_handle: Optional[str] = None) -> list[str]:
+    """Put a save's title or creator in your own words. ``None`` leaves a
+    detail as it is; an empty one clears it.
+
+    The platform's version of each detail you change is kept, so a later
+    lookup never overwrites yours (it updates the kept one instead) and you
+    can go back to it. Returns the details that changed.
+    """
+    row = conn.execute("SELECT title, creator_name, creator_handle, edited FROM items WHERE id = ?",
+                       (item_id,)).fetchone()
+    if row is None:
+        return []
+    wanted = {"title": title, "creator_name": creator_name, "creator_handle": creator_handle}
+    tidy = {"title": lambda v: _tidy_text(v, 5000),
+            "creator_name": lambda v: _tidy_text(v, 120, one_line=True),
+            "creator_handle": as_handle}
+    kept, now, changed = edits_of(row["edited"]), {f: row[f] for f in EDITABLE}, []
+    for field, value in wanted.items():
+        if value is None:
+            continue
+        value = tidy[field](value)
+        if value == tidy[field](row[field] or ""):
+            continue                            # the same, however the form sent it back
+        kept.setdefault(field, row[field])
+        if kept[field] == value:
+            kept.pop(field)                     # back to just what the platform says
+        now[field] = value
+        changed.append(field)
+    if changed:
+        conn.execute(
+            "UPDATE items SET title = ?, creator_name = ?, creator_handle = ?, edited = ? WHERE id = ?",
+            (now["title"], now["creator_name"], now["creator_handle"],
+             json.dumps(kept, ensure_ascii=False) if kept else None, item_id))
+        index_item(conn, item_id)
+        conn.commit()
+    return changed
+
+
+def undo_edits(conn: sqlite3.Connection, item_id: int) -> list[str]:
+    """Go back to the platform's own title and creator. Returns what changed back."""
+    row = conn.execute("SELECT edited FROM items WHERE id = ?", (item_id,)).fetchone()
+    kept = edits_of(row["edited"]) if row is not None else {}
+    if not kept:
+        return []
+    fields = sorted(kept)
+    conn.execute(f"UPDATE items SET {', '.join(f'{f} = ?' for f in fields)}, edited = NULL WHERE id = ?",
+                 (*(kept[f] for f in fields), item_id))
+    index_item(conn, item_id)
+    conn.commit()
+    return fields
+
+
+def fix_instagram_standins(conn: sqlite3.Connection) -> int:
+    """Saves kept before Faves knew Instagram's stand-in titles ("GigiSketch
+    on Instagram", by "Instagram"): the account becomes the creator and the
+    caption the title (blurb.instagram_standin). A detail you edited yourself
+    is left alone. Returns how many were fixed."""
+    rows = conn.execute(
+        "SELECT id, title, creator_name, creator_handle, description, edited FROM items"
+        " WHERE platform = 'instagram' AND (title LIKE ? OR edited LIKE ?)",
+        ("% on Instagram%", "% on Instagram%")).fetchall()
+    fixed_count = 0
+    for row in rows:
+        mine = edits_of(row["edited"])
+        theirs = {f: mine.get(f, row[f]) for f in EDITABLE}          # what Instagram itself said
+        fixed = blurb.instagram_standin(theirs["title"], theirs["creator_name"], row["description"])
+        if not fixed:
+            continue
+        if theirs["creator_handle"]:
+            fixed.pop("creator_handle", None)
+        for field in [f for f in fixed if f in mine]:
+            mine[field] = fixed.pop(field)          # yours stays; going back gives the fixed version
+        fixed["edited"] = json.dumps(mine, ensure_ascii=False) if mine else None
+        conn.execute(f"UPDATE items SET {', '.join(f'{k} = ?' for k in fixed)} WHERE id = ?",
+                     (*fixed.values(), row["id"]))
+        index_item(conn, row["id"])
+        fixed_count += 1
+    if fixed_count:
+        conn.commit()
+    return fixed_count
+
+
+_tidied = False
+
+
+def tidy_once(conn: sqlite3.Connection) -> None:
+    """Put right, once each time Faves starts, details an earlier version
+    stored wrongly. Not from a preview deployment, which shares the real
+    library."""
+    global _tidied
+    if _tidied or os.environ.get("VERCEL_ENV") == "preview":
+        return
+    _tidied = True
+    fix_instagram_standins(conn)
 
 
 def mark_gone(conn: sqlite3.Connection, item_id: int, gone: bool = True) -> None:

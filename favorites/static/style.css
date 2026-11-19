@@ -934,9 +934,34 @@ a.rr-stat:hover { transform: translateY(-3px); }
 }
 .room-choices .choice input:checked + span { background: var(--band); border-color: var(--ink); box-shadow: 0 3px 0 var(--ink); }
 .room-choices .choice input:focus-visible + span { outline: 3px solid var(--focus); outline-offset: 2px; }
-.whole-creator { display: flex; gap: 10px; align-items: center; margin-top: 14px; font: 700 14.5px/20px var(--font-sans); }
-.whole-creator input { width: 20px; height: 20px; accent-color: var(--accent); }
+/* Each tap is saved (museum.js marks the form is-instant); with no script,
+   the Save button does it. */
+.instant-hint { margin: 2px 0 10px; font: 600 14px/20px var(--font-sans); color: var(--ink-muted); }
+.change-rooms form:not(.is-instant) .instant-hint, .change-rooms form.is-instant .save-topics { display: none; }
 .change-rooms .row { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; }
+.change-rooms .row .rr-btn, .edit-details .row .rr-btn { white-space: normal; text-align: left; padding-top: 8px; padding-bottom: 8px; }
+
+/* ---- a save's title and creator in your own words ---- */
+.edit-details { margin-top: 8px; }
+.edit-details summary { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; font: 800 14px/20px var(--font-sans); color: var(--accent-ink); list-style: none; min-height: var(--tap-min); }
+.edit-details summary::-webkit-details-marker { display: none; }
+.edit-details form { display: grid; gap: 12px; margin-top: 6px; }
+.edit-details.is-asking { margin-top: 14px; padding: 6px 16px 16px; border: 2px solid var(--ink); border-radius: var(--radius-md); background: var(--band-butter); transform: rotate(-1deg); }
+.edit-details.is-asking summary { color: var(--ink); font: 600 19px/24px var(--font-display); }
+.edit-details .ask { margin: 0; font: 600 15px/21px var(--font-sans); }
+.edit-details .field { display: grid; gap: 6px; font: 800 14px/20px var(--font-sans); }
+.edit-details textarea, .edit-details input[type="text"] {
+  width: 100%; box-sizing: border-box; padding: 11px 14px; border: 2px solid var(--ink); border-radius: 16px;
+  background: var(--wall-raised); color: var(--ink); font: 600 16px/22px var(--font-sans); resize: vertical;
+}
+.edit-details .at { display: flex; align-items: center; gap: 2px; padding-left: 14px; border: 2px solid var(--ink); border-radius: 16px; background: var(--wall-raised); font: 800 16px/22px var(--font-sans); color: var(--ink-muted); }
+.edit-details .at input[type="text"] { flex: 1; min-width: 0; border: 0; padding-left: 2px; background: transparent; }
+.edit-details .at:focus-within { outline: 3px solid var(--focus); outline-offset: 2px; }
+.edit-details .at input:focus { outline: none; }
+.edit-details textarea::placeholder, .edit-details input::placeholder { color: var(--ink-muted); }
+.edit-details .hint { margin: 0; font: 600 13.5px/19px var(--font-sans); color: var(--ink-muted); }
+.edit-details.is-asking .hint { color: var(--ink); }
+.edit-details .row { display: flex; flex-wrap: wrap; gap: 10px; }
 .tidy-link { margin-top: 16px; }
 .tidy-link .rr-btn, .hunch-piece .settle .rr-btn { white-space: normal; text-align: left; padding-top: 8px; padding-bottom: 8px; }
 
@@ -1203,6 +1228,9 @@ body { overflow-wrap: anywhere; }
 .rr-sheet-dialog .body { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 4px 16px 16px; }
 .rr-sheet-dialog footer { flex: none; display: flex; gap: 10px; padding: 12px 16px calc(12px + env(safe-area-inset-bottom)); border-top: 2px dotted var(--rule); }
 .rr-sheet-dialog footer .rr-btn--primary { flex: 1; }
+.rr-sheet-dialog footer .said { flex: 1 1 auto; display: flex; align-items: center; gap: 10px; margin: 0; font: 800 14px/20px var(--font-sans); color: var(--ink); }
+.rr-sheet-dialog footer .said:empty { display: none; }
+.rr-sheet-dialog footer .said:not(:empty) + .rr-btn--primary { flex: none; }
 .rr-sheet-dialog .sheet-form { display: flex; flex-direction: column; min-height: 0; flex: 1; margin: 0; }
 .rr-sheet-dialog textarea {
   width: 100%; min-height: 110px; resize: vertical; padding: 12px 16px; border-radius: var(--radius-sm);
@@ -1440,7 +1468,14 @@ main.is-bands > .rr-band:has(+ .save-bar:last-child) { padding-bottom: calc(56px
   background: var(--ink); color: var(--wall-raised); font: 800 15px/20px var(--font-sans); box-shadow: var(--shadow-pop);
   animation: rr-toast 2.6s var(--ease-out) both; pointer-events: none;
 }
+.rr-toast.has-undo:not([hidden]) { display: flex; align-items: center; gap: 12px; width: max-content; padding: 6px 6px 6px 18px; pointer-events: auto; animation-duration: 5.2s; }
 .rr-toast[hidden] { display: none; }
+.rr-toast .undo, .rr-sheet-dialog .said .undo {
+  min-height: 40px; padding: 0 14px; border: 2px solid currentColor; border-radius: var(--radius-pill);
+  flex: none; background: transparent; color: inherit; font: 800 15px/20px var(--font-sans); white-space: nowrap; cursor: pointer;
+}
+/* A save's page: above its Watch · Note · Topic bar, not over it. */
+@container rr (max-width: 759px) { .rr-page:has(.save-bar) .rr-toast { bottom: calc(var(--tabbar-h) + env(safe-area-inset-bottom) + 84px); } }
 @container rr (min-width: 760px) { .rr-toast { bottom: 28px; } }
 @keyframes rr-toast { 0% { opacity: 0; transform: translate(-50%, 12px); } 10%, 82% { opacity: 1; transform: translate(-50%, 0); } 100% { opacity: 0; transform: translate(-50%, 6px); } }
 form.is-busy { opacity: .6; pointer-events: none; }
@@ -1535,7 +1570,7 @@ html:has(body.is-deck), body.is-deck { height: 100%; overflow: hidden; overscrol
 }
 .tagger .lane { display: flex; gap: 8px; width: max-content; }
 .tagger .room-choices::-webkit-scrollbar { display: none; }
-.rr-deckcard.is-done .tagger { opacity: .55; pointer-events: none; }
+/* Filed, the card keeps its topics in reach: a second tap, or an undo, still saves. */
 /* Missing details: Name it, It's gone and the way out, in one row. */
 .rr-deckcard.is-naming .acts form { display: contents; }
 .rr-deckcard.is-naming.is-done .acts { opacity: .55; pointer-events: none; }

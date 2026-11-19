@@ -33,11 +33,11 @@
     <form class="tagger" action="/item/{{ item.id }}/rooms" method="post">
       <input type="hidden" name="next" value="{{ at(here, item.id) }}">
       <fieldset>
-        <legend class="rr-label is-muted">What's it about? Tap one or more</legend>
+        <legend class="rr-label is-muted">What's it about? Each tap is saved</legend>
         {{ topic_lanes(topics or theme_names) }}
       </fieldset>
       <div class="acts">
-        <button class="rr-btn rr-btn--primary" type="submit">{{ icon('check') }}Done</button>
+        <button class="rr-btn rr-btn--primary" type="submit">Next{{ icon('right') }}</button>
         <a class="rr-btn rr-btn--icon" href="{{ browsable_url(item) }}" target="_blank" rel="noopener noreferrer" aria-label="Watch it on {{ platform_label(item.platform) }}">{{ icon('external') }}</a>
         <a class="rr-btn rr-btn--icon" href="/item/{{ item.id }}" aria-label="Everything about this save">{{ icon('right') }}</a>
       </div>
@@ -96,7 +96,7 @@
         {% endfor %}
       </div>
     </div>
-    <footer><button class="rr-btn rr-btn--primary" type="submit">Save topics</button></footer>
+    <footer><p class="said" role="status" aria-live="polite"></p><button class="rr-btn rr-btn--primary" type="submit">Done</button></footer>
   </form>
 {% endcall %}
 {% call sheet('note', 'Your note') %}
