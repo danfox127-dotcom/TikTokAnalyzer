@@ -159,6 +159,15 @@ CREATE TABLE IF NOT EXISTS videos (
     PRIMARY KEY (platform, external_id)
 );
 
+-- What the latest change to the topic rules did: each save it moved, from
+-- which topics to which. Replaced at every re-filing, so you can look it over.
+CREATE TABLE IF NOT EXISTS theme_changes (
+    item_id INTEGER PRIMARY KEY,
+    was     TEXT NOT NULL,
+    became  TEXT NOT NULL,
+    at      TEXT NOT NULL
+);
+
 -- Videos you passed on in Rescue: not asked about again.
 CREATE TABLE IF NOT EXISTS rescue_skipped (
     platform TEXT NOT NULL,

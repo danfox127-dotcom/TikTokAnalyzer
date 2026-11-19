@@ -23,6 +23,8 @@ _WRAPPERS = (
                r"\s*[-–—]\s*.{1,80}?\s+on\s+[A-Z][a-z]+\s+\d{1,2},\s*\d{4}\s*:\s*", re.S),
     # City Desk on Instagram: "...".
     re.compile(r"^\s*.{1,80}?\s+on\s+(?:Instagram|TikTok|Threads)\s*:\s*", re.S),
+    # 3,581 likes: "...": a shorter preview, with no name or date.
+    re.compile(r"^\s*[\d.,]+\s*[KkMm]?\s+likes?(?:,\s*[\d.,]+\s*[KkMm]?\s+comments?)?\s*:\s*"),
     # TikTok's reply videos: "Replying to @someone".
     re.compile(r"^\s*Replying to @[\w.]+\s*", re.I),
 )
@@ -48,14 +50,23 @@ def _unquote(text: str) -> str:
     return text.strip()
 
 
-def clean_caption(text: Optional[str]) -> str:
-    """A caption as a person would write it: no preview wrapper, no hashtag pile."""
-    if not text:
-        return ""
+def unwrap(text: Optional[str]) -> str:
+    """A caption without the link preview's wrapping ("1,204 likes, 31
+    comments - citydesk on March 3, 2024: ..."): the account name and the
+    counts are no part of what the video is about."""
+    text = text or ""
     for wrapper in _WRAPPERS:
         stripped = wrapper.sub("", text, count=1)
         if stripped != text:
             text = _unquote(stripped)
+    return text
+
+
+def clean_caption(text: Optional[str]) -> str:
+    """A caption as a person would write it: no preview wrapper, no hashtag pile."""
+    if not text:
+        return ""
+    text = unwrap(text)
     lines = []
     for line in text.splitlines():
         line = _URL.sub("", line)

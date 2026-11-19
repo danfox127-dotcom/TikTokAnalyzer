@@ -12,6 +12,8 @@
   <h1 class="rr-h-xl">Teach Faves what things are about</h1>
   <p class="lede">It sorts saves by what their captions and hashtags say. Tell it what the hashtags it
     doesn't know mean, and settle the saves it's only guessing about. Every answer re-sorts the whole library.</p>
+  {% if changed %}<a class="rr-notice changes-note" href="/topics/changes">{{ icon('rooms') }}<span><b>The latest topic update moved {{ changed }} {{ 'save' if changed == 1 else 'saves' }}.</b>
+    See what changed, and fix any it got wrong.</span>{{ icon('right') }}</a>{% endif %}
   <ul class="rr-stats tidy-stats">
     <li class="rr-stat"><span class="em" aria-hidden="true">🏷️</span><b>{{ unknown | length }}</b><span>{{ 'hashtag' if unknown | length == 1 else 'hashtags' }} to teach</span></li>
     <li class="rr-stat"><span class="em" aria-hidden="true">🤔</span><b>{{ hunch_count }}</b><span>{{ 'save' if hunch_count == 1 else 'saves' }} filed on a hunch</span></li>
