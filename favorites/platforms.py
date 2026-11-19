@@ -368,7 +368,13 @@ def _youtube_labels(page: str) -> Optional[dict]:
             keywords = _strings(json.loads(m.group(1)))
         except ValueError:
             keywords = []
-    return {"source": "YouTube", "categories": [category.group(1)] if category else [],
+    name = None
+    if category:
+        try:  # as JSON writes it: "News \u0026 Politics"
+            name = json.loads('"' + category.group(1) + '"')
+        except ValueError:
+            name = category.group(1)
+    return {"source": "YouTube", "categories": [name] if name else [],
             "keywords": keywords, "places": []}
 
 
