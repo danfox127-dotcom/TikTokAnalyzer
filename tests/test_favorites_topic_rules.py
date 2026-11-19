@@ -171,7 +171,7 @@ class TestRefiling:
     def test_every_change_to_the_rules_moves_the_generation_on(self):
         # Changed the words or the rules? Add one to GENERATION and put the new
         # VERSION here: an older Faves then can't undo the newer one's work.
-        assert (themes.GENERATION, themes.VERSION) == (5, "6b68011d38e5")
+        assert (themes.GENERATION, themes.VERSION) == (6, "e4c9fe973a67")
 
 
 class TestThePage:
@@ -191,3 +191,49 @@ class TestThePage:
             assert "Lost every topic" in page and "Money &amp; work" in page
             assert f'href="/item/{lost}?rooms=1#rooms"' in page
             assert "The latest topic update moved 2 saves." in client.get("/topics/sort").text
+
+
+class TestAfterTheFirstRefiling:
+    """What the first run over the real library showed (#81's "What changed")."""
+
+    def test_the_new_york_times_is_news_not_new_york(self):
+        credit = ("Locals in Little Tokyo are conflicted as they clean up after the protests."
+                  " Video by Mimi Dwyer/The New York Times")
+        assert about([], credit) == ["News & politics"]
+        assert about([], "“A delicious critique of suburbia.” -The New York Times") == ["Food & cooking"]
+
+    @pytest.mark.parametrize("tags, text, want", [
+        (["nyc", "travel", "newyork", "visitnyc", "nybucketlist"], "A Hidden Tree House in NYC",
+         ["New York", "Travel"]),
+        (["greek", "nyc", "foodie"], "Kiki's in Chinatown, their shrimp pasta is also great",
+         ["Food & cooking", "New York"]),
+        (["foodhack", "foodhacks", "lifehack"], "$3 @Chipotle", ["Food & cooking", "How-to & learning"]),
+        (["movies", "funfacts", "tipsandtricks"], "Did you know this secret!?",
+         ["How-to & learning", "Film & TV"]),
+    ])
+    def test_a_pile_of_hashtags_doesnt_drown_a_second_topic(self, tags, text, want):
+        assert about(tags, text) == want
+
+    def test_but_your_own_choice_still_does(self):
+        ev = themes.weigh(["nyc", "travel"], ["a tree house"], item_id=7,
+                          rules=themes.Rules(item_add={7: {"Home & DIY"}}))
+        assert themes.decide(ev) == ["Home & DIY"]
+
+    def test_an_everyday_word_loses_a_tie(self):
+        text = "Final episode day! Former President Obama and I talk about the podcast"
+        assert about(["podcasting"], text) == ["News & politics"]
+
+    @pytest.mark.parametrize("tags, text", [
+        (["funnytshirts", "game", "mensfashion"], "I admire your luck, Mr Bond"),
+        (["thegameoflove", "nostalgia"], "the summer of 2002"),
+    ])
+    def test_a_game_hashtag_isnt_gaming(self, tags, text):
+        assert "Gaming" not in about(tags, text)
+
+    def test_metaphors(self):
+        assert "Sport & fitness" not in about(["brainfitness", "neuroscience"], "Smart drugs")
+        assert about(["siberianhuskylove", "mydogismytherapist"], "Kodi is feeling better") == ["Dogs"]
+
+    def test_more_ways_in(self):
+        assert themes._tag_hits("howtocutamango")[0] == {"How-to & learning"}
+        assert about(["coverletter"], "Don't submit a cover letter until you do this") == ["Money & work"]
