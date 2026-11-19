@@ -204,8 +204,28 @@ PILE = 10
 #: lower-cased, and the theme each means. Labels that say nothing about a
 #: subject ("Entertainment", "People & Blogs", "Daily Life") map to None and
 #: are skipped; one not listed is read word by word against the vocabulary.
+#: TikTok's come most specific first -- "Software & APPs", "Technology",
+#: "Culture & Education & Technology" -- and only the first that means a
+#: theme counts: the broad ones after it would add topics it isn't about.
 LABEL_THEMES: dict[str, Optional[str]] = {
-    # TikTok
+    # TikTok, as seen on a real library's pages
+    "software & apps": "Science & tech", "professional personal development": "Money & work",
+    "business & finance": "Money & work", "celebrity clips & variety show": "Film & TV",
+    "movies & tv works": "Film & TV", "comics & cartoon, anime": "Film & TV",
+    "fitness & health": "Sport & fitness", "health & wellness": "Wellness",
+    "sports news": "Sport & fitness", "traditional sports": "Sport & fitness",
+    "food display": "Food & cooking", "mukbangs & tasting": "Food & cooking",
+    "singing & instruments": "Music", "finger dance & basic dance": "Dance",
+    "video games": "Gaming", "outfit": "Fashion & beauty", "beauty & style": "Fashion & beauty",
+    "beauty & care": "Fashion & beauty", "hair": "Fashion & beauty",
+    "cars, trucks & motorcycles": "Cars & vehicles", "social issues": "News & politics",
+    "social news": "News & politics", "graphic art": "Art & design", "babies": "Parenting & family",
+    # ...and its broad ones, which say too little to file by
+    "culture & education & technology": None, "entertainment culture": None,
+    "entertainment news": None, "family & relationship": None, "sport & outdoor": None,
+    "singing & dancing": None, "performance": None, "lip-sync": None, "diary & vlog": None,
+    "romance": None, "humanities": None, "recreation facilities": None,
+    # TikTok, older names
     "pets": "Animals & wildlife", "animals": "Animals & wildlife", "comedy": "Comedy & humour",
     "food": "Food & cooking", "cooking": "Food & cooking", "food & drink": "Food & cooking",
     "drinks": "Drinks", "sports": "Sport & fitness", "fitness": "Sport & fitness",
@@ -234,12 +254,15 @@ LABEL_THEMES: dict[str, Optional[str]] = {
 
 def label_themes(label: str) -> set[str]:
     """The themes a platform's label stands for."""
-    key = re.sub(r"\s+", " ", (label or "").strip().lower())
+    # Labels stored before Faves decoded YouTube's JSON say "\u0026" for "&".
+    key = re.sub(r"\s+", " ", (label or "").replace("\\u0026", "&").strip().lower())
     if key in LABEL_THEMES:
         return {LABEL_THEMES[key]} - {None}
     found: set[str] = set()
     for word in _WORD.findall(key):
-        found |= TAG_WORDS.get(_norm(word), set())
+        # Plain words only, and no everyday ones: "Movies & TV works" isn't work.
+        if _norm(word) not in EVERYDAY:
+            found |= ANYWHERE.get(_norm(word), set())
     return found
 
 
@@ -342,8 +365,8 @@ def _rebuild() -> None:
         TAG_WORDS.setdefault(w, set()).update(t)
     _PIECES = _pieces()
     VERSION = hashlib.sha1(json.dumps(
-        [_MATCHING, THEMES, sorted(AFFIXES), PHRASES, HEADS, HEAD_STARTS, sorted(_WHOLE_ONLY),
-         LABEL_THEMES],
+        [_MATCHING, GENERATION, THEMES, sorted(AFFIXES), PHRASES, HEADS, HEAD_STARTS,
+         sorted(_WHOLE_ONLY), LABEL_THEMES],
         sort_keys=True).encode()).hexdigest()[:12]
     _split.cache_clear()
 
@@ -356,7 +379,7 @@ _MATCHING = 5
 #: suite holds it to VERSION, so a change can't ship without it. A library
 #: filed by a higher generation is never refiled by a lower one: an older
 #: Faves still running somewhere doesn't undo a newer one's work.
-GENERATION = 9
+GENERATION = 10
 
 
 @lru_cache(maxsize=4096)
@@ -438,6 +461,7 @@ WEIGHTS = {
     "pile": 2,          # either, in a pile of more than PILE hashtags
     "label": 2,         # the platform's own label for it (TikTok's, YouTube's)
     "keyword": 1,       # its keywords there: TikTok's search suggestions, YouTube tags
+    "place": 2,         # the place it's tagged with there ("Brooklyn Bridge Park")
     "creator": 2,       # the creator's handle says it
     "regular": 2,       # most of this creator's other saves are here
     "note": 3,          # a word in your own note
@@ -571,15 +595,21 @@ def weigh(
         # that say nothing ("Wait for the end 💀").
         source = str(labels.get("source") or "")
         for label in labels.get("categories") or ():
-            for theme in label_themes(str(label)):
+            meant = label_themes(str(label))
+            for theme in meant:
                 add(theme, "label", f"{source}’s own label: “{label}”" if source else f"“{label}”")
+            if meant:
+                break         # the most specific label that means something
         heard: Counter[str] = Counter()
-        for phrase in [*(labels.get("keywords") or ()), *(labels.get("places") or ())]:
+        for phrase in labels.get("keywords") or ():
             for word in {_norm(w) for w in _WORD.findall(_glue(str(phrase)))}:
                 for theme in ANYWHERE.get(word, ()):
                     if heard[theme] < 2 and word not in EVERYDAY:
                         heard[theme] += 1
                         add(theme, "keyword", SAID_AS.get(word, word))
+        for place in labels.get("places") or ():
+            for theme in {t for w in _WORD.findall(_glue(str(place))) for t in ANYWHERE.get(_norm(w), ())}:
+                add(theme, "place", str(place))
     if "Food & cooking" in ev:
         # #chicken on a recipe is dinner; vegetables in it aren't a garden.
         for theme, foods in (("Animals & wildlife", FOOD_ANIMALS), ("Gardening & plants", FOOD_PLANTS)):
@@ -617,10 +647,11 @@ def decide(ev: dict[str, list[tuple[str, str, int]]]) -> list[str]:
     scores = {t: score(e) for t, e in ev.items()}
 
     def too_weak(t: str) -> bool:
-        """Never enough for a second theme: everyday words only, or a single
-        hashtag lost in a pile of them."""
+        """Never enough for a second theme: everyday words only, a single
+        hashtag lost in a pile of them, or a keyword or two among a video's
+        tags ("tiny dancer" on an Elton John video)."""
         kinds = {k for k, _, _ in ev[t]}
-        return kinds <= {"passing"} or (kinds <= {"pile", "passing"} and scores[t] < CERTAIN)
+        return kinds <= {"passing"} or (kinds <= {"pile", "passing", "keyword"} and scores[t] < CERTAIN)
 
     # At a tie, a theme with real evidence leads one with only weak evidence.
     ranked = sorted(scores, key=lambda t: (-scores[t], too_weak(t), order.index(t)))
@@ -631,9 +662,15 @@ def decide(ev: dict[str, list[tuple[str, str, int]]]) -> list[str]:
     bar = top if top >= WEIGHTS["you"] else min(top, CERTAIN)
     kept = [t for t in ranked if scores[t] * 2 >= bar and (t == ranked[0] or not too_weak(t))]
     for broad, narrower in WITHIN.items():
-        if broad in kept and any(n in kept for n in narrower) and not any(
-                k in ("you", "creator rule", "taught") for k, _, _ in ev[broad]):
-            kept.remove(broad)
+        if broad not in kept or any(k in ("you", "creator rule", "taught") for k, _, _ in ev[broad]):
+            continue
+        said = [n for n in narrower if n in ev]
+        if said:
+            # Any sign of which animal ("husky" in its searches, under
+            # TikTok's "Pets") makes it that one.
+            best = max(said, key=lambda n: scores[n])
+            kept = [best if t == broad else t for t in kept if t != best or t == broad]
+            kept = list(dict.fromkeys(kept))
     return kept[:MAX_THEMES]
 
 
@@ -712,7 +749,7 @@ _KIND_WORDS = {
     "compound": "{w}", "pile": "{w}", "creator": "{w}", "regular": "most saves by {w} are here",
     "caption": "“{w}” in the caption", "transcript": "“{w}” said in it",
     "note": "“{w}” in your note", "passing": "“{w}” in the caption",
-    "label": "{w}", "keyword": "“{w}” in its keywords",
+    "label": "{w}", "keyword": "“{w}” in its keywords", "place": "tagged at {w}",
 }
 
 

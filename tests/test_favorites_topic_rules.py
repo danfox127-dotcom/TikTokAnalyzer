@@ -171,7 +171,7 @@ class TestRefiling:
     def test_every_change_to_the_rules_moves_the_generation_on(self):
         # Changed the words or the rules? Add one to GENERATION and put the new
         # VERSION here: an older Faves then can't undo the newer one's work.
-        assert (themes.GENERATION, themes.VERSION) == (9, "8fe8e18da088")
+        assert (themes.GENERATION, themes.VERSION) == (10, "cb3a7201b010")
 
 
 class TestThePage:

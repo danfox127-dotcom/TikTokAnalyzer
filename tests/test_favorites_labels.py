@@ -73,7 +73,7 @@ class TestWeighingThem:
         kept, why = about("Just some information", {"source": "TikTok", "categories": ["Education"],
                                                     "places": ["Brooklyn Bridge Park"]})
         assert kept == ["How-to & learning", "New York"]
-        assert why["New York"] == ["“brooklyn” in its keywords"]
+        assert why["New York"] == ["tagged at Brooklyn Bridge Park"]
 
     def test_pets_on_a_dog_video_is_just_dogs(self):
         found = {"source": "TikTok", "categories": ["Pets"], "keywords": ["husky talking", "funny husky"]}
@@ -161,3 +161,37 @@ class TestThePages:
         with TestClient(web.app) as client:
             page = client.get("/topics/sort").text
         assert "Reading TikTok's and YouTube's own labels:" in page and "1 of 2 saves so far" in page
+
+
+class TestWhatTheRealPagesSaid:
+    """The labels TikTok and YouTube actually sent for the first 180 saves read."""
+
+    @staticmethod
+    def tiktok(*chain, kw=()):
+        return {"source": "TikTok", "categories": list(chain), "keywords": list(kw), "places": []}
+
+    @pytest.mark.parametrize("chain, want", [
+        (("Software & APPs", "Technology", "Culture & Education & Technology"), ["Science & tech"]),
+        (("Professional Personal Development", "Education", "Culture & Education & Technology"),
+         ["Money & work"]),
+        (("Movies & TV works", "Entertainment Culture", "Entertainment"), ["Film & TV"]),
+        (("Celebrity Clips & Variety Show", "Entertainment Culture", "Entertainment"), ["Film & TV"]),
+        (("Mukbangs & Tasting", "Food & Drink", "Lifestyle"), ["Food & cooking"]),
+        (("Comedy", "Performance"), ["Comedy & humour"]),
+        (("Family", "Family & Relationship", "Lifestyle"), ["Parenting & family"]),
+        (("Lip-sync", "Performance", "Entertainment"), []),
+    ])
+    def test_the_most_specific_label_counts(self, chain, want):
+        assert about("Don't miss this one", self.tiktok(*chain))[0] == want
+
+    def test_youtube_categories_read_as_written(self):
+        page = ('ytInitialPlayerResponse = {"videoDetails":{"keywords":["a"]},'
+                '"microformat":{"playerMicroformatRenderer":{"category":"News \\u0026 Politics"}}}')
+        assert platforms.get("youtube").labels_from_page(page)["categories"] == ["News & Politics"]
+        assert themes.label_themes("People \\u0026 Blogs") == set()          # stored before the fix
+        assert themes.label_themes("Howto \\u0026 Style") == {"How-to & learning"}
+
+    def test_a_few_tags_dont_add_a_topic(self):
+        found = {"source": "YouTube", "categories": ["Music"],
+                 "keywords": ["elton tiny dancer", "tiny dancer", "rocketman"]}
+        assert about("Elton John - I Want Love", found)[0] == ["Music"]
