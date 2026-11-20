@@ -5,13 +5,13 @@
 {% if filters.narrowing() or filters.q %}{% set back = '/search' %}{% set back_label = 'Search' %}{% set here = heading %}{% else %}{% set here = 'Search' %}{% endif %}
 {% block title %}{{ heading }} · Faves{% endblock %}
 
-{#- The filter column on wide screens. Every option is a plain link, so Back
-    undoes a filter and any view can be bookmarked. -#}
+{#- A group's filters, each a titled list. Every option is a plain link. -#}
 {% macro facet_list(facets, hash='') %}
   {% for facet in facets %}
     <section class="rr-facet" id="f-{{ facet.name }}{{ '-m' if hash }}">
       <h3 class="rr-label">{{ facet.title }}</h3>
-      {% set shown = 8 if facet.options | length > 10 else facet.options | length %}
+      {#- A sheet has room: every topic shows, and only a very long list folds. -#}
+      {% set shown = 36 if facet.options | length > 40 else facet.options | length %}
       <ul>{% for o in facet.options[:shown] %}{{ option(o, hash, facet.name) }}{% endfor %}</ul>
       {% if facet.options | length > shown %}
         <details class="facet-more">
@@ -43,17 +43,56 @@
       <button class="rr-btn rr-btn--primary" type="submit">Search</button>
     </label>
   </form>
+</section>
 
-  <h1 class="rr-h-l">{{ heading }}</h1>
-  <p class="rr-muted count-line">{{ subheading }}</p>
-  {% if elsewhere %}
-    <div class="elsewhere">
-      {% if saved_on | length > 1 %}<p class="rr-muted">You've saved from them on {{ saved_on[:-1] | join(', ') }} and {{ saved_on[-1] }}.</p>{% endif %}
-      <ul class="rr-pills" aria-label="Find them on">
-        {% for l in elsewhere %}<li><a class="rr-pill{% if l.saved %} is-hook{% endif %}" href="{{ l.href }}" target="_blank" rel="noopener noreferrer"><span class="rr-emoji" aria-hidden="true">{{ l.emoji }}</span>{{ l.label }}{% if l.saved %} <span class="n" title="You've saved from them here">✓</span>{% endif %}{{ icon('external') }}</a></li>{% endfor %}
-      </ul>
+{#- One row of filter buttons. Each is a <details>: it opens as a sheet from
+    the bottom on a phone, a panel on a wide screen, with no script at all;
+    museum.js closes it on the scrim and reopens it after a pick (#f-…), so
+    several can be chosen in a row. Every option is a plain link, so Back
+    undoes a filter and any view can be bookmarked. -#}
+{% if groups %}
+<div class="rr-toolbar">
+  <div class="filter-row" role="group" aria-label="Narrow it down">
+    {% for g in groups %}
+    <details class="filter-pill" id="f-{{ g.key }}">
+      <summary class="rr-pill{% if g.active %} is-on{% endif %}"><span class="t">{{ g.shown }}</span>{{ icon('down') }}</summary>
+      <div class="rr-sheet-wrap">
+        <a class="rr-sheet-scrim" href="{{ filters.href(page=filters.page) }}" aria-label="Close"></a>
+        <div class="rr-sheet" role="dialog" aria-labelledby="f-{{ g.key }}-title">
+          <div class="grab" aria-hidden="true"></div>
+          <header><h2 id="f-{{ g.key }}-title">{{ g.label }}</h2>
+            <a class="rr-btn rr-btn--icon rr-btn--quiet" href="{{ filters.href(page=filters.page) }}" data-close aria-label="Close">{{ icon('close') }}</a></header>
+          <div class="body">
+            {{ facet_list(g.facets, '#f-' ~ g.key) }}
+            {% if g.key == 'topic' %}<a class="every" href="/browse">Every topic at a glance{{ icon('right') }}</a>{% endif %}
+            {% if g.key == 'creator' %}<a class="every" href="/browse/creators">Every creator, A to Z{{ icon('right') }}</a>{% endif %}
+          </div>
+          <footer>
+            {% if g.active %}<a class="rr-btn rr-btn--quiet" href="{{ g.clear }}">Clear</a>{% endif %}
+            <a class="rr-btn rr-btn--primary" href="{{ filters.href(page=filters.page) }}" data-close>Show {{ found }} {{ 'save' if found == 1 else 'saves' }}</a>
+          </footer>
+        </div>
+      </div>
+    </details>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+<section class="explore-summary">
+  <div class="summary-row">
+    <div class="said">
+      <h1 class="rr-h-l">{{ heading }}</h1>
+      <p class="rr-muted count-line">{{ subheading }}</p>
     </div>
-  {% endif %}
+    {% if items %}
+    <nav class="rr-seg sorts" aria-label="Order">
+      {% for key, label in sorts.items() if key != 'relevance' or filters.q %}
+        <a href="{{ filters.href(sort=key) }}"{% if filters.order == key %} aria-current="true"{% endif %}>{{ label }}</a>
+      {% endfor %}
+    </nav>
+    {% endif %}
+  </div>
 
   {% if chips or filters.q %}
     <ul class="rr-pills is-scroll chips" aria-label="Active filters">
@@ -64,6 +103,17 @@
       {% if (chips | length) + (1 if filters.q else 0) > 1 %}<li class="clear"><a class="rr-pill clear-all" href="/search">Clear all</a></li>{% endif %}
     </ul>
   {% endif %}
+
+  {% if elsewhere %}
+    <div class="elsewhere">
+      {% if saved_on | length > 1 %}<p class="rr-muted">You've saved from them on {{ saved_on[:-1] | join(', ') }} and {{ saved_on[-1] }}.</p>{% endif %}
+      <ul class="rr-pills" aria-label="Find them on">
+        {% for l in elsewhere %}<li><a class="rr-pill{% if l.saved %} is-hook{% endif %}" href="{{ l.href }}" target="_blank" rel="noopener noreferrer"><span class="rr-emoji" aria-hidden="true">{{ l.emoji }}</span>{{ l.label }}{% if l.saved %} <span class="n" title="You've saved from them here">✓</span>{% endif %}{{ icon('external') }}</a></li>{% endfor %}
+      </ul>
+    </div>
+  {% endif %}
+
+  {% if items %}<a class="rr-btn rr-btn--primary swipe-these" href="{{ filters.deck_href() }}">{{ icon('up') }}Swipe through{% if filters.narrowing() or filters.q %} these{% endif %}</a>{% endif %}
 </section>
 
 {% if items and filters.theme | lower == 'undefined' %}
@@ -71,45 +121,7 @@
     Swipe through them, tap a topic or two, and it moves on to the next.</span>{{ icon('right') }}</a>
 {% endif %}
 
-<div class="rr-toolbar">
-  {#- On a phone the filters open as a sheet from the bottom. It is a
-      <details>, so it opens and works with no script at all; museum.js only
-      adds closing on the scrim and keeping it open while you pick. -#}
-  <details class="rr-filters-mobile" id="filters">
-    <summary class="rr-btn">{{ icon('filter') }}Filters{% if chips %} <span class="rr-badge-count">{{ chips | length }}</span>{% endif %}</summary>
-    <div class="rr-sheet-wrap">
-      <a class="rr-sheet-scrim" href="{{ filters.href(page=filters.page) }}" aria-label="Close filters"></a>
-      <div class="rr-sheet" role="dialog" aria-label="Filters">
-        <div class="grab" aria-hidden="true"></div>
-        <header><h2>Filters</h2>
-          <a class="rr-btn rr-btn--icon rr-btn--quiet" href="{{ filters.href(page=filters.page) }}" data-close aria-label="Close">{{ icon('close') }}</a></header>
-        <nav class="tabs" aria-label="Filter groups">
-          {% for facet in facets %}<a href="#f-{{ facet.name }}-m"{% if loop.first %} aria-selected="true"{% endif %}>{{ facet.title }}{% if facet.active %}<sup>1</sup>{% endif %}</a>{% endfor %}
-        </nav>
-        <div class="body">{{ facet_list(facets, '#filters') }}</div>
-        <footer>
-          {% if chips %}<a class="rr-btn rr-btn--quiet" href="{{ filters.href(**dict.fromkeys(filters.narrowing().keys())) }}">Clear</a>{% endif %}
-          <a class="rr-btn rr-btn--primary" href="{{ filters.href(page=filters.page) }}">Show {{ found }} {{ 'save' if found == 1 else 'saves' }}</a>
-        </footer>
-      </div>
-    </div>
-  </details>
-  {% if items %}<a class="rr-btn swipe-these" href="{{ filters.deck_href() }}">{{ icon('up') }}Swipe through{% if filters.narrowing() or filters.q %} these{% endif %}</a>{% endif %}
-  <span class="grow"></span>
-  {% if items %}
-  <nav class="rr-seg sorts" aria-label="Order">
-    {% for key, label in sorts.items() if key != 'relevance' or filters.q %}
-      <a href="{{ filters.href(sort=key) }}"{% if filters.order == key %} aria-current="true"{% endif %}>{{ label }}</a>
-    {% endfor %}
-  </nav>
-  {% endif %}
-</div>
-
 <div class="explore">
-  <aside class="filters-side rr-facets" aria-label="Filters">
-    {{ facet_list(facets) }}
-  </aside>
-
   <div class="explore-results">
     {% if items %}
       {{ salon(items) }}
@@ -121,6 +133,7 @@
         </nav>
       {% endif %}
       {% if pull %}{{ threads(pull, 'Keep pulling the thread') }}{% endif %}
+      <a class="browse-door" href="/browse">{{ icon('grid') }}<span>Looking for a topic or a creator? <b>Browse them all</b></span>{{ icon('right') }}</a>
     {% else %}
       <div class="rr-empty nothing-here">
         <div class="big" aria-hidden="true">🍦</div>
