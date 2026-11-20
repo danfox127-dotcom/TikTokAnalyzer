@@ -314,7 +314,7 @@ class TestUndefinedOnThePages:
 
     def test_the_filter_page_offers_it(self, client):
         page = client.get("/search").text
-        assert '<li class="undefined"><a href="/search?theme=Undefined">' in page
+        assert '<li class="undefined"><a href="/search?theme=Undefined#f-topic">' in page
         page = client.get("/search", params={"theme": "Undefined"}).text
         assert "Undefined saves" in page and "you have to see this one" in page
         assert "Tomato salad" not in page
@@ -413,7 +413,7 @@ def test_the_phone_filter_sheet_opens_over_the_whole_screen():
     import re
     from pathlib import Path
     css = (Path(explore.__file__).parent / "static" / "style.css").read_text()
-    rule = re.search(r"\.rr-toolbar:has\(> \.rr-filters-mobile\[open\]\)\s*\{([^}]*)\}", css)
+    rule = re.search(r"\.rr-toolbar:has\(\.filter-pill\[open\]\)\s*\{([^}]*)\}", css)
     assert rule, "nothing undoes the frosted toolbar while the filter sheet is open"
     assert "backdrop-filter: none" in rule.group(1)
     above = int(re.search(r"z-index:\s*(\d+)", rule.group(1)).group(1))

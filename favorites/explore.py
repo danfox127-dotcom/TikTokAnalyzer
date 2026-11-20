@@ -452,7 +452,7 @@ def _with_undefined(conn, f: Filters, facet: Optional[Facet]) -> Optional[Facet]
     undefined = Option(value=UNDEFINED, label=UNDEFINED, count=int(n), kind="undefined",
                        href=f.href(theme=None if active else UNDEFINED), active=active)
     if facet is None:
-        return Facet(name="theme", title="Themes", options=[undefined])
+        return Facet(name="theme", title="Topics", options=[undefined])
     facet.options = [undefined] + [o for o in facet.options if o.value != UNDEFINED]
     return facet
 
@@ -507,7 +507,7 @@ def facets(conn: sqlite3.Connection, f: Filters, today: Optional[str] = None) ->
         " max(coalesce(i.creator_name, '')) AS x"),
         label=lambda v, name: name or v, limit=TOP["creator"]))
 
-    out.append(_with_undefined(conn, f, _facet(f, "theme", "Themes", _grouped(
+    out.append(_with_undefined(conn, f, _facet(f, "theme", "Topics", _grouped(
         conn, f, "theme", "j.value AS v, count(DISTINCT i.id) AS n, '' AS x",
         joins=", json_each(i.themes) j"), limit=TOP["theme"])))
 
@@ -565,6 +565,42 @@ def facets(conn: sqlite3.Connection, f: Filters, today: Optional[str] = None) ->
             facet.options = [o for o in facet.options
                              if o.active or (o.count >= 2 and not tagging.is_noise(o.value))]
     return [x for x in out if x and x.options]
+
+
+#: Search's row of filter buttons, in the order people reach for them: each
+#: opens the filters it gathers (facet names), and only those with options show.
+GROUPS = (
+    ("topic", "Topic", ("theme", "tag")),
+    ("creator", "Creator", ("creator",)),
+    ("when", "When", ("day", "year", "season")),
+    ("from", "From", ("platform", "format", "length")),
+    ("yours", "Yours", ("collection", "noted")),
+)
+
+
+@dataclass
+class Group:
+    key: str
+    label: str
+    facets: list[Facet]
+    shown: str     # the button's words: its name, or what's chosen in it
+    active: bool
+    clear: str     # this view without any of the group's filters
+
+
+def groups(f: Filters, found: list[Facet]) -> list[Group]:
+    """The filter buttons for this view (:data:`GROUPS`)."""
+    by_name = {x.name: x for x in found}
+    out = []
+    for key, label, names in GROUPS:
+        facets = [by_name[n] for n in names if n in by_name]
+        if not facets:
+            continue
+        chosen = [x.active for x in facets if x.active]
+        shown = chosen[0].label if len(chosen) == 1 else f"{label} · {len(chosen)}" if chosen else label
+        off = {n: None for n in names} | ({"week": None} if "day" in names else {})
+        out.append(Group(key, label, facets, shown, bool(chosen), f.href(**off)))
+    return out
 
 
 def chips(f: Filters, found: list[Facet]) -> list[tuple[str, str]]:

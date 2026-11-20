@@ -979,6 +979,7 @@ def search_page(request: Request, conn: sqlite3.Connection = Depends(get_db)):
         "found": found,
         "filters": f,
         "facets": facets,
+        "groups": explore.groups(f, facets),
         "chips": explore.chips(f, facets),
         "pull": explore.pull(f, facets, items) if items else [],
         "elsewhere": elsewhere,

@@ -81,32 +81,24 @@
     paint();
   }
 
-  /* ---- the phone filter sheet ---- */
+  /* ---- Search's filter buttons ----
+     Each is a <details> that opens as a sheet (a panel on a wide screen).
+     One open at a time; the scrim, the close button and Escape close it;
+     picking an option reloads with its #f-… and it opens again, so several
+     can be chosen in a row. */
   function sheet(details) {
-    var body = details.querySelector('.rr-sheet .body');
-    var tabs = Array.prototype.slice.call(details.querySelectorAll('.tabs a'));
-    function lock() { document.documentElement.classList.toggle('rr-sheet-open', details.open); }
-    details.addEventListener('toggle', lock);
-    // Picking an option reloads with #filters: reopen, so several can be chosen in a row.
-    if (location.hash === '#filters') { details.open = true; lock(); }
+    function lock() {
+      document.documentElement.classList.toggle('rr-sheet-open', !!document.querySelector('.filter-pill[open]'));
+    }
+    details.addEventListener('toggle', function () {
+      if (details.open) document.querySelectorAll('.filter-pill[open]').forEach(function (d) { if (d !== details) d.open = false; });
+      lock();
+    });
+    if (location.hash === '#' + details.id) { details.open = true; lock(); }
     details.querySelectorAll('.rr-sheet-scrim, [data-close]').forEach(function (a) {
       a.addEventListener('click', function (e) { e.preventDefault(); details.open = false; history.replaceState(null, '', location.pathname + location.search); });
     });
     document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && details.open) details.open = false; });
-    tabs.forEach(function (a) {
-      a.addEventListener('click', function (e) {
-        var target = body && body.querySelector(a.getAttribute('href'));
-        if (!target) return;
-        e.preventDefault();
-        body.scrollTo({ top: target.offsetTop - body.offsetTop - 8, behavior: 'smooth' });
-        tabs.forEach(function (x) { x.setAttribute('aria-selected', x === a ? 'true' : 'false'); });
-      });
-    });
-    if (body) body.addEventListener('scroll', function () {
-      var top = body.scrollTop + 24, on = tabs[0];
-      tabs.forEach(function (a) { var s = body.querySelector(a.getAttribute('href')); if (s && s.offsetTop - body.offsetTop <= top) on = a; });
-      tabs.forEach(function (x) { x.setAttribute('aria-selected', x === on ? 'true' : 'false'); });
-    }, { passive: true });
   }
 
   /* ---- suggestions under the search field ---- */
@@ -911,7 +903,7 @@
       if (img.complete && img.naturalWidth === 0 && img.getAttribute('src')) broken(img);
     });
     document.querySelectorAll('.rr-carousel').forEach(carousel);
-    document.querySelectorAll('.rr-filters-mobile').forEach(sheet);
+    document.querySelectorAll('.filter-pill').forEach(sheet);
     document.querySelectorAll('form[data-suggest]').forEach(suggest);
     arrive(false);
     document.addEventListener('click', goBack);

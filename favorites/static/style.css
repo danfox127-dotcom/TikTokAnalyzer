@@ -132,7 +132,6 @@
   --rail-card-desktop: 220px;
   --band-overlap: 36px;
   --content-max: 1280px;
-  --facet-rail: 248px;
   --font-display: "Fredoka", "Baloo 2", "Arial Rounded MT Bold", ui-rounded, system-ui, sans-serif;
   --font-sans: "Nunito", ui-rounded, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
@@ -690,13 +689,13 @@ body { margin: 0; }
 .rr-band .inner > .rr-reveal + .rr-reveal { margin-top: 20px; }
 
 /* Blocks that do not carry their own gutter get the page's. */
-.rr-page > main > :where(.digest, .browse-more, .explore-head, .rr-toolbar, .explore, .page-head,
+.rr-page > main > :where(.digest, .browse-more, .explore-head, .explore-summary, .rr-toolbar, .explore, .page-head,
   .page-grid, .pending-notice, .rr-notice, .placard-run, .undefined-note, .empty, .rr-empty, .pager,
   .conn-title, .conn-group, .conn-foot, .st) {
   margin-left: 16px; margin-right: 16px;
 }
 @container rr (min-width: 760px) {
-  .rr-page > main > :where(.digest, .browse-more, .explore-head, .rr-toolbar, .explore, .page-head,
+  .rr-page > main > :where(.digest, .browse-more, .explore-head, .explore-summary, .rr-toolbar, .explore, .page-head,
     .page-grid, .pending-notice, .rr-notice, .placard-run, .undefined-note, .empty, .rr-empty, .pager,
     .conn-title, .conn-group, .conn-foot, .st) {
     margin-left: 32px; margin-right: 32px;
@@ -845,18 +844,44 @@ main.is-bands > .browse-head { padding-bottom: calc(var(--band-overlap) + 24px);
 
 /* ---- search page ---- */
 .explore-head { padding-top: 20px; }
-.explore-head .rr-search { max-width: 720px; margin-bottom: 20px; }
+.explore-head .rr-search { max-width: 720px; margin-bottom: 12px; }
 .explore-head .rr-search-field { min-height: 52px; }
-.explore-head .count-line { margin: 4px 0 12px; }
-.explore-head .chips .clear-all { border-color: transparent; background: none; color: var(--ink-muted); }
 
 .explore { display: block; }
-.filters-side { display: none; }
-@container rr (min-width: 960px) {
-  .explore { display: grid; grid-template-columns: var(--facet-rail) minmax(0, 1fr); gap: 40px; align-items: start; }
-  .filters-side { display: flex; position: sticky; top: 84px; max-height: calc(100vh - 100px); overflow-y: auto; padding: 4px 6px 24px 0; scrollbar-width: thin; }
-  .rr-filters-mobile { display: none; }
+
+/* ---- Search: one row of filter buttons, then what they found ---- */
+.filter-row { flex: 1; min-width: 0; display: flex; gap: 8px; margin: 0 -16px; padding: 2px 16px 4px; overflow-x: auto; scrollbar-width: none; }
+.filter-row::-webkit-scrollbar { display: none; }
+@container rr (min-width: 760px) { .filter-row { flex-wrap: wrap; overflow: visible; margin: 0; padding: 2px 0 4px; } }
+.filter-pill { flex: none; }
+.filter-pill > summary { list-style: none; cursor: pointer; gap: 4px; padding-right: 10px; }
+.filter-pill > summary::-webkit-details-marker { display: none; }
+.filter-pill > summary .t { max-width: 170px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.filter-pill > summary .rr-icon { width: 16px; height: 16px; }
+.filter-pill[open] > summary { background: var(--accent-soft); border-color: var(--accent-ink); }
+.rr-sheet .every { display: inline-flex; align-items: center; gap: 6px; min-height: var(--tap-min); font: 800 14px/20px var(--font-sans); color: var(--accent-ink); text-decoration: none; }
+.rr-sheet .every .rr-icon { width: 16px; height: 16px; }
+/* Wide, a button's filters open as a panel near the top rather than a sheet from the bottom. */
+@container rr (min-width: 760px) {
+  .filter-pill .rr-sheet-scrim { background: rgba(26, 16, 50, .18); }
+  .filter-pill .rr-sheet { left: 50%; right: auto; top: 96px; bottom: auto; width: min(640px, calc(100% - 64px)); max-height: min(72vh, 720px); transform: translateX(-50%); border-radius: var(--radius-lg); }
+  .filter-pill .rr-sheet .grab { display: none; }
 }
+.explore-summary { padding-top: 14px; }
+.summary-row { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 8px 16px; }
+.summary-row .said { min-width: 0; }
+.explore-summary .count-line { margin: 4px 0 0; }
+.explore-summary .chips { margin-top: 12px; }
+.explore-summary .chips .clear-all { border-color: transparent; background: none; color: var(--ink-muted); }
+.explore-summary .swipe-these { margin-top: 14px; width: 100%; justify-content: center; }
+@container rr (min-width: 760px) { .explore-summary .swipe-these { width: auto; } }
+.browse-door {
+  display: flex; align-items: center; gap: 12px; margin: 28px 0 8px; padding: 14px 16px; border-radius: var(--radius-md);
+  background: var(--band-sky); color: var(--ink); text-decoration: none; font: 700 15px/21px var(--font-sans);
+}
+.browse-door > .rr-icon { color: var(--band-sky-ink); }
+.browse-door span { flex: 1; }
+.browse-door b { color: var(--band-sky-ink); font-weight: 800; }
 .rr-facet .opt-label { display: inline-flex; align-items: center; gap: 6px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .rr-facet .opt-label .rr-icon { width: 16px; height: 16px; color: var(--accent-ink); }
 .rr-facet li.undefined .opt-label { font-style: italic; }
@@ -865,12 +890,10 @@ main.is-bands > .browse-head { padding-bottom: calc(var(--band-overlap) + 24px);
 .rr-facet .facet-more summary::-webkit-details-marker { display: none; }
 .rr-facet .facet-more[open] summary { color: var(--ink-muted); }
 
-/* The phone filter sheet: a <details> whose contents become a bottom sheet. */
-.rr-filters-mobile > summary { list-style: none; }
-.rr-filters-mobile > summary::-webkit-details-marker { display: none; }
+/* A filter button's sheet: a <details> whose contents become a bottom sheet. */
 .rr-sheet-wrap { display: none; }
-.rr-filters-mobile[open] .rr-sheet-wrap { display: block; position: fixed; inset: 0; z-index: 60; }
-.rr-filters-mobile[open] .rr-sheet { animation: rr-rise .22s cubic-bezier(.2, .7, .3, 1); }
+.filter-pill[open] .rr-sheet-wrap { display: block; position: fixed; inset: 0; z-index: 60; }
+.filter-pill[open] .rr-sheet { animation: rr-rise .22s cubic-bezier(.2, .7, .3, 1); }
 @keyframes rr-rise { from { transform: translateY(24px); opacity: .6; } to { transform: none; opacity: 1; } }
 .rr-sheet .tabs a {
   flex: none; display: inline-flex; align-items: center; min-height: 38px; padding: 0 14px; border-radius: var(--radius-pill);
@@ -1575,7 +1598,7 @@ form.is-busy { opacity: .6; pointer-events: none; }
   /* Open, the filter sheet covers the screen. A backdrop-filter would make this
      toolbar its frame (a filtered box holds its fixed descendants), and the
      toolbar's own layer would sit under the masthead and tab bar. */
-  .rr-page > main > .rr-toolbar:has(> .rr-filters-mobile[open]) { backdrop-filter: none; z-index: 60; }
+  .rr-page > main > .rr-toolbar:has(.filter-pill[open]) { backdrop-filter: none; z-index: 60; }
 }
 .swipe-these { min-height: 46px; }
 .tag-them { margin: 4px 0 6px; align-items: center; background: var(--band-mint); }
