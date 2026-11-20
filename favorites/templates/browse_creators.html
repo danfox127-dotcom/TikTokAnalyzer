@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% from "_icons.html" import icon %}
+{% from "_browse.html" import browse_head, notice %}
+{% set nav = 'browse' %}
+{% block title %}Creators · Browse · Faves{% endblock %}
+{% block content %}
+
+{{ browse_head(tab, total, topic_total, creator_total) }}
+
+{#- A creator's picture is their initials, in a colour of their own, until
+    Faves has one. -#}
+{% macro avatar(c, size='') -%}
+<span class="avatar tone-{{ c.tone }}{% if size %} is-{{ size }}{% endif %}" aria-hidden="true">{{ c.name | initials }}</span>
+{%- endmacro %}
+
+<section class="browse-body">
+  <form class="browse-find" action="/browse/creators" method="get" role="search">
+    <label class="rr-search-field">{{ icon('search') }}<span class="rr-sr">Find a creator</span>
+      <input type="search" name="q" value="{{ words }}" placeholder="Find a creator by name or @handle"
+             autocomplete="off" autocapitalize="none" spellcheck="false"></label>
+  </form>
+
+  {% if no_creator and not words %}
+    {{ notice(no_creator, '/browse/creators/missing',
+              ('Save' if no_creator == 1 else 'Saves') ~ ' missing a creator',
+              'Open ' ~ ('it' if no_creator == 1 else 'one') ~ ' and add who made it') }}
+  {% endif %}
+
+  {% if words %}
+    {% set found = regulars | length + others | length %}
+    <p class="browse-found">{{ found }} {{ 'creator matches' if found == 1 else 'creators match' }} “{{ words }}”
+      <a href="/browse/creators">Show everyone</a></p>
+  {% endif %}
+
+  {% if regulars %}
+  <div class="browse-sub">
+    <h2 class="rr-h-m">Your regulars</h2>
+    {% if not words %}
+    <nav class="rr-seg" aria-label="Order">
+      <a href="/browse/creators"{% if not sort %} aria-current="true"{% endif %}>Most saves</a>
+      <a href="/browse/creators?sort=az"{% if sort %} aria-current="true"{% endif %}>A–Z</a>
+    </nav>
+    {% endif %}
+  </div>
+  <p class="browse-line">{{ regular_total }} {{ 'creator' if regular_total == 1 else 'creators' }} you've saved from more than once</p>
+  <ul class="creator-grid">
+    {% for c in regulars %}
+      <li><a class="creator-card" href="{{ c.href }}">
+        {{ avatar(c, 'big') }}
+        <span class="name">{{ c.name }}</span>
+        {% if c.handle %}<span class="handle">{{ c.handle }}</span>{% endif %}
+        <span class="n tone-{{ c.tone }}">{{ c.count }} saves</span>
+      </a></li>
+    {% endfor %}
+  </ul>
+  {% if regulars | length < regular_total %}
+    <a class="rr-btn browse-all" href="/browse/creators?all=1{% if sort %}&amp;sort=az{% endif %}">Show all {{ regular_total }}</a>
+  {% endif %}
+  {% endif %}
+
+  {% if others or (letters and not words) %}
+  <h2 class="rr-h-m browse-everyone" id="everyone">Everyone else</h2>
+  <p class="browse-line">{{ '{:,}'.format(other_total) }} {{ 'creator' if other_total == 1 else 'creators' }} you've saved from once, A to Z by handle</p>
+  {% if not words %}
+    <nav class="browse-letters" aria-label="Jump to a letter">
+      {%- for l in letters %}<a href="/browse/creators?letter={{ l | urlencode }}#everyone"{% if l == letter %} aria-current="true"{% endif %}>{{ l | upper }}</a>{% endfor -%}
+    </nav>
+  {% endif %}
+  <ul class="creator-list">
+    {% for c in others %}
+      <li><a href="{{ c.href }}">
+        {{ avatar(c) }}
+        <span class="t"><b>{{ c.name }}</b><span>{{ c.handle or '' }}{% if c.handle and c.platform %} · {% endif %}{{ c.platform }}</span></span>
+        {{ icon('right') }}
+      </a></li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+
+  {% if words and not regulars and not others %}
+    <div class="rr-empty">
+      <div class="big" aria-hidden="true">🍦</div>
+      <h2 class="rr-h-m">Nobody by that name.</h2>
+      <p>Try part of their name or handle, or <a href="/search?q={{ words | urlencode }}">search every save for “{{ words }}”</a>.</p>
+    </div>
+  {% endif %}
+</section>
+{% endblock %}

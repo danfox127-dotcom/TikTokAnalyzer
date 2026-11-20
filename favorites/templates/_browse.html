@@ -1,0 +1,42 @@
+{% from "_icons.html" import icon %}
+
+{#- Browse's heading and its three ways in: by topic, by creator, by date. -#}
+{% macro browse_head(tab, total, topic_total, creator_total) %}
+<header class="browse-head">
+  <h1 class="rr-h-l">Browse</h1>
+  <p class="count-line">{{ '{:,}'.format(total) }} {{ 'save' if total == 1 else 'saves' }}
+    · {{ topic_total }} {{ 'topic' if topic_total == 1 else 'topics' }}
+    · {{ '{:,}'.format(creator_total) }} {{ 'creator' if creator_total == 1 else 'creators' }}</p>
+  <nav class="browse-tabs" aria-label="Browse by">
+    {%- for key, label, href, ic in (('topics', 'Topics', '/browse', 'grid'),
+                                     ('creators', 'Creators', '/browse/creators', 'person'),
+                                     ('dates', 'Dates', '/browse/dates', 'calendar')) %}
+    <a href="{{ href }}"{% if tab == key %} aria-current="page"{% endif %}>{{ icon(ic) }}{{ label }}</a>
+    {%- endfor %}
+  </nav>
+</header>
+{% endmacro %}
+
+{#- A count with the one thing to do about it: the saves with no topic, or no creator. -#}
+{% macro notice(n, href, title, sub) %}
+<a class="browse-notice" href="{{ href }}">
+  <span class="n" aria-hidden="true">{{ n }}</span>
+  <span class="t"><b>{{ title }}</b><span>{{ sub }}</span></span>{{ icon('right') }}
+</a>
+{% endmacro %}
+
+{#- The pages that aren't a topic, a creator or a date, one tap each. -#}
+{% macro ways_in(year_now) %}
+<div class="browse-ways">
+  <h2 class="rr-label is-muted">More ways in</h2>
+  <ul class="rr-pills">
+    <li><a class="rr-pill is-hook" href="/rewind">{{ icon('play') }}Rewind</a></li>
+    <li><a class="rr-pill is-hook" href="/stats">{{ icon('filter') }}Your TikTok stats</a></li>
+    <li><a class="rr-pill is-hook" href="/rescue">🛟 Rescue forgotten saves</a></li>
+    <li><a class="rr-pill is-hook" href="/known">{{ icon('shield') }}What TikTok knows</a></li>
+    <li><a class="rr-pill is-hook" href="/year">{{ icon('spark') }}Your {{ year_now }}</a></li>
+    <li><a class="rr-pill is-hook" href="/wander">{{ icon('compass') }}Rabbit hole</a></li>
+    <li><a class="rr-pill is-hook" href="/topics/sort">{{ icon('filter') }}Sort things out</a></li>
+  </ul>
+</div>
+{% endmacro %}

@@ -516,6 +516,66 @@ def _covers(entries: list[dict], n: int = 3) -> list[dict]:
     return chosen
 
 
+# ---- Browse: every topic and every creator, at a glance ----------------------
+
+#: Who made a save: its handle (a bare "@" is no handle), else its creator's
+#: name; NULL when Faves doesn't know.
+CREATOR_KEY = "coalesce(nullif(nullif(creator_handle, '@'), ''), nullif(creator_name, ''))"
+
+#: Saves that have no topic yet.
+NO_TOPIC = f"{RESOLVED} AND json_array_length(coalesce(nullif(themes, ''), '[]')) = 0"
+
+
+def topic_counts(conn: sqlite3.Connection) -> list[dict]:
+    """Every topic with a save in it, biggest first: Browse's grid."""
+    rows = conn.execute(
+        f"SELECT j.value AS theme, count(*) AS n FROM items, json_each(items.themes) j"
+        f" WHERE {RESOLVED} GROUP BY j.value ORDER BY n DESC, j.value").fetchall()
+    return [{"theme": r["theme"], "count": int(r["n"]), "href": "/search?" + urlencode({"theme": r["theme"]})}
+            for r in rows]
+
+
+def creator_count(conn: sqlite3.Connection) -> int:
+    return int(conn.execute(
+        f"SELECT count(DISTINCT {CREATOR_KEY}) FROM items WHERE {RESOLVED}").fetchone()[0])
+
+
+def no_creator(conn: sqlite3.Connection) -> list[sqlite3.Row]:
+    """Saves Faves knows everything about but who made them, newest first."""
+    return conn.execute(f"SELECT * FROM items WHERE {RESOLVED} AND {CREATOR_KEY} IS NULL"
+                        " ORDER BY saved_at DESC, id DESC").fetchall()
+
+
+def _letter(sort_key: str) -> str:
+    first = sort_key[:1]
+    return first if "a" <= first <= "z" else "#"
+
+
+def creator_index(conn: sqlite3.Connection) -> list[dict]:
+    """Everyone you've saved from, one entry each: name, handle, how many
+    saves, the latest, and where it sorts from A to Z (by handle, which is
+    plain letters where a display name can be all emoji)."""
+    from zlib import crc32
+    rows = conn.execute(
+        f"SELECT {CREATOR_KEY} AS k, max(creator_name) AS name, max(nullif(creator_handle, '@')) AS handle,"
+        f" count(*) AS n, max(saved_at) AS latest, max(platform) AS platform"
+        f" FROM items WHERE {RESOLVED} AND {CREATOR_KEY} IS NOT NULL GROUP BY {CREATOR_KEY}").fetchall()
+    tones = ("sky", "mint", "butter", "peach", "pink", "lilac")
+    out = []
+    for r in rows:
+        name, handle = (r["name"] or "").strip() or None, r["handle"] or None
+        sort_key = (handle or name or "").lstrip("@").strip().lower()
+        out.append({
+            "key": r["k"], "name": name or handle, "handle": handle if name else None,
+            "count": int(r["n"]), "latest": r["latest"] or "",
+            "platform": platform_label(r["platform"]) if r["platform"] else "",
+            "tone": tones[crc32(r["k"].encode()) % len(tones)],
+            "href": f"/creator/{quote(r['k'], safe='')}",
+            "sort_key": sort_key, "letter": _letter(sort_key),
+        })
+    return out
+
+
 def room_count(conn: sqlite3.Connection) -> int:
     """How many topics :func:`rooms` would list, without building them."""
     return int(conn.execute(
