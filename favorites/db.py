@@ -96,6 +96,17 @@ CREATE TABLE IF NOT EXISTS thumbnails (
     fetched_at   TEXT NOT NULL
 );
 
+-- A creator's own picture (avatars.py), kept by their handle ("@name"). A
+-- try that found none is kept too (no data), so it isn't asked for again soon.
+CREATE TABLE IF NOT EXISTS avatars (
+    key          TEXT PRIMARY KEY,
+    content_type TEXT,
+    data         BLOB,
+    source_url   TEXT,
+    fetched_at   TEXT NOT NULL,
+    tries        INTEGER NOT NULL DEFAULT 0
+);
+
 -- What you taught the museum about its rooms: "this save is not Marketing",
 -- "everything by @pearljam is Music", "#eddievedder means Music", "#siriusxm
 -- is no subject at all". Kept apart from items so re-theming never loses them.

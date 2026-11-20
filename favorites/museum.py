@@ -23,7 +23,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Optional
 from urllib.parse import quote, urlencode
 
-from . import db
+from . import avatars, db
 from .resolve import platform_label
 from .themes import UNDEFINED
 
@@ -561,11 +561,14 @@ def creator_index(conn: sqlite3.Connection) -> list[dict]:
         f" count(*) AS n, max(saved_at) AS latest, max(platform) AS platform"
         f" FROM items WHERE {RESOLVED} AND {CREATOR_KEY} IS NOT NULL GROUP BY {CREATOR_KEY}").fetchall()
     tones = ("sky", "mint", "butter", "peach", "pink", "lilac")
+    pictures = avatars.known(conn)
     out = []
     for r in rows:
         name, handle = (r["name"] or "").strip() or None, r["handle"] or None
         sort_key = (handle or name or "").lstrip("@").strip().lower()
+        picture = avatars.key(handle)
         out.append({
+            "picture": f"/avatar/{quote(picture, safe='')}" if picture in pictures else None,
             "key": r["k"], "name": name or handle, "handle": handle if name else None,
             "count": int(r["n"]), "latest": r["latest"] or "",
             "platform": platform_label(r["platform"]) if r["platform"] else "",

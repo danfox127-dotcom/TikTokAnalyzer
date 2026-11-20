@@ -290,10 +290,10 @@ class TestUndefined:
         assert "Undefined" not in {o.value for o in themes}
 
     @pytest.mark.parametrize("filters, words", [
-        ({"theme": "Undefined"}, "Undefined saves"),
-        ({"theme": "Undefined", "platform": "tiktok"}, "Undefined TikTok saves"),
+        ({"theme": "Undefined"}, "Saves with no topic yet"),
+        ({"theme": "Undefined", "platform": "tiktok"}, "TikTok saves with no topic yet"),
         ({"theme": "Undefined", "creator": "@citydesk", "year": "2024"},
-         "Undefined saves by @citydesk from 2024"),
+         "Saves with no topic yet by @citydesk from 2024"),
     ])
     def test_the_heading(self, filters, words):
         assert explore.describe(Filters(**filters), []) == words
@@ -316,7 +316,7 @@ class TestUndefinedOnThePages:
         page = client.get("/search").text
         assert '<li class="undefined"><a href="/search?theme=Undefined#f-topic">' in page
         page = client.get("/search", params={"theme": "Undefined"}).text
-        assert "Undefined saves" in page and "you have to see this one" in page
+        assert "Saves with no topic yet" in page and "you have to see this one" in page
         assert "Tomato salad" not in page
 
     def test_browse_leads_with_the_saves_that_have_none(self, client):

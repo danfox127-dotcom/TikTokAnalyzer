@@ -7,10 +7,11 @@
 
 {{ browse_head(tab, total, topic_total, creator_total) }}
 
-{#- A creator's picture is their initials, in a colour of their own, until
-    Faves has one. -#}
+{#- A creator's picture: their own, once the Mac has kept it (avatars.py),
+    over their initials in a colour of their own -- which show if it fails. -#}
 {% macro avatar(c, size='') -%}
-<span class="avatar tone-{{ c.tone }}{% if size %} is-{{ size }}{% endif %}" aria-hidden="true">{{ c.name | initials }}</span>
+<span class="avatar tone-{{ c.tone }}{% if size %} is-{{ size }}{% endif %}" aria-hidden="true">{{ c.name | initials }}
+  {%- if c.picture %}<img src="{{ c.picture }}" alt="" loading="lazy" data-hide-broken>{% endif %}</span>
 {%- endmacro %}
 
 <section class="browse-body">

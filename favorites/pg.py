@@ -93,6 +93,17 @@ CREATE TABLE IF NOT EXISTS thumbnails (
     fetched_at   TEXT NOT NULL
 );
 
+-- A creator's own picture (avatars.py), kept by their handle ("@name"). A
+-- try that found none is kept too (no data), so it isn't asked for again soon.
+CREATE TABLE IF NOT EXISTS avatars (
+    key          TEXT PRIMARY KEY,
+    content_type TEXT,
+    data         BYTEA,
+    source_url   TEXT,
+    fetched_at   TEXT NOT NULL,
+    tries        INTEGER NOT NULL DEFAULT 0
+);
+
 CREATE TABLE IF NOT EXISTS theme_rules (
     kind       TEXT NOT NULL,
     key        TEXT NOT NULL,
