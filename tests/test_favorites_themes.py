@@ -306,11 +306,8 @@ class TestPages:
         assert '<a href="/browse">Browse</a>' in page
 
     def test_browse_opens_the_catalogue(self, client):
-        page = client.get("/browse").text
-        assert "Browse the collection" in page
-        assert 'href="/search?theme=Dogs"' in page
-        assert 'href="/search?creator=%40goodboy"' in page
-        assert 'href="/search?platform=instagram"' in page
+        assert 'href="/search?theme=Dogs"' in client.get("/browse").text
+        assert 'href="/creator/%40goodboy"' in client.get("/browse/creators").text
 
     def test_an_items_themes_link_to_the_theme(self, client):
         c = db.connect()

@@ -1,5 +1,7 @@
 """Search and filters: one page that narrows the whole library."""
 
+import re
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -317,10 +319,11 @@ class TestUndefinedOnThePages:
         assert "Undefined saves" in page and "you have to see this one" in page
         assert "Tomato salad" not in page
 
-    def test_browse_ends_the_themes_with_it(self, client):
+    def test_browse_leads_with_the_saves_that_have_none(self, client):
         page = client.get("/browse").text
-        assert ('class="rr-pill is-undefined" href="/search?theme=Undefined">Undefined'
-                ' <span class="n">1</span>') in page
+        notice = re.search(r'<a class="browse-notice".*?</a>', page, re.S).group(0)
+        assert 'href="/shuffle?theme=Undefined&amp;order=newest"' in notice
+        assert '<span class="n" aria-hidden="true">1</span>' in notice and "Save with no topic yet" in notice
 
 
 class TestOnThisDay:

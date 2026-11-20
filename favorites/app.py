@@ -314,9 +314,11 @@ templates.env.globals["shape"] = looks.shape
 
 
 def initials(name) -> str:
-    """Two letters for a picture that failed to load: "Marisol Cooks" -> "MC"."""
-    words = [w for w in str(name or "").lstrip("@").replace(".", " ").replace("_", " ").split() if w]
-    return "".join(w[0] for w in words[:2]).upper() or "?"
+    """Two letters for a picture that failed to load: "Marisol Cooks" -> "MC".
+    Emoji and other marks in a name are passed over: "🐾Husky Pups" -> "HP"."""
+    words = str(name or "").lstrip("@").replace(".", " ").replace("_", " ").split()
+    firsts = [next((c for c in w if c.isalnum()), "") for w in words]
+    return "".join(f for f in firsts if f)[:2].upper() or "?"
 
 
 templates.env.filters["initials"] = initials
@@ -867,26 +869,91 @@ def home(request: Request, conn: sqlite3.Connection = Depends(get_db)):
     })
 
 
+def _browse_counts(conn: sqlite3.Connection, topics: Optional[int] = None) -> dict:
+    """The line under Browse's heading: saves, topics, creators."""
+    return {"total": db.count(conn),
+            "topic_total": topics if topics is not None else len(museum.topic_counts(conn)),
+            "creator_total": museum.creator_count(conn), "q": ""}
+
+
 @app.get("/browse", response_class=HTMLResponse)
-def browse_page(request: Request, conn: sqlite3.Connection = Depends(get_db)):
-    """Every way into the library: topics, creators, months, this day in
-    other years, the season, and shelves you might not think to ask for."""
-    now = datetime.now(timezone.utc)
+def browse_page(request: Request, sort: str = Query("", max_length=8),
+                conn: sqlite3.Connection = Depends(get_db)):
+    """Every topic on one screen, each with its icon, its colour and how many
+    saves it holds -- and the saves with none yet, one tap from a topic."""
+    topics = museum.topic_counts(conn)
+    if sort == "az":
+        topics.sort(key=lambda t: t["theme"].lower())
     return templates.TemplateResponse(request, "browse.html", {
+        "tab": "topics", "topics": topics, "sort": "az" if sort == "az" else "",
+        "no_topic": conn.execute(f"SELECT count(*) FROM items WHERE {museum.NO_TOPIC}").fetchone()[0],
+        "year_now": datetime.now(timezone.utc).strftime("%Y"),
+        **_browse_counts(conn, len(topics)),
+    })
+
+
+#: Regulars shown before "Show all".
+REGULARS_SHOWN = 24
+
+
+@app.get("/browse/creators", response_class=HTMLResponse)
+def browse_creators(request: Request, sort: str = Query("", max_length=8),
+                    q: str = Query("", max_length=80), letter: str = Query("", max_length=1),
+                    all: int = Query(0), conn: sqlite3.Connection = Depends(get_db)):
+    """Everyone you've saved from: the ones you return to as faces, the rest
+    from A to Z, a letter at a time. ``q`` finds anyone by name or handle."""
+    everyone = museum.creator_index(conn)
+    words = q.strip().lower()
+    if words:
+        everyone = [c for c in everyone if words in (c["name"] or "").lower()
+                    or words.lstrip("@") in (c["handle"] or c["key"]).lower()]
+    regulars = [c for c in everyone if c["count"] >= 2]
+    if sort == "az":
+        regulars.sort(key=lambda c: c["sort_key"])
+    else:
+        regulars.sort(key=lambda c: (c["count"], c["latest"]), reverse=True)   # most, then latest
+    others = sorted((c for c in everyone if c["count"] == 1), key=lambda c: c["sort_key"])
+    letters = sorted({c["letter"] for c in others}, key=lambda x: (x == "#", x))
+    letter = letter.lower() if letter.lower() in letters else (letters[0] if letters else "")
+    return templates.TemplateResponse(request, "browse_creators.html", {
+        "tab": "creators", "sort": "az" if sort == "az" else "", "words": q.strip(),
+        "regulars": regulars if (all or words) else regulars[:REGULARS_SHOWN],
+        "regular_total": len(regulars),
+        "others": others[:200] if words else [c for c in others if c["letter"] == letter],
+        "other_total": len(others), "letters": letters, "letter": letter,
+        "no_creator": conn.execute(
+            f"SELECT count(*) FROM items WHERE {museum.RESOLVED} AND {museum.CREATOR_KEY} IS NULL").fetchone()[0],
+        **_browse_counts(conn),
+    })
+
+
+@app.get("/browse/creators/missing", response_class=HTMLResponse)
+def browse_no_creator(request: Request, conn: sqlite3.Connection = Depends(get_db)):
+    """Saves that don't say who made them: open one to add its creator."""
+    items = db.rows_to_dicts(museum.no_creator(conn))
+    return templates.TemplateResponse(request, "list.html", {
+        "heading": "Saves missing a creator",
+        "subheading": "Open one and add who made it -- Faves won't overwrite what you write.",
+        "items": items, "q": "", "total": db.count(conn),
+    })
+
+
+@app.get("/browse/dates", response_class=HTMLResponse)
+def browse_dates(request: Request, conn: sqlite3.Connection = Depends(get_db)):
+    """Your saves by when: this day in other years, this week, the season,
+    every month, and shelves you might not think to ask for."""
+    now = datetime.now(timezone.utc)
+    return templates.TemplateResponse(request, "browse_dates.html", {
+        "tab": "dates",
         # The first shelf is "Recently saved", which Today already shows.
         "shelves": museum.shelves(conn, now=now, max_shelves=5)[1:],
         "on_this_day": museum.on_this_day(conn, now=now),
-        "rooms": museum.rooms(conn, limit=8, now=now),
-        "room_count": museum.room_count(conn),
-        "creators": museum.creators_shelf(conn, now=now),
         "season": museum.season_room(conn, now=now),
         "week": museum.week_digest(conn, now=now),
         "months": museum.months(conn),
         "year_now": now.strftime("%Y"),
         "digest": museum.digest(conn, days=30, now=now),
-        "browse": museum.browse(conn),
-        "total": db.count(conn),
-        "q": "",
+        **_browse_counts(conn),
     })
 
 

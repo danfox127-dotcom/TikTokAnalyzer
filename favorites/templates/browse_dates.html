@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+{% from "_card.html" import card, shelf, room_pill %}
+{% from "_icons.html" import icon %}
+{% from "_browse.html" import browse_head %}
+{% set nav = 'browse' %}
+{% set kickers = {'recent': '✨ Just in', 'theme': '🚪 A topic', 'month': '🗓️ A busy month',
+                  'collection': '🗂️ Your category', 'creator': '💌 Someone you return to',
+                  'rediscover': '🗝️ Throwbacks', 'last_year': '🍂 A year ago',
+                  'unlabelled': '📝 Notes to write'} %}
+{% set order = ['lilac', 'mint', 'sky', 'peach', 'pink', 'butter'] %}
+{% set ns = namespace(i=0) %}
+{% block title %}Dates · Browse · Faves{% endblock %}
+{% block main_class %}{% if total %}is-bands{% endif %}{% endblock %}
+{% block content %}
+
+{{ browse_head(tab, total, topic_total, creator_total) }}
+
+{% if not total %}
+  <section class="rr-empty empty">
+    <div class="big" aria-hidden="true">🧭</div>
+    <h2 class="rr-h-m">Nothing to browse yet.</h2>
+    <p>Months and anniversaries appear here as you save things. <a href="/">Save your first one from Today.</a></p>
+  </section>
+{% else %}
+
+{#- Your saves by when: this day in other years, this week, every month,
+    the season, and shelves you wouldn't think to ask for. -#}
+{% if on_this_day %}
+<section class="rr-band tone-{{ order[ns.i % 6] }}" aria-labelledby="otd-title">{% set ns.i = ns.i + 1 %}<div class="inner">
+  <div class="rr-otd rr-reveal">
+    <div class="rr-otd-head">
+      <div class="rr-otd-date" aria-hidden="true"><span class="m">{{ on_this_day.month }}</span><span class="d">{{ on_this_day.date }}</span></div>
+      <div><p class="rr-label">📅 {% if on_this_day.widened %}This week, other years{% else %}On this day{% endif %}</p>
+        <h2 id="otd-title">{{ on_this_day.headline }}</h2></div>
+    </div>
+    <div class="rr-otd-years">
+    {% for year, ago, entries in on_this_day.years[:3] %}
+      <div class="rr-otd-year">
+        <h3 class="yr"><b>{{ year }}</b><span>{{ ago }}</span></h3>
+        <div class="rr-carousel" role="region" aria-label="{{ year }}">
+          <ul class="rr-track">{% for item in entries %}<li>{{ card(item, 's', note=False) }}</li>{% endfor %}</ul>
+        </div>
+      </div>
+    {% endfor %}
+    </div>
+    <div class="rr-otd-foot">
+      <span class="rr-muted">{% if on_this_day.years | length > 3 %}and more from earlier years{% else %}{{ on_this_day.label }}, every year you've saved something{% endif %}</span>
+      <a href="{{ on_this_day.href }}">See all →</a>
+    </div>
+  </div>
+</div></section>
+{% endif %}
+
+{% if week %}
+<section class="rr-band tone-{{ order[ns.i % 6] }}" aria-labelledby="week-title">{% set ns.i = ns.i + 1 %}<div class="inner">
+  <div class="rr-week band-pad">
+    <div class="rr-reveal">
+      <p class="rr-label">🗞️ This week</p>
+      <h2 class="rr-h-m" id="week-title">{{ week.prose }}</h2>
+      {% if week.room %}<ul class="rr-pills" style="margin-top:14px">{{ room_pill(week.room[0], '/search?theme=' ~ (week.room[0] | urlencode), week.room[1]) }}</ul>{% endif %}
+      {% if week.count %}<p class="more-line"><a href="/search?sort=newest">See this week's saves →</a></p>{% endif %}
+    </div>
+    {% if week.revisit %}
+    <div class="revisit rr-reveal" style="--i:1">
+      <p class="rr-label">👀 Worth another look</p>
+      {{ card(week.revisit, 'l', top='Saved ' ~ week.revisit.saved_at[:4]) }}
+    </div>
+    {% endif %}
+  </div>
+</div></section>
+{% endif %}
+
+{% if months %}
+<section class="rr-band tone-{{ order[ns.i % 6] }}" aria-labelledby="months-title">{% set ns.i = ns.i + 1 %}<div class="inner">
+  <div class="band-pad rr-reveal">
+    <p class="rr-label">🗓️ Months</p>
+    <h2 class="rr-h-m" id="months-title">By month</h2>
+    <ul class="rr-pills browse-months">
+      {% for m in months %}<li><a class="rr-pill" href="{{ m.href }}">{{ m.label }} <span class="n">{{ m.count }}</span></a></li>{% endfor %}
+    </ul>
+    <ul class="rr-pills browse-months-more">
+      <li><a class="rr-pill is-hook" href="/rewind">{{ icon('play') }}Rewind: a month on TikTok</a></li>
+      <li><a class="rr-pill is-hook" href="/stats">{{ icon('filter') }}Every month's TikTok stats</a></li>
+      <li><a class="rr-pill is-hook" href="/year">{{ icon('spark') }}Your {{ year_now }}</a></li>
+    </ul>
+  </div>
+</div></section>
+{% endif %}
+
+{% if season %}
+  {{ shelf(season.label, season.entries, kicker=season.emoji ~ ' This season', sub=season.sub, href=season.href, kind='season', tone=order[ns.i % 6]) }}{% set ns.i = ns.i + 1 %}
+{% endif %}
+
+{% for s in shelves %}
+  {{ shelf(s.title, s.entries, kicker=kickers.get(s.kind, ''), sub=s.subtitle, href=s.href, kind=s.kind, tone=order[ns.i % 6]) }}{% set ns.i = ns.i + 1 %}
+{% endfor %}
+
+<section class="rr-band tone-{{ order[ns.i % 6] }}" aria-label="The last month">{% set ns.i = ns.i + 1 %}<div class="inner">
+  <div class="digest band-pad rr-reveal">
+    <p class="rr-label">📰 The last month</p>
+    <p class="digest-prose">{{ digest.prose }}</p>
+  </div>
+</div></section>
+
+{% endif %}
+{% endblock %}

@@ -306,10 +306,13 @@ class TestTodayAndBrowse:
 
     def test_browse_holds_what_today_left_out(self, client, library):
         page = client.get("/browse").text
-        assert "Browse by topic" in page and '<a class="more" href="/topics">The topic</a>' in page
-        assert "Browse the collection" in page and "Favorite creators" in page
-        assert 'href="/month/2025-09"' in page and "September 2025" in page
-        assert 'data-kind="recent"' not in page  # Today already has it
+        tabs = re.search(r'<nav class="browse-tabs".*?</nav>', page, re.S).group(0)
+        assert re.findall(r'href="([^"]+)"', tabs) == ["/browse", "/browse/creators", "/browse/dates"]
+        assert '<a href="/browse" aria-current="page">' in tabs
+        assert 'class="topic-grid"' in page
+        dates = client.get("/browse/dates").text
+        assert 'href="/month/2025-09"' in dates and "September 2025" in dates
+        assert 'data-kind="recent"' not in dates  # Today already has it
 
     def test_browse_months_are_newest_first(self, conn, library):
         from favorites import museum

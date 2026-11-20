@@ -158,7 +158,7 @@ class TestPages:
 
     def test_today_leads_with_whats_new_and_browse_has_the_digest(self, client, tiktok_ok):
         client.post("/save", json={"url": "https://www.tiktok.com/@citydesk/video/7123"})
-        assert "1 save this past month." in client.get("/browse").text
+        assert "1 save this past month." in client.get("/browse/dates").text
         body = client.get("/").text
         assert "Recently saved" in body
         # The shelf must actually render its contents. Naming that key "items"
@@ -351,7 +351,7 @@ class TestHooks:
             "saved_at": today.replace(year=today.year - 4).isoformat(),
         })
         assert 'On this day <span class="n">1</span>' in client.get("/").text
-        body = client.get("/browse").text
+        body = client.get("/browse/dates").text
         assert "On this day" in body and "4 years ago" in body
 
 
