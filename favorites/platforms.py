@@ -337,6 +337,20 @@ def _tiktok_item(page: str) -> dict:
     return item if isinstance(item, dict) else {}
 
 
+def tiktok_author(page: str) -> Optional[tuple[str, str]]:
+    """("@handle", picture link) for the account that posted the video on a
+    TikTok page, or None. The link is signed and soon expires: fetch it now."""
+    author = _tiktok_item(page).get("author")
+    if not isinstance(author, dict):
+        return None
+    handle = author.get("uniqueId")
+    picture = next((author.get(k) for k in ("avatarMedium", "avatarLarger", "avatarThumb")
+                    if isinstance(author.get(k), str) and author.get(k).startswith("https://")), None)
+    if not isinstance(handle, str) or not handle.strip() or not picture:
+        return None
+    return "@" + handle.strip().lstrip("@").lower(), picture
+
+
 def _strings(value) -> list[str]:
     return [v.strip() for v in value if isinstance(v, str) and v.strip()][:40] if isinstance(value, list) else []
 

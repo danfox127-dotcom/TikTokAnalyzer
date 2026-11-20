@@ -43,7 +43,7 @@ from starlette.concurrency import run_in_threadpool
 
 from . import (backfill, blurb, cloud, db, explore, google_sync, lengths, looks, museum,
                tagging, thumbnails, transcript, watch)
-from . import inbox, known, labels, platforms, profiles, rescue, rewind, shortcuts
+from . import avatars, inbox, known, labels, platforms, profiles, rescue, rewind, shortcuts
 from . import themes as theme_vocabulary
 from .resolve import URL_RE, Resolved, browsable_url, canonical_form, detect_platform, extract_url, platform_label, resolve
 
@@ -189,6 +189,18 @@ async def _read_labels() -> None:
         conn.close()
 
 
+async def _read_pictures() -> None:
+    """A few creators' pictures, read in the background until every
+    creator you've saved a TikTok from has one (see favorites.avatars)."""
+    if not finishing_on():
+        return
+    conn = db.connect()
+    try:
+        await avatars.run(conn)
+    finally:
+        conn.close()
+
+
 async def _fill_in(limit: int = 50) -> None:
     """Titles and pictures for what just arrived: a first batch, straight away."""
     conn = db.connect()
@@ -274,6 +286,7 @@ async def _keep_in_sync() -> None:
                 await run_in_threadpool(_mark_the_mac_seen)
                 await _finish_recent()
                 await _read_labels()
+                await _read_pictures()
                 await _look_up_likes()
         except asyncio.CancelledError:
             raise
@@ -1930,6 +1943,16 @@ def gone_save(request: Request, item_id: int, back: int = Form(0), conn: sqlite3
     if _wants_json(request):
         return JSONResponse({"gone": not back})
     return RedirectResponse("/missing/gone" if back else "/missing", status_code=303)
+
+
+@app.get("/avatar/{handle:path}")
+def avatar(handle: str, conn: sqlite3.Connection = Depends(get_db)):
+    """A creator's own picture, if Faves has kept one."""
+    row = avatars.get(conn, handle)
+    if row is None:
+        raise HTTPException(status_code=404, detail="no picture")
+    return Response(bytes(row["data"]), media_type=row["content_type"] or "image/jpeg",
+                    headers={"Cache-Control": "public, max-age=604800"})
 
 
 @app.get("/thumb/{item_id}")

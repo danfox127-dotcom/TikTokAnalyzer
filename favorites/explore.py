@@ -83,6 +83,9 @@ def _valid_day(raw: str) -> bool:
     return True
 
 
+#: How the saves with no topic are named on the page (their filter is ``theme=Undefined``).
+NO_TOPIC = "No topic yet"
+
 SORTS = {"relevance": "Best match", "newest": "Newest saved", "oldest": "Oldest saved"}
 
 # How many options to list for the open-ended facets. The rest are still
@@ -382,7 +385,7 @@ class Option:
     kind: str = ""
 
 
-# Saves no theme recognises yet: the "Undefined" option.
+# Saves no theme recognises yet: the "No topic yet" option (``theme=Undefined``).
 # Identified saves only: a video that's gone, or not identified yet, has no
 # words to find a topic in (those wait in Missing details instead).
 _UNTHEMED = ("json_array_length(coalesce(nullif(i.themes, ''), '[]')) = 0"
@@ -438,7 +441,7 @@ def _facet(f: Filters, name: str, title: str, rows, label=lambda v, extra: v,
 
 
 def _with_undefined(conn, f: Filters, facet: Optional[Facet]) -> Optional[Facet]:
-    """Put "Undefined" at the top of the themes: the saves no theme covers.
+    """Put "No topic yet" at the top of the topics: the saves no topic covers.
 
     First, not buried after thirty subjects, because it is a to-do list --
     the saves worth looking through and filing -- rather than a subject.
@@ -449,7 +452,7 @@ def _with_undefined(conn, f: Filters, facet: Optional[Facet]) -> Optional[Facet]
     active = f.theme.lower() == UNDEFINED.lower()
     if not n and not active:
         return facet
-    undefined = Option(value=UNDEFINED, label=UNDEFINED, count=int(n), kind="undefined",
+    undefined = Option(value=UNDEFINED, label=NO_TOPIC, count=int(n), kind="undefined",
                        href=f.href(theme=None if active else UNDEFINED), active=active)
     if facet is None:
         return Facet(name="theme", title="Topics", options=[undefined])
@@ -645,9 +648,9 @@ def describe(f: Filters, found: list[Facet]) -> str:
     if f.platform:
         noun = f"{platform_label(f.platform)} {noun}"
     undefined = f.theme.lower() == UNDEFINED.lower()
-    if undefined:
-        noun = f"undefined {noun}"
     parts = [noun]
+    if undefined:
+        parts.append("with no topic yet")
     if f.q:
         parts.append(f"matching “{f.q}”")
     if f.tag:

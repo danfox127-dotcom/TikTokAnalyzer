@@ -93,7 +93,7 @@ SHRINK_TO = 720
 LIGHT = 150_000
 
 
-def shrink(data: bytes, content_type: str) -> tuple[bytes, str]:
+def shrink(data: bytes, content_type: str, to: int = SHRINK_TO, light: int = LIGHT) -> tuple[bytes, str]:
     """A phone-sized copy of a picture, as WebP: ``(bytes, content_type)``.
 
     The original comes back unchanged when it's already phone-sized and light,
@@ -103,11 +103,11 @@ def shrink(data: bytes, content_type: str) -> tuple[bytes, str]:
     try:
         from PIL import Image
         with Image.open(io.BytesIO(data)) as im:
-            if max(im.size) <= SHRINK_TO and len(data) <= LIGHT:
+            if max(im.size) <= to and len(data) <= light:
                 return data, content_type
             im.seek(0)  # a GIF's first frame
             im = im.convert("RGBA" if im.mode in ("RGBA", "LA", "P", "PA") else "RGB")
-            im.thumbnail((SHRINK_TO, SHRINK_TO))
+            im.thumbnail((to, to))
             out = io.BytesIO()
             im.save(out, "WEBP", quality=80, method=4)
     except Exception:  # not a picture Pillow can read, or no Pillow at all
